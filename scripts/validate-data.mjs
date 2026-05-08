@@ -260,6 +260,35 @@ function validatePhotoRow(row, rowNumber, taxonomy) {
   }
 }
 
+function validateUniquePhotoFields(photoRows) {
+  const seen = {
+    photo_id: new Map(),
+    photo_url: new Map(),
+  };
+
+  photoRows.forEach((row, index) => {
+    const rowNumber = index + 2;
+    const photo = Object.fromEntries(
+      expectedHeaders.map((header, fieldIndex) => [header, row[fieldIndex] ?? ""]),
+    );
+
+    for (const field of Object.keys(seen)) {
+      const value = photo[field].trim();
+      if (!value) {
+        continue;
+      }
+
+      if (seen[field].has(value)) {
+        addError(
+          `${formatRow(rowNumber, field)} duplicates row ${seen[field].get(value)}`,
+        );
+      } else {
+        seen[field].set(value, rowNumber);
+      }
+    }
+  });
+}
+
 const [photosText, taxonomyText, sponsorshipItemsText] = await Promise.all([
   readFile(paths.photos, "utf8"),
   readFile(paths.taxonomy, "utf8"),
@@ -276,6 +305,7 @@ if (rows.length === 0) {
   const [headers, ...photoRows] = rows;
   validateHeaders(headers);
   validateTaxonomy(taxonomy, sponsorshipItems);
+  validateUniquePhotoFields(photoRows);
 
   photoRows.forEach((row, index) => {
     validatePhotoRow(row, index + 2, taxonomy);

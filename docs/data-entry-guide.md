@@ -60,6 +60,8 @@ scene_tags
 | `photo_url` | Flickr 照片公開頁面。 |
 | `image_preview_url` | 可在索引或未來 UI 顯示的縮圖或預覽圖 URL。 |
 
+驗證工具也會檢查 `photo_id` 和 `photo_url` 是否重複。
+
 若暫時無法取得其他資訊，可以先留空；但高曝光用途的照片應補齊授權、攝影者與公開使用狀態。
 
 ## 常用欄位填寫方式
