@@ -114,6 +114,7 @@ export async function buildCsvRows(normalizedPhotos, defaults = {}) {
 
     const photo = {
       album_title: defaults.album_title ?? "",
+      album_ids: defaults.album_ids ?? "",
       event_name: defaults.event_name ?? "",
       event_year: defaults.event_year ?? "",
       photo_id: photoId,

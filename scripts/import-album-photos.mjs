@@ -223,6 +223,7 @@ async function main() {
 
   const rows = await buildCsvRows(missingPhotos, {
     album_title: album.album_title ?? "",
+    album_ids: albumId,
     event_name: album.event_name ?? "",
     event_year: album.event_year ?? "",
   });

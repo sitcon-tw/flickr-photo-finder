@@ -42,6 +42,7 @@ MVP 應該先建立一個 Flickr 之上的照片索引層，而不是取代 Flic
 | --- | --- |
 | `photo_id` | Flickr 照片唯一識別，避免重複匯入。 |
 | `photo_url` | 回到 Flickr 原始頁面，確認脈絡與取得照片。 |
+| `album_ids` | 來源 Flickr 相簿 ID。照片可能出現在多本相簿中，因此使用多值欄位。 |
 | `image_preview_url` | 在搜尋介面顯示縮圖。 |
 | `album_title` | 保留原始相簿脈絡。 |
 | `event_name` | 標示活動名稱，例如年會、Camp、Hackathon。 |

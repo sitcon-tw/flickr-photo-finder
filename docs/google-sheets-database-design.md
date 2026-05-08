@@ -62,6 +62,8 @@ pnpm sheets:apply-init -- --write
 
 欄位應以 `data/photo-schema.json` 的 `photos.fields` 為準。這張表可以包含尚未人工整理完成的照片，因為 SITCON Flickr 照片量很大，要求所有照片先完成人工 review 才能被搜尋會讓工具失去價值。
 
+`album_ids` 記錄照片和 Flickr 相簿的來源關係。它是多值欄位，因為同一張 Flickr 照片可能出現在多本相簿中；這個欄位應由匯入工具維護，人類通常不需要手動填寫。匯入批次 ID 不放在 `photos` 主表，批次層級的執行紀錄留在 `import_batches`，避免把照片主表變成操作 log。
+
 `curation_status`、`public_use_status`、`priority_level` 與 `collections` 應用來協助排序、提醒與推薦，而不是把未 review 的照片完全排除。
 
 ### taxonomy（正式輔助表；由 repo taxonomy 同步）
@@ -109,6 +111,7 @@ schema 與同步狀態紀錄。這張表讓人類、Apps Script 與 agent 能確
 
 - `photo_id`
 - `photo_url`
+- `album_ids`
 - `image_preview_url`
 - `album_title`
 - `event_name`

@@ -120,6 +120,8 @@ pnpm sheets:init -- --empty-albums
 
 現有低階工具仍可接受 Flickr 相簿 URL 作為開發與除錯入口；但正式使用流程應以「盤點 SITCON Flickr 相簿清單，再選擇要處理的相簿」為主。
 
+新匯入的照片列會填入 `album_ids`。這是多值欄位，因為同一張照片可能出現在多本 Flickr 相簿中。現階段 intake 只會替新追加照片寫入本次相簿 ID；若照片已存在於 `photos` 而本次只是在另一個相簿再次被看到，工具會先略過，不會自動合併 `album_ids`。要支援這件事時，應新增可審核的 `photos-to-update` artifact 與對應 Sheets 更新工具，不應靜默覆蓋既有列。
+
 目前可用的本機盤點指令：
 
 ```bash
@@ -187,7 +189,7 @@ import-batch.csv
 summary.json
 ```
 
-這是目前建議的人機協作接口。`photos-to-append.csv` 是缺少照片的候選列，`albums-updated.csv` 是更新 `last_processed_at` 後的完整 albums CSV，`import-batch.csv` 是本次操作紀錄，`summary.json` 則讓人類、agent 或未來 Apps Script 先確認本次 run 的範圍與統計。
+這是目前建議的人機協作接口。`photos-to-append.csv` 是缺少照片的候選列，並會帶入本次來源相簿的 `album_ids`；`albums-updated.csv` 是更新 `last_processed_at` 後的完整 albums CSV，`import-batch.csv` 是本次操作紀錄，`summary.json` 則讓人類、agent 或未來 Apps Script 先確認本次 run 的範圍與統計。
 
 `intake:run` 預設使用 `tmp/sheets-export/albums.csv` 與 `tmp/sheets-export/photos.csv`。若要使用 repo fixture 做本機測試，請明確指定 `--albums fixtures/albums.csv --photos-export fixtures/photos.csv`，避免正式流程誤用 sample data。
 
@@ -240,7 +242,7 @@ pnpm sheets:apply-intake -- --run-dir tmp/intake-runs/RUN_ID --write
 pnpm photos:import -- --album ALBUM_ID --output /tmp/photos-to-append.csv --albums-output /tmp/albums-updated.csv --batch-output /tmp/import-batch.csv
 ```
 
-`photos:import` 會從 `albums` CSV 取得相簿名稱、活動名稱與年份，掃描該相簿中的照片，排除已存在於 `photos` 匯出檔的 `photo_id`，再用 Flickr oEmbed 補 `image_preview_url`、攝影師候選署名與可公開整理備註。
+`photos:import` 會從 `albums` CSV 取得相簿名稱、活動名稱、年份與來源相簿 ID，掃描該相簿中的照片，排除已存在於 `photos` 匯出檔的 `photo_id`，再用 Flickr oEmbed 補 `image_preview_url`、攝影師候選署名與可公開整理備註。
 
 ## 匯出驗證流程
 

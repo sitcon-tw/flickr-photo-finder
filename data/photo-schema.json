@@ -35,6 +35,15 @@
           "description_zh": "Flickr 公開頁面，用來回到原始照片確認脈絡。"
         },
         {
+          "name": "album_ids",
+          "label_zh": "來源相簿 ID",
+          "type": "string",
+          "required": false,
+          "multi_value": true,
+          "maintainer_zh": "匯入工具",
+          "description_zh": "這張照片曾由哪些 Flickr 相簿匯入或關聯。多值以分號分隔。"
+        },
+        {
           "name": "image_preview_url",
           "label_zh": "縮圖 URL",
           "type": "url",
