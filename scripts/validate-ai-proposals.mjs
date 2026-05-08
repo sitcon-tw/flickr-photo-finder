@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import {
   controlledListFields,
   controlledScalarFields,
@@ -283,7 +284,7 @@ function validateProposalItem(item, context, errors) {
   }
 }
 
-async function validate(options) {
+export async function validateAiProposals(options) {
   const [manifest, photos, proposals, taxonomy] = await Promise.all([
     readJson(join(options.runDir, "manifest.json")),
     readJson(join(options.runDir, "photos.json")),
@@ -328,13 +329,15 @@ async function main() {
     return;
   }
 
-  const result = await validate(options);
+  const result = await validateAiProposals(options);
   console.log(`AI proposals are valid for ${result.runId} (${result.itemCount} item(s)).`);
 }
 
-try {
-  await main();
-} catch (error) {
-  console.error(`Could not validate AI proposals: ${error.message}`);
-  process.exitCode = 1;
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+  try {
+    await main();
+  } catch (error) {
+    console.error(`Could not validate AI proposals: ${error.message}`);
+    process.exitCode = 1;
+  }
 }

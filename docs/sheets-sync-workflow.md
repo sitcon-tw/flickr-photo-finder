@@ -304,7 +304,7 @@ AI 可以協助初標，但不能取代人工確認。
 4. AI 讀取 `photos.json`、`images/`、相簿脈絡、既有欄位、taxonomy 與 sponsorship items。
 5. AI 產生 `metadata-proposals.json` 候選欄位值。
 6. 用 `pnpm ai:validate -- --run-dir tmp/ai-runs/<run-id>` 檢查候選欄位格式、受控字彙與責任邊界。
-7. 工具產生 diff，讓人類確認是否回寫。
+7. 用 `pnpm ai:diff -- --run-dir tmp/ai-runs/<run-id>` 產生 `metadata-diff.md`，讓人類確認是否回寫。
 8. 人類確認後才寫入正式欄位。
 9. AI 協助後但尚未人工完整確認的列標成 `curation_status = ai_labeled`。
 
@@ -371,6 +371,14 @@ pnpm ai:validate -- --run-dir tmp/ai-runs/<run-id>
 ```
 
 AI 候選值只允許讀圖初標合理處理的欄位，例如 `people_count`、`scene_tags`、`mood_tags`、`recommended_uses`、`sponsorship_items`、`sponsorship_tags`、`orientation`、`has_negative_space`、`safe_crop`、`public_use_status`、`priority_level`、`collections` 與 `curation_status`。AI 候選值不能修改 Flickr 基本欄位、攝影師或授權；若建議 `curation_status`，只能是 `ai_labeled`；若建議 `public_use_status`，不能直接給 `approved`。
+
+產生審核 diff：
+
+```bash
+pnpm ai:diff -- --run-dir tmp/ai-runs/<run-id>
+```
+
+`ai:diff` 會先執行同一套 proposal validation，再輸出 `metadata-diff.md`。這份檔案列出 `photo_id`、欄位、原值、AI 建議值、是否變更、信心與理由，讓人類可以先審核差異；它不寫入 Google Sheets。
 
 若人類重新觸發 AI 調整欄位，工具仍應提供可審核 diff，不應靜默覆蓋人工整理內容。
 

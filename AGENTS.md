@@ -131,6 +131,7 @@ pnpm albums:discover
 pnpm albums:list
 pnpm albums:select
 pnpm albums:sync -- --sheets-export <albums-csv> --output <albums-csv>
+pnpm ai:diff -- --run-dir <dir>
 pnpm ai:prepare -- --image-size large-1024
 pnpm ai:validate -- --run-dir <dir>
 pnpm intake:run -- --album <album-id>
