@@ -32,6 +32,8 @@ npm run photo:add -- https://www.flickr.com/photos/sitcon/PHOTO_ID --append
 npm run validate:data
 ```
 
+`--append` 寫入後會自動跑一次資料驗證；補齊人工欄位後仍建議再跑一次。
+
 ## 主要檔案
 
 - `data/photos.csv`: 第一版照片索引。

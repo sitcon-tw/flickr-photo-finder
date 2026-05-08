@@ -1,4 +1,5 @@
 import { readFile, appendFile } from "node:fs/promises";
+import { spawnSync } from "node:child_process";
 import { URL } from "node:url";
 
 const photosPath = "data/photos.csv";
@@ -32,7 +33,7 @@ function printUsage() {
   npm run photo:add -- <flickr-photo-url> --append
 
 Options:
-  --append  Append the generated row to data/photos.csv.
+  --append  Append the generated row to data/photos.csv and validate data.
 
 The script uses Flickr oEmbed to fill photo_id, photo_url, image_preview_url,
 photographer, and a basic internal note. Other curation fields stay blank for
@@ -86,6 +87,12 @@ function toCsvRow(photo) {
   return headers.map((header) => csvEscape(photo[header] ?? "")).join(",");
 }
 
+function assertRequiredOEmbedData(oembed) {
+  if (!oembed.thumbnail_url) {
+    throw new Error("Flickr oEmbed did not return thumbnail_url");
+  }
+}
+
 async function fetchOEmbed(photoUrl) {
   const endpoint = new URL("https://www.flickr.com/services/oembed/");
   endpoint.searchParams.set("format", "json");
@@ -109,6 +116,20 @@ async function assertPhotoIsNew(photoId) {
   }
 }
 
+function validateDataAfterAppend() {
+  const result = spawnSync(process.execPath, ["scripts/validate-data.mjs"], {
+    stdio: "inherit",
+  });
+
+  if (result.error) {
+    throw result.error;
+  }
+
+  if (result.status !== 0) {
+    throw new Error("data validation failed after append");
+  }
+}
+
 async function main() {
   const { append, help, photoUrl: inputUrl } = parseArgs(process.argv);
 
@@ -122,6 +143,8 @@ async function main() {
   await assertPhotoIsNew(photoId);
 
   const oembed = await fetchOEmbed(photoUrl);
+  assertRequiredOEmbedData(oembed);
+
   const photo = {
     photo_id: photoId,
     photo_url: photoUrl,
@@ -135,6 +158,7 @@ async function main() {
   if (append) {
     await appendFile(photosPath, `${row}\n`);
     console.log(`Added Flickr photo ${photoId} to ${photosPath}`);
+    validateDataAfterAppend();
   } else {
     console.log(row);
   }

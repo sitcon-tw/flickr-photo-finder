@@ -29,7 +29,7 @@ npm run photo:add -- https://www.flickr.com/photos/sitcon/PHOTO_ID
 npm run photo:add -- https://www.flickr.com/photos/sitcon/PHOTO_ID --append
 ```
 
-這個工具只處理 Flickr 基本中繼資料。情緒、用途、贊助品項、公開使用狀態等仍需人工判斷。
+使用 `--append` 時，工具會在寫入後自動執行資料驗證。這個工具只處理 Flickr 基本中繼資料；情緒、用途、贊助品項、公開使用狀態等仍需人工判斷。
 
 ## CSV 填寫格式
 
