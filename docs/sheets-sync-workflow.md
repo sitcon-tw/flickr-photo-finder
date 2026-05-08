@@ -83,6 +83,27 @@ summary.json
 
 正式寫回前應由人類確認，並避免覆蓋既有人工整理欄位。現階段 Google Sheets 寫回仍由人類手動匯入或貼回；rclone、Google API 或 Apps Script 應在這個手動流程跑通後再自動化。
 
+套用前先檢查整包產物：
+
+```bash
+pnpm intake:validate -- --run-dir tmp/intake-runs/RUN_ID
+```
+
+`intake:validate` 會確認：
+
+- 三個 CSV 的欄位符合 `data/photo-schema.json`。
+- `summary.json` 存在並包含必要欄位。
+- `summary.json`、`import-batch.csv` 與 `albums-updated.csv` 的相簿、時間與統計數字一致。
+- `photos-to-append.csv` 的資料列數等於本次新增照片數。
+
+人工套用到 Google Sheets 時，建議順序是：
+
+1. 看 `summary.json`，確認相簿、時間、找到/新增/略過照片數符合預期。
+2. 檢查 `photos-to-append.csv`，確認候選列沒有明顯錯誤；這份檔案只追加到 `photos`，不要覆蓋整張表。
+3. 用 `albums-updated.csv` 更新 `albums`，或至少把該相簿的 `last_processed_at` 更新成 `summary.json` 的 `created_at`。
+4. 將 `import-batch.csv` 的單列追加到 `import_batches`。
+5. 套用後再從 Sheets 匯出相關 CSV，用 `pnpm validate:data` 檢查正式資料。
+
 若只需要低階輸出，可以直接指定各 CSV 路徑：
 
 ```bash
