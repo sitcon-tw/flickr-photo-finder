@@ -1,5 +1,5 @@
 import { resolveAlbumInput } from "./album-catalog.mjs";
-import { extractAlbumPhotoUrls, fetchAlbumHtml } from "./flickr-album-photos.mjs";
+import { fetchAlbumPhotoUrls } from "./flickr-album-photos.mjs";
 import {
   appendCsvRows,
   assertUniqueInputPhotoIds,
@@ -46,8 +46,8 @@ async function main() {
   }
 
   const { ownerPath, albumId, albumUrl } = await resolveAlbumInput(inputUrl);
-  const html = await fetchAlbumHtml(albumUrl);
-  const albumPhotos = extractAlbumPhotoUrls(html, ownerPath);
+  const albumPhotoResult = await fetchAlbumPhotoUrls({ albumId, albumUrl, ownerPath });
+  const albumPhotos = albumPhotoResult.photoUrls;
   assertUniqueInputPhotoIds(albumPhotos);
 
   if (albumPhotos.length === 0) {
@@ -58,7 +58,7 @@ async function main() {
   const missingPhotos = filterNewPhotos(albumPhotos, existingIds);
   const importedCount = albumPhotos.length - missingPhotos.length;
 
-  console.log(`Album ${albumId}: ${albumPhotos.length} photo(s), ${importedCount} already indexed, ${missingPhotos.length} missing.`);
+  console.log(`Album ${albumId}: ${albumPhotos.length} photo(s) from ${albumPhotoResult.source}, ${importedCount} already indexed, ${missingPhotos.length} missing.`);
 
   if (!append) {
     for (const { photoUrl } of missingPhotos) {

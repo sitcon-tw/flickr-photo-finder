@@ -4,7 +4,7 @@ import {
   readAlbumCatalog,
   resolveAlbumInput,
 } from "./album-catalog.mjs";
-import { extractAlbumPhotoUrls, fetchAlbumHtml } from "./flickr-album-photos.mjs";
+import { fetchAlbumPhotoUrls } from "./flickr-album-photos.mjs";
 import {
   assertUniqueInputPhotoIds,
   buildCsvRows,
@@ -154,7 +154,12 @@ function validatePath(option, path) {
   }
 }
 
-function buildUpdatedAlbums({ albums, albumId, importedAt }) {
+function parsePhotoCount(value) {
+  const count = Number(value);
+  return Number.isInteger(count) && count >= 0 ? count : 0;
+}
+
+function buildUpdatedAlbums({ albums, albumId, importedAt, photoCount }) {
   const index = albums.findIndex((item) => item.album_id === albumId);
   if (index < 0) {
     throw new Error(`Cannot update albums output because album ${albumId} was not found in the albums CSV`);
@@ -167,6 +172,7 @@ function buildUpdatedAlbums({ albums, albumId, importedAt }) {
 
     return {
       ...album,
+      photo_count: photoCount > 0 ? String(photoCount) : album.photo_count,
       last_processed_at: importedAt,
     };
   });
@@ -209,8 +215,16 @@ async function main() {
     options.albums,
   );
 
-  const html = options.input ? await readFile(options.input, "utf8") : await fetchAlbumHtml(albumUrl);
-  const albumPhotos = extractAlbumPhotoUrls(html, ownerPath);
+  const html = options.input ? await readFile(options.input, "utf8") : "";
+  const expectedPhotoCount = parsePhotoCount(album.photo_count);
+  const albumPhotoResult = await fetchAlbumPhotoUrls({
+    albumId,
+    albumUrl,
+    expectedPhotoCount,
+    html,
+    ownerPath,
+  });
+  const albumPhotos = albumPhotoResult.photoUrls;
   assertUniqueInputPhotoIds(albumPhotos);
 
   if (albumPhotos.length === 0) {
@@ -240,7 +254,12 @@ async function main() {
   }
 
   if (options.albumsOutput) {
-    const updatedAlbums = buildUpdatedAlbums({ albums, albumId, importedAt });
+    const updatedAlbums = buildUpdatedAlbums({
+      albums,
+      albumId,
+      importedAt,
+      photoCount: albumPhotoResult.total || albumPhotos.length,
+    });
     await writeFile(options.albumsOutput, toRecordCsv(albumHeaders, updatedAlbums));
     if (options.validate) {
       validatePath("--albums", options.albumsOutput);
@@ -267,7 +286,7 @@ async function main() {
   }
 
   console.error(
-    `Album ${albumId}: ${albumPhotos.length} photo(s), ${existingCount} already indexed, ${missingPhotos.length} missing.`,
+    `Album ${albumId}: ${albumPhotos.length} photo(s) from ${albumPhotoResult.source}, ${existingCount} already indexed, ${missingPhotos.length} missing.`,
   );
 }
 

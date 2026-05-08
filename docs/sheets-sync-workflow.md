@@ -215,7 +215,9 @@ import-batch.csv
 summary.json
 ```
 
-這是目前建議的人機協作接口。`photos-to-append.csv` 是缺少照片的候選列，並會帶入本次來源相簿的 `album_ids`；`albums-updated.csv` 是更新 `last_processed_at` 後的完整 albums CSV，`import-batch.csv` 是本次操作紀錄，`summary.json` 則讓人類、agent 或未來 Apps Script 先確認本次 run 的範圍與統計。
+這是目前建議的人機協作接口。`photos-to-append.csv` 是缺少照片的候選列，並會帶入本次來源相簿的 `album_ids`；`albums-updated.csv` 是更新 `last_processed_at` 與本次可確認 `photo_count` 後的完整 albums CSV，`import-batch.csv` 是本次操作紀錄，`summary.json` 則讓人類、agent 或未來 Apps Script 先確認本次 run 的範圍與統計。
+
+相簿照片清單會優先透過 Flickr API 取得完整 `photosets.getPhotos` 結果，初始 HTML 解析只作為 fallback。若 `albums` 匯出檔中已有 `photo_count`，但本次實際取得的照片數不同，工具會拒絕產生 intake artifact，避免把只含 Flickr 初始頁面部分照片的不完整 run 寫入正式資料庫。
 
 `intake:run` 預設使用 `tmp/sheets-export/albums.csv` 與 `tmp/sheets-export/photos.csv`。若要使用 repo fixture 做本機測試，請明確指定 `--albums fixtures/albums.csv --photos-export fixtures/photos.csv`，避免正式流程誤用 sample data。
 
@@ -268,7 +270,7 @@ pnpm sheets:apply-intake -- --run-dir tmp/intake-runs/RUN_ID --write
 pnpm photos:import -- --album ALBUM_ID --output /tmp/photos-to-append.csv --albums-output /tmp/albums-updated.csv --batch-output /tmp/import-batch.csv
 ```
 
-`photos:import` 會從 `albums` CSV 取得相簿名稱、活動名稱、年份與來源相簿 ID，掃描該相簿中的照片，排除已存在於 `photos` 匯出檔的 `photo_id`，再用 Flickr oEmbed 補 `image_preview_url`、攝影師候選署名與可公開整理備註。
+`photos:import` 會從 `albums` CSV 取得相簿名稱、活動名稱、年份、來源相簿 ID 與可檢查的 `photo_count`，掃描該相簿中的照片，排除已存在於 `photos` 匯出檔的 `photo_id`，再用 Flickr oEmbed 補 `image_preview_url`、攝影師候選署名與可公開整理備註。
 
 ## 匯出驗證流程
 
