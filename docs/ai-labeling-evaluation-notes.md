@@ -204,6 +204,7 @@ reason 是審核脈絡，不是正式 metadata。它應只描述可見畫面或 
 - 若 `safe_crop` 的某個比例出現在 90% 以上照片，提示可能過度套用。
 - 若 `recommended_uses` 單一值出現在 90% 以上照片，提示用途區辨度不足。
 - 若沒有任何 `public_use_status` 候選值，提示可接受但需視批次內容確認。
+- 若所有候選值都沒有 `confidence`，提示不利於人工排序與抽查。
 - 若 `confidence = 1` 比例高於 25%，提示 confidence 失去參考價值。
 - 若 `贊助成果報告` 出現但沒有 `sponsorship_items` 或 `sponsorship_tags`，提示需要人工確認贊助脈絡。
 - 若 `people_count = 0` 但 reason 或 scene_tags 提到會眾、講者、合照等人物相關線索，提示可能矛盾。

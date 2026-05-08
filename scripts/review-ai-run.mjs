@@ -232,7 +232,9 @@ function buildReviewNotes(items) {
   if (publicUseStatusCount === 0) {
     notes.push("沒有 `public_use_status` 候選值；若本批沒有明顯 avoid 照片，這可以接受。");
   }
-  if (total > 0 && perfectCount / total > 0.25) {
+  if (total === 0) {
+    notes.push("所有候選值都未提供 `confidence`；格式允許省略，但不利於人工排序與抽查。");
+  } else if (perfectCount / total > 0.25) {
     notes.push("有偏多 `confidence = 1`，人數、用途與情緒欄位仍應人工抽查。");
   }
   if (sponsorReportItems.length > 0) {
