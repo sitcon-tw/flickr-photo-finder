@@ -1,4 +1,6 @@
 import { spawnSync } from "node:child_process";
+import { readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import readline from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 
@@ -385,10 +387,52 @@ async function prepareAiRun() {
 
   console.log("");
   console.log("下一步：");
-  console.log(`1. 將 ${runDir}/ 交給模型或 agent 進行初標。`);
-  console.log("2. 模型應閱讀 prompts/ai-labeling.md 與 docs/ai-labeling-contract.md。");
-  console.log(`3. 模型輸出必須寫到 ${runDir}/metadata-proposals.json。`);
-  console.log(`4. 輸出完成後執行：pnpm workflow -- --task ai-review，並填入 ${runDir}`);
+  console.log(`1. 複製下方 prompt 給模型或 agent，請它處理 ${runDir}/。`);
+  console.log(`2. 模型輸出完成後執行：pnpm workflow -- --task ai-review，並填入 ${runDir}`);
+
+  const prompt = renderAiLabelingPrompt(runDir);
+  const promptPath = join(runDir, "ai-labeling-prompt.md");
+  writeTextFile(promptPath, prompt);
+
+  console.log("");
+  console.log(`同一份 prompt 已寫入：${promptPath}`);
+  console.log("");
+  console.log("----- COPY PROMPT START -----");
+  console.log(prompt);
+  console.log("----- COPY PROMPT END -----");
+}
+
+function writeTextFile(path, text) {
+  try {
+    writeFileSync(path, text);
+  } catch (error) {
+    console.error(`Could not write ${path}: ${error.message}`);
+  }
+}
+
+function renderAiLabelingPrompt(runDir) {
+  const basePrompt = readFileSync("prompts/ai-labeling.md", "utf8").trim();
+
+  return `# 本次 AI 初標工作包
+
+請使用下列本次工作路徑，並依照後方 prompt 範本執行。
+
+- AI run 目錄：\`${runDir}\`
+- manifest：\`${runDir}/manifest.json\`
+- photos：\`${runDir}/photos.json\`
+- images：\`${runDir}/images/\`
+- 輸出檔：\`${runDir}/metadata-proposals.json\`
+
+完成後請執行：
+
+\`\`\`bash
+pnpm ai:validate -- --run-dir ${runDir}
+\`\`\`
+
+---
+
+${basePrompt}
+`;
 }
 
 async function askImageSize() {

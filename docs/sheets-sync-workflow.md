@@ -332,7 +332,7 @@ pnpm ai:prepare -- --limit 50
 pnpm ai:prepare -- --album ALBUM_ID --limit all
 ```
 
-日常操作可直接使用 `pnpm workflow` 的「準備 AI 初標工作包」。它會先從正式 Sheets 匯出的 `albums` 清單選相簿，再把選到的 album id 傳給 `ai:prepare`。
+日常操作可直接使用 `pnpm workflow` 的「準備 AI 初標工作包」。它會先從正式 Sheets 匯出的 `albums` 清單選相簿，再把選到的 album id 傳給 `ai:prepare`。工作包建立完成後，workflow 會印出可直接複製給模型或 agent 的 prompt，並寫入該 run 目錄的 `ai-labeling-prompt.md`。
 
 這仍會套用預設 `curation_status = unreviewed`。若要整本相簿所有整理狀態都放進工作包，請使用：
 
