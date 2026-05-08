@@ -10,10 +10,26 @@
 
 1. 從 Flickr 找到候選照片。
 2. 確認照片有公開頁面與可用縮圖。
-3. 在 `data/photos.csv` 新增一列。
+3. 使用 `npm run photo:add -- <flickr-photo-url> --append` 產生基本資料，或在 `data/photos.csv` 手動新增一列。
 4. 先填必填欄位，再補情境、標籤與使用判斷。
 5. 執行 `npm run validate:data`。
 6. 若 validator 擋下資料，先修正欄位或標籤；若是 taxonomy 不足，另外提出要新增的標籤。
+
+## 從 Flickr URL 建立資料列
+
+可以用工具從 Flickr oEmbed 取得照片 ID、縮圖 URL、攝影者與標題備註：
+
+```bash
+npm run photo:add -- https://www.flickr.com/photos/sitcon/PHOTO_ID
+```
+
+預設只會輸出 CSV row，不會修改檔案。確認內容後，可以加上 `--append` 寫入 `data/photos.csv`：
+
+```bash
+npm run photo:add -- https://www.flickr.com/photos/sitcon/PHOTO_ID --append
+```
+
+這個工具只處理 Flickr 基本 metadata。情緒、用途、贊助品項、公開使用狀態等仍需人工判斷。
 
 ## CSV 填寫格式
 

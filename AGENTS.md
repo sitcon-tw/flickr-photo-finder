@@ -14,6 +14,7 @@ The main goal is not to replace Flickr. The repository should keep a practical i
 - `data/photos.csv`: photo index template.
 - `data/tag-taxonomy.json`: controlled taxonomy for photo tags and enum fields.
 - `data/sponsorship-items.json`: fixed snapshot derived from SITCON 2026 CFS sponsorship item data.
+- `scripts/add-photo.mjs`: helper for generating or appending a CSV row from a Flickr photo URL.
 - `scripts/validate-data.mjs`: data validation script.
 
 ## Data Principles
@@ -56,6 +57,7 @@ The validation script currently checks:
 ## Useful Commands
 
 ```bash
+npm run photo:add -- <flickr-photo-url>
 npm run validate:data
 git status --short
 ```
