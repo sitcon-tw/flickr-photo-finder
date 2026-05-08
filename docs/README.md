@@ -37,6 +37,7 @@
 - `pnpm sheets:export`，透過官方 Google Sheets API SDK 匯出正式 Sheets 固定 tabs，供 validation 與 intake 流程使用。
 - `pnpm albums:list`，從正式 Sheets 匯出的 `albums.csv` 或 `--source sheets` 直接讀取正式 `albums` 工作表列出與篩選相簿，並可輸出 album id、JSON 或可直接執行的 intake 指令。
 - `pnpm albums:select`，從正式 Sheets 匯出的 `albums.csv` 或 `--source sheets` 直接讀取正式 `albums` 工作表互動式選擇單本相簿，並輸出 album id、JSON 或可直接執行的 intake 指令。
+- `pnpm pages:build`，產生 GitHub Pages artifact 到 `tmp/pages/`，部署版資料來源會讀公開 Google Sheets `photos` CSV。
 - `pnpm albums:discover`，盤點 SITCON Flickr 公開相簿清單並輸出 CSV 預覽。
 - `pnpm albums:discover -- --write`，更新本機 `fixtures/albums.csv` fixture，供 demo、除錯或 fixture validation 使用。
 - `pnpm albums:sync -- --sheets-export <csv> --output <csv>`，合併 Sheets 匯出與盤點結果，產生可回寫 Google Sheets `albums` 的 CSV。
@@ -59,7 +60,7 @@
 ### 目標流程，尚未完整實作
 
 - Apps Script source 進 repo，並透過 `clasp` deploy。
-- GitHub Pages 透過 GitHub Actions artifact deploy，資料來源改讀 Google Sheets `photos` 或同欄位公開匯出。
+- GitHub Pages workflow 已可產生並部署 artifact；仍需要在 GitHub repository 設定中啟用 Pages 的 GitHub Actions 部署來源。
 - 更順手的多人 review 操作仍應在 Google Sheets 與後續 Apps Script 輔助中完善；AI 候選值寫入不等於 `curation_status = reviewed`。
 
 ## 依角色閱讀

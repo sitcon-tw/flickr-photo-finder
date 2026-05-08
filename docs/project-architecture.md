@@ -125,6 +125,6 @@ Repo 不保存：
 6. GitHub Pages 和外部 AI 能讀同一份公開照片索引。
 7. 真實使用者能用工作需求找到照片，並回饋標籤或欄位是否足夠。
 
-目前 repo 已有本機相簿盤點 CLI、`fixtures/albums.csv` fixture 格式、可回寫 Google Sheets `albums` 的 CSV 產生流程、從正式 Sheets 匯出工作 CSV 的 SDK 工具、從匯出 `albums.csv` 或直接從 Sheets API 列出與篩選相簿的 CLI、互動式選擇單本相簿的 CLI、從選定相簿產生 intake run artifact 的流程、以官方 Google Sheets API SDK 套用初始化 CSV 與 intake run artifact 的 dry-run/write 工具，以及 AI 初標候選 metadata 的 prepare/review/diff/plan/apply 流程。尚未完成的是 Apps Script source 與 `clasp` deploy，以及 GitHub Pages artifact deploy。
+目前 repo 已有本機相簿盤點 CLI、`fixtures/albums.csv` fixture 格式、可回寫 Google Sheets `albums` 的 CSV 產生流程、從正式 Sheets 匯出工作 CSV 的 SDK 工具、從匯出 `albums.csv` 或直接從 Sheets API 列出與篩選相簿的 CLI、互動式選擇單本相簿的 CLI、從選定相簿產生 intake run artifact 的流程、以官方 Google Sheets API SDK 套用初始化 CSV 與 intake run artifact 的 dry-run/write 工具、AI 初標候選 metadata 的 prepare/review/diff/plan/apply 流程，以及 GitHub Pages artifact build/deploy workflow。尚未完成的是 Apps Script source 與 `clasp` deploy；GitHub Pages 正式啟用還需要在 GitHub repository 設定 Pages 的 GitHub Actions 部署來源。
 
 若未來真的出現權限分層、非公開欄位、審核歷程、多人衝突或查詢效能問題，再評估正式資料庫或後台。

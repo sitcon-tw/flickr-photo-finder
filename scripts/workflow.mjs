@@ -87,6 +87,16 @@ const tasks = [
     title: "開啟本機搜尋 UI",
   },
   {
+    description: "產生 GitHub Pages artifact，部署版會讀公開 Google Sheets photos CSV。",
+    handler: buildPagesArtifact,
+    id: "pages-build",
+    inputs: ["config/project.json", "app/", "data/tag-taxonomy.json"],
+    next: ["檢查 tmp/pages/，或由 GitHub Actions workflow 上傳並部署 artifact。"],
+    outputs: ["tmp/pages/"],
+    phase: "檢索與展示",
+    title: "建立 GitHub Pages artifact",
+  },
+  {
     description: "顯示低階 scripts 對照與文件入口。",
     handler: showAdvancedHelp,
     id: "help",
@@ -284,6 +294,14 @@ async function runDevServer() {
   runPnpm("dev");
 }
 
+async function buildPagesArtifact() {
+  runPnpm("pages:build");
+  console.log("");
+  console.log("下一步：");
+  console.log("- 本機檢查 tmp/pages/ 內容。");
+  console.log("- GitHub repo 啟用 Pages 的 GitHub Actions 部署來源後，push 到 master 或手動觸發 pages workflow。");
+}
+
 async function showWorkflowOverview() {
   printWorkflowSummary();
   console.log("");
@@ -296,6 +314,7 @@ async function showWorkflowOverview() {
   console.log("- 第一次接手：選「檢查專案資料與 AI fixtures」。");
   console.log("- 要匯入照片：選「處理一本 Flickr 相簿」。");
   console.log("- 要做 AI 初標：先選「準備 AI 初標工作包」，模型輸出後再選「檢查 AI 初標結果」。");
+  console.log("- 要部署公開檢索：選「建立 GitHub Pages artifact」。");
   console.log("- 要維護 Sheets：選「Google Sheets 工具」。");
 }
 

@@ -21,6 +21,7 @@
     "dev": "node scripts/serve.mjs",
     "intake:run": "node scripts/run-intake.mjs",
     "intake:validate": "node scripts/validate-intake-run.mjs",
+    "pages:build": "node scripts/build-pages.mjs",
     "photos:import": "node scripts/import-album-photos.mjs",
     "photo:add": "node scripts/add-photo.mjs",
     "sheets:apply-init": "node scripts/apply-sheets-init.mjs",

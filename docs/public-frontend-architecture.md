@@ -58,7 +58,7 @@ Repo
 
 ## 前端資料來源設定
 
-目前前端從 `app/config.js` 讀取資料來源：
+本機開發前端從 `app/config.js` 讀取資料來源：
 
 ```js
 export const dataSources = {
@@ -67,7 +67,7 @@ export const dataSources = {
 };
 ```
 
-本機開發預設讀 repo 內 sample/export data。部署到 GitHub Pages 時，`photosCsvUrl` 應改成 Google Sheets `photos` 的公開 CSV 或 JSON 輸出 URL。
+本機開發預設讀 repo 內 sample/export data。部署到 GitHub Pages 時，請使用 `pnpm pages:build` 產生 artifact；它會把 `app/` 前端複製到 `tmp/pages/`，並產生部署用 `config.js`，讓 `photosCsvUrl` 指向 `config/project.json` 中 `googleSheets.spreadsheetId` 的 Google Sheets `photos` 公開 CSV 輸出。
 
 前端可以讀公開資料 URL，但不能使用任何需要保密的 token、API key 或 OAuth credential。
 
@@ -77,13 +77,13 @@ export const dataSources = {
 
 GitHub Pages 應透過 GitHub Actions 發布乾淨的 Pages artifact，不應直接把整個 repo root 當成 Pages source。
 
-發布 artifact 應只包含：
+`pnpm pages:build` 產生的 artifact 應只包含：
 
 - 公開檢索前端所需的 HTML、CSS、JavaScript。
 - 經過資料流程產生或指定的公開資料來源設定。
 - 必要的靜態資源。
 
-發布 artifact 不應包含：
+artifact 不應包含：
 
 - repo 內的工具腳本。
 - 文件草稿或維護文件。
@@ -91,6 +91,16 @@ GitHub Pages 應透過 GitHub Actions 發布乾淨的 Pages artifact，不應直
 - credential、token 或任何需要交接但不應公開的設定。
 
 前端檔案應使用相對路徑，避免專案頁部署在 `https://<org>.github.io/<repo>/` 時因絕對路徑失效。
+
+目前 repo 內的 `.github/workflows/pages.yml` 會在 `master` push 或手動觸發時執行：
+
+1. 安裝 pnpm dependencies。
+2. 執行 `pnpm validate:data`。
+3. 執行 `pnpm pages:build -- --output-dir tmp/pages`。
+4. 上傳 `tmp/pages` 作為 GitHub Pages artifact。
+5. 使用 GitHub Pages deploy action 發布。
+
+正式啟用前，repository Settings > Pages 的來源需要設定為 GitHub Actions。
 
 ## 搜尋規模
 
