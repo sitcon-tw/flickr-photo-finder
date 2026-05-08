@@ -65,8 +65,8 @@ flowchart LR
 1. repo 工具盤點 SITCON Flickr 相簿清單，更新 Google Sheets `albums`。
 2. 使用者從 `albums` 選擇本次要處理的相簿。
 3. 技術志工或 agent 掃描選定相簿，比對 Google Sheets `photos` 既有 `photo_id`。
-4. 工具新增缺少照片的最低必要欄位，並更新 `albums.last_processed_at` 與 `import_batches`。
-5. 新照片可以直接由志工在 Google Sheets 補資料，也可以先由 AI 產生候選 metadata。
+4. 工具產生一次 intake run artifact，包含缺少照片的最低必要欄位、更新後的 `albums.last_processed_at`、`import_batches` 與摘要。
+5. 人類檢查 run artifact 後套用到 Google Sheets；新照片可以直接由志工在 Google Sheets 補資料，也可以先由 AI 產生候選 metadata。
 6. AI 候選值必須以 diff 形式給人類確認，確認後才回寫。
 7. Apps Script 在 Sheets 內提供即時提示；必要時匯出資料並執行 repo validation。
 
@@ -125,6 +125,6 @@ Repo 不保存：
 6. GitHub Pages 和外部 AI 能讀同一份公開照片索引。
 7. 真實使用者能用工作需求找到照片，並回饋標籤或欄位是否足夠。
 
-目前 repo 已有本機相簿盤點 CLI、`data/albums.csv` fixture 格式、可回寫 Google Sheets `albums` 的 CSV 產生流程，以及從選定相簿產生 `photos` 候選列、`albums.last_processed_at` 更新與 `import_batches` 批次紀錄的流程；尚未完成的是直接寫回正式 Google Sheets，以及由正式 `albums` 觸發完整匯入。
+目前 repo 已有本機相簿盤點 CLI、`data/albums.csv` fixture 格式、可回寫 Google Sheets `albums` 的 CSV 產生流程，以及從選定相簿產生 intake run artifact 的流程；尚未完成的是直接寫回正式 Google Sheets，以及由正式 `albums` 觸發完整匯入。
 
 若未來真的出現權限分層、非公開欄位、審核歷程、多人衝突或查詢效能問題，再評估正式資料庫或後台。

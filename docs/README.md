@@ -23,7 +23,8 @@
 - `pnpm albums:discover`，盤點 SITCON Flickr 公開相簿清單並輸出 CSV 預覽。
 - `pnpm albums:discover -- --write`，更新本機 `data/albums.csv` fixture，方便用相簿 ID 選擇要處理的相簿。
 - `pnpm albums:sync -- --sheets-export <csv> --output <csv>`，合併 Sheets 匯出與盤點結果，產生可回寫 Google Sheets `albums` 的 CSV。
-- `pnpm photos:import -- --album <album-id> --photos-export <csv> --output <csv>`，從選定相簿產生可追加到 Google Sheets `photos` 的候選照片 CSV，並可同步產生 `albums` 更新與 `import_batches` 批次紀錄。
+- `pnpm intake:run -- --album <album-id> --photos-export <csv>`，從選定相簿產生一次可審核的 intake run artifact，包含候選 `photos`、更新後 `albums`、`import_batches` 與 `summary.json`。
+- `pnpm photos:import -- --album <album-id> --photos-export <csv> --output <csv>`，低階工具；從選定相簿產生可追加到 Google Sheets `photos` 的候選照片 CSV，並可同步產生 `albums` 更新與 `import_batches` 批次紀錄。
 - `pnpm photo:add -- <flickr-photo-url>`，從單張 Flickr 照片產生候選列。
 - `pnpm album:add -- <album-id-or-flickr-album-url>`，檢查或匯入單本相簿到本機 sample。
 - schema、taxonomy、sponsorship items 與欄位文件。
@@ -32,7 +33,7 @@
 
 - 將可回寫的 `albums` CSV 實際匯入或寫回 Google Sheets。
 - 讓使用者從正式 Google Sheets `albums` 清單選擇本次要處理哪本相簿。
-- 將相簿照片候選列、相簿處理狀態、批次紀錄、AI 輔助與驗證結果自動同步回正式 Google Sheets。
+- 將已審核的 intake run artifact、AI 輔助與驗證結果自動同步回正式 Google Sheets。
 - Apps Script source 進 repo，並透過 `clasp` deploy。
 - GitHub Pages 透過 GitHub Actions artifact deploy，資料來源改讀 Google Sheets `photos` 或同欄位公開匯出。
 - AI metadata diff 工作流。

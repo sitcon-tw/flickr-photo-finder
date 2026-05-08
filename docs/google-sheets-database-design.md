@@ -124,9 +124,9 @@ SITCON Flickr albums
   -> repo CLI 盤點相簿清單
   -> 使用者選擇要處理的相簿
   -> repo CLI 掃描選定相簿
-  -> 產生候選照片列
-  -> 寫入 Google Sheets photos
-  -> 更新 albums.last_processed_at 與 import_batches
+  -> 產生 intake run artifact
+  -> 人類檢查候選照片、相簿更新與批次紀錄
+  -> 套用到 Google Sheets photos / albums / import_batches
   -> AI 輔助初標或人類直接整理
   -> 人類檢核與修正
   -> Apps Script 驗證與提示

@@ -26,8 +26,8 @@ repo 工具應能盤點 SITCON Flickr 目前有哪些公開相簿，更新 Googl
 3. 使用者從 `albums` 清單中選擇本次要處理的相簿。
 4. 工具掃描被選定相簿中的照片 ID、照片 URL、縮圖 URL、相簿名稱與可用的 Flickr metadata。
 5. 工具和 Google Sheets `photos` 既有 `photo_id` 比對，避免重複匯入。
-6. 新照片以最低必要欄位寫入 `photos`。
-7. 工具更新該相簿的 `last_processed_at`，並寫入 `import_batches`。
+6. 工具產生一次 intake run artifact，讓人類檢查候選 `photos`、更新後 `albums` 與 `import_batches`。
+7. 人類確認後再套用到 Google Sheets。
 8. 新增照片預設 `curation_status = unreviewed`。
 
 工具不應在未確認差異時覆蓋人類已整理的欄位。
@@ -64,15 +64,32 @@ pnpm albums:sync -- --sheets-export /path/to/sheets-albums.csv --output /tmp/alb
 pnpm album:add -- ALBUM_ID
 ```
 
-若要產生可追加到 Google Sheets `photos` 的候選照片 CSV，請使用目前 Sheets `photos` 匯出檔做重複檢查：
+若要產生一次可審核的相簿匯入產物，請使用目前 Sheets `photos` 匯出檔做重複檢查：
+
+```bash
+pnpm intake:run -- --album ALBUM_ID --photos-export /path/to/sheets-photos.csv
+```
+
+`intake:run` 會建立 `tmp/intake-runs/<run-id>/`，並產生：
+
+```text
+photos-to-append.csv
+albums-updated.csv
+import-batch.csv
+summary.json
+```
+
+這是目前建議的人機協作接口。`photos-to-append.csv` 是缺少照片的候選列，`albums-updated.csv` 是更新 `last_processed_at` 後的完整 albums CSV，`import-batch.csv` 是本次操作紀錄，`summary.json` 則讓人類、agent 或未來 Apps Script 先確認本次 run 的範圍與統計。
+
+正式寫回前應由人類確認，並避免覆蓋既有人工整理欄位。現階段 Google Sheets 寫回仍由人類手動匯入或貼回；rclone、Google API 或 Apps Script 應在這個手動流程跑通後再自動化。
+
+若只需要低階輸出，可以直接指定各 CSV 路徑：
 
 ```bash
 pnpm photos:import -- --album ALBUM_ID --photos-export /path/to/sheets-photos.csv --output /tmp/photos-to-append.csv --albums-output /tmp/albums-updated.csv --batch-output /tmp/import-batch.csv
 ```
 
 `photos:import` 會從 `albums` CSV 取得相簿名稱、活動名稱與年份，掃描該相簿中的照片，排除已存在於 `photos` 匯出檔的 `photo_id`，再用 Flickr oEmbed 補 `image_preview_url`、攝影師候選署名與可公開整理備註。
-
-產出的 `photos` CSV 只包含缺少的候選照片列，不是完整 `photos` 快照。`albums-output` 會輸出更新 `last_processed_at` 後的完整 albums CSV；`batch-output` 會輸出本次匯入批次紀錄。正式寫回前應由人類確認，並避免覆蓋既有人工整理欄位。
 
 ## 匯出驗證流程
 

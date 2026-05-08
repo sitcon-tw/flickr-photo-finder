@@ -33,6 +33,7 @@ The main goal is not to replace Flickr. The repository should keep a practical i
 - `scripts/add-photo.mjs`: helper for generating or appending a CSV row from a Flickr photo URL.
 - `scripts/discover-albums.mjs`: helper for discovering SITCON Flickr albums and writing the local album fixture.
 - `scripts/sync-albums.mjs`: helper for merging a Google Sheets albums CSV export with discovered albums and producing a Sheets-ready CSV.
+- `scripts/run-intake.mjs`: helper for producing a complete intake run artifact from a selected album.
 - `scripts/import-album-photos.mjs`: helper for generating Sheets-ready candidate photo rows, updated album rows, and import batch rows from a selected album.
 - `scripts/flickr-album-photos.mjs`: shared Flickr album photo URL extraction helper.
 - `scripts/add-album.mjs`: low-level helper for checking or importing missing photos from a discovered album ID or Flickr album URL.
@@ -111,6 +112,7 @@ The validation script currently checks:
 pnpm dev
 pnpm albums:discover
 pnpm albums:sync -- --sheets-export <albums-csv> --output <albums-csv>
+pnpm intake:run -- --album <album-id> --photos-export <photos-csv>
 pnpm photos:import -- --album <album-id> --photos-export <photos-csv> --output <photos-csv> --albums-output <albums-csv> --batch-output <batch-csv>
 pnpm album:add -- <flickr-album-url>
 pnpm album:add -- <album-id>

@@ -30,6 +30,7 @@ Options:
   --batch-output <path>   Write an import_batches CSV row for this run.
   --imported-at <value>   Import timestamp to write. Default: current time as ISO string.
   --operator <value>      Operator or agent name to record in import_batches.
+  --source-tool <value>   Tool name to record in import_batches. Default: pnpm photos:import.
   --no-validate           Skip validation for the output path.
 
 The output is a Sheets-ready photos CSV containing only missing photo rows.
@@ -49,6 +50,7 @@ function parseArgs(argv) {
     operator: "",
     output: "",
     photosExport: photosPath,
+    sourceTool: "pnpm photos:import",
     validate: true,
   };
 
@@ -83,6 +85,9 @@ function parseArgs(argv) {
     } else if (arg === "--operator") {
       options.operator = args[index + 1] ?? "";
       index += 1;
+    } else if (arg === "--source-tool") {
+      options.sourceTool = args[index + 1] ?? "";
+      index += 1;
     } else if (arg === "--no-validate") {
       options.validate = false;
     } else {
@@ -102,6 +107,9 @@ function parseArgs(argv) {
     }
     if (options.importedAt && Number.isNaN(Date.parse(options.importedAt))) {
       throw new Error("--imported-at must be a valid date or datetime");
+    }
+    if (!options.sourceTool) {
+      throw new Error("--source-tool requires a value");
     }
   }
 
@@ -173,6 +181,7 @@ function buildImportBatchRecord({
   importedAt,
   missingCount,
   operator,
+  sourceTool,
 }) {
   return {
     batch_id: makeBatchId(albumId, importedAt),
@@ -180,7 +189,7 @@ function buildImportBatchRecord({
     album_url: albumUrl,
     imported_at: importedAt,
     operator,
-    source_tool: "pnpm photos:import",
+    source_tool: sourceTool,
     found_photo_count: String(foundCount),
     new_photo_count: String(missingCount),
     skipped_photo_count: String(existingCount),
@@ -248,6 +257,7 @@ async function main() {
       importedAt,
       missingCount: missingPhotos.length,
       operator: options.operator,
+      sourceTool: options.sourceTool,
     });
     await writeFile(options.batchOutput, toRecordCsv(importBatchHeaders, [batch]));
     if (options.validate) {
