@@ -92,7 +92,7 @@ flowchart LR
 
 - GitHub Pages 應透過 GitHub Actions 發布 artifact，不應直接把整個 repo root 當成 Pages source。
 - Apps Script 應透過 `clasp` 部署。Apps Script source 應保存在 repo 中，讓修改能被 review，也讓未來 agent 能理解目前部署內容。
-- `clasp` credential、Google API credential、OAuth token cache、rclone token 與 AI API key 都不應 commit。
+- `clasp` credential、Google API credential、OAuth token cache、第三方工具 token 與 AI API key 都不應 commit。
 
 ## Repo 的責任
 
@@ -109,7 +109,7 @@ Repo 保存：
 Repo 不保存：
 
 - 正式 Google Sheets 完整資料快照。
-- Google Drive、Google API、OAuth、rclone 或 AI API credential。
+- Google Drive、Google API、OAuth、第三方工具或 AI API credential。
 - 原圖檔案。
 - 私人授權資訊或不該公開的內部資料。
 

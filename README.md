@@ -83,7 +83,7 @@ pnpm sheets:check
 
 這個指令只讀取公開 Google Sheets CSV export，不會寫入資料。它會檢查固定 tab 是否能讀取、header 是否符合預期，以及 tab 是否已經有資料。
 
-確認沒有覆蓋風險後，正式 Sheets 寫入流程應由 repo CLI 透過官方 Google Sheets API SDK 執行，並保留 preflight、dry-run、人類確認與寫入後驗證。這個 repo 不自製 Google Drive 檔案搬運流程；若未來需要 Drive 檔案備份或搬運，再評估 rclone 或組織既有工具。
+確認沒有覆蓋風險後，正式 Sheets 寫入流程應由 repo CLI 透過官方 Google Sheets API SDK 執行，並保留 preflight、dry-run、人類確認與寫入後驗證。這個 repo 不自製 Google Drive 檔案搬運流程；若未來需要 Drive 檔案備份或搬運，再交由組織既有工具處理。
 
 不同維護者的本機授權方式不一定相同。這個 repo 會記錄官方 SDK 需要的能力、OAuth scope、credential 類型、驗證方式與不可 commit 的檔案；Google Cloud project、OAuth client、Google 帳號、Apps Script/clasp 權限等交接仍應由使用者或 SITCON 既有流程處理。完整說明見 `docs/sheets-sync-workflow.md` 的「授權方式與驗證邏輯」。
 

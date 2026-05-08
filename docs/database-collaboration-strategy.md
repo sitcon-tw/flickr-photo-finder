@@ -51,7 +51,7 @@ Repo 不應保存：
 
 - Google API credential。
 - OAuth client secret、refresh token 或 SDK token cache。
-- rclone token。
+- 第三方工具 token。
 - 正式 Google Sheets 權限資訊。
 - 任何需要交接但不應公開的機密。
 

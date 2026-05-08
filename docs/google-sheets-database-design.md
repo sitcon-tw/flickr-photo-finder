@@ -45,7 +45,7 @@ pnpm sheets:check
 
 這個檢查用公開 CSV export 讀取固定 tabs，確認 header 與是否已有資料。它不處理 credential，也不寫入 Google Sheets；寫入權限仍由 Google Sheets 權限與後續 SDK 寫入工具處理。
 
-確認沒有覆蓋風險後，正式表格寫入的主要技術選擇是官方 Google Sheets API SDK。repo 工具應使用 Sheets tab/range 語意處理初始化、append、batch update 與讀回驗證；rclone 或 Drive 檔案搬運工具不作為主要 Sheets 寫入流程。
+確認沒有覆蓋風險後，正式表格寫入的主要技術選擇是官方 Google Sheets API SDK。repo 工具應使用 Sheets tab/range 語意處理初始化、append、batch update 與讀回驗證；Drive 檔案搬運工具不作為主要 Sheets 寫入流程。
 
 ### photos（正式主表；Sheets 建置時必備；候選列 CSV 目前可產生）
 
