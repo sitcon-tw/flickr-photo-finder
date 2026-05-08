@@ -302,10 +302,11 @@ AI 可以協助初標，但不能取代人工確認。
 2. 用 `pnpm ai:prepare` 從 `tmp/sheets-export/photos.csv` 選出待整理照片，例如 `curation_status = unreviewed`。
 3. 工具建立 `tmp/ai-runs/<run-id>/`，輸出 `input-photos.csv`、`photos.json`、`manifest.json`，並下載 AI 判讀用圖片到 `images/`。
 4. AI 讀取 `photos.json`、`images/`、相簿脈絡、既有欄位、taxonomy 與 sponsorship items。
-5. AI 產生候選欄位值。
-6. 工具產生 diff，讓人類確認是否回寫。
-7. 人類確認後才寫入正式欄位。
-8. AI 協助後但尚未人工完整確認的列標成 `curation_status = ai_labeled`。
+5. AI 產生 `metadata-proposals.json` 候選欄位值。
+6. 用 `pnpm ai:validate -- --run-dir tmp/ai-runs/<run-id>` 檢查候選欄位格式、受控字彙與責任邊界。
+7. 工具產生 diff，讓人類確認是否回寫。
+8. 人類確認後才寫入正式欄位。
+9. AI 協助後但尚未人工完整確認的列標成 `curation_status = ai_labeled`。
 
 AI 初標流程到 `ai_labeled` 就應停止。`curation_status = reviewed` 不應是本機 AI run 的收尾步驟，而是照片資料回到 Google Sheets 後，由具有 Sheets 編輯權限的志工們在同一份正式資料表中協作檢核、修正並補齊必要欄位後才更新。
 
@@ -336,6 +337,40 @@ pnpm ai:prepare -- --limit 50 --no-download
 ```
 
 `ai:prepare` 只建立本機 `tmp/ai-runs/` 工作目錄，不寫入 Google Sheets。後續 AI 產生的欄位調整仍應以可審核 diff 表達，不能直接覆蓋 Sheets。
+
+AI 候選 metadata 應寫成 `tmp/ai-runs/<run-id>/metadata-proposals.json`：
+
+```json
+{
+  "proposal_version": 1,
+  "run_id": "ai-prepare-...",
+  "created_at": "2026-05-08T00:00:00.000Z",
+  "producer": {
+    "type": "ai",
+    "name": "model or agent name"
+  },
+  "items": [
+    {
+      "photo_id": "55200405673",
+      "fields": {
+        "scene_tags": {
+          "value": ["舞台"],
+          "reason": "畫面中可見舞台或典禮區域。",
+          "confidence": 0.8
+        }
+      }
+    }
+  ]
+}
+```
+
+驗證候選 metadata：
+
+```bash
+pnpm ai:validate -- --run-dir tmp/ai-runs/<run-id>
+```
+
+AI 候選值只允許讀圖初標合理處理的欄位，例如 `people_count`、`scene_tags`、`mood_tags`、`recommended_uses`、`sponsorship_items`、`sponsorship_tags`、`orientation`、`has_negative_space`、`safe_crop`、`public_use_status`、`priority_level`、`collections` 與 `curation_status`。AI 候選值不能修改 Flickr 基本欄位、攝影師或授權；若建議 `curation_status`，只能是 `ai_labeled`；若建議 `public_use_status`，不能直接給 `approved`。
 
 若人類重新觸發 AI 調整欄位，工具仍應提供可審核 diff，不應靜默覆蓋人工整理內容。
 
