@@ -19,6 +19,22 @@
 
 以下列出正式 Google Sheets 應有的工作表，以及目前 repo 工具或本機 fixture 的支援狀態。
 
+建立 MVP Sheets 前，可以先執行：
+
+```bash
+pnpm sheets:init
+```
+
+此指令會在 `tmp/sheets-init/` 產生可匯入 Google Sheets 的初始化 CSV 與 `manifest.json`。建議建立以下同名 tabs：
+
+- `photos`
+- `albums`
+- `import_batches`
+- `taxonomy`
+- `sponsorship_items`
+
+`photos` 和 `import_batches` 初始可以只有 header；`albums` 可先使用 repo 目前已盤點的相簿清單，或先重新執行 `pnpm albums:discover -- --write` 再產生初始化檔。`taxonomy` 與 `sponsorship_items` 是輔助表，供 Apps Script、下拉選單與人類查詢使用。
+
 ### photos（正式主表；Sheets 建置時必備；候選列 CSV 目前可產生）
 
 正式照片索引主表。每列代表一張 Flickr 照片。

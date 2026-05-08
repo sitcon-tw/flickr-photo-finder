@@ -21,6 +21,7 @@
 
 - 本機 static search UI，預設讀 `data/photos.csv`。
 - `pnpm validate:data`，檢查 sample/export data、schema 與 taxonomy。
+- `pnpm sheets:init`，產生建立 Google Sheets MVP 所需的初始 CSV。
 - `pnpm albums:discover`，盤點 SITCON Flickr 公開相簿清單並輸出 CSV 預覽。
 - `pnpm albums:discover -- --write`，更新本機 `data/albums.csv` fixture，方便用相簿 ID 選擇要處理的相簿。
 - `pnpm albums:sync -- --sheets-export <csv> --output <csv>`，合併 Sheets 匯出與盤點結果，產生可回寫 Google Sheets `albums` 的 CSV。
