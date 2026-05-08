@@ -48,7 +48,25 @@ SITCON Flickr 上的照片擁有者是 SITCON，但攝影師 credit 會放在 Fl
 
 實際整理時，應以 SITCON Flickr 相簿為單位處理。正式流程應由工具先盤點 SITCON Flickr 目前有哪些相簿，更新 Google Sheets `albums` 清單，再讓使用者選擇本次要處理哪一本。
 
-目前低階工具仍可用相簿 URL 檢查特定相簿中哪些照片尚未匯入：
+目前可以先用本機工具盤點 SITCON Flickr 公開相簿清單：
+
+```bash
+npm run albums:discover
+```
+
+確認盤點結果後，可更新本機 `data/albums.csv` fixture，讓後續工具能用相簿 ID 選擇：
+
+```bash
+npm run albums:discover -- --write
+```
+
+本機 fixture 已更新後，可以用相簿 ID 檢查：
+
+```bash
+npm run album:add -- ALBUM_ID
+```
+
+也可以直接用相簿 URL 檢查：
 
 ```bash
 npm run album:add -- https://www.flickr.com/photos/sitcon/albums/ALBUM_ID/
@@ -58,6 +76,7 @@ npm run album:add -- https://www.flickr.com/photos/sitcon/albums/ALBUM_ID/
 
 ```bash
 npm run album:add -- https://www.flickr.com/photos/sitcon/albums/ALBUM_ID/ --append
+npm run album:add -- ALBUM_ID --append
 ```
 
 相簿匯入只會新增缺少的照片，不會重複加入已經存在於本機 `data/photos.csv` 的 `photo_id`。正式流程仍應把確認後的資料同步回 Google Sheets，並更新 `albums.last_processed_at`。

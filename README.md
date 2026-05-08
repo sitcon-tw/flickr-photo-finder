@@ -26,6 +26,18 @@ SITCON Flickr 相簿清單
 npm run validate:data
 ```
 
+盤點 SITCON Flickr 公開相簿清單：
+
+```bash
+npm run albums:discover
+```
+
+寫入本機 `data/albums.csv` 作為 sample/export fixture，方便後續用相簿 ID 選擇要處理的相簿：
+
+```bash
+npm run albums:discover -- --write
+```
+
 啟動搜尋介面：
 
 ```bash
@@ -68,21 +80,30 @@ npm run validate:data
 npm run album:add -- https://www.flickr.com/photos/sitcon/albums/ALBUM_ID/
 ```
 
+若已先用 `npm run albums:discover -- --write` 更新本機相簿 fixture，也可以直接用相簿 ID：
+
+```bash
+npm run album:add -- ALBUM_ID
+```
+
 匯入該相簿中尚未索引的照片：
 
 ```bash
 npm run album:add -- https://www.flickr.com/photos/sitcon/albums/ALBUM_ID/ --append
+npm run album:add -- ALBUM_ID --append
 ```
 
 ## 主要檔案
 
 - `data/photos.csv`: MVP sample、local fixture 與 Sheets 匯出格式參考，不是正式資料來源。
+- `data/albums.csv`: SITCON Flickr 相簿清單的本機 sample/export fixture，不是正式資料來源。
 - `data/photo-schema.json`: Google Sheets、CSV 匯出、Apps Script 與 CLI 共用的欄位 schema。
 - `data/tag-taxonomy.json`: 受控標籤與列舉值欄位。
 - `data/sponsorship-items.json`: SITCON 2026 CFS 贊助品項固定版本資料。
 - `app/`: GitHub Pages / 本機照片搜尋介面。
 - `app/config.js`: 公開前端資料來源設定。
-- `scripts/add-album.mjs`: 低階相簿匯入工具；目前可用 Flickr 相簿 URL 檢查或匯入照片，正式流程應由工具先盤點 SITCON Flickr 相簿清單。
+- `scripts/discover-albums.mjs`: 盤點 SITCON Flickr 公開相簿清單，可輸出或更新本機 `data/albums.csv` fixture。
+- `scripts/add-album.mjs`: 低階相簿匯入工具；目前可用已盤點相簿 ID 或 Flickr 相簿 URL 檢查或匯入照片。
 - `scripts/add-photo.mjs`: 從 Flickr URL 產生或寫入 CSV 資料列。
 - `scripts/serve.mjs`: 本機靜態 server。
 - `scripts/validate-data.mjs`: 檢查資料格式與標籤字典一致性。

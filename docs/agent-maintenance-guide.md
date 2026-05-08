@@ -74,6 +74,7 @@ npm run validate:data
 
 ```bash
 node --check scripts/validate-data.mjs
+node --check scripts/discover-albums.mjs
 node --check scripts/add-photo.mjs
 node --check scripts/add-album.mjs
 node --check app/main.js

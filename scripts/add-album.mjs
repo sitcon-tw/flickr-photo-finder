@@ -1,4 +1,4 @@
-import { URL } from "node:url";
+import { resolveAlbumInput } from "./album-catalog.mjs";
 import {
   appendCsvRows,
   assertUniqueInputPhotoIds,
@@ -13,13 +13,18 @@ import {
 function printUsage() {
   console.log(`Usage:
   npm run album:add -- <flickr-album-url>
+  npm run album:add -- <album-id>
   npm run album:add -- <flickr-album-url> --append
+  npm run album:add -- <album-id> --append
 
 Options:
   --append  Append missing album photo rows to data/photos.csv and validate data.
 
 Without --append, the command reports album coverage and prints missing photo
-URLs. With --append, it imports the missing photos using Flickr oEmbed.`);
+URLs. With --append, it imports the missing photos using Flickr oEmbed.
+
+Album IDs are resolved from data/albums.csv. Use npm run albums:discover --
+--write to update that local fixture before selecting by ID.`);
 }
 
 function parseArgs(argv) {
@@ -29,33 +34,6 @@ function parseArgs(argv) {
   const albumUrl = args.find((arg) => !arg.startsWith("--"));
 
   return { append, help, albumUrl };
-}
-
-function normalizeFlickrAlbumUrl(value) {
-  let url;
-  try {
-    url = new URL(value);
-  } catch {
-    throw new Error(`Invalid URL: ${value}`);
-  }
-
-  if (!["www.flickr.com", "flickr.com"].includes(url.hostname)) {
-    throw new Error(`Expected a flickr.com URL, got: ${url.hostname}`);
-  }
-
-  const match = url.pathname.match(/\/photos\/([^/]+)\/albums\/(\d+)/);
-  if (!match) {
-    throw new Error(`Could not find a Flickr album ID in URL: ${value}`);
-  }
-
-  url.hash = "";
-  url.search = "";
-
-  return {
-    ownerPath: match[1],
-    albumId: match[2],
-    albumUrl: url.toString(),
-  };
 }
 
 async function fetchAlbumHtml(albumUrl) {
@@ -94,7 +72,7 @@ async function main() {
     return;
   }
 
-  const { ownerPath, albumId, albumUrl } = normalizeFlickrAlbumUrl(inputUrl);
+  const { ownerPath, albumId, albumUrl } = await resolveAlbumInput(inputUrl);
   const html = await fetchAlbumHtml(albumUrl);
   const albumPhotos = extractAlbumPhotoUrls(html, ownerPath);
   assertUniqueInputPhotoIds(albumPhotos);

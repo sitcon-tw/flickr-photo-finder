@@ -223,6 +223,84 @@
           "description_zh": "unreviewed、ai_labeled、reviewed。精選或封存不放在整理狀態；優先推薦用 priority_level 或 collections，避免推薦用 public_use_status = avoid。"
         }
       ]
+    },
+    "albums": {
+      "export_path": "data/albums.csv",
+      "description_zh": "SITCON Flickr 相簿清單與處理狀態。正式資料以 Google Sheets 為準，此 schema 也定義本機 sample/export 格式。",
+      "fields": [
+        {
+          "name": "album_id",
+          "label_zh": "Flickr 相簿 ID",
+          "type": "string",
+          "required": true,
+          "multi_value": false,
+          "maintainer_zh": "盤點工具",
+          "description_zh": "Flickr 相簿 ID，用來避免重複掃描同一本相簿。"
+        },
+        {
+          "name": "album_url",
+          "label_zh": "Flickr 相簿 URL",
+          "type": "url",
+          "required": true,
+          "multi_value": false,
+          "maintainer_zh": "盤點工具",
+          "description_zh": "SITCON Flickr 公開相簿 URL。"
+        },
+        {
+          "name": "album_title",
+          "label_zh": "相簿名稱",
+          "type": "string",
+          "required": true,
+          "multi_value": false,
+          "maintainer_zh": "盤點工具",
+          "description_zh": "Flickr 相簿名稱。"
+        },
+        {
+          "name": "event_name",
+          "label_zh": "活動名稱",
+          "type": "string",
+          "required": false,
+          "multi_value": false,
+          "maintainer_zh": "整理者",
+          "description_zh": "整理者可補上的活動脈絡，例如 SITCON 年會、SITCON Camp。"
+        },
+        {
+          "name": "event_year",
+          "label_zh": "活動年份",
+          "type": "year",
+          "required": false,
+          "multi_value": false,
+          "maintainer_zh": "整理者",
+          "description_zh": "四位年份，例如 2026。不確定就留空。"
+        },
+        {
+          "name": "photo_count",
+          "label_zh": "照片數",
+          "type": "integer",
+          "required": false,
+          "multi_value": false,
+          "maintainer_zh": "盤點工具",
+          "description_zh": "工具從 Flickr 相簿頁可取得時填入。"
+        },
+        {
+          "name": "last_processed_at",
+          "label_zh": "最近處理時間",
+          "type": "datetime",
+          "required": false,
+          "multi_value": false,
+          "maintainer_zh": "匯入工具",
+          "description_zh": "最近一次掃描或匯入這本相簿的時間。"
+        },
+        {
+          "name": "notes",
+          "label_zh": "備註",
+          "type": "text",
+          "required": false,
+          "multi_value": false,
+          "maintainer_zh": "整理者",
+          "description_zh": "可公開的相簿整理備註，不要寫入敏感資訊。"
+        }
+      ]
     }
   }
 }

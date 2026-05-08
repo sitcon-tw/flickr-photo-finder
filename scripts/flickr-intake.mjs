@@ -1,20 +1,13 @@
 import { appendFile, readFile } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
 import { URL } from "node:url";
+import { toCsvLine } from "./csv-utils.mjs";
 import { photoHeaders } from "./photo-schema.mjs";
 
 export const photosPath = "data/photos.csv";
 
-export function csvEscape(value) {
-  const text = String(value ?? "");
-  if (/[",\r\n]/.test(text)) {
-    return `"${text.replaceAll('"', '""')}"`;
-  }
-  return text;
-}
-
 export function toCsvRow(photo) {
-  return photoHeaders.map((header) => csvEscape(photo[header] ?? "")).join(",");
+  return toCsvLine(photoHeaders, photo);
 }
 
 export function normalizeFlickrPhotoUrl(value) {

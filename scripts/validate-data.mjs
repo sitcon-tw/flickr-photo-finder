@@ -1,6 +1,8 @@
 import { readFile } from "node:fs/promises";
 import { URL } from "node:url";
+import { parseCsv, parseSemicolonList } from "./csv-utils.mjs";
 import {
+  albumHeaders,
   approvedRequiredFields,
   controlledListFields,
   controlledScalarFields,
@@ -11,6 +13,7 @@ import {
 } from "./photo-schema.mjs";
 
 const paths = {
+  albums: "data/albums.csv",
   photos: "data/photos.csv",
   taxonomy: "data/tag-taxonomy.json",
   sponsorshipItems: "data/sponsorship-items.json",
@@ -20,65 +23,6 @@ const errors = [];
 
 function addError(message) {
   errors.push(message);
-}
-
-function parseCsv(text) {
-  const rows = [];
-  let field = "";
-  let row = [];
-  let inQuotes = false;
-
-  for (let index = 0; index < text.length; index += 1) {
-    const char = text[index];
-    const next = text[index + 1];
-
-    if (char === '"') {
-      if (inQuotes && next === '"') {
-        field += '"';
-        index += 1;
-      } else {
-        inQuotes = !inQuotes;
-      }
-      continue;
-    }
-
-    if (char === "," && !inQuotes) {
-      row.push(field);
-      field = "";
-      continue;
-    }
-
-    if ((char === "\n" || char === "\r") && !inQuotes) {
-      if (char === "\r" && next === "\n") {
-        index += 1;
-      }
-      row.push(field);
-      if (row.some((value) => value !== "")) {
-        rows.push(row);
-      }
-      field = "";
-      row = [];
-      continue;
-    }
-
-    field += char;
-  }
-
-  if (field !== "" || row.length > 0) {
-    row.push(field);
-    if (row.some((value) => value !== "")) {
-      rows.push(row);
-    }
-  }
-
-  return rows;
-}
-
-function parseSemicolonList(value) {
-  return value
-    .split(";")
-    .map((item) => item.trim())
-    .filter(Boolean);
 }
 
 function isValidUrl(value) {
@@ -94,17 +38,17 @@ function formatRow(rowNumber, field) {
   return `${paths.photos}:${rowNumber} ${field}`;
 }
 
-function validateHeaders(headers) {
-  if (headers.length !== photoHeaders.length) {
+function validateHeaders(path, headers, expectedHeaders) {
+  if (headers.length !== expectedHeaders.length) {
     addError(
-      `${paths.photos}: expected ${photoHeaders.length} headers, got ${headers.length}`,
+      `${path}: expected ${expectedHeaders.length} headers, got ${headers.length}`,
     );
   }
 
-  photoHeaders.forEach((expected, index) => {
+  expectedHeaders.forEach((expected, index) => {
     if (headers[index] !== expected) {
       addError(
-        `${paths.photos}: header ${index + 1} should be "${expected}", got "${headers[index] ?? ""}"`,
+        `${path}: header ${index + 1} should be "${expected}", got "${headers[index] ?? ""}"`,
       );
     }
   });
@@ -265,7 +209,81 @@ function validateUniquePhotoFields(photoRows) {
   });
 }
 
-const [photosText, taxonomyText, sponsorshipItemsText] = await Promise.all([
+function formatAlbumRow(rowNumber, field) {
+  return `${paths.albums}:${rowNumber} ${field}`;
+}
+
+function validateAlbumRow(row, rowNumber) {
+  const album = Object.fromEntries(albumHeaders.map((header, index) => [header, row[index] ?? ""]));
+
+  if (row.length !== albumHeaders.length) {
+    addError(
+      `${paths.albums}:${rowNumber} expected ${albumHeaders.length} columns, got ${row.length}`,
+    );
+  }
+
+  for (const field of ["album_id", "album_url", "album_title"]) {
+    if (!album[field].trim()) {
+      addError(`${formatAlbumRow(rowNumber, field)} is required`);
+    }
+  }
+
+  if (album.album_id && !/^\d+$/.test(album.album_id)) {
+    addError(`${formatAlbumRow(rowNumber, "album_id")} must be a Flickr album ID`);
+  }
+
+  if (album.album_url && !isValidUrl(album.album_url)) {
+    addError(`${formatAlbumRow(rowNumber, "album_url")} must be an http(s) URL`);
+  }
+
+  if (album.album_url && album.album_id && !album.album_url.includes(`/albums/${album.album_id}`)) {
+    addError(`${formatAlbumRow(rowNumber, "album_url")} must contain album_id ${album.album_id}`);
+  }
+
+  if (album.event_year && !/^\d{4}$/.test(album.event_year)) {
+    addError(`${formatAlbumRow(rowNumber, "event_year")} must be a four-digit year`);
+  }
+
+  if (album.photo_count && !/^(0|[1-9]\d*)$/.test(album.photo_count)) {
+    addError(`${formatAlbumRow(rowNumber, "photo_count")} must be a non-negative integer`);
+  }
+
+  if (album.last_processed_at && Number.isNaN(Date.parse(album.last_processed_at))) {
+    addError(`${formatAlbumRow(rowNumber, "last_processed_at")} must be a valid date or datetime`);
+  }
+}
+
+function validateUniqueAlbumFields(albumRows) {
+  const seen = {
+    album_id: new Map(),
+    album_url: new Map(),
+  };
+
+  albumRows.forEach((row, index) => {
+    const rowNumber = index + 2;
+    const album = Object.fromEntries(
+      albumHeaders.map((header, fieldIndex) => [header, row[fieldIndex] ?? ""]),
+    );
+
+    for (const field of Object.keys(seen)) {
+      const value = album[field].trim();
+      if (!value) {
+        continue;
+      }
+
+      if (seen[field].has(value)) {
+        addError(
+          `${formatAlbumRow(rowNumber, field)} duplicates row ${seen[field].get(value)}`,
+        );
+      } else {
+        seen[field].set(value, rowNumber);
+      }
+    }
+  });
+}
+
+const [albumsText, photosText, taxonomyText, sponsorshipItemsText] = await Promise.all([
+  readFile(paths.albums, "utf8"),
   readFile(paths.photos, "utf8"),
   readFile(paths.taxonomy, "utf8"),
   readFile(paths.sponsorshipItems, "utf8"),
@@ -273,13 +291,26 @@ const [photosText, taxonomyText, sponsorshipItemsText] = await Promise.all([
 
 const taxonomy = JSON.parse(taxonomyText);
 const sponsorshipItems = JSON.parse(sponsorshipItemsText);
+const albumRows = parseCsv(albumsText);
 const rows = parseCsv(photosText);
+
+if (albumRows.length === 0) {
+  addError(`${paths.albums}: missing header row`);
+} else {
+  const [headers, ...rowsToValidate] = albumRows;
+  validateHeaders(paths.albums, headers, albumHeaders);
+  validateUniqueAlbumFields(rowsToValidate);
+
+  rowsToValidate.forEach((row, index) => {
+    validateAlbumRow(row, index + 2);
+  });
+}
 
 if (rows.length === 0) {
   addError(`${paths.photos}: missing header row`);
 } else {
   const [headers, ...photoRows] = rows;
-  validateHeaders(headers);
+  validateHeaders(paths.photos, headers, photoHeaders);
   validateTaxonomy(taxonomy, sponsorshipItems);
   validateUniquePhotoFields(photoRows);
 
@@ -295,5 +326,7 @@ if (errors.length > 0) {
   }
   process.exitCode = 1;
 } else {
-  console.log(`Data validation passed (${Math.max(rows.length - 1, 0)} photo rows).`);
+  console.log(
+    `Data validation passed (${Math.max(rows.length - 1, 0)} photo rows, ${Math.max(albumRows.length - 1, 0)} album rows).`,
+  );
 }

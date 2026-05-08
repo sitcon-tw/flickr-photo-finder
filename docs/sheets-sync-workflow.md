@@ -34,6 +34,26 @@ repo 工具應能盤點 SITCON Flickr 目前有哪些公開相簿，更新 Googl
 
 現有低階工具仍可接受 Flickr 相簿 URL 作為開發與除錯入口；但正式使用流程應以「盤點 SITCON Flickr 相簿清單，再選擇要處理的相簿」為主。
 
+目前可用的本機盤點指令：
+
+```bash
+npm run albums:discover
+```
+
+確認輸出後，可以更新本機 `data/albums.csv` fixture：
+
+```bash
+npm run albums:discover -- --write
+```
+
+`data/albums.csv` 仍只是 sample/export fixture，不是正式 Google Sheets 資料。正式流程要把相同欄位同步到 Google Sheets `albums`，再讓使用者從那張表選擇本次要處理的相簿。
+
+若本機 `data/albums.csv` 已更新，低階相簿匯入工具可以用相簿 ID 解析 URL：
+
+```bash
+npm run album:add -- ALBUM_ID
+```
+
 ## 匯出驗證流程
 
 當需要檢查 Sheets 資料品質時：

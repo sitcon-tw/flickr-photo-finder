@@ -24,12 +24,14 @@ The main goal is not to replace Flickr. The repository should keep a practical i
 - `README.md`: human-facing project overview and quick start.
 - `app/`: GitHub Pages and local static search UI for the MVP.
 - `app/config.js`: public frontend data source configuration.
+- `data/albums.csv`: MVP sample, local fixture, and Sheets export format reference for the SITCON Flickr album catalog. It is not the authoritative album database.
 - `data/photos.csv`: MVP sample, local fixture, and Sheets export format reference. It is not the authoritative photo database.
 - `data/photo-schema.json`: shared field schema for Google Sheets, CSV exports, Apps Script helpers, and CLI validation.
 - `data/tag-taxonomy.json`: controlled taxonomy for photo tags and enum fields.
 - `data/sponsorship-items.json`: fixed snapshot derived from SITCON 2026 CFS sponsorship item data.
 - `scripts/add-photo.mjs`: helper for generating or appending a CSV row from a Flickr photo URL.
-- `scripts/add-album.mjs`: low-level helper for checking or importing missing photos from a Flickr album URL. The target workflow should first discover SITCON Flickr albums, then let users choose which album to process.
+- `scripts/discover-albums.mjs`: helper for discovering SITCON Flickr albums and writing the local album fixture.
+- `scripts/add-album.mjs`: low-level helper for checking or importing missing photos from a discovered album ID or Flickr album URL.
 - `scripts/serve.mjs`: local static server for the MVP UI.
 - `scripts/validate-data.mjs`: data validation script.
 
@@ -37,9 +39,10 @@ The main goal is not to replace Flickr. The repository should keep a practical i
 
 - Google Sheets is the authoritative photo index database. If Google Sheets and repo sample data disagree, Google Sheets wins.
 - This repo is the governance and tooling layer: schema, taxonomy, validation, import/export scripts, Apps Script source or generators, AI prompts, and maintenance documentation.
-- Treat `data/photo-schema.json` as the machine-readable source for photo field order, basic field metadata, reviewed completeness rules, and approved-use requirements.
+- Treat `data/photo-schema.json` as the machine-readable source for photo and album field order, basic field metadata, reviewed completeness rules, and approved-use requirements.
 - Do not duplicate reviewed/approved field lists in docs. Reference `data/photo-schema.json` instead.
 - Do not treat `data/photos.csv` as production data. It exists for MVP demos, local UI development, validation fixtures, and future export-format tests.
+- Do not treat `data/albums.csv` as production data. It exists for MVP demos, local selection by album ID, validation fixtures, and future export-format tests.
 - The public GitHub Pages frontend is read-only. It should read Google Sheets public output data and must not contain secrets or database-write credentials.
 - `photos` is the public photo index. Public CSV/JSON exports are transport formats with the same fields, not an additional filtered table.
 - Album intake should start from the SITCON Flickr album catalog discovered by tools. Users should choose which discovered album to process instead of manually supplying album URLs as the primary workflow.
@@ -78,6 +81,7 @@ npm run validate:data
 
 The validation script currently checks:
 
+- `data/albums.csv` headers and basic album catalog fields, derived from `data/photo-schema.json`.
 - `data/photos.csv` headers for the local sample/export format, derived from `data/photo-schema.json`.
 - Required photo fields.
 - URL format.
@@ -98,7 +102,9 @@ The validation script currently checks:
 
 ```bash
 npm run dev
+npm run albums:discover
 npm run album:add -- <flickr-album-url>
+npm run album:add -- <album-id>
 npm run photo:add -- <flickr-photo-url>
 npm run validate:data
 git status --short
