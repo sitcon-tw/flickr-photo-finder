@@ -170,6 +170,75 @@ pnpm sheets:apply-ai-updates -- --run-dir tmp/ai-runs/<run-id>
   - 在這三個不完整基底測試中，最接近可進入人工抽查與 dry-run 的候選結果。
   - 但資料基底已確認不完整，因此應改用完整 37 張新 run 重新標記，再評估是否回寫。
 
+## 完整相簿基底測試觀察
+
+以下觀察來自相簿 `72177720331149380` 修正 intake 後的完整 37 張測試。三個模型都使用同一個 AI run 工作包：`ai-prepare-2026-05-08T21-48-29-597Z`，圖片尺寸為 `large-1024`，並都通過 `pnpm ai:review`。這輪比前一節的 24/37 張測試更適合作為是否進入 Sheets dry-run 的判斷依據。
+
+### `ai-prepare-2026-05-08T21-48-29-597Z-gemini`
+
+- 檔案紀錄 producer: `Gemini CLI`。
+- `pnpm ai:review` 通過，37 張都有 proposal，產生 295 筆 planned updates。
+- 批次警訊：
+  - 沒有 `public_use_status` 候選值；若本批沒有明顯 avoid 照片可以接受，但回寫前仍需人工確認公開使用狀態。
+- 優點：
+  - 37 張都有 `people_count`、`orientation`、`has_negative_space`、`scene_tags`、`mood_tags`、`recommended_uses` 與 `curation_status`。
+  - 沒有提出贊助相關欄位，避免把 SITCON 自身旗幟或背板誤判成贊助曝光。
+  - sample 中 `people_count` 對已知幾張照片大致合理。
+- 主要問題：
+  - `has_negative_space = true` 出現在 36/37 張，明顯偏樂觀。
+  - `safe_crop = 16:9` 出現 30 次，也偏寬鬆。
+  - `recommended_uses` 偏向 `活動回顧`、`社群介紹`，但 `社群貼文` 只出現 1 次，和實際社群取圖需求可能不完全對齊。
+- 判斷：
+  - 適合觀察人數與一般 tag，但不適合直接回寫設計取用欄位。
+  - 若採用，應特別抽查 `has_negative_space` 與 `safe_crop`。
+
+### `ai-prepare-2026-05-08T21-48-29-597Z-claude`
+
+- 檔案紀錄 producer: `claude-opus-4-7`。
+- `pnpm ai:review` 通過，37 張都有 proposal，產生 298 筆 planned updates。
+- 批次警訊：
+  - 未偵測到明顯批次層級警訊。
+- 優點：
+  - `confidence` 大多有填，reason 可審核性較高。
+  - `has_negative_space` 與 `safe_crop` 較保守，`safe_crop` 只出現在 12 張。
+  - `recommended_uses` 沒有每張都硬填；25 張有用途建議，留下較多人工判斷空間。
+  - 已用 `sheets:apply-ai-updates` dry-run，工具層沒有 current value 衝突。
+- 主要問題：
+  - 有 3 張提出 `sponsorship_tags = 品牌露出`，理由是 SITCON 綠色旗幟或背板清楚出現。這比較像 SITCON 自身品牌露出，不一定是贊助價值，可能混用了 `sponsorship_tags` 的語意。
+  - `public_use_status = needs_review` 出現在 36 張，實用但資訊量有限。
+  - `recommended_uses = 贊助提案` 出現在少數講者或背板照片，需要人工確認是否真的和贊助提案有關。
+- 判斷：
+  - 三輪中最適合作為後續人工抽查與 Sheets dry-run 基底。
+  - 不建議直接 `--write` 全量回寫；至少應先移除或人工確認 `sponsorship_tags` 與 `贊助提案` 相關候選值。
+
+### `ai-prepare-2026-05-08T21-48-29-597Z-gpt`
+
+- 檔案紀錄 producer: `GPT-5 Codex`。
+- `pnpm ai:review` 通過，37 張都有 proposal，產生 347 筆 planned updates。
+- 批次警訊：
+  - 所有候選值都未提供 `confidence`；格式允許省略，但不利於人工排序與抽查。
+- 優點：
+  - 37 張都有核心欄位，包含 `public_use_status`、`recommended_uses` 與 `safe_crop`。
+  - 沒有提出贊助欄位，避免 sponsorship 語意混用。
+  - `people_count` 對部分樣本合理。
+- 主要問題：
+  - planned updates 最多，欄位覆蓋積極，人工檢查成本較高。
+  - `priority_level = high` 出現在 14 張，偏寬鬆，容易變成主觀品質分數。
+  - `recommended_uses = 活動回顧` 出現 33 次、`社群貼文` 出現 22 次，區辨度偏低。
+  - 沒有 confidence，無法用模型自評輔助人工排序。
+- 判斷：
+  - 可作為補充參考，但不適合作為第一個回寫基底。
+  - 若採用，應先降低 `priority_level` 與通用 `recommended_uses` 的權重，並補上人工抽查。
+
+### 本輪建議
+
+目前不建議直接將任一模型結果全量寫回正式 Sheets。若要往回寫前進，建議以 Claude 版本作為候選基底，先人工處理以下項目：
+
+1. 移除或確認 `sponsorship_tags = 品牌露出` 是否真的指向贊助價值，而不是 SITCON 自身品牌露出。
+2. 抽查 `people_count`、`has_negative_space`、`safe_crop` 與 `recommended_uses`。
+3. 確認 `public_use_status = needs_review` 是否只是保守預設，或有真正需要提醒的照片。
+4. 修改 proposal 後重新跑 `pnpm ai:review`，再執行 Sheets dry-run。
+
 ## 目前已知容易失準的欄位
 
 ### `safe_crop`
