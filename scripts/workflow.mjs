@@ -58,12 +58,12 @@ const tasks = [
     title: "準備 AI 初標工作包",
   },
   {
-    description: "驗證 AI proposals，產生 diff 與 update plan。",
+    description: "驗證 AI proposals，產生 diff、update plan 與檢視摘要。",
     handler: reviewAiRun,
     id: "ai-review",
     inputs: ["tmp/ai-runs/<run-id>/metadata-proposals.json"],
-    next: ["人類看 metadata-diff.md 與 dry-run 結果後，再決定是否寫回 Sheets；正式 reviewed 仍在 Sheets 中完成。"],
-    outputs: ["metadata-diff.md", "metadata-update-plan.json", "metadata-update-plan.csv", "可選的 Sheets dry-run 結果"],
+    next: ["人類看 metadata-review-summary.md、metadata-update-plan.csv 與 dry-run 結果後，再決定是否寫回 Sheets；正式 reviewed 仍在 Sheets 中完成。"],
+    outputs: ["metadata-review-summary.md", "metadata-diff.md", "metadata-update-plan.json", "metadata-update-plan.csv", "可選的 Sheets dry-run 結果"],
     phase: "AI 初標",
     title: "檢查 AI 初標結果",
   },
@@ -426,7 +426,7 @@ function renderAiLabelingPrompt(runDir) {
 完成後請執行：
 
 \`\`\`bash
-pnpm ai:validate -- --run-dir ${runDir}
+pnpm ai:review -- --run-dir ${runDir}
 \`\`\`
 
 ---
@@ -457,9 +457,7 @@ async function reviewAiRun() {
     throw new Error("run directory is required");
   }
 
-  runPnpm("ai:validate", pnpmArgsFromOptions(["--run-dir", runDir]));
-  runPnpm("ai:diff", pnpmArgsFromOptions(["--run-dir", runDir]));
-  runPnpm("ai:plan", pnpmArgsFromOptions(["--run-dir", runDir]));
+  runPnpm("ai:review", pnpmArgsFromOptions(["--run-dir", runDir]));
 
   if (await askYesNo("要 dry-run 檢查 AI 更新會寫入哪些 Sheets cells 嗎？", false)) {
     runPnpm("sheets:apply-ai-updates", pnpmArgsFromOptions(["--run-dir", runDir]));

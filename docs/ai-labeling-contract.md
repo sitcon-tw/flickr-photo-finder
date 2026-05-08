@@ -215,18 +215,14 @@ AI 應遵守以下限制：
 產生 `metadata-proposals.json` 後，先執行：
 
 ```bash
+pnpm ai:review -- --run-dir tmp/ai-runs/<run-id>
+```
+
+`ai:review` 會驗證 proposal，並產生 `metadata-review-summary.md`、`metadata-diff.md`、`metadata-update-plan.json` 與 `metadata-update-plan.csv`。若只想執行單一步驟，可使用底層指令：
+
+```bash
 pnpm ai:validate -- --run-dir tmp/ai-runs/<run-id>
-```
-
-通過後產生人類可讀 diff：
-
-```bash
 pnpm ai:diff -- --run-dir tmp/ai-runs/<run-id>
-```
-
-再產生機器可讀更新計畫：
-
-```bash
 pnpm ai:plan -- --run-dir tmp/ai-runs/<run-id>
 ```
 

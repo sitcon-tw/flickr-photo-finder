@@ -57,10 +57,11 @@ pnpm workflow
 | 檢查匯入產物是否完整一致 | `pnpm intake:validate -- --run-dir <dir>` |
 | 透過官方 SDK 套用匯入產物 | `pnpm sheets:apply-intake -- --run-dir <dir>` |
 | 準備 AI 初標工作目錄 | `pnpm ai:prepare -- --limit 50 --image-size large-1024`，整本相簿可用 `--album <album-id> --limit all` |
-| 檢查 AI 候選 metadata | `pnpm ai:validate -- --run-dir <dir>` |
+| 檢查 AI 候選 metadata 並產生審核摘要 | `pnpm ai:review -- --run-dir <dir>` |
 | 檢查 AI proposal 範例 | `pnpm ai:validate-fixtures` |
-| 產生 AI 候選 metadata diff | `pnpm ai:diff -- --run-dir <dir>` |
-| 產生 AI 候選 metadata 更新計畫 | `pnpm ai:plan -- --run-dir <dir>` |
+| 只驗證 AI 候選 metadata | `pnpm ai:validate -- --run-dir <dir>` |
+| 只產生 AI 候選 metadata diff | `pnpm ai:diff -- --run-dir <dir>` |
+| 只產生 AI 候選 metadata 更新計畫 | `pnpm ai:plan -- --run-dir <dir>` |
 | dry-run 檢查 AI metadata 將更新哪些 Sheets cells | `pnpm sheets:apply-ai-updates -- --run-dir <dir>` |
 | 了解 AI 初標操作與輸出格式 | `docs/ai-labeling-operator-guide.md`、`docs/ai-labeling-contract.md` |
 | 從已選相簿產生可追加到 `photos` 的候選 CSV | `pnpm photos:import -- --album <album-id> --output <csv>` |
@@ -263,21 +264,23 @@ pnpm ai:prepare -- --album ALBUM_ID --limit all
 pnpm ai:prepare -- --album ALBUM_ID --limit all --status all
 ```
 
-AI 初標輸入、圖片來源、可輸出欄位與 `metadata-proposals.json` 格式以 `docs/ai-labeling-contract.md` 為準。AI 初標結果應寫成 `tmp/ai-runs/<run-id>/metadata-proposals.json`，再用 validation 檢查：
+AI 初標輸入、圖片來源、可輸出欄位與 `metadata-proposals.json` 格式以 `docs/ai-labeling-contract.md` 為準。AI 初標結果應寫成 `tmp/ai-runs/<run-id>/metadata-proposals.json`，再用 review 入口檢查：
+
+```bash
+pnpm ai:review -- --run-dir tmp/ai-runs/RUN_ID
+```
+
+這個指令會一次完成 proposal validation、產生 `metadata-diff.md`、產生 `metadata-update-plan.json` / `metadata-update-plan.csv`，並寫出 `metadata-review-summary.md`。摘要會列出欄位覆蓋率、常見值分布、可能需要人工注意的批次層級警訊，以及下一步 dry-run 指令。
+
+若只想執行單一底層步驟，仍可使用：
 
 ```bash
 pnpm ai:validate -- --run-dir tmp/ai-runs/RUN_ID
-```
-
-這個檢查會確認 `photo_id` 屬於該 run、欄位存在於 schema、受控字彙合法、欄位值型別正確，並阻擋 AI 把 `curation_status` 設成 `reviewed` 或把 `public_use_status` 直接設成 `approved`。
-
-產生人類可讀 diff：
-
-```bash
 pnpm ai:diff -- --run-dir tmp/ai-runs/RUN_ID
+pnpm ai:plan -- --run-dir tmp/ai-runs/RUN_ID
 ```
 
-這會先執行同一套 proposal validation，再輸出 `metadata-diff.md`，列出每個建議欄位的原值、建議值、是否變更、信心與理由。這仍然只是審核資料，不會寫入 Google Sheets。
+這些指令仍然只是審核資料，不會寫入 Google Sheets。
 
 產生機器可讀更新計畫：
 

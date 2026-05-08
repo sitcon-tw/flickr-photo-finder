@@ -73,11 +73,18 @@ pnpm ai:prepare -- --photo-ids PHOTO_ID --image-size original
 tmp/ai-runs/<run-id>/metadata-proposals.json
 ```
 
-### 5. 驗證模型輸出
+### 5. 檢查模型輸出
 
 ```bash
-pnpm ai:validate -- --run-dir tmp/ai-runs/<run-id>
+pnpm ai:review -- --run-dir tmp/ai-runs/<run-id>
 ```
+
+這個指令會一次完成：
+
+- 驗證 `metadata-proposals.json`。
+- 產生 `metadata-diff.md`，供人類逐欄看原值、建議值、信心與 reason。
+- 產生 `metadata-update-plan.json` 與 `metadata-update-plan.csv`，列出後續可能回寫的欄位值。
+- 產生 `metadata-review-summary.md`，整理欄位覆蓋率、常見值分布、批次層級警訊與下一步指令。
 
 若失敗，請根據錯誤訊息修正 `metadata-proposals.json`，不要改 `photos.json` 或正式 Sheets。
 
@@ -91,14 +98,15 @@ pnpm ai:validate -- --run-dir tmp/ai-runs/<run-id>
 | `AI proposals may only set ai_labeled` | AI 把 `curation_status` 設成 `reviewed`。 | 改成 `ai_labeled`，或省略此欄。 |
 | `field is not allowed in AI proposals` | AI 嘗試改 Flickr 基本欄位或人工欄位。 | 移除該欄位 proposal。 |
 
-### 6. 產生審核資料
+### 6. 進階：只執行單一步驟
 
 ```bash
+pnpm ai:validate -- --run-dir tmp/ai-runs/<run-id>
 pnpm ai:diff -- --run-dir tmp/ai-runs/<run-id>
 pnpm ai:plan -- --run-dir tmp/ai-runs/<run-id>
 ```
 
-`metadata-diff.md` 給人類閱讀；`metadata-update-plan.json` 與 CSV 給後續 dry-run 工具使用。
+日常檢視請優先使用 `pnpm ai:review`。上述低階指令保留給自動化、除錯或只想重建其中一份產物的情境。
 
 ### 7. dry-run Sheets 更新
 

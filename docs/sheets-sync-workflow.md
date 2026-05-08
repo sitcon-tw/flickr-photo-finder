@@ -311,12 +311,10 @@ AI 可以協助初標，但不能取代人工確認。
 3. 工具建立 `tmp/ai-runs/<run-id>/`，輸出 `input-photos.csv`、`photos.json`、`manifest.json`，並下載 AI 判讀用圖片到 `images/`。
 4. AI 讀取 `photos.json`、`images/`、相簿脈絡、既有欄位、taxonomy 與 sponsorship items。
 5. AI 產生 `metadata-proposals.json` 候選欄位值。
-6. 用 `pnpm ai:validate -- --run-dir tmp/ai-runs/<run-id>` 檢查候選欄位格式、受控字彙與責任邊界。
-7. 用 `pnpm ai:diff -- --run-dir tmp/ai-runs/<run-id>` 產生 `metadata-diff.md`，讓人類確認是否回寫。
-8. 用 `pnpm ai:plan -- --run-dir tmp/ai-runs/<run-id>` 產生機器可讀更新計畫。
-9. 用 `pnpm sheets:apply-ai-updates -- --run-dir tmp/ai-runs/<run-id>` 對正式 Sheets 做 dry-run，確認會更新哪些 cells。
-10. 人類確認後才加上 `--write` 寫入正式欄位。
-11. AI 協助後但尚未人工完整確認的列標成 `curation_status = ai_labeled`。
+6. 用 `pnpm ai:review -- --run-dir tmp/ai-runs/<run-id>` 檢查候選欄位格式、受控字彙與責任邊界，並產生審核摘要、diff 與更新計畫。
+7. 用 `pnpm sheets:apply-ai-updates -- --run-dir tmp/ai-runs/<run-id>` 對正式 Sheets 做 dry-run，確認會更新哪些 cells。
+8. 人類確認後才加上 `--write` 寫入正式欄位。
+9. AI 協助後但尚未人工完整確認的列標成 `curation_status = ai_labeled`。
 
 AI 初標流程到 `ai_labeled` 就應停止。`curation_status = reviewed` 不應是本機 AI run 的收尾步驟，而是照片資料回到 Google Sheets 後，由具有 Sheets 編輯權限的志工們在同一份正式資料表中協作檢核、修正並補齊必要欄位後才更新。
 
@@ -388,13 +386,25 @@ AI 候選 metadata 應寫成 `tmp/ai-runs/<run-id>/metadata-proposals.json`：
 }
 ```
 
-驗證候選 metadata：
+檢查候選 metadata 並產生審核資料：
+
+```bash
+pnpm ai:review -- --run-dir tmp/ai-runs/<run-id>
+```
+
+`ai:review` 會先執行 proposal validation，再輸出：
+
+- `metadata-review-summary.md`: 給人類快速檢查批次成果、欄位分布與可能警訊。
+- `metadata-diff.md`: 逐欄列出原值、AI 建議值、是否變更、信心與理由。
+- `metadata-update-plan.json` / `metadata-update-plan.csv`: 只列出實際會改變的欄位，供後續 dry-run Sheets 更新工具使用。
+
+AI 候選值只允許讀圖初標合理處理的欄位，例如 `people_count`、`scene_tags`、`mood_tags`、`recommended_uses`、`sponsorship_items`、`sponsorship_tags`、`orientation`、`has_negative_space`、`safe_crop`、`public_use_status`、`priority_level`、`collections` 與 `curation_status`。AI 候選值不能修改 Flickr 基本欄位、攝影師或授權；若建議 `curation_status`，只能是 `ai_labeled`；若建議 `public_use_status`，不能直接給 `approved`。
+
+若只想執行單一步驟，仍可使用底層指令：
 
 ```bash
 pnpm ai:validate -- --run-dir tmp/ai-runs/<run-id>
 ```
-
-AI 候選值只允許讀圖初標合理處理的欄位，例如 `people_count`、`scene_tags`、`mood_tags`、`recommended_uses`、`sponsorship_items`、`sponsorship_tags`、`orientation`、`has_negative_space`、`safe_crop`、`public_use_status`、`priority_level`、`collections` 與 `curation_status`。AI 候選值不能修改 Flickr 基本欄位、攝影師或授權；若建議 `curation_status`，只能是 `ai_labeled`；若建議 `public_use_status`，不能直接給 `approved`。
 
 產生審核 diff：
 

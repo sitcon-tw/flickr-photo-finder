@@ -1,5 +1,6 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { csvEscape } from "./csv-utils.mjs";
 import { validateAiProposals } from "./validate-ai-proposals.mjs";
 
@@ -146,7 +147,7 @@ function updatesToCsv(updates) {
   return `${lines.join("\n")}\n`;
 }
 
-async function buildPlan(options) {
+export async function buildPlan(options) {
   await validateAiProposals({
     proposalsPath: options.proposalsPath,
     runDir: options.runDir,
@@ -198,9 +199,11 @@ async function main() {
   console.log(`- updates: ${plan.update_count}`);
 }
 
-try {
-  await main();
-} catch (error) {
-  console.error(`Could not plan AI metadata updates: ${error.message}`);
-  process.exitCode = 1;
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+  try {
+    await main();
+  } catch (error) {
+    console.error(`Could not plan AI metadata updates: ${error.message}`);
+    process.exitCode = 1;
+  }
 }

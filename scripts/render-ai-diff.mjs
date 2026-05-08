@@ -1,5 +1,6 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { validateAiProposals } from "./validate-ai-proposals.mjs";
 
 const defaultProposalFile = "metadata-proposals.json";
@@ -159,7 +160,7 @@ function renderMarkdown({ manifest, proposals, rows }) {
   return `${lines.join("\n")}`;
 }
 
-async function renderDiff(options) {
+export async function renderDiff(options) {
   await validateAiProposals({
     proposalsPath: options.proposalsPath,
     runDir: options.runDir,
@@ -194,9 +195,11 @@ async function main() {
   console.log(`- field changes: ${result.rowCount}`);
 }
 
-try {
-  await main();
-} catch (error) {
-  console.error(`Could not render AI metadata diff: ${error.message}`);
-  process.exitCode = 1;
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+  try {
+    await main();
+  } catch (error) {
+    console.error(`Could not render AI metadata diff: ${error.message}`);
+    process.exitCode = 1;
+  }
 }
