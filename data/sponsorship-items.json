@@ -1,6 +1,7 @@
 {
   "source_url": "https://raw.githubusercontent.com/sitcon-tw/2026-cfs/refs/heads/main/src/data/item.json",
   "source_page": "https://sitcon.org/2026/cfs/",
+  "snapshot_note": "SITCON 2026 CFS has ended. Treat this file as a fixed snapshot; future CFS versions should replace or extend it explicitly instead of being automatically synced.",
   "categories": [
     "打包專屬",
     "數位媒體曝光",
