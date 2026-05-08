@@ -98,7 +98,7 @@ export function printAlbumJson(albums, options = {}) {
   console.log(
     JSON.stringify(
       {
-        source: options.albums,
+        source: options.sourceLabel ?? options.albums,
         matching: albums.length,
         shown: rows.length,
         albums: rows,

@@ -138,7 +138,9 @@ pnpm dev
 pnpm workflow
 pnpm albums:discover
 pnpm albums:list
+pnpm albums:list -- --source sheets
 pnpm albums:select
+pnpm albums:select -- --source sheets
 pnpm albums:sync -- --sheets-export <albums-csv> --output <albums-csv>
 pnpm ai:review -- --run-dir <dir>
 pnpm ai:diff -- --run-dir <dir>

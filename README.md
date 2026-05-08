@@ -49,8 +49,8 @@ pnpm workflow
 | 透過官方 SDK 套用安全 header 遷移 | `pnpm sheets:migrate-headers` |
 | 透過官方 SDK 匯出正式 Sheets CSV | `pnpm sheets:export` |
 | 盤點 SITCON Flickr 相簿 | `pnpm albums:discover` |
-| 從正式 Sheets 匯出檔列出可處理相簿 | `pnpm albums:list` |
-| 互動式選擇本次要處理的相簿 | `pnpm albums:select -- --unprocessed` |
+| 列出可處理相簿 | `pnpm albums:list`，或直接讀 Sheets：`pnpm albums:list -- --source sheets` |
+| 互動式選擇本次要處理的相簿 | `pnpm albums:select -- --unprocessed`，或直接讀 Sheets：`pnpm albums:select -- --source sheets --unprocessed` |
 | 產生可直接執行的相簿匯入指令 | `pnpm albums:list -- --format commands --limit 5` |
 | 產生可回寫 Google Sheets `albums` 的 CSV | `pnpm albums:sync -- --sheets-export <csv> --output <csv>` |
 | 從已選相簿產生一組可檢查後套用的匯入產物 | `pnpm intake:run -- --album <album-id>` |
@@ -149,11 +149,13 @@ pnpm sheets:export
 
 這會輸出到 `tmp/sheets-export/`，包含 `photos.csv`、`albums.csv`、`import_batches.csv`、`taxonomy.csv`、`sponsorship_items.csv`。其中 `photos.csv` 與 `albums.csv` 應提供給 `intake:run` 使用，避免用 repo fixture 判斷重複照片或相簿脈絡。
 
-列出可處理的相簿：
+列出可處理的相簿。預設會讀 `tmp/sheets-export/albums.csv` 工作快取；若已設定 Google Sheets API credential，也可用 `--source sheets` 直接讀正式 `albums` 工作表：
 
 ```bash
 pnpm albums:list
 pnpm albums:select -- --unprocessed
+pnpm albums:list -- --source sheets
+pnpm albums:select -- --source sheets --unprocessed
 ```
 
 常用篩選：
@@ -195,7 +197,7 @@ pnpm albums:list -- --unprocessed --format commands --limit 5
 pnpm intake:run -- --album ALBUM_ID
 ```
 
-`albums:list -- --format commands` 會依目前篩選條件輸出可直接複製執行的 `intake:run` 指令；陳列順序依循正式 `albums` 匯出檔的列順序，也就是由 Flickr 盤點流程保留下來的相簿順序。若要給其他工具讀取，可改用 `--format ids` 或 `--format json`。若輸出要接給 shell pipeline、JSON parser 或其他程式，請用 `pnpm --silent albums:list -- --format json` 這類形式避免 pnpm script header 混入輸出。
+`albums:list -- --format commands` 會依目前篩選條件輸出可直接複製執行的 `intake:run` 指令；陳列順序依循來源列順序，也就是由 Flickr 盤點流程保留下來的相簿順序。若要給其他工具讀取，可改用 `--format ids` 或 `--format json`。若輸出要接給 shell pipeline、JSON parser 或其他程式，請用 `pnpm --silent albums:list -- --format json` 這類形式避免 pnpm script header 混入輸出。
 
 若要由 CLI 顯示候選清單並互動式選擇單本相簿，使用 `pnpm albums:select -- --unprocessed`。它預設輸出可直接執行的 `intake:run` 指令，也可用 `--format id` 或 `--format json` 調整輸出；候選清單同樣保留 Flickr 相簿順序。
 

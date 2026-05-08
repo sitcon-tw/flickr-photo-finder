@@ -27,7 +27,7 @@ const tasks = [
     title: "檢查專案資料與 AI fixtures",
   },
   {
-    description: "匯出正式 Sheets、選擇相簿，並產生 intake run artifact。",
+    description: "匯出正式 Sheets 工作快取、選擇相簿，並產生 intake run artifact。",
     handler: runAlbumIntake,
     id: "album-intake",
     inputs: ["正式 Google Sheets", "Google Sheets API 讀取權限", "Flickr 相簿清單"],
@@ -183,7 +183,7 @@ function groupTasksByPhase() {
 
 function printWorkflowSummary() {
   console.log("主流程：");
-  console.log("1. Google Sheets 是正式資料庫，repo 先把正式資料匯出成 tmp/sheets-export/ 工作快取。");
+  console.log("1. Google Sheets 是正式資料庫；多數寫入前流程會先把正式資料匯出成 tmp/sheets-export/ 工作快取。");
   console.log("2. 從 Flickr 相簿清單選一本相簿，產生 tmp/intake-runs/ 可審核匯入產物。");
   console.log("3. 人類確認 intake run 後，才 dry-run 或寫回 Google Sheets。");
   console.log("4. 從 Sheets photos 建立 tmp/ai-runs/，把圖片與 photos.json 交給模型初標。");

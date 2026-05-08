@@ -186,7 +186,7 @@ pnpm sheets:export
 
 這會將固定 tabs 輸出到 `tmp/sheets-export/`。其中 `photos.csv` 用於 `photo_id` 重複檢查，`albums.csv` 用於相簿 ID 解析、活動脈絡與 `last_processed_at` 更新。
 
-使用 `albums:list` 從正式 Sheets 匯出的 `albums.csv` 選擇要處理的相簿：
+使用 `albums:list` 從正式 Sheets 匯出的 `albums.csv` 選擇要處理的相簿；若已設定 Google Sheets API credential，也可用 `--source sheets` 直接讀正式 `albums` 工作表：
 
 ```bash
 pnpm albums:list
@@ -194,9 +194,11 @@ pnpm albums:list -- --unprocessed
 pnpm albums:list -- --query "SITCON 2026"
 pnpm albums:list -- --unprocessed --format commands --limit 5
 pnpm albums:select -- --unprocessed
+pnpm albums:list -- --source sheets --unprocessed
+pnpm albums:select -- --source sheets --unprocessed
 ```
 
-`--format commands` 會輸出可直接複製執行的 `pnpm intake:run` 指令；`--format ids` 適合接給 shell 工具，`--format json` 適合讓 agent 或後續互動式選單讀取。相簿陳列順序依循正式 `albums` 匯出檔的列順序，也就是由 Flickr 盤點流程保留下來的相簿順序，不依 `last_processed_at`、`photo_count` 或標題重新排序。若輸出要接給 shell pipeline、JSON parser 或其他程式，請用 `pnpm --silent albums:list -- --format json` 這類形式避免 pnpm script header 混入輸出。
+`--format commands` 會輸出可直接複製執行的 `pnpm intake:run` 指令；`--format ids` 適合接給 shell 工具，`--format json` 適合讓 agent 或後續互動式選單讀取。相簿陳列順序依循來源列順序，也就是由 Flickr 盤點流程保留下來的相簿順序，不依 `last_processed_at`、`photo_count` 或標題重新排序。若輸出要接給 shell pipeline、JSON parser 或其他程式，請用 `pnpm --silent albums:list -- --format json` 這類形式避免 pnpm script header 混入輸出。
 
 `albums:select` 會把候選清單印到 stderr，讓 stdout 保持為選定相簿的輸出結果。預設輸出可直接執行的 `intake:run` 指令，也可用 `--format id` 或 `--format json` 調整；若要在非互動環境測試或自動化，可加上 `--choice <number>` 選擇畫面上的第 N 筆。
 
@@ -492,7 +494,7 @@ https://developers.google.com/workspace/sheets/api/quickstart/nodejs
 - 寫入前的 preflight 與 dry-run 行為。
 - 寫入後如何讀回驗證。
 
-現階段 repo 已有 `pnpm sheets:apply-init` 可以用 SDK 套用初始化 CSV，`pnpm sheets:apply-intake` 可以 dry-run/write 已檢查的 intake run artifact，`pnpm sheets:apply-ai-updates` 可以 dry-run/write AI 初標候選 metadata 更新計畫。正式 Sheets `albums` 目前透過 `pnpm sheets:export` 產生本機工作 CSV，再由 `pnpm albums:list` 或 `pnpm albums:select` 協助選擇 intake 目標；後續若要減少中介 CSV，才需要讓選擇流程直接讀取 Sheets API。
+現階段 repo 已有 `pnpm sheets:apply-init` 可以用 SDK 套用初始化 CSV，`pnpm sheets:apply-intake` 可以 dry-run/write 已檢查的 intake run artifact，`pnpm sheets:apply-ai-updates` 可以 dry-run/write AI 初標候選 metadata 更新計畫。正式 Sheets `albums` 可透過 `pnpm sheets:export` 產生本機工作 CSV，也可由 `pnpm albums:list -- --source sheets` 或 `pnpm albums:select -- --source sheets` 直接讀取；`intake:run` 仍需要 `photos` 與 `albums` 工作輸入做重複檢查與相簿更新規劃。
 
 若未來需要 Google Drive 檔案備份、匯出檔搬運或組織既有檔案工作流，應視為 Sheets API SDK 之外的檔案維護工作，不作為 Sheets tab/range 寫入的主要流程。
 

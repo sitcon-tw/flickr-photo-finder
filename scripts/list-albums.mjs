@@ -9,6 +9,11 @@ import {
   printAlbumJson,
   printAlbumTable,
 } from "./album-list-utils.mjs";
+import { explainGoogleSheetsError } from "./google-sheets-client.mjs";
+import { googleSheetsSpreadsheetId } from "./project-config.mjs";
+import { readSheetRecords } from "./sheets-records.mjs";
+
+const albumSources = new Set(["csv", "sheets"]);
 
 function printUsage() {
   console.log(`Usage:
@@ -16,6 +21,8 @@ function printUsage() {
 
 Options:
   --albums <path>         Albums CSV export. Default: tmp/sheets-export/albums.csv.
+  --source <source>       Album source: csv or sheets. Default: csv.
+  --spreadsheet-id <id>   Google Sheets spreadsheet ID for --source sheets.
   --photos-export <path>  Photos CSV export for generated commands. Default: tmp/sheets-export/photos.csv.
   --query <text>          Filter by album title, event name, year, notes, or album ID.
   --unprocessed           Only show albums whose last_processed_at is empty.
@@ -24,9 +31,11 @@ Options:
   --format <format>       Output format: table, ids, commands, or json. Default: table.
   --help, -h              Show this help.
 
-Run pnpm sheets:export first to refresh tmp/sheets-export/albums.csv from the
-formal Google Sheets database. Output order follows the albums CSV row order,
-which should preserve the Flickr album catalog order from discovery.`);
+With --source csv, run pnpm sheets:export first to refresh
+tmp/sheets-export/albums.csv from the formal Google Sheets database. With
+--source sheets, this command reads the albums tab directly through the official
+Google Sheets API SDK. Output order follows the source row order, which should
+preserve the Flickr album catalog order from discovery.`);
 }
 
 function parseArgs(argv) {
@@ -39,6 +48,8 @@ function parseArgs(argv) {
     limit: 30,
     photosExport: defaultPhotosExportPath,
     query: "",
+    source: "csv",
+    spreadsheetId: googleSheetsSpreadsheetId,
     unprocessed: false,
   };
 
@@ -48,6 +59,12 @@ function parseArgs(argv) {
       options.help = true;
     } else if (arg === "--albums") {
       options.albums = args[index + 1] ?? "";
+      index += 1;
+    } else if (arg === "--source") {
+      options.source = args[index + 1] ?? "";
+      index += 1;
+    } else if (arg === "--spreadsheet-id") {
+      options.spreadsheetId = args[index + 1] ?? "";
       index += 1;
     } else if (arg === "--photos-export") {
       options.photosExport = args[index + 1] ?? "";
@@ -74,6 +91,12 @@ function parseArgs(argv) {
     if (!options.albums) {
       throw new Error("--albums requires a path");
     }
+    if (!albumSources.has(options.source)) {
+      throw new Error(`--source must be one of: ${Array.from(albumSources).join(", ")}`);
+    }
+    if (options.source === "sheets" && !options.spreadsheetId) {
+      throw new Error("Set googleSheets.spreadsheetId in config/project.json or pass --spreadsheet-id");
+    }
     if (!options.photosExport) {
       throw new Error("--photos-export requires a path");
     }
@@ -88,6 +111,20 @@ function parseArgs(argv) {
   return options;
 }
 
+async function readAlbums(options) {
+  if (options.source === "sheets") {
+    return readSheetRecords({
+      sheetName: "albums",
+      spreadsheetId: options.spreadsheetId,
+    });
+  }
+  return readAlbumCatalog(options.albums);
+}
+
+function albumSourceLabel(options) {
+  return options.source === "sheets" ? `Google Sheets albums (${options.spreadsheetId})` : options.albums;
+}
+
 async function main() {
   const options = parseArgs(process.argv);
   if (options.help) {
@@ -95,16 +132,16 @@ async function main() {
     return;
   }
 
-  const albums = filterAlbumsPreservingOrder(await readAlbumCatalog(options.albums), options);
+  const albums = filterAlbumsPreservingOrder(await readAlbums(options), options);
 
   if (options.format === "ids") {
     printAlbumIds(albums, options);
   } else if (options.format === "commands") {
     printAlbumCommands(albums, options);
   } else if (options.format === "json") {
-    printAlbumJson(albums, options);
+    printAlbumJson(albums, { ...options, sourceLabel: albumSourceLabel(options) });
   } else {
-    console.log(`Albums source: ${options.albums}`);
+    console.log(`Albums source: ${albumSourceLabel(options)}`);
     console.log(`Matching albums: ${albums.length}`);
     printAlbumTable(albums, options);
   }
@@ -113,6 +150,6 @@ async function main() {
 try {
   await main();
 } catch (error) {
-  console.error(`Could not list albums: ${error.message}`);
+  console.error(`Could not list albums: ${explainGoogleSheetsError(error)}`);
   process.exitCode = 1;
 }

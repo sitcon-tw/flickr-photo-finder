@@ -1,9 +1,10 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { csvEscape } from "./csv-utils.mjs";
-import { createSheetsService, explainGoogleSheetsError, quoteSheetName } from "./google-sheets-client.mjs";
+import { createSheetsService, explainGoogleSheetsError } from "./google-sheets-client.mjs";
 import { googleSheetsSpreadsheetId } from "./project-config.mjs";
 import { expectedSheetHeaders, fixedSheetNames } from "./sheets-format.mjs";
+import { headersMatch, normalizeSheetRow, readSheetRows } from "./sheets-records.mjs";
 
 const defaultOutputDir = "tmp/sheets-export";
 
@@ -71,25 +72,9 @@ function parseArgs(argv) {
   return options;
 }
 
-function headersMatch(actual, expected) {
-  return actual.length === expected.length && expected.every((header, index) => actual[index] === header);
-}
-
-function normalizeRow(row, length) {
-  return Array.from({ length }, (_, index) => row[index] ?? "");
-}
-
 function rowsToCsv(rows, expectedHeaders) {
-  const normalizedRows = rows.map((row) => normalizeRow(row, expectedHeaders.length));
+  const normalizedRows = rows.map((row) => normalizeSheetRow(row, expectedHeaders.length));
   return `${normalizedRows.map((row) => row.map(csvEscape).join(",")).join("\n")}\n`;
-}
-
-async function readSheetRows(sheets, spreadsheetId, sheetName) {
-  const response = await sheets.spreadsheets.values.get({
-    spreadsheetId,
-    range: `${quoteSheetName(sheetName)}!A:ZZ`,
-  });
-  return response.data.values ?? [];
 }
 
 async function exportSheet({ outputDir, sheetName, sheets, spreadsheetId }) {
@@ -99,7 +84,7 @@ async function exportSheet({ outputDir, sheetName, sheets, spreadsheetId }) {
     throw new Error(`${sheetName} is empty; expected a header row`);
   }
 
-  const headers = normalizeRow(rows[0], expectedHeaders.length);
+  const headers = normalizeSheetRow(rows[0], expectedHeaders.length);
   if (!headersMatch(headers, expectedHeaders)) {
     throw new Error(`${sheetName} header does not match repo schema`);
   }
