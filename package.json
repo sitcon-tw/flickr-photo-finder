@@ -11,6 +11,7 @@
     "albums:select": "node scripts/select-album.mjs",
     "albums:sync": "node scripts/sync-albums.mjs",
     "ai:diff": "node scripts/render-ai-diff.mjs",
+    "ai:plan": "node scripts/plan-ai-updates.mjs",
     "ai:prepare": "node scripts/prepare-ai-run.mjs",
     "ai:validate": "node scripts/validate-ai-proposals.mjs",
     "dev": "node scripts/serve.mjs",

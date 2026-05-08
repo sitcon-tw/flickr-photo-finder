@@ -305,8 +305,9 @@ AI 可以協助初標，但不能取代人工確認。
 5. AI 產生 `metadata-proposals.json` 候選欄位值。
 6. 用 `pnpm ai:validate -- --run-dir tmp/ai-runs/<run-id>` 檢查候選欄位格式、受控字彙與責任邊界。
 7. 用 `pnpm ai:diff -- --run-dir tmp/ai-runs/<run-id>` 產生 `metadata-diff.md`，讓人類確認是否回寫。
-8. 人類確認後才寫入正式欄位。
-9. AI 協助後但尚未人工完整確認的列標成 `curation_status = ai_labeled`。
+8. 用 `pnpm ai:plan -- --run-dir tmp/ai-runs/<run-id>` 產生機器可讀更新計畫。
+9. 人類確認後才寫入正式欄位。
+10. AI 協助後但尚未人工完整確認的列標成 `curation_status = ai_labeled`。
 
 AI 初標流程到 `ai_labeled` 就應停止。`curation_status = reviewed` 不應是本機 AI run 的收尾步驟，而是照片資料回到 Google Sheets 後，由具有 Sheets 編輯權限的志工們在同一份正式資料表中協作檢核、修正並補齊必要欄位後才更新。
 
@@ -379,6 +380,14 @@ pnpm ai:diff -- --run-dir tmp/ai-runs/<run-id>
 ```
 
 `ai:diff` 會先執行同一套 proposal validation，再輸出 `metadata-diff.md`。這份檔案列出 `photo_id`、欄位、原值、AI 建議值、是否變更、信心與理由，讓人類可以先審核差異；它不寫入 Google Sheets。
+
+產生機器可讀更新計畫：
+
+```bash
+pnpm ai:plan -- --run-dir tmp/ai-runs/<run-id>
+```
+
+`ai:plan` 會先執行同一套 proposal validation，再輸出 `metadata-update-plan.json` 與 `metadata-update-plan.csv`。這份計畫只列出實際會改變的欄位，供後續 dry-run Sheets 更新工具使用；它不寫入 Google Sheets。
 
 若人類重新觸發 AI 調整欄位，工具仍應提供可審核 diff，不應靜默覆蓋人工整理內容。
 
