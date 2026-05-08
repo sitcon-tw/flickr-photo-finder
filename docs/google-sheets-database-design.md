@@ -104,7 +104,7 @@ schema 與同步狀態紀錄。這張表讓人類、Apps Script 與 agent 能確
 - `public_use_status`
 - `priority_level`
 - `collections`
-- `internal_notes`
+- `curation_notes`
 - `curation_status`
 
 AI 可以協助產生候選值，但不應靜默覆蓋人類已整理的值。AI 輔助後尚未人工確認的資料應標成 `curation_status = ai_labeled`。

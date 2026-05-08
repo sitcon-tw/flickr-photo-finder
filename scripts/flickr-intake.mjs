@@ -108,7 +108,7 @@ export async function buildCsvRows(normalizedPhotos) {
       photo_url: photoUrl,
       image_preview_url: oembed.thumbnail_url ?? "",
       photographer: extractPhotographerCredit(flickrTitle),
-      internal_notes: flickrTitle ? `Flickr title: ${flickrTitle}` : "",
+      curation_notes: flickrTitle ? `Flickr title: ${flickrTitle}` : "",
       curation_status: "unreviewed",
     };
     rows.push(toCsvRow(photo));

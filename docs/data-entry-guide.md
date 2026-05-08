@@ -42,7 +42,7 @@ npm run photo:add -- https://www.flickr.com/photos/sitcon/PHOTO_ID --append
 
 使用 `--append` 時，工具會在寫入本機 `data/photos.csv` 後自動執行資料驗證。這個工具只處理 Flickr 基本中繼資料；情緒、用途、贊助品項、公開使用狀態等仍需人工判斷。正式流程未來應把確認後的資料同步回 Google Sheets。
 
-SITCON Flickr 上的照片擁有者是 SITCON，但攝影師 credit 會放在 Flickr title 裡。請不要把 Flickr oEmbed 回傳的帳號擁有者直接填成攝影師；若 title 看不出攝影師署名，`photographer` 應先留空，並保留完整 Flickr title 在 `internal_notes` 供後續人工確認。
+SITCON Flickr 上的照片擁有者是 SITCON，但攝影師 credit 會放在 Flickr title 裡。請不要把 Flickr oEmbed 回傳的帳號擁有者直接填成攝影師；若 title 看不出攝影師署名，`photographer` 應先留空，並保留完整 Flickr title 在 `curation_notes` 供後續人工確認。
 
 ## 從 SITCON Flickr 相簿檢查匯入狀態
 
@@ -140,7 +140,7 @@ scene_tags
 - `public_use_status`
 - `curation_status`
 
-如果你想填的詞不存在於標籤字典，先不要直接塞進 CSV。請先記在 `internal_notes` 或提出標籤字典調整，避免同義詞越長越散。
+如果你想填的詞不存在於標籤字典，先不要直接塞進 CSV。請先記在 `curation_notes` 或提出標籤字典調整，避免同義詞越長越散。
 
 ## 贊助相關欄位
 

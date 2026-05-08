@@ -57,7 +57,7 @@ The main goal is not to replace Flickr. The repository should keep a practical i
   - `sponsorship_items`: sponsor inventory item.
   - `sponsorship_tags`: sponsor value or proof use.
 - CSV multi-value fields use semicolon-separated values, for example `攤位;會眾`.
-- `internal_notes` is public in the Sheets-first architecture despite its name. Do not put sensitive internal information there.
+- `curation_notes` is a public curation field. Do not put sensitive internal information there.
 
 ## Agent Responsibilities
 

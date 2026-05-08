@@ -213,7 +213,7 @@
           "description_zh": "素材包，例如志工招募、贊助提案、網站 hero。"
         },
         {
-          "name": "internal_notes",
+          "name": "curation_notes",
           "label_zh": "整理備註",
           "type": "text",
           "required": false,

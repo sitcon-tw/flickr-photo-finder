@@ -141,19 +141,7 @@ AI 可以在資料匯入階段協助初標，但不應取代人工判斷。
 - 會讓照片主體被不必要識別、標記或推論的細節。
 - 只適合內部溝通的評論。
 
-目前欄位仍保留 `internal_notes` 名稱以維持 CSV sample 與工具相容，但它在 Sheets-first 架構中必須被視為公開欄位。這個名稱已知會誤導使用者，應優先評估改名為 `curation_notes`。
-
-改名時至少需要同步處理：
-
-- `data/photo-schema.json` 欄位名稱與說明。
-- `data/photos.csv` sample/export header 與資料。
-- `scripts/flickr-intake.mjs` 產生 Flickr title 備註的欄位。
-- `app/main.js` 的搜尋與卡片顯示。
-- Google Sheets `photos` header。
-- Apps Script 欄位驗證與公開讀取格式檢查。
-- 所有提到 `internal_notes` 的文件。
-
-改名前不要只改文件警語，否則會繼續把命名債留給填表者。
+`curation_notes` 是公開整理備註欄位，只適合記錄可公開閱讀的整理脈絡、注意事項或使用建議。若某段內容只適合內部討論，就不應寫進這個欄位。
 
 ## 志工維護方式
 
@@ -174,7 +162,7 @@ MVP 階段應支援兩種維護路徑：
 - 這個欄位是否能由志工穩定判斷？
 - 這個欄位是否適合公開？
 - 它是所有照片都需要，還是只適合特定素材包或任務？
-- 是否可以先用 `collections`、`internal_notes` 或既有標籤觀察需求？
+- 是否可以先用 `collections`、`curation_notes` 或既有標籤觀察需求？
 
 若欄位只對少數情境有用，應先記錄在文件或素材包流程，不急著變成主資料欄位。
 

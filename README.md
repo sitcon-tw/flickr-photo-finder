@@ -130,7 +130,7 @@ GitHub Pages 只提供唯讀搜尋，不寫入資料庫。Apps Script 是 Sheets
 - `sponsorship_tags` 描述能支援哪種贊助價值。
 - `people_count` 是照片中可辨識的人數估計值，可留空；無人可填 `0`。
 - 不確定是否可公開使用時，`public_use_status` 請填 `needs_review`。
-- 不要把敏感資訊寫進公開欄位。現有 `internal_notes` 在目前架構下仍視為公開資料。
+- 不要把敏感資訊寫進公開欄位。`curation_notes` 是公開整理備註。
 
 更多填寫規則請看 `docs/data-entry-guide.md`。
 
