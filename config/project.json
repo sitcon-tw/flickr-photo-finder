@@ -11,5 +11,8 @@
   "frontend": {
     "appTitle": "SITCON Flickr Photo Finder",
     "sourceLinkLabel": "Flickr"
+  },
+  "googleSheets": {
+    "spreadsheetId": ""
   }
 }

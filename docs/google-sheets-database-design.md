@@ -35,6 +35,16 @@ pnpm sheets:init
 
 `photos` 和 `import_batches` 初始可以只有 header；`albums` 可先使用 repo 目前已盤點的相簿清單，或先重新執行 `pnpm albums:discover -- --write` 再產生初始化檔。`taxonomy` 與 `sponsorship_items` 是輔助表，供 Apps Script、下拉選單與人類查詢使用。
 
+Google Sheets tab 名稱在 MVP 固定，不提供 `worksheetNames` 對照設定。其他組織 fork 時若要複用，應使用同樣 tab 名稱；未來若真的有改名需求，再加入對照設定。
+
+若 `config/project.json` 已填入 `googleSheets.spreadsheetId`，可先執行只讀檢查：
+
+```bash
+pnpm sheets:check
+```
+
+這個檢查用公開 CSV export 讀取固定 tabs，確認 header 與是否已有資料。它不處理 credential，也不寫入 Google Sheets；寫入權限仍由 Google Drive/Sheets 管理。
+
 ### photos（正式主表；Sheets 建置時必備；候選列 CSV 目前可產生）
 
 正式照片索引主表。每列代表一張 Flickr 照片。

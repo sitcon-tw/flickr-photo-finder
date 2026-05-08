@@ -46,7 +46,29 @@ manifest.json
 - `taxonomy`
 - `sponsorship_items`
 
+MVP 階段固定使用上述 tab 名稱，不提供 worksheet name 對照設定。
+
 再把每個 CSV 匯入或貼到對應 tab。`manifest.json` 用來確認這批初始化檔的 schema version、來源設定與檔案對應，不需要匯入 Sheets。
+
+把公開 Google Sheets ID 填入 `config/project.json`：
+
+```json
+{
+  "googleSheets": {
+    "spreadsheetId": "..."
+  }
+}
+```
+
+這個 ID 可公開；寫入權限由 Google Drive/Sheets 管理。repo 工具只負責確認寫入前是否有覆蓋資料風險。
+
+如果 Sheets 已公開可讀，可以先執行：
+
+```bash
+pnpm sheets:check
+```
+
+`sheets:check` 只讀取固定 tabs 的公開 CSV export，檢查 header 是否符合預期，以及 tab 是否已經有資料。若任何 tab 已有資料、header 不符合預期，或無法讀取，工具會回報初始化覆蓋風險。
 
 如果要用最新 Flickr 相簿清單初始化 `albums`，請先執行：
 

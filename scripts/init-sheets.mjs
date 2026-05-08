@@ -5,6 +5,7 @@ import { parseCsv, toCsvLine } from "./csv-utils.mjs";
 import { albumsPath } from "./album-catalog.mjs";
 import { projectConfig } from "./project-config.mjs";
 import { albumHeaders, importBatchHeaders, photoHeaders, photoSchema } from "./photo-schema.mjs";
+import { sponsorshipItemHeaders, taxonomyHeaders } from "./sheets-format.mjs";
 
 const defaultOutputDir = "tmp/sheets-init";
 const taxonomyPath = "data/tag-taxonomy.json";
@@ -86,7 +87,6 @@ async function readAlbumsCsv(path) {
 }
 
 function taxonomyToCsv(taxonomy) {
-  const headers = ["taxonomy_key", "value", "order"];
   const rows = [];
 
   for (const [key, values] of Object.entries(taxonomy)) {
@@ -103,28 +103,10 @@ function taxonomyToCsv(taxonomy) {
     });
   }
 
-  return `${[headers.join(","), ...rows.map((row) => toCsvLine(headers, row))].join("\n")}\n`;
+  return `${[taxonomyHeaders.join(","), ...rows.map((row) => toCsvLine(taxonomyHeaders, row))].join("\n")}\n`;
 }
 
 function sponsorshipItemsToCsv(snapshot) {
-  const headers = [
-    "item_id",
-    "name_zh",
-    "name_en",
-    "category",
-    "order",
-    "quantity",
-    "unit",
-    "deadline",
-    "talent_recruitment_zh",
-    "brand_exposure_zh",
-    "product_promotion_zh",
-    "sub_item_name_zh",
-    "sub_item_name_en",
-    "sub_item_price",
-    "sub_item_remaining",
-  ];
-
   const rows = [];
   for (const item of snapshot.items ?? []) {
     const subItems = item.sub_items?.length ? item.sub_items : [{}];
@@ -149,7 +131,10 @@ function sponsorshipItemsToCsv(snapshot) {
     }
   }
 
-  return `${[headers.join(","), ...rows.map((row) => toCsvLine(headers, row))].join("\n")}\n`;
+  return `${[
+    sponsorshipItemHeaders.join(","),
+    ...rows.map((row) => toCsvLine(sponsorshipItemHeaders, row)),
+  ].join("\n")}\n`;
 }
 
 function validateGeneratedCsv(paths) {

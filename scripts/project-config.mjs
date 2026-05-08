@@ -26,6 +26,16 @@ function validateUrl(value, path) {
   }
 }
 
+function optionalString(value, path) {
+  if (value === undefined || value === null) {
+    return "";
+  }
+  if (typeof value !== "string") {
+    throw new Error(`config/project.json ${path} must be a string`);
+  }
+  return value.trim();
+}
+
 export const projectConfig = readProjectConfig();
 
 export const organizationName = requireString(
@@ -46,4 +56,8 @@ export const appTitle = requireString(projectConfig.frontend?.appTitle, "fronten
 export const sourceLinkLabel = requireString(
   projectConfig.frontend?.sourceLinkLabel,
   "frontend.sourceLinkLabel",
+);
+export const googleSheetsSpreadsheetId = optionalString(
+  projectConfig.googleSheets?.spreadsheetId,
+  "googleSheets.spreadsheetId",
 );
