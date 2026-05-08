@@ -48,12 +48,25 @@ npm run validate:data
 
 `--append` 寫入後會自動跑一次資料驗證；補齊人工欄位後仍建議再跑一次。
 
+檢查 Flickr 相簿有哪些照片尚未匯入：
+
+```bash
+npm run album:add -- https://www.flickr.com/photos/sitcon/albums/ALBUM_ID/
+```
+
+匯入相簿中尚未索引的照片：
+
+```bash
+npm run album:add -- https://www.flickr.com/photos/sitcon/albums/ALBUM_ID/ --append
+```
+
 ## 主要檔案
 
 - `data/photos.csv`: 第一版照片索引。
 - `data/tag-taxonomy.json`: 受控標籤與列舉值欄位。
 - `data/sponsorship-items.json`: SITCON 2026 CFS 贊助品項固定版本資料。
 - `app/`: 本機照片搜尋介面。
+- `scripts/add-album.mjs`: 檢查或匯入 Flickr 相簿中的照片。
 - `scripts/add-photo.mjs`: 從 Flickr URL 產生或寫入 CSV 資料列。
 - `scripts/serve.mjs`: 本機靜態 server。
 - `scripts/validate-data.mjs`: 檢查資料格式與標籤字典一致性。

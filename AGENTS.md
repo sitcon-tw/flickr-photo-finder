@@ -17,6 +17,7 @@ The main goal is not to replace Flickr. The repository should keep a practical i
 - `data/tag-taxonomy.json`: controlled taxonomy for photo tags and enum fields.
 - `data/sponsorship-items.json`: fixed snapshot derived from SITCON 2026 CFS sponsorship item data.
 - `scripts/add-photo.mjs`: helper for generating or appending a CSV row from a Flickr photo URL.
+- `scripts/add-album.mjs`: helper for checking or importing missing photos from a Flickr album URL.
 - `scripts/serve.mjs`: local static server for the MVP UI.
 - `scripts/validate-data.mjs`: data validation script.
 
@@ -61,6 +62,7 @@ The validation script currently checks:
 
 ```bash
 npm run dev
+npm run album:add -- <flickr-album-url>
 npm run photo:add -- <flickr-photo-url>
 npm run validate:data
 git status --short

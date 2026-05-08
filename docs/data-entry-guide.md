@@ -37,6 +37,24 @@ npm run photo:add -- https://www.flickr.com/photos/sitcon/PHOTO_ID --append
 
 使用 `--append` 時，工具會在寫入後自動執行資料驗證。這個工具只處理 Flickr 基本中繼資料；情緒、用途、贊助品項、公開使用狀態等仍需人工判斷。
 
+## 從 Flickr 相簿檢查匯入狀態
+
+實際整理時，通常會以 Flickr 相簿為單位提供資料來源。可以先檢查相簿中哪些照片尚未匯入：
+
+```bash
+npm run album:add -- https://www.flickr.com/photos/sitcon/albums/ALBUM_ID/
+```
+
+確認後，用 `--append` 匯入相簿中尚未索引的照片：
+
+```bash
+npm run album:add -- https://www.flickr.com/photos/sitcon/albums/ALBUM_ID/ --append
+```
+
+相簿匯入只會新增缺少的照片，不會重複加入已經存在於 `data/photos.csv` 的 `photo_id`。
+
+相簿匯入後只會有 Flickr 基本中繼資料。請接著人工補上 `scene_tags`、`mood_tags`、`recommended_uses`、`public_use_status`、`quality_score`、`collections` 等欄位，讓照片能被實際搜尋與判斷。
+
 ## CSV 填寫格式
 
 `data/photos.csv` 使用一般 CSV 格式。多值欄位用分號分隔，不要用逗號。
