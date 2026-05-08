@@ -1,0 +1,21 @@
+{
+  "proposal_version": 1,
+  "run_id": "fixture-invalid-approved-status",
+  "created_at": "2026-05-08T00:10:00.000Z",
+  "producer": {
+    "type": "ai",
+    "name": "fixture"
+  },
+  "items": [
+    {
+      "photo_id": "55200405673",
+      "fields": {
+        "public_use_status": {
+          "value": "approved",
+          "reason": "Invalid fixture: AI must not approve public use.",
+          "confidence": 0.9
+        }
+      }
+    }
+  ]
+}

@@ -14,6 +14,7 @@
     "ai:plan": "node scripts/plan-ai-updates.mjs",
     "ai:prepare": "node scripts/prepare-ai-run.mjs",
     "ai:validate": "node scripts/validate-ai-proposals.mjs",
+    "ai:validate-fixtures": "node scripts/validate-ai-fixtures.mjs",
     "dev": "node scripts/serve.mjs",
     "intake:run": "node scripts/run-intake.mjs",
     "intake:validate": "node scripts/validate-intake-run.mjs",

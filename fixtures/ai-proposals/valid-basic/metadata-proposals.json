@@ -1,0 +1,104 @@
+{
+  "proposal_version": 1,
+  "run_id": "fixture-valid-basic",
+  "created_at": "2026-05-08T00:10:00.000Z",
+  "producer": {
+    "type": "ai",
+    "name": "fixture"
+  },
+  "items": [
+    {
+      "photo_id": "55200405673",
+      "fields": {
+        "people_count": {
+          "value": 15,
+          "reason": "畫面中可辨識約 15 人合照。",
+          "confidence": 0.78
+        },
+        "scene_tags": {
+          "value": [
+            "合照",
+            "舞台",
+            "背板"
+          ],
+          "reason": "照片主體是在舞台背板前的多人合照。",
+          "confidence": 0.9
+        },
+        "mood_tags": {
+          "value": [
+            "儀式感",
+            "成就感"
+          ],
+          "reason": "畫面呈現頒獎或公開表揚的合照情境。",
+          "confidence": 0.82
+        },
+        "recommended_uses": {
+          "value": [
+            "社群貼文",
+            "活動回顧",
+            "新聞稿"
+          ],
+          "reason": "合照與活動背板清楚，適合對外回顧與新聞素材。",
+          "confidence": 0.85
+        },
+        "orientation": {
+          "value": "landscape",
+          "reason": "畫面寬度大於高度。",
+          "confidence": 0.95
+        },
+        "has_negative_space": {
+          "value": false,
+          "reason": "主要人物和背板占滿畫面，沒有明顯可放字留白。",
+          "confidence": 0.82
+        },
+        "safe_crop": {
+          "value": [
+            "16:9"
+          ],
+          "reason": "原始構圖接近橫幅，保留群像時較適合 16:9。",
+          "confidence": 0.72
+        },
+        "public_use_status": {
+          "value": "needs_review",
+          "reason": "AI 無法確認授權與攝影師欄位是否已補齊，需人工確認。",
+          "confidence": 0.9
+        },
+        "priority_level": {
+          "value": "normal",
+          "reason": "畫面清楚但仍需人工確認是否符合特定素材需求。",
+          "confidence": 0.7
+        },
+        "curation_status": {
+          "value": "ai_labeled",
+          "reason": "此列已由 AI 產生初標候選值，仍待人工 review。",
+          "confidence": 1
+        }
+      }
+    },
+    {
+      "photo_id": "55200257281",
+      "fields": {
+        "scene_tags": {
+          "value": [
+            "合照",
+            "舞台"
+          ],
+          "reason": "畫面是舞台區域的多人合照。",
+          "confidence": 0.86
+        },
+        "recommended_uses": {
+          "value": [
+            "活動回顧"
+          ],
+          "reason": "適合用於活動結束後整理成果。",
+          "confidence": 0.76
+        },
+        "curation_status": {
+          "value": "ai_labeled",
+          "reason": "此列已由 AI 產生初標候選值，仍待人工 review。",
+          "confidence": 1
+        }
+      }
+    }
+  ]
+}

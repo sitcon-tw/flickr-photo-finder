@@ -21,6 +21,7 @@ The main goal is not to replace Flickr. The repository should keep a practical i
 - `docs/README.md`: documentation index, implementation status, and source-of-truth map.
 - `docs/photo-fields-reference.md`: field reference for the Google Sheets photo table and CSV export format.
 - `docs/public-frontend-architecture.md`: GitHub Pages public read-only frontend architecture.
+- `docs/ai-labeling-operator-guide.md`: AI labeling prepare-to-validate handoff and operator workflow.
 - `docs/ai-labeling-contract.md`: AI labeling run input, output, boundary, and validation contract.
 - `README.md`: human-facing project overview and quick start.
 - `app/`: GitHub Pages and local static search UI for the MVP.
@@ -29,6 +30,8 @@ The main goal is not to replace Flickr. The repository should keep a practical i
 - `fixtures/albums.csv`: MVP sample, local fixture, and Sheets export format reference for the SITCON Flickr album catalog. It is not the authoritative album database or a Sheets cache.
 - `fixtures/photos.csv`: MVP sample, local fixture, and Sheets export format reference. It is not the authoritative photo database or a Sheets cache.
 - `fixtures/import-batches.csv`: MVP sample, local fixture, and Sheets export format reference for import batch records. It is not the authoritative import batch database or a Sheets cache.
+- `fixtures/ai-proposals/`: valid and invalid AI proposal fixtures for validator regression checks.
+- `prompts/ai-labeling.md`: reusable AI labeling prompt template.
 - `data/photo-schema.json`: shared field schema for Google Sheets, CSV exports, Apps Script helpers, and CLI validation.
 - `data/tag-taxonomy.json`: controlled taxonomy for photo tags and enum fields.
 - `data/sponsorship-items.json`: fixed snapshot derived from SITCON 2026 CFS sponsorship item data.
@@ -38,6 +41,7 @@ The main goal is not to replace Flickr. The repository should keep a practical i
 - `scripts/sync-albums.mjs`: helper for merging a Google Sheets albums CSV export with discovered albums and producing a Sheets-ready CSV.
 - `scripts/run-intake.mjs`: helper for producing a complete intake run artifact from a selected album.
 - `scripts/validate-intake-run.mjs`: helper for checking an intake run artifact before applying it to Google Sheets.
+- `scripts/validate-ai-fixtures.mjs`: helper for checking AI proposal fixtures against the current validator boundary.
 - `scripts/apply-intake-run.mjs`: SDK-based helper for applying a reviewed intake run artifact to Google Sheets.
 - `scripts/prepare-ai-run.mjs`: helper for creating a local AI labeling input run from exported Google Sheets photos.
 - `scripts/import-album-photos.mjs`: helper for generating Sheets-ready candidate photo rows, updated album rows, and import batch rows from a selected album.
@@ -88,7 +92,7 @@ The main goal is not to replace Flickr. The repository should keep a practical i
 - Read `docs/project-architecture.md` before changing end-to-end workflow, deployment boundaries, or user-facing architecture.
 - For database shape, read `docs/google-sheets-database-design.md` before changing Sheets or sync assumptions.
 - For public AI behavior, read `docs/ai-readable-dataset.md` before changing photo index read semantics.
-- For AI labeling run inputs or `metadata-proposals.json` output, read `docs/ai-labeling-contract.md` before changing tooling or producing proposals.
+- For AI labeling run inputs or `metadata-proposals.json` output, read `docs/ai-labeling-operator-guide.md` and `docs/ai-labeling-contract.md` before changing tooling or producing proposals.
 - For Apps Script helpers, read `docs/apps-script-maintenance-design.md` before adding Sheets-side validation.
 - Help maintain the repo so future agents can understand how to scan albums, validate data, assist AI labeling, and sync with Google Sheets.
 - Do not store Google Drive, Google API, OAuth token, third-party tool, or AI API credentials in this repo.
@@ -137,6 +141,7 @@ pnpm ai:diff -- --run-dir <dir>
 pnpm ai:plan -- --run-dir <dir>
 pnpm ai:prepare -- --image-size large-1024
 pnpm ai:validate -- --run-dir <dir>
+pnpm ai:validate-fixtures
 pnpm intake:run -- --album <album-id>
 pnpm intake:validate -- --run-dir <dir>
 pnpm photos:import -- --album <album-id> --output <photos-csv> --albums-output <albums-csv> --batch-output <batch-csv>

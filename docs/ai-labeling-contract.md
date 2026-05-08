@@ -4,6 +4,8 @@
 
 AI 初標只產生候選 metadata。它不直接代表人工 review，也不應直接把照片推進到 `reviewed` 或 `approved`。
 
+若需要逐步操作、prompt 使用方式、常見 validator 錯誤與判斷校準，請看 `docs/ai-labeling-operator-guide.md`。可直接交給模型的提示範本放在 `prompts/ai-labeling.md`。
+
 ## 適用階段
 
 這份合約適用於已經完成以下流程之後：

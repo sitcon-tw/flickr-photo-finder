@@ -1,0 +1,23 @@
+{
+  "proposal_version": 1,
+  "run_id": "fixture-invalid-taxonomy-value",
+  "created_at": "2026-05-08T00:10:00.000Z",
+  "producer": {
+    "type": "ai",
+    "name": "fixture"
+  },
+  "items": [
+    {
+      "photo_id": "55200405673",
+      "fields": {
+        "scene_tags": {
+          "value": [
+            "大合照"
+          ],
+          "reason": "Invalid fixture: value is not in data/tag-taxonomy.json.",
+          "confidence": 0.8
+        }
+      }
+    }
+  ]
+}

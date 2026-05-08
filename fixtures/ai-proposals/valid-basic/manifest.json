@@ -1,0 +1,17 @@
+{
+  "created_at": "2026-05-08T00:00:00.000Z",
+  "download_enabled": true,
+  "downloaded_photo_count": 2,
+  "image_size": "large-1024",
+  "input_photos_csv": "input-photos.csv",
+  "manifest_version": 1,
+  "photos_json": "photos.json",
+  "photos_source": "fixtures/photos.csv",
+  "requested_limit": 2,
+  "requested_photo_ids": [],
+  "requested_status": [
+    "unreviewed"
+  ],
+  "run_id": "fixture-valid-basic",
+  "selected_photo_count": 2
+}

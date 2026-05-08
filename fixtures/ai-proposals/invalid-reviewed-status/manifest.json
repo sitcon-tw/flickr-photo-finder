@@ -1,0 +1,7 @@
+{
+  "manifest_version": 1,
+  "run_id": "fixture-invalid-reviewed-status",
+  "created_at": "2026-05-08T00:00:00.000Z",
+  "image_size": "large-1024",
+  "selected_photo_count": 1
+}

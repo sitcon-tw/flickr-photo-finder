@@ -1,0 +1,21 @@
+{
+  "proposal_version": 1,
+  "run_id": "fixture-invalid-semicolon-list",
+  "created_at": "2026-05-08T00:10:00.000Z",
+  "producer": {
+    "type": "ai",
+    "name": "fixture"
+  },
+  "items": [
+    {
+      "photo_id": "55200405673",
+      "fields": {
+        "scene_tags": {
+          "value": "合照;舞台",
+          "reason": "Invalid fixture: proposal list values must be JSON arrays.",
+          "confidence": 0.8
+        }
+      }
+    }
+  ]
+}
