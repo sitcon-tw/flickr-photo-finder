@@ -164,7 +164,10 @@ pnpm sheets:export
 pnpm albums:list
 pnpm albums:list -- --unprocessed
 pnpm albums:list -- --query "SITCON 2026"
+pnpm albums:list -- --unprocessed --format commands --limit 5
 ```
+
+`--format commands` 會輸出可直接複製執行的 `pnpm intake:run` 指令；`--format ids` 適合接給 shell 工具，`--format json` 適合讓 agent 或後續互動式選單讀取。若輸出要接給 shell pipeline、JSON parser 或其他程式，請用 `pnpm --silent albums:list -- --format json` 這類形式避免 pnpm script header 混入輸出。
 
 若要產生一次可審核的相簿匯入產物，請使用目前正式 Sheets 匯出的 `photos` 與 `albums`：
 

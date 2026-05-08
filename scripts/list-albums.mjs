@@ -1,18 +1,22 @@
 import { readAlbumCatalog } from "./album-catalog.mjs";
 
 const defaultAlbumsPath = "tmp/sheets-export/albums.csv";
+const defaultPhotosExportPath = "tmp/sheets-export/photos.csv";
+const outputFormats = new Set(["table", "ids", "commands", "json"]);
 
 function printUsage() {
   console.log(`Usage:
   pnpm albums:list
 
 Options:
-  --albums <path>   Albums CSV export. Default: tmp/sheets-export/albums.csv.
-  --query <text>    Filter by album title, event name, year, notes, or album ID.
-  --unprocessed     Only show albums whose last_processed_at is empty.
-  --limit <number>  Maximum rows to print. Default: 30. Use --all to print all rows.
-  --all             Print all matching rows.
-  --help, -h        Show this help.
+  --albums <path>         Albums CSV export. Default: tmp/sheets-export/albums.csv.
+  --photos-export <path>  Photos CSV export for generated commands. Default: tmp/sheets-export/photos.csv.
+  --query <text>          Filter by album title, event name, year, notes, or album ID.
+  --unprocessed           Only show albums whose last_processed_at is empty.
+  --limit <number>        Maximum rows to print. Default: 30. Use --all to print all rows.
+  --all                   Print all matching rows.
+  --format <format>       Output format: table, ids, commands, or json. Default: table.
+  --help, -h              Show this help.
 
 Run pnpm sheets:export first to refresh tmp/sheets-export/albums.csv from the
 formal Google Sheets database.`);
@@ -23,8 +27,10 @@ function parseArgs(argv) {
   const options = {
     albums: defaultAlbumsPath,
     all: false,
+    format: "table",
     help: false,
     limit: 30,
+    photosExport: defaultPhotosExportPath,
     query: "",
     unprocessed: false,
   };
@@ -36,6 +42,9 @@ function parseArgs(argv) {
     } else if (arg === "--albums") {
       options.albums = args[index + 1] ?? "";
       index += 1;
+    } else if (arg === "--photos-export") {
+      options.photosExport = args[index + 1] ?? "";
+      index += 1;
     } else if (arg === "--query") {
       options.query = args[index + 1] ?? "";
       index += 1;
@@ -46,6 +55,9 @@ function parseArgs(argv) {
       index += 1;
     } else if (arg === "--all") {
       options.all = true;
+    } else if (arg === "--format") {
+      options.format = args[index + 1] ?? "";
+      index += 1;
     } else {
       throw new Error(`Unknown option: ${arg}`);
     }
@@ -54,6 +66,12 @@ function parseArgs(argv) {
   if (!options.help) {
     if (!options.albums) {
       throw new Error("--albums requires a path");
+    }
+    if (!options.photosExport) {
+      throw new Error("--photos-export requires a path");
+    }
+    if (!outputFormats.has(options.format)) {
+      throw new Error(`--format must be one of: ${Array.from(outputFormats).join(", ")}`);
     }
     if (!options.all && (!Number.isInteger(options.limit) || options.limit < 1)) {
       throw new Error("--limit must be a positive integer");
@@ -106,7 +124,7 @@ function truncate(value, maxLength) {
 }
 
 function printAlbums(albums, { all, limit }) {
-  const rows = all ? albums : albums.slice(0, limit);
+  const rows = selectRows(albums, { all, limit });
   console.log(["album_id", "photo_count", "last_processed_at", "album_title"].join("\t"));
   for (const album of rows) {
     console.log(
@@ -124,6 +142,56 @@ function printAlbums(albums, { all, limit }) {
   }
 }
 
+function selectRows(albums, { all, limit }) {
+  return all ? albums : albums.slice(0, limit);
+}
+
+function shellQuote(value) {
+  const text = String(value ?? "");
+  if (/^[A-Za-z0-9_./:=@+-]+$/.test(text)) {
+    return text;
+  }
+  return `'${text.replaceAll("'", "'\\''")}'`;
+}
+
+function printIds(albums, options) {
+  for (const album of selectRows(albums, options)) {
+    console.log(album.album_id);
+  }
+}
+
+function printCommands(albums, options) {
+  for (const album of selectRows(albums, options)) {
+    console.log(
+      [
+        "pnpm intake:run --",
+        "--album",
+        shellQuote(album.album_id),
+        "--albums",
+        shellQuote(options.albums),
+        "--photos-export",
+        shellQuote(options.photosExport),
+      ].join(" "),
+    );
+  }
+}
+
+function printJson(albums, options) {
+  const rows = selectRows(albums, options);
+  console.log(
+    JSON.stringify(
+      {
+        source: options.albums,
+        matching: albums.length,
+        shown: rows.length,
+        albums: rows,
+      },
+      null,
+      2,
+    ),
+  );
+}
+
 async function main() {
   const options = parseArgs(process.argv);
   if (options.help) {
@@ -137,9 +205,17 @@ async function main() {
     .filter((album) => matchesQuery(album, options.query))
     .sort(compareAlbums);
 
-  console.log(`Albums source: ${options.albums}`);
-  console.log(`Matching albums: ${albums.length}`);
-  printAlbums(albums, options);
+  if (options.format === "ids") {
+    printIds(albums, options);
+  } else if (options.format === "commands") {
+    printCommands(albums, options);
+  } else if (options.format === "json") {
+    printJson(albums, options);
+  } else {
+    console.log(`Albums source: ${options.albums}`);
+    console.log(`Matching albums: ${albums.length}`);
+    printAlbums(albums, options);
+  }
 }
 
 try {
