@@ -4,7 +4,7 @@ import { readAlbumCatalog } from "./album-catalog.mjs";
 import {
   defaultAlbumsPath,
   defaultPhotosExportPath,
-  filterAndSortAlbums,
+  filterAlbumsPreservingOrder,
   formatIntakeCommand,
   selectOutputFormats,
   selectRows,
@@ -26,7 +26,8 @@ Options:
   --help, -h              Show this help.
 
 Run pnpm sheets:export first to refresh tmp/sheets-export/albums.csv from the
-formal Google Sheets database.`);
+formal Google Sheets database. Display order follows the albums CSV row order,
+which should preserve the Flickr album catalog order from discovery.`);
 }
 
 function parseArgs(argv) {
@@ -157,7 +158,7 @@ async function main() {
     return;
   }
 
-  const albums = filterAndSortAlbums(await readAlbumCatalog(options.albums), options);
+  const albums = filterAlbumsPreservingOrder(await readAlbumCatalog(options.albums), options);
   if (albums.length === 0) {
     throw new Error("No albums matched the current filters.");
   }

@@ -162,9 +162,9 @@ pnpm albums:list -- --unprocessed --format commands --limit 5
 pnpm intake:run -- --album ALBUM_ID --albums tmp/sheets-export/albums.csv --photos-export tmp/sheets-export/photos.csv
 ```
 
-`albums:list -- --format commands` 會依目前篩選條件輸出可直接複製執行的 `intake:run` 指令；若要給其他工具讀取，可改用 `--format ids` 或 `--format json`。若輸出要接給 shell pipeline、JSON parser 或其他程式，請用 `pnpm --silent albums:list -- --format json` 這類形式避免 pnpm script header 混入輸出。
+`albums:list -- --format commands` 會依目前篩選條件輸出可直接複製執行的 `intake:run` 指令；陳列順序依循正式 `albums` 匯出檔的列順序，也就是由 Flickr 盤點流程保留下來的相簿順序。若要給其他工具讀取，可改用 `--format ids` 或 `--format json`。若輸出要接給 shell pipeline、JSON parser 或其他程式，請用 `pnpm --silent albums:list -- --format json` 這類形式避免 pnpm script header 混入輸出。
 
-若要由 CLI 顯示候選清單並互動式選擇單本相簿，使用 `pnpm albums:select -- --unprocessed`。它預設輸出可直接執行的 `intake:run` 指令，也可用 `--format id` 或 `--format json` 調整輸出。
+若要由 CLI 顯示候選清單並互動式選擇單本相簿，使用 `pnpm albums:select -- --unprocessed`。它預設輸出可直接執行的 `intake:run` 指令，也可用 `--format id` 或 `--format json` 調整輸出；候選清單同樣保留 Flickr 相簿順序。
 
 這會建立一個 `tmp/intake-runs/<run-id>/` 目錄，內含：
 

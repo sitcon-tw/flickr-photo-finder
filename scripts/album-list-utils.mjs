@@ -3,12 +3,11 @@ export const defaultPhotosExportPath = "tmp/sheets-export/photos.csv";
 export const listOutputFormats = new Set(["table", "ids", "commands", "json"]);
 export const selectOutputFormats = new Set(["id", "ids", "command", "commands", "json"]);
 
-export function filterAndSortAlbums(albums, { query = "", unprocessed = false } = {}) {
+export function filterAlbumsPreservingOrder(albums, { query = "", unprocessed = false } = {}) {
   return albums
     .filter((album) => album.album_id)
     .filter((album) => !unprocessed || !album.last_processed_at)
-    .filter((album) => matchesQuery(album, query))
-    .sort(compareAlbums);
+    .filter((album) => matchesQuery(album, query));
 }
 
 export function matchesQuery(album, query) {
@@ -27,22 +26,6 @@ export function matchesQuery(album, query) {
     .join(" ")
     .toLocaleLowerCase("zh-TW")
     .includes(needle);
-}
-
-export function compareAlbums(left, right) {
-  const leftProcessed = left.last_processed_at ? 1 : 0;
-  const rightProcessed = right.last_processed_at ? 1 : 0;
-  if (leftProcessed !== rightProcessed) {
-    return leftProcessed - rightProcessed;
-  }
-
-  const leftCount = Number(left.photo_count || 0);
-  const rightCount = Number(right.photo_count || 0);
-  if (leftCount !== rightCount) {
-    return rightCount - leftCount;
-  }
-
-  return left.album_title.localeCompare(right.album_title, "zh-TW");
 }
 
 export function selectRows(albums, { all = false, limit = 30 } = {}) {
