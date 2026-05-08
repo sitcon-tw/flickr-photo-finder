@@ -97,7 +97,7 @@ MVP 的 100 到 300 張精選照片可以由前端一次載入並在瀏覽器內
 
 - 產生搜尋索引。
 - 分頁或 lazy loading。
-- 只發布 `reviewed` / `featured` 的照片。
+- 依 `curation_status`、`public_use_status`、`quality_score` 與 `collections` 產生推薦排序。
 - 改用 API 或正式資料庫。
 
 ## 殘餘風險

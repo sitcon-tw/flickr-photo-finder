@@ -221,7 +221,7 @@
           "required": false,
           "multi_value": false,
           "maintainer_zh": "整理者",
-          "description_zh": "unreviewed、ai_labeled、reviewed、featured、archived。"
+          "description_zh": "unreviewed、ai_labeled、reviewed。精選或封存不放在整理狀態；優先推薦用 quality_score 或 collections，避免推薦用 public_use_status = avoid。"
         }
       ]
     }

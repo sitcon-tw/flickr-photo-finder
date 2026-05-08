@@ -119,9 +119,7 @@
   "curation_status": [
     "unreviewed",
     "ai_labeled",
-    "reviewed",
-    "featured",
-    "archived"
+    "reviewed"
   ],
   "sponsorship_item_categories": [
     "打包專屬",

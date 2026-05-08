@@ -253,18 +253,6 @@ button:hover,
   background: #eff6ff;
 }
 
-.tag.status-featured {
-  border-color: #fde68a;
-  color: #92400e;
-  background: #fffbeb;
-}
-
-.tag.status-archived {
-  border-color: #cbd5e1;
-  color: #475569;
-  background: #f8fafc;
-}
-
 .notes {
   margin: 0;
   color: var(--muted);

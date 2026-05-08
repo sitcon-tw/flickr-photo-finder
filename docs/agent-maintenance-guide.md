@@ -56,7 +56,9 @@ AI 只能作為資料匯入與整理輔助。
 2. Agent 依照 `data/tag-taxonomy.json` 和欄位文件產生候選欄位值。
 3. Agent 呈現變更差異，讓人類決定是否回寫。
 4. AI 協助過但尚未人工確認的資料應標成 `ai_labeled`。
-5. 人類修正與確認後，才可以改成 `reviewed`、`featured` 或 `approved`。
+5. 人類修正與確認後，才可以改成 `reviewed` 或 `approved`。
+
+`curation_status` 只描述資料可信度：`unreviewed`、`ai_labeled`、`reviewed`。不要用它表達精選或封存。推薦優先度請看 `quality_score`、`collections` 與 `public_use_status`。
 
 若人類要求重新觸發 AI 調整欄位，agent 應保留可審核的輸出，不應靜默覆蓋既有人工整理結果。
 

@@ -224,7 +224,7 @@ function validatePhotoRow(row, rowNumber, taxonomy) {
 }
 
 function validateReviewedPhotoRow(photo, rowNumber) {
-  if (!["reviewed", "featured"].includes(photo.curation_status)) {
+  if (photo.curation_status !== "reviewed") {
     return;
   }
 

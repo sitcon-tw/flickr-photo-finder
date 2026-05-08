@@ -101,7 +101,7 @@ scene_tags
 | `safe_crop` | 可安全裁切的比例，例如 `1:1;16:9`。 |
 | `public_use_status` | `approved`、`needs_review`、`avoid`。 |
 | `quality_score` | 1 到 5。先用人工快速判斷，不需要假裝精密。 |
-| `curation_status` | `unreviewed`、`ai_labeled`、`reviewed`、`featured`、`archived`。 |
+| `curation_status` | `unreviewed`、`ai_labeled`、`reviewed`。 |
 
 ## 標籤欄位
 
@@ -148,10 +148,10 @@ scene_tags
 - `unreviewed`: 只匯入 Flickr 基本資料，還沒人工判斷。
 - `ai_labeled`: 經過 AI 初標，但尚未人工確認。
 - `reviewed`: 已由人確認到可以被搜尋與初步使用判斷。
-- `featured`: 可作為優先推薦素材。
-- `archived`: 暫時不作為常用素材。
 
-標成 `reviewed` 或 `featured` 前，至少要補上 `scene_tags`、`mood_tags`、`recommended_uses`、`public_use_status` 與 `quality_score`。若 `public_use_status` 是 `approved`，還必須補上 `photographer` 與 `license`，避免使用者誤以為授權與署名已經確認。
+標成 `reviewed` 前，至少要補上 `scene_tags`、`mood_tags`、`recommended_uses`、`public_use_status` 與 `quality_score`。若 `public_use_status` 是 `approved`，還必須補上 `photographer` 與 `license`，避免使用者誤以為授權與署名已經確認。
+
+優先推薦不要用整理狀態表示，請用 `quality_score`、`collections` 或素材包來表達。不建議推薦使用的照片請用 `public_use_status = avoid`，不要另外建立封存狀態。
 
 ## 素材包
 

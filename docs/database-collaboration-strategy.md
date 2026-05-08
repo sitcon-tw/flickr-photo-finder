@@ -77,7 +77,7 @@ Apps Script 適合做編輯輔助，不應成為另一套資料治理來源。
 
 - 從 `data/photo-schema.json` 與 repo taxonomy 產生欄位下拉選單。
 - 檢查必填欄位、受控字彙與常見格式錯誤。
-- 在 `reviewed` 或 `featured` 缺少必要欄位時提醒。
+- 在 `reviewed` 缺少必要欄位時提醒。
 - 協助開啟 Flickr 原始連結或顯示縮圖。
 - 顯示目前使用的 schema/taxonomy 版本。
 
@@ -108,9 +108,11 @@ AI 可以在資料匯入階段協助初標，但不應取代人工判斷。
 2. AI 讀取照片縮圖與既有脈絡，產生初步欄位內容。
 3. AI 產生結果寫入正式欄位前，必須讓人類看到差異並確認是否取代。
 4. AI 輔助後的資料狀態應是 `ai_labeled`。
-5. 具有 Sheets 編輯權限的志工檢核並修正後，才能改成 `reviewed`、`featured` 或 `approved`。
+5. 具有 Sheets 編輯權限的志工檢核並修正後，才能改成 `reviewed` 或 `approved`。
 
 不另外拆分 AI 欄位是為了降低資料表複雜度；因此 `curation_status` 的語意必須清楚。`ai_labeled` 代表資料曾經由 AI 協助，但尚未完成人工確認。
+
+`curation_status` 只描述資料是否經過人工確認，不描述推薦優先度。優先推薦由 `quality_score`、`collections` 或素材包判斷；不建議推薦使用由 `public_use_status = avoid` 判斷。
 
 ## 公開資料邊界
 

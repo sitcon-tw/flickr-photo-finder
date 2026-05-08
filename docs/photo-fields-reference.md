@@ -9,7 +9,7 @@
 - 多值欄位使用分號分隔，例如 `攤位;會眾;交流`。
 - 受控字彙欄位必須使用 `data/tag-taxonomy.json` 中已存在的值。
 - 不確定的欄位可以先留空，但不要硬猜。
-- `reviewed` 與 `featured` 會有更高的完整度要求，請先補齊必要判斷再調整狀態。
+- `reviewed` 會有更高的完整度要求，請先補齊必要判斷再調整狀態。
 
 ## 欄位列表
 
@@ -35,11 +35,11 @@
 | `quality_score` | 否 | 否 | 否 | 整理者 | 1 到 5 的快速可用性評分。不是美學精密評分。 |
 | `collections` | 否 | 是 | 否 | 各組整理者 | 素材包，例如 `志工招募`、`贊助提案`、`網站 hero`。 |
 | `internal_notes` | 否 | 否 | 否 | 整理者 | 公開 repo 中仍視為公開資料，不要寫入敏感內部資訊。 |
-| `curation_status` | 否 | 否 | 是 | 整理者 | `unreviewed`、`ai_labeled`、`reviewed`、`featured`、`archived`。 |
+| `curation_status` | 否 | 否 | 是 | 整理者 | `unreviewed`、`ai_labeled`、`reviewed`。 |
 
 ## Reviewed 與 Featured 門檻
 
-照片標成 `reviewed` 或 `featured` 前，至少要補齊：
+照片標成 `reviewed` 前，至少要補齊：
 
 - `scene_tags`
 - `mood_tags`
@@ -53,6 +53,8 @@
 - `license`
 
 這些規則由 `npm run validate:data` 檢查。
+
+精選、素材包與不推薦使用不放在 `curation_status`。優先推薦用 `quality_score` 或 `collections` 表達；不建議推薦使用用 `public_use_status = avoid` 表達。
 
 ## 欄位責任不是組織邊界
 
