@@ -38,14 +38,14 @@ const tasks = [
     title: "處理一本 Flickr 相簿",
   },
   {
-    description: "驗證 intake run，並可選擇 dry-run 套用到 Sheets。",
+    description: "驗證 intake run，dry-run 檢查套用內容，並可選擇寫入 Sheets。",
     handler: reviewIntakeRun,
     id: "review-intake",
     inputs: ["tmp/intake-runs/<run-id>/", "Google Sheets API 讀取權限；若要寫入還需要編輯權限"],
-    next: ["人工確認 dry-run 後，可用低階指令加上 --write 寫入；新增照片會回到 Google Sheets 進行整理。"],
-    outputs: ["intake validation 結果", "可選的 Sheets dry-run 結果"],
+    next: ["寫入成功後，新增照片會回到 Google Sheets 進行整理；若未寫入，可保留 run artifact 稍後再套用。"],
+    outputs: ["intake validation 結果", "Sheets dry-run 結果", "可選的 Sheets 寫入與驗證結果"],
     phase: "相簿匯入",
-    title: "檢查或 dry-run intake run",
+    title: "檢查或套用 intake run",
   },
   {
     description: "從正式 Sheets 的 albums 選相簿，再依 photos 建立 AI 初標工作目錄。",
@@ -338,8 +338,22 @@ async function reviewIntakeRun() {
   }
 
   runPnpm("intake:validate", pnpmArgsFromOptions(["--run-dir", runDir]));
-  if (await askYesNo("要 dry-run 檢查套用到 Google Sheets 嗎？", false)) {
-    runPnpm("sheets:apply-intake", pnpmArgsFromOptions(["--run-dir", runDir]));
+
+  if (!(await askYesNo("要 dry-run 檢查套用到 Google Sheets 嗎？", true))) {
+    console.log("");
+    console.log("已完成 intake validation，尚未檢查或寫入 Google Sheets。");
+    console.log(`稍後可執行：pnpm sheets:apply-intake -- --run-dir ${runDir}`);
+    return;
+  }
+
+  runPnpm("sheets:apply-intake", pnpmArgsFromOptions(["--run-dir", runDir]));
+
+  if (await askYesNo("dry-run 結果確認無誤，要寫入 Google Sheets 嗎？", false)) {
+    runPnpm("sheets:apply-intake", pnpmArgsFromOptions(["--run-dir", runDir, "--write"]));
+  } else {
+    console.log("");
+    console.log("未寫入 Google Sheets。");
+    console.log(`確認後可執行：pnpm sheets:apply-intake -- --run-dir ${runDir} --write`);
   }
 }
 
