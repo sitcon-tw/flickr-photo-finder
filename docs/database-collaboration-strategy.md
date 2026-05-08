@@ -115,7 +115,8 @@ AI 可以在資料匯入階段協助初標，但不應取代人工判斷。
 2. AI 讀取照片縮圖與既有脈絡，產生初步欄位內容。
 3. AI 產生結果寫入正式欄位前，必須讓人類看到差異並確認是否取代。
 4. AI 輔助後的資料狀態應是 `ai_labeled`。
-5. 具有 Sheets 編輯權限的志工檢核並修正後，才能把 `curation_status` 改成 `reviewed`。若公開使用判斷合適，再把 `public_use_status` 設為 `approved`。
+
+AI 初標流程不負責把資料推進到 `reviewed`。`curation_status = reviewed` 應在 Google Sheets 中發生，由具有 Sheets 編輯權限的志工檢核、修正並補齊必要欄位後更新。若公開使用判斷合適，再把 `public_use_status` 設為 `approved`。
 
 不另外拆分 AI 欄位是為了降低資料表複雜度；因此 `curation_status` 的語意必須清楚。`ai_labeled` 代表資料曾經由 AI 協助，但尚未完成人工確認。
 

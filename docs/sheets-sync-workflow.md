@@ -306,7 +306,8 @@ AI 可以協助初標，但不能取代人工確認。
 6. 工具產生 diff，讓人類確認是否回寫。
 7. 人類確認後才寫入正式欄位。
 8. AI 協助後但尚未人工完整確認的列標成 `curation_status = ai_labeled`。
-9. 人類檢核並補齊必要欄位後，才改成 `curation_status = reviewed`。
+
+AI 初標流程到 `ai_labeled` 就應停止。`curation_status = reviewed` 不應是本機 AI run 的收尾步驟，而是照片資料回到 Google Sheets 後，由具有 Sheets 編輯權限的志工們在同一份正式資料表中協作檢核、修正並補齊必要欄位後才更新。
 
 準備一批 AI 初標輸入：
 

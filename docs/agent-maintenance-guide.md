@@ -65,7 +65,8 @@ AI 只能作為資料匯入與整理輔助。
 2. Agent 依照 `data/tag-taxonomy.json` 和欄位文件產生候選欄位值。
 3. Agent 呈現變更差異，讓人類決定是否回寫。
 4. AI 協助過但尚未人工確認的資料應標成 `ai_labeled`。
-5. 人類修正與確認後，才可以把 `curation_status` 改成 `reviewed`。若公開使用判斷合適，再把 `public_use_status` 設為 `approved`。
+
+Agent 的 AI 初標工作不應把資料標成 `reviewed`。`curation_status = reviewed` 應該在 Google Sheets 中，由具有編輯權限的志工夥伴一起檢核、修正並補齊必要欄位後再更新。若公開使用判斷合適，再把 `public_use_status` 設為 `approved`。
 
 `curation_status` 只描述資料可信度：`unreviewed`、`ai_labeled`、`reviewed`。不要用它表達精選或封存。推薦優先度請看 `priority_level`、`collections` 與 `public_use_status`。
 

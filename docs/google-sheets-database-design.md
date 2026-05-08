@@ -167,8 +167,8 @@ SITCON Flickr albums
   -> 產生 intake run artifact
   -> 人類檢查候選照片、相簿更新與批次紀錄
   -> 套用到 Google Sheets photos / albums / import_batches
-  -> AI 輔助初標或人類直接整理
-  -> 人類檢核與修正
+  -> AI 輔助初標後回到 Sheets 成為 ai_labeled
+  -> 志工在 Google Sheets 協作檢核、修正與標成 reviewed
   -> Apps Script 驗證與提示
   -> GitHub Pages 與外部 AI 讀取 photos 或同欄位公開匯出
 ```
