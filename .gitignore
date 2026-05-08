@@ -1,0 +1,7 @@
+node_modules/
+
+# Editor and OS noise
+*.swp
+*.swo
+*~
+.DS_Store

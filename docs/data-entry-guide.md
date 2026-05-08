@@ -13,7 +13,7 @@
 3. 使用 `npm run photo:add -- <flickr-photo-url> --append` 產生基本資料，或在 `data/photos.csv` 手動新增一列。
 4. 先填必填欄位，再補情境、標籤與使用判斷。
 5. 執行 `npm run validate:data`。
-6. 若 validator 擋下資料，先修正欄位或標籤；若是 taxonomy 不足，另外提出要新增的標籤。
+6. 若驗證工具擋下資料，先修正欄位或標籤；若是標籤字典不足，另外提出要新增的標籤。
 
 ## 從 Flickr URL 建立資料列
 
@@ -23,13 +23,13 @@
 npm run photo:add -- https://www.flickr.com/photos/sitcon/PHOTO_ID
 ```
 
-預設只會輸出 CSV row，不會修改檔案。確認內容後，可以加上 `--append` 寫入 `data/photos.csv`：
+預設只會輸出 CSV 資料列，不會修改檔案。確認內容後，可以加上 `--append` 寫入 `data/photos.csv`：
 
 ```bash
 npm run photo:add -- https://www.flickr.com/photos/sitcon/PHOTO_ID --append
 ```
 
-這個工具只處理 Flickr 基本 metadata。情緒、用途、贊助品項、公開使用狀態等仍需人工判斷。
+這個工具只處理 Flickr 基本中繼資料。情緒、用途、贊助品項、公開使用狀態等仍需人工判斷。
 
 ## CSV 填寫格式
 
@@ -46,7 +46,7 @@ scene_tags
 
 ## 必填欄位
 
-以下欄位目前由 validator 強制檢查：
+以下欄位目前由驗證工具強制檢查：
 
 | 欄位 | 說明 |
 | --- | --- |
@@ -85,7 +85,7 @@ scene_tags
 - `public_use_status`
 - `curation_status`
 
-如果你想填的詞不存在於 taxonomy，先不要直接塞進 CSV。請先記在 `internal_notes` 或提出 taxonomy 調整，避免同義詞越長越散。
+如果你想填的詞不存在於標籤字典，先不要直接塞進 CSV。請先記在 `internal_notes` 或提出標籤字典調整，避免同義詞越長越散。
 
 ## 贊助相關欄位
 
@@ -97,7 +97,7 @@ scene_tags
 | `sponsorship_items` | 對應哪個 CFS 贊助品項，例如 `會場攤位`、`Badge 繩廠商 Logo 曝光`。 |
 | `sponsorship_tags` | 能支援哪種贊助價值，例如品牌露出、會眾互動、實體導流。 |
 
-`sponsorship_items` 必須對齊 `data/sponsorship-items.json` 的 2026 CFS 固定快照。未來年度若有新的 CFS 品項，應建立新版本資料或明確更新 taxonomy。
+`sponsorship_items` 必須對齊 `data/sponsorship-items.json` 的 2026 CFS 固定版本資料。未來年度若有新的 CFS 品項，應建立新版本資料或明確更新標籤字典。
 
 ## 公開使用判斷
 

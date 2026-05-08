@@ -11,6 +11,7 @@ The main goal is not to replace Flickr. The repository should keep a practical i
 - `docs/photo-finder-mvp.md`: product notes, MVP rationale, and field decisions.
 - `docs/mvp-implementation-plan.md`: executable MVP plan, field types, taxonomy, curation workflow, and validation criteria.
 - `docs/data-entry-guide.md`: data entry rules for the first curated photo index.
+- `README.md`: human-facing project overview and quick start.
 - `data/photos.csv`: photo index template.
 - `data/tag-taxonomy.json`: controlled taxonomy for photo tags and enum fields.
 - `data/sponsorship-items.json`: fixed snapshot derived from SITCON 2026 CFS sponsorship item data.
