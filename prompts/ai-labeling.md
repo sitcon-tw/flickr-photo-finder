@@ -20,6 +20,16 @@
 
 針對 `photos.json` 中每張照片，觀察圖片與既有 metadata，產生可審核的欄位候選值。請只輸出你有足夠把握的欄位；不要為了填滿欄位而猜測。
 
+每張有可讀圖片的照片，都應優先判斷以下基礎欄位：
+
+- `people_count`: 可辨識人數。無人照片請填 `0`；人數很多時可估計，並在 reason 寫明「約」。
+- `orientation`: 橫式、直式或方形。
+- `has_negative_space`: 是否有明顯留白可放文字。只要圖片可讀，通常應輸出 `true` 或 `false`。
+- `safe_crop`: 若適合裁成 `1:1`、`16:9` 或 `9:16` 且不會明顯切掉主體，請輸出可用比例；若沒有安全裁切比例，請省略。
+- `curation_status`: 若你對這張照片有提出任何候選 metadata，請設為 `ai_labeled`。
+
+接著再判斷 `scene_tags`、`mood_tags`、`recommended_uses`、`public_use_status` 與其他欄位。`recommended_uses` 請選最有區辨度的 1 到 3 個用途；不要把 `活動回顧` 當作所有照片的預設答案。
+
 輸出必須寫成 AI run 目錄中的：
 
 ```text
@@ -91,6 +101,7 @@ metadata-proposals.json
 - 不要使用分號字串表示多值欄位。
 - 不要修改 `photo_id`、`photo_url`、`album_ids`、`image_preview_url`、`album_title`、`event_name`、`event_year`、`photographer`、`license`、`curation_notes`。
 - 不要憑空推論攝影師、授權或活動內部資訊。
+- 不要在 reason 中加入圖片或既有 metadata 無法支持的活動名稱、身份、單位或年份推論。
 - 不要把 `scene_tags`、`sponsorship_items`、`sponsorship_tags` 混用。
 
 ## 判斷原則
@@ -101,6 +112,12 @@ metadata-proposals.json
 - `sponsorship_items` 是具體贊助品項；不確定就省略。
 - `sponsorship_tags` 是贊助價值或佐證用途；不確定就省略。
 - 人數可以估計，但不要填負數或文字。
+- `has_negative_space` 和 `safe_crop` 是給社群、設計與網站取圖使用的欄位，不只是攝影描述；請主動從版面可用性判斷。
+- `safe_crop` 的判斷標準是裁切後主體、臉部、文字與重要物件仍保留。若只能靠很勉強的裁切才成立，請省略該比例。
+- `public_use_status = avoid` 只用於明顯不適合一般推薦的照片，例如嚴重模糊、閉眼失焦、表情不佳、主體被遮擋或可能造成誤解。
+- `priority_level` 容易主觀，除非照片明顯特別適合作為代表畫面，否則省略。
+- 若受控字彙無法描述照片，例如獎項、物件特寫或展示板，請使用最接近且仍正確的既有 tag；若沒有正確 tag，寧可省略，不要硬套。
+- reason 必須只描述看得見的線索或既有 metadata。可以寫「畫面中可見多人合照」，不要寫「年會掛繩」這類未確認脈絡。
 - 低信心內容請省略，不要勉強輸出。
 
 ## 完成後

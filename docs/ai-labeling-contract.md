@@ -204,6 +204,11 @@ AI 應遵守以下限制：
 - 不要把 `sponsorship_items` 當成一般場景標籤；只有在畫面或相簿脈絡足夠支持時才建議。
 - 不要把 `scene_tags`、`sponsorship_items`、`sponsorship_tags` 混用。
 - 不要覆蓋人工值；proposal 只是候選，後續工具會呈現差異給人類確認。
+- `people_count`、`orientation`、`has_negative_space` 是 AI 初標的基礎讀圖欄位；只要圖片可讀，通常應提出候選值。
+- `safe_crop` 應從版面可用性判斷。只有在裁切後主體、臉部、重要文字與主要物件仍可保留時才提出該比例。
+- `recommended_uses` 應避免全部落在通用用途；請優先提出能幫助取圖排序與情境判斷的用途。
+- `reason` 必須只依據圖片可見內容或 `photos.json` 既有 metadata，不應自行補上未確認的活動名稱、身份、單位或年份。
+- 若現有 taxonomy 無法準確描述照片，應省略不精準欄位，並在人工檢查時另外記錄 taxonomy gap，不要硬套錯誤標籤。
 
 ## 驗證與後續使用
 
