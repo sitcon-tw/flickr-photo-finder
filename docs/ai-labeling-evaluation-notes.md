@@ -123,15 +123,25 @@ pnpm sheets:apply-ai-updates -- --run-dir tmp/ai-runs/<run-id>
 
 reason 是審核脈絡，不是正式 metadata。它應只描述可見畫面或 `photos.json` 已有資訊。若 reason 中出現未確認活動名稱、身份、組別、年份或贊助推論，該欄位應被人工特別檢查。
 
+## 已工具化的檢查
+
+`pnpm ai:review` 目前會輸出以下批次層級警訊：
+
+- 若 `priority_level` 出現在所有照片，提示可能變成預設欄位。
+- 若 `safe_crop` 的某個比例出現在 90% 以上照片，提示可能過度套用。
+- 若 `recommended_uses` 單一值出現在 90% 以上照片，提示用途區辨度不足。
+- 若沒有任何 `public_use_status` 候選值，提示可接受但需視批次內容確認。
+- 若 `confidence = 1` 比例高於 25%，提示 confidence 失去參考價值。
+- 若 `贊助成果報告` 出現但沒有 `sponsorship_items` 或 `sponsorship_tags`，提示需要人工確認贊助脈絡。
+- 若 `people_count = 0` 但 reason 或 scene_tags 提到會眾、講者、合照等人物相關線索，提示可能矛盾。
+
 ## 後續可工具化的檢查
 
-`pnpm ai:review` 已經可以輸出部分批次層級警訊。未來可繼續考慮：
+未來可繼續考慮：
 
-- 若 `safe_crop` 的某個比例出現在超過 90% 照片，提示可能過度套用。
-- 若 `priority_level` 出現在所有照片，提示可能變成預設欄位。
-- 若 `confidence = 1` 比例過高，提示 confidence 失去參考價值。
-- 若 `recommended_uses` 單一值過度集中，提示用途區辨度不足。
-- 若 `贊助成果報告` 出現但沒有 `sponsorship_items` 或 `sponsorship_tags`，提示需要人工確認贊助脈絡。
-- 若 `people_count = 0` 但 reason 或 scene_tags 提到會眾、講者、合照，提示可能矛盾。
+- 檢查 `orientation` 和實際圖片尺寸是否明顯矛盾。
+- 檢查 `safe_crop` 是否和 `orientation`、主體位置或圖片尺寸有高風險組合。
+- 對 `recommended_uses = 贊助成果報告` 增加更細緻的 sponsor exposure / item 檢查。
+- 找出同一相簿內高度重複的講者照片或合照，只提示少數更適合優先審核的照片。
 
 這些檢查應先作為 review warning，不應直接讓 validation 失敗。validation 只負責格式與責任邊界；品質判斷仍應保留給人工與後續工具迭代。

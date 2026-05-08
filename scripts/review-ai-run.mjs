@@ -17,6 +17,10 @@ const distributionFields = [
   "public_use_status",
 ];
 
+const peopleSceneValues = new Set(["講者", "會眾", "工作人員", "合照", "交流", "攝影"]);
+const peopleReasonPattern = /人|會眾|講者|合照|志工|參與者|工作人員/;
+const concentrationThreshold = 0.9;
+
 function printUsage() {
   console.log(`Usage:
   pnpm ai:review -- --run-dir <dir>
@@ -131,6 +135,10 @@ function countValues(values) {
     .map(([value, count]) => ({ count, value }));
 }
 
+function formatPercent(value) {
+  return `${Math.round(value * 100)}%`;
+}
+
 function valuesForField(item, field) {
   const proposal = item.fields[field];
   if (!proposal) {
@@ -167,31 +175,75 @@ function confidenceStats(items) {
   };
 }
 
+function mostCommonValue(items, field) {
+  const counts = countValues(items.flatMap((item) => valuesForField(item, field)));
+  return counts[0] ?? { count: 0, value: "" };
+}
+
+function allReasonText(item) {
+  return Object.values(item.fields)
+    .map((proposal) => proposal.reason)
+    .filter((reason) => typeof reason === "string")
+    .join(" ");
+}
+
+function photoIdList(items) {
+  return items.map((item) => item.photo_id).join(", ");
+}
+
 function buildReviewNotes(items) {
   const notes = [];
   const itemCount = items.length;
   const priorityCount = items.filter((item) => item.fields.priority_level).length;
-  const oneByOneCount = items.filter((item) => valuesForField(item, "safe_crop").includes("1:1")).length;
-  const activityRecapCount = items.filter((item) =>
-    valuesForField(item, "recommended_uses").includes("活動回顧"),
-  ).length;
   const publicUseStatusCount = items.filter((item) => item.fields.public_use_status).length;
+  const sponsorReportItems = items.filter((item) =>
+    valuesForField(item, "recommended_uses").includes("贊助成果報告")
+    && valuesForField(item, "sponsorship_items").length === 0
+    && valuesForField(item, "sponsorship_tags").length === 0,
+  );
+  const zeroPeopleContradictions = items.filter((item) => {
+    if (item.fields.people_count?.value !== 0) {
+      return false;
+    }
+    const sceneValues = valuesForField(item, "scene_tags");
+    const hasPeopleScene = sceneValues.some((value) => peopleSceneValues.has(value));
+    return hasPeopleScene || peopleReasonPattern.test(allReasonText(item));
+  });
   const { perfectCount, total } = confidenceStats(items);
 
   if (priorityCount === itemCount && itemCount > 0) {
     notes.push("`priority_level` 每張都有候選值，請確認模型是否把它當成預設欄位。");
   }
-  if (oneByOneCount === itemCount && itemCount > 0) {
-    notes.push("`safe_crop` 的 `1:1` 出現在每張照片，請抽查是否過度樂觀。");
+
+  const mostCommonSafeCrop = mostCommonValue(items, "safe_crop");
+  if (itemCount > 0 && mostCommonSafeCrop.count / itemCount >= concentrationThreshold) {
+    notes.push(
+      `\`safe_crop\` 的 \`${mostCommonSafeCrop.value}\` 出現在 ${mostCommonSafeCrop.count}/${itemCount} 張照片（${formatPercent(mostCommonSafeCrop.count / itemCount)}），請抽查是否過度套用。`,
+    );
   }
-  if (activityRecapCount === itemCount && itemCount > 0) {
-    notes.push("`recommended_uses` 的 `活動回顧` 出現在每張照片，區辨度可能不足。");
+
+  const mostCommonUse = mostCommonValue(items, "recommended_uses");
+  if (itemCount > 0 && mostCommonUse.count / itemCount >= concentrationThreshold) {
+    notes.push(
+      `\`recommended_uses\` 的 \`${mostCommonUse.value}\` 出現在 ${mostCommonUse.count}/${itemCount} 張照片（${formatPercent(mostCommonUse.count / itemCount)}），用途區辨度可能不足。`,
+    );
   }
+
   if (publicUseStatusCount === 0) {
     notes.push("沒有 `public_use_status` 候選值；若本批沒有明顯 avoid 照片，這可以接受。");
   }
   if (total > 0 && perfectCount / total > 0.25) {
     notes.push("有偏多 `confidence = 1`，人數、用途與情緒欄位仍應人工抽查。");
+  }
+  if (sponsorReportItems.length > 0) {
+    notes.push(
+      `有 ${sponsorReportItems.length} 張照片建議 \`贊助成果報告\` 但沒有 \`sponsorship_items\` 或 \`sponsorship_tags\`：${photoIdList(sponsorReportItems)}。請人工確認贊助脈絡。`,
+    );
+  }
+  if (zeroPeopleContradictions.length > 0) {
+    notes.push(
+      `有 ${zeroPeopleContradictions.length} 張照片的 \`people_count = 0\`，但 scene tags 或 reason 仍提到人物相關線索：${photoIdList(zeroPeopleContradictions)}。請人工確認人數。`,
+    );
   }
 
   return notes;
