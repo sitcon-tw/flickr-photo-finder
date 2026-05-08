@@ -1,0 +1,182 @@
+# 專案使用流程與架構
+
+## 目的
+
+SITCON Flickr Photo Finder 是 Flickr 之上的照片索引層，不是相簿替代品，也不是原圖保存系統。
+
+這個專案要解決的問題是：籌備團隊常常不是用「哪一年哪個相簿」找照片，而是用工作需求找照片，例如社群宣傳、網站視覺、贊助提案、贊助成果報告、新聞稿、志工招募、活動回顧、設計素材或對外簡報。
+
+因此資料庫的核心任務是替 Flickr 照片加上可搜尋、可排序、可被 AI 理解的 metadata，讓人類和 AI 都能更快挑出合適照片。
+
+## 使用者與需求
+
+| 使用者 | 主要需求 | 主要入口 |
+| --- | --- | --- |
+| 非技術志工 | 補標籤、檢查授權、整理用途、建立素材包。 | Google Sheets |
+| 宣傳、設計、網站、公關、行銷組 | 找適合當下工作情境的照片。 | GitHub Pages、Google Sheets、AI |
+| 行銷組 | 找特定贊助品項與贊助價值佐證照片。 | `sponsorship_items`、`sponsorship_tags` |
+| 技術志工 | 掃描相簿、匯入資料、跑驗證、部署工具。 | repo CLI、GitHub Actions、clasp |
+| AI / agent | 讀 schema、taxonomy 與照片索引，協助找圖或產生候選 metadata。 | repo 文件、公開 CSV/JSON、Google Sheets |
+
+## 架構總覽
+
+```mermaid
+flowchart LR
+  Flickr[Flickr SITCON albums/photos]
+  Repo[GitHub repo<br/>schema / taxonomy / docs / CLI / UI / Apps Script source]
+  Sheets[Google Sheets<br/>photos / taxonomy / sponsorship_items / albums / import_batches]
+  AppsScript[Google Apps Script<br/>validation / editing helpers]
+  Pages[GitHub Pages<br/>public read-only search UI]
+  AI[External AI / agents<br/>photo search and metadata assist]
+  Users[Organizers and public users]
+
+  Flickr -->|album URL / photo metadata| Repo
+  Repo -->|candidate rows / sync workflow| Sheets
+  Repo -->|clasp deploy| AppsScript
+  AppsScript -->|validate and assist editing| Sheets
+  Sheets -->|public photos CSV/JSON or public sheet access| Pages
+  Sheets -->|public photos CSV/JSON or public sheet access| AI
+  Repo -->|schema / taxonomy / docs| AI
+  Repo -->|GitHub Actions Pages artifact| Pages
+  Pages -->|search and filter| Users
+  AI -->|recommend candidates / propose metadata diff| Users
+  Users -->|confirmed edits| Sheets
+```
+
+## 資料模型
+
+正式照片索引資料在 Google Sheets。
+
+主要工作表：
+
+- `photos`: 照片索引主表。每列是一張 Flickr 照片，欄位依 `data/photo-schema.json`。
+- `taxonomy`: 從 `data/tag-taxonomy.json` 同步的受控字彙。
+- `sponsorship_items`: 從 `data/sponsorship-items.json` 同步的 SITCON 2026 CFS 贊助品項固定版本資料。
+- `albums`: 使用者提供的 Flickr 相簿來源與匯入狀態。
+- `import_batches`: 每次匯入相簿或照片的批次紀錄。
+- `schema_meta`: Sheets 目前使用的 schema、taxonomy 與同步狀態。
+
+`photos` 主表本身就是公開照片索引。公開 CSV/JSON 只是同欄位匯出，不是額外篩選表。
+
+## 維護流程
+
+```mermaid
+flowchart TD
+  A[使用者提供 Flickr 相簿 URL]
+  B[技術志工或 agent 用 repo CLI 掃描相簿]
+  C[比對 Google Sheets photos 既有 photo_id]
+  D[新增缺少照片的最低必要欄位]
+  E[更新 albums 與 import_batches]
+  F[AI 產生候選 metadata]
+  G[人類檢查 diff 並確認是否回寫]
+  H[志工在 Google Sheets 補齊或修正欄位]
+  I[Apps Script 即時提示與欄位驗證]
+  J[必要時匯出並跑 repo validation]
+
+  A --> B --> C --> D --> E
+  E --> F --> G --> H
+  E --> H
+  H --> I
+  H --> J
+  J --> H
+```
+
+匯入階段只要求最低必要欄位：
+
+- `photo_id`
+- `photo_url`
+- `image_preview_url`
+
+整理到 `curation_status = reviewed` 前，至少應補齊：
+
+- `scene_tags`
+- `mood_tags`
+- `recommended_uses`
+- `public_use_status`
+- `priority_level`
+
+若 `public_use_status = approved`，還必須補齊：
+
+- `photographer`
+- `license`
+
+## 找圖流程
+
+```mermaid
+flowchart TD
+  A[使用者提出找圖需求]
+  B{需求類型}
+  C[場景與畫面內容<br/>scene_tags]
+  D[情緒與宣傳感受<br/>mood_tags]
+  E[工作用途<br/>recommended_uses / collections]
+  F[贊助品項與價值<br/>sponsorship_items / sponsorship_tags]
+  G[構圖條件<br/>orientation / safe_crop / has_negative_space]
+  H[搜尋 photos]
+  I[依狀態排序與提醒<br/>public_use_status / curation_status / priority_level]
+  J[回到 Flickr 確認原圖、credit、授權]
+
+  A --> B
+  B --> C --> H
+  B --> D --> H
+  B --> E --> H
+  B --> F --> H
+  B --> G --> H
+  H --> I --> J
+```
+
+找圖結果不應只依 `reviewed` 篩掉其他照片。SITCON Flickr 照片量很大，`unreviewed` 與 `ai_labeled` 仍可用於探索，但必須在排序與提示上清楚標示。
+
+## 部署流程
+
+```mermaid
+flowchart LR
+  Repo[GitHub repo]
+  PagesActions[GitHub Actions<br/>build Pages artifact]
+  Pages[GitHub Pages]
+  Clasp[clasp]
+  AppsScript[Google Apps Script]
+  Sheets[Google Sheets]
+
+  Repo -->|frontend source and config| PagesActions
+  PagesActions -->|deploy artifact| Pages
+  Repo -->|Apps Script source| Clasp
+  Clasp -->|deploy| AppsScript
+  AppsScript -->|bound or authorized helper| Sheets
+```
+
+GitHub Pages 應透過 GitHub Actions 發布 artifact，不應直接把整個 repo root 當成 Pages source。
+
+Apps Script 應透過 `clasp` 部署。Apps Script source 應保存在 repo 中，讓修改能被 review，也讓未來 agent 能理解目前部署內容。`clasp` credential、Google API credential、rclone token 與 AI API key 都不應 commit。
+
+## Repo 的責任
+
+Repo 保存：
+
+- schema 與欄位文件。
+- taxonomy 與贊助品項固定版本資料。
+- validation script。
+- Flickr 相簿與照片匯入工具。
+- Apps Script source 與 clasp 部署文件。
+- GitHub Pages 前端 source。
+- AI/agent 維護指南與資料解讀文件。
+
+Repo 不保存：
+
+- 正式 Google Sheets 完整資料快照。
+- Google Drive、Google API、rclone 或 AI API credential。
+- 原圖檔案。
+- 私人授權資訊或不該公開的內部資料。
+
+## 目前 MVP 判斷
+
+目前最重要的不是導入正式後台或 PostgreSQL，而是先讓以下流程成立：
+
+1. 使用者能提供 Flickr 相簿。
+2. 技術志工或 agent 能掃描並匯入缺少照片。
+3. 非技術志工能在 Google Sheets 補 metadata。
+4. Apps Script 能用 repo 規則提供即時驗證與提示。
+5. GitHub Pages 和外部 AI 能讀同一份公開照片索引。
+6. 真實使用者能用工作需求找到照片，並回饋標籤或欄位是否足夠。
+
+若未來真的出現權限分層、非公開欄位、審核歷程、多人衝突或查詢效能問題，再評估正式資料庫或後台。
+

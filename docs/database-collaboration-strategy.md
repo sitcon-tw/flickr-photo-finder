@@ -82,6 +82,8 @@ Apps Script 適合做編輯輔助，不應成為另一套資料治理來源。
 - 協助開啟 Flickr 原始連結或顯示縮圖。
 - 顯示目前使用的 schema/taxonomy 版本。
 
+Apps Script source 應保存在 repo，並透過 `clasp` 部署到 Google Apps Script。`clasp` 是部署工具，不是資料治理來源；規則仍應來自 repo schema 與 taxonomy。
+
 不適合由 Apps Script 承擔的功能：
 
 - 大量 Flickr 相簿掃描。

@@ -92,10 +92,22 @@ npm run album:add -- https://www.flickr.com/photos/sitcon/albums/ALBUM_ID/ --app
 - `docs/google-sheets-database-design.md`: 正式 Google Sheets 資料庫表格設計。
 - `docs/photo-fields-reference.md`: Google Sheets 與 CSV 匯出欄位速查表。
 - `docs/photo-finder-mvp.md`: MVP 產品判斷紀錄。
+- `docs/project-architecture.md`: 專案使用流程、資料流與部署架構總覽。
 - `docs/mvp-implementation-plan.md`: MVP 實作計畫。
 - `docs/public-frontend-architecture.md`: GitHub Pages 公開唯讀前端資料流。
 - `docs/sheets-sync-workflow.md`: Sheets 與 repo 工具同步流程。
 - `AGENTS.md`: agent 協作規則。
+
+## 架構總覽
+
+完整使用流程與架構圖請看 `docs/project-architecture.md`。
+
+重點原則：
+
+- Google Sheets `photos` 是正式照片索引資料庫，也是公開可讀的索引主表。
+- GitHub Pages 只提供唯讀搜尋，不寫入資料庫。
+- Apps Script 用於 Sheets 內的維護輔助與驗證，source 應保存在 repo，並透過 `clasp` 部署。
+- AI 與 agent 應讀取照片索引、schema、taxonomy 與文件，協助找圖或產生可審核的 metadata diff。
 
 ## 資料填寫原則
 

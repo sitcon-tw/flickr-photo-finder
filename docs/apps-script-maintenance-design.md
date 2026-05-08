@@ -12,6 +12,7 @@ Apps Script 的定位是授權後的 Sheets 維護輔助，不是另一套資料
 - Repo schema 與 taxonomy 是規則來源。
 - Apps Script 應從 repo 匯出的設定更新欄位驗證、下拉選單與提示。
 - Apps Script 可以協助檢查 `photos` 是否能被公開前端與 AI 讀取，但不應建立另一張篩選表。
+- Apps Script source 應保存在 repo，並透過 `clasp` 部署到 Google Apps Script。
 - Apps Script 不保存 API credential、AI token 或其他 secret。
 
 ## MVP 功能
@@ -88,6 +89,26 @@ MVP Apps Script 不處理：
 - 複雜的搜尋 UI。
 
 上述工作應由 repo CLI、agent、Google Drive/SITCON 既有交接制度或 GitHub Pages 前端處理。
+
+## 部署方式
+
+Apps Script 應透過 `clasp` 進行部署。
+
+這個決策的目的：
+
+- Apps Script source 可以進入 git review。
+- Apps Script 版本可以和 repo schema、taxonomy 與文件一起演進。
+- 未來 agent 或技術志工可以從 repo 理解目前部署內容，不需要只靠 Google Apps Script 編輯器。
+- 部署權限與 Google 帳號授權仍交由 SITCON 既有 Google Drive 與文件管理制度處理，不把 credential 放進 repo。
+
+建議未來實作時：
+
+- Apps Script source 放在 repo 內明確目錄，例如 `apps-script/`。
+- `clasp` 設定只保存可公開的 script metadata；不提交個人 credential 或 token。
+- 部署前先確認 repo schema、taxonomy 與 Apps Script 使用的設定一致。
+- 部署後更新 `schema_meta` 或相關文件中的版本資訊。
+
+`clasp` 是部署工具，不是資料治理來源。Apps Script 的驗證規則仍應來自 repo 中的 schema 與 taxonomy。
 
 ## 與 repo validation 的關係
 
