@@ -4,7 +4,7 @@
 
 ## 先理解資料權威來源
 
-正式照片索引資料在 Google Sheets，不在 repo 內。
+正式資料與 repo fixture 的權威關係請先看 `docs/README.md` 的真理來源表。
 
 Repo 的角色是：
 
@@ -13,7 +13,7 @@ Repo 的角色是：
 - 保存文件，讓未來 agent 能理解專案目標與資料維護方式。
 - 保存 sample / fixture / export format，方便本機開發與測試。
 
-`data/photo-schema.json` 是照片欄位順序、欄位 metadata、reviewed 完整度規則與 approved 使用要求的機器可讀來源。`data/photos.csv` 不是正式資料來源。它目前只用於 MVP 示範、本機 UI、驗證工具與未來匯出格式測試。若它和 Google Sheets 的正式資料不一致，以 Google Sheets 為準。
+`data/photo-schema.json` 是照片欄位順序、欄位 metadata、reviewed 完整度規則與 approved 使用要求的機器可讀來源。
 
 ## Agent 可以協助的工作
 
@@ -84,20 +84,20 @@ node --check app/main.js
 
 ## 文件優先順序
 
-新 agent 接手時，建議依序閱讀：
+新 agent 接手時，最少必讀：
 
 1. `README.md`
 2. `AGENTS.md`
 3. `docs/README.md`
 4. `docs/project-architecture.md`
-5. `docs/database-collaboration-strategy.md`
-6. `docs/google-sheets-database-design.md`
-7. `docs/sheets-sync-workflow.md`
-8. `docs/ai-readable-dataset.md`
-9. `docs/apps-script-maintenance-design.md`
-10. `docs/photo-fields-reference.md`
-11. `docs/data-entry-guide.md`
-12. `docs/photo-finder-mvp.md`
-13. `docs/mvp-implementation-plan.md`
+
+再依任務擴展閱讀：
+
+- 資料庫與協作：`docs/database-collaboration-strategy.md`、`docs/google-sheets-database-design.md`
+- 相簿匯入與同步：`docs/sheets-sync-workflow.md`
+- 外部 AI 或 metadata 輔助：`docs/ai-readable-dataset.md`
+- Apps Script：`docs/apps-script-maintenance-design.md`
+- 人工填寫欄位：`docs/data-entry-guide.md`、`docs/photo-fields-reference.md`
+- 產品背景與 MVP 取捨：`docs/photo-finder-mvp.md`、`docs/mvp-implementation-plan.md`
 
 如果文件互相矛盾，以 Google Sheets-first 架構為準，並優先修正文件矛盾。

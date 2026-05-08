@@ -45,7 +45,7 @@ flowchart LR
 
 ## 資料模型
 
-正式照片索引資料在 Google Sheets。
+資料權威來源請以 `docs/README.md` 的真理來源表為準；本節只說明架構中的資料模型。
 
 主要工作表：
 

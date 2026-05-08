@@ -8,8 +8,7 @@
 
 ## 核心決策
 
-- Google Sheets 是正式照片索引資料庫。
-- `data/photos.csv` 只是 sample、local fixture 與 Sheets 匯出格式參考。
+- 資料權威與 repo fixture 關係以 `docs/README.md` 的真理來源表為準。
 - `data/photo-schema.json` 是照片主表欄位順序、欄位 metadata 與基本完整度規則的機器可讀來源。
 - `data/tag-taxonomy.json` 是受控字彙與列舉值來源。
 - `data/sponsorship-items.json` 是 SITCON 2026 CFS 贊助品項固定版本資料。

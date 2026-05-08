@@ -4,7 +4,7 @@
 
 這份文件給整理 SITCON Flickr 照片資料的志工使用。目標是讓不同人填出的資料可以被搜尋、驗證與後續維護，而不是留下各自理解的備註。
 
-正式照片索引資料以 Google Sheets 為準。Repo 內的 `data/photos.csv` 只是 MVP 測試資料與匯出格式參考，不是正式資料來源。
+資料權威來源請以 `docs/README.md` 的真理來源表為準；本指南只說明整理照片時的填寫判斷。
 
 若只需要查欄位定義、必填狀態、多值格式與常見維護角色，請看 `docs/photo-fields-reference.md`。
 
