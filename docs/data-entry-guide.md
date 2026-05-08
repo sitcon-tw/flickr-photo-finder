@@ -6,15 +6,17 @@
 
 第一批資料不追求完整收錄 Flickr。請優先整理高機率被籌備團隊重複使用的照片，例如社群宣傳、贊助提案、網站視覺、新聞稿、志工招募、活動回顧會用到的照片。
 
+正式照片索引資料以 Google Sheets 為準。Repo 內的 `data/photos.csv` 目前是 MVP sample、local fixture 與 Sheets 匯出格式參考，不是正式資料來源。
+
 若只需要查欄位定義、必填狀態、多值格式與常見維護角色，請看 `docs/photo-fields-reference.md`。
 
 ## 基本流程
 
 1. 從 Flickr 找到候選照片。
 2. 確認照片有公開頁面與可用縮圖。
-3. 使用 `npm run photo:add -- <flickr-photo-url> --append` 產生基本資料，或在 `data/photos.csv` 手動新增一列。
+3. 在正式 Google Sheets 新增或更新照片資料；技術匯入時可以先用 `npm run photo:add -- <flickr-photo-url> --append` 產生本機候選資料。
 4. 先填必填欄位，再補情境、標籤與使用判斷。
-5. 執行 `npm run validate:data`。
+5. 若資料經過 repo 工具、CSV 匯出或同步流程，執行 `npm run validate:data`。
 6. 若驗證工具擋下資料，先修正欄位或標籤；若是標籤字典不足，另外提出要新增的標籤。
 
 ## 從 Flickr URL 建立資料列
@@ -31,13 +33,13 @@ npm run photo:add -- https://www.flickr.com/photos/sitcon/PHOTO_ID
 npm run photo:add -- https://www.flickr.com/photos/sitcon/PHOTO_ID https://www.flickr.com/photos/sitcon/PHOTO_ID_2
 ```
 
-預設只會輸出 CSV 資料列，不會修改檔案。確認內容後，可以加上 `--append` 寫入 `data/photos.csv`：
+預設只會輸出 CSV 資料列，不會修改檔案。確認內容後，可以加上 `--append` 寫入本機 `data/photos.csv` 作為 sample/export 測試：
 
 ```bash
 npm run photo:add -- https://www.flickr.com/photos/sitcon/PHOTO_ID --append
 ```
 
-使用 `--append` 時，工具會在寫入後自動執行資料驗證。這個工具只處理 Flickr 基本中繼資料；情緒、用途、贊助品項、公開使用狀態等仍需人工判斷。
+使用 `--append` 時，工具會在寫入本機 `data/photos.csv` 後自動執行資料驗證。這個工具只處理 Flickr 基本中繼資料；情緒、用途、贊助品項、公開使用狀態等仍需人工判斷。正式流程未來應把確認後的資料同步回 Google Sheets。
 
 SITCON Flickr 上的照片擁有者是 SITCON，但攝影師 credit 會放在 Flickr title 裡。請不要把 Flickr oEmbed 回傳的帳號擁有者直接填成攝影師；若 title 看不出攝影師署名，`photographer` 應先留空，並保留完整 Flickr title 在 `internal_notes` 供後續人工確認。
 
@@ -55,13 +57,13 @@ npm run album:add -- https://www.flickr.com/photos/sitcon/albums/ALBUM_ID/
 npm run album:add -- https://www.flickr.com/photos/sitcon/albums/ALBUM_ID/ --append
 ```
 
-相簿匯入只會新增缺少的照片，不會重複加入已經存在於 `data/photos.csv` 的 `photo_id`。
+相簿匯入只會新增缺少的照片，不會重複加入已經存在於本機 `data/photos.csv` 的 `photo_id`。正式流程仍應把確認後的資料同步回 Google Sheets。
 
 相簿匯入後只會有 Flickr 基本中繼資料。請接著人工補上 `scene_tags`、`mood_tags`、`recommended_uses`、`public_use_status`、`quality_score`、`collections` 等欄位，讓照片能被實際搜尋與判斷。
 
 ## CSV 填寫格式
 
-`data/photos.csv` 使用一般 CSV 格式。多值欄位用分號分隔，不要用逗號。
+Google Sheets 欄位與 `data/photos.csv` 匯出格式使用同一套欄位定義。多值欄位用分號分隔，不要用逗號。
 
 例如：
 
@@ -169,7 +171,7 @@ scene_tags
 
 ## 驗證
 
-修改 `data/photos.csv`、`data/tag-taxonomy.json` 或 `data/sponsorship-items.json` 後，請執行：
+修改本機 sample/export data、`data/tag-taxonomy.json` 或 `data/sponsorship-items.json` 後，請執行：
 
 ```bash
 npm run validate:data

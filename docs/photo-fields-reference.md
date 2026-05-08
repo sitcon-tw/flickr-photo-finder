@@ -1,10 +1,11 @@
 # 照片欄位參考
 
-這份文件是 `data/photos.csv` 的欄位速查表，給整理照片資料的志工使用。更完整的流程與判斷原則請看 `docs/data-entry-guide.md`。
+這份文件是正式 Google Sheets 照片索引與 `data/photos.csv` 匯出格式的欄位速查表，給整理照片資料的志工使用。更完整的流程與判斷原則請看 `docs/data-entry-guide.md`。
 
 ## 格式規則
 
 - 每列代表一張 Flickr 照片。
+- 正式資料以 Google Sheets 為準；repo 內 `data/photos.csv` 只是 sample、fixture 與匯出格式參考。
 - 多值欄位使用分號分隔，例如 `攤位;會眾;交流`。
 - 受控字彙欄位必須使用 `data/tag-taxonomy.json` 中已存在的值。
 - 不確定的欄位可以先留空，但不要硬猜。

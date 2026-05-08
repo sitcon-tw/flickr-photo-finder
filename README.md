@@ -2,7 +2,7 @@
 
 這個 repo 用來建立 SITCON Flickr 照片索引，協助籌備團隊用實際工作情境找照片，例如社群宣傳、網站視覺、贊助提案、贊助成果報告、新聞稿、志工招募與活動回顧。
 
-這裡不取代 Flickr，也不保存原圖。核心資料是 Flickr 照片連結、縮圖、標籤、用途判斷與素材包。
+這裡不取代 Flickr，也不保存原圖。正式照片索引資料以 Google Sheets 維護；這個 repo 保存 schema、受控字彙、驗證規則、匯入工具、AI/agent 維護脈絡、本機搜尋 UI 與 sample/export 格式。
 
 ## 快速開始
 
@@ -22,7 +22,7 @@ npm run dev
 
 開啟 `http://localhost:4173/`。
 
-相簿匯入後，可以在搜尋介面用「整理狀態」篩選 `unreviewed`，逐步補齊場景、氛圍、用途、贊助品項、授權與公開使用判斷。
+相簿匯入後，可以在搜尋介面用「整理狀態」篩選 `unreviewed`，逐步補齊場景、氛圍、用途、贊助品項、授權與公開使用判斷。這個本機介面目前讀取 repo 內 sample/export data；正式資料以 Google Sheets 為準。
 
 從 Flickr 照片 URL 產生一列 CSV：
 
@@ -36,7 +36,7 @@ npm run photo:add -- https://www.flickr.com/photos/sitcon/PHOTO_ID
 npm run photo:add -- https://www.flickr.com/photos/sitcon/PHOTO_ID https://www.flickr.com/photos/sitcon/PHOTO_ID_2
 ```
 
-確認輸出後寫入 `data/photos.csv`：
+確認輸出後可以寫入本機 `data/photos.csv` 做 sample/export 測試：
 
 ```bash
 npm run photo:add -- https://www.flickr.com/photos/sitcon/PHOTO_ID --append
@@ -64,7 +64,7 @@ npm run album:add -- https://www.flickr.com/photos/sitcon/albums/ALBUM_ID/ --app
 
 ## 主要檔案
 
-- `data/photos.csv`: 第一版照片索引。
+- `data/photos.csv`: MVP sample、local fixture 與 Sheets 匯出格式參考，不是正式資料來源。
 - `data/tag-taxonomy.json`: 受控標籤與列舉值欄位。
 - `data/sponsorship-items.json`: SITCON 2026 CFS 贊助品項固定版本資料。
 - `app/`: 本機照片搜尋介面。
@@ -72,16 +72,17 @@ npm run album:add -- https://www.flickr.com/photos/sitcon/albums/ALBUM_ID/ --app
 - `scripts/add-photo.mjs`: 從 Flickr URL 產生或寫入 CSV 資料列。
 - `scripts/serve.mjs`: 本機靜態 server。
 - `scripts/validate-data.mjs`: 檢查資料格式與標籤字典一致性。
+- `docs/agent-maintenance-guide.md`: agent 與技術志工維護指南。
 - `docs/data-entry-guide.md`: 照片索引填寫指南。
 - `docs/database-collaboration-strategy.md`: 資料庫與志工協作維護策略。
-- `docs/photo-fields-reference.md`: `data/photos.csv` 欄位速查表。
+- `docs/photo-fields-reference.md`: Google Sheets 與 CSV 匯出欄位速查表。
 - `docs/photo-finder-mvp.md`: MVP 產品判斷紀錄。
 - `docs/mvp-implementation-plan.md`: MVP 實作計畫。
 - `AGENTS.md`: agent 協作規則。
 
 ## 資料填寫原則
 
-- 目前 `data/` 是公開、可驗證、可版本控管的資料庫；正式資料庫應等協作與查詢需求明確後再導入。
+- Google Sheets 是正式照片索引資料庫；repo 內 `data/photos.csv` 只是 sample、fixture 與匯出格式參考。
 - 多值欄位用分號分隔，例如 `攤位;會眾;交流`。
 - `sponsorship_items` 必須對齊 `data/sponsorship-items.json` 的 CFS 品項。
 - `scene_tags` 描述照片裡看到什麼。
