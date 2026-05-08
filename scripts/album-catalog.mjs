@@ -2,10 +2,10 @@ import { readFile } from "node:fs/promises";
 import { URL } from "node:url";
 import { parseCsv } from "./csv-utils.mjs";
 import { albumHeaders } from "./photo-schema.mjs";
+import { flickrAlbumsUrl, flickrOwnerPath, organizationName } from "./project-config.mjs";
 
 export const albumsPath = "data/albums.csv";
-export const sitconAlbumsUrl = "https://www.flickr.com/photos/sitcon/albums/";
-export const sitconOwnerPath = "sitcon";
+export { flickrAlbumsUrl, flickrOwnerPath };
 
 export function normalizeFlickrAlbumUrl(value) {
   let url;
@@ -25,8 +25,8 @@ export function normalizeFlickrAlbumUrl(value) {
   }
 
   const ownerPath = match[1];
-  if (ownerPath !== sitconOwnerPath) {
-    throw new Error(`Expected a SITCON Flickr album URL, got owner path: ${ownerPath}`);
+  if (ownerPath !== flickrOwnerPath) {
+    throw new Error(`Expected a ${organizationName} Flickr album URL, got owner path: ${ownerPath}`);
   }
 
   url.hash = "";

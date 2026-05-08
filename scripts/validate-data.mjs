@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { URL } from "node:url";
 import { parseCsv, parseSemicolonList } from "./csv-utils.mjs";
+import "./project-config.mjs";
 import {
   albumHeaders,
   approvedRequiredFields,

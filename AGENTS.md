@@ -24,6 +24,7 @@ The main goal is not to replace Flickr. The repository should keep a practical i
 - `README.md`: human-facing project overview and quick start.
 - `app/`: GitHub Pages and local static search UI for the MVP.
 - `app/config.js`: public frontend data source configuration.
+- `config/project.json`: project-level organization, Flickr account, and frontend display configuration.
 - `data/albums.csv`: MVP sample, local fixture, and Sheets export format reference for the SITCON Flickr album catalog. It is not the authoritative album database.
 - `data/photos.csv`: MVP sample, local fixture, and Sheets export format reference. It is not the authoritative photo database.
 - `data/import-batches.csv`: MVP sample, local fixture, and Sheets export format reference for import batch records. It is not the authoritative import batch database.
@@ -44,6 +45,7 @@ The main goal is not to replace Flickr. The repository should keep a practical i
 
 - Google Sheets is the authoritative photo index database. If Google Sheets and repo sample data disagree, Google Sheets wins.
 - This repo is the governance and tooling layer: schema, taxonomy, validation, import/export scripts, Apps Script source or generators, AI prompts, and maintenance documentation.
+- Keep reusable organization-specific values in `config/project.json` when practical. SITCON is the default instance, but the project should remain forkable by other organizations.
 - Treat `data/photo-schema.json` as the machine-readable source for photo, album, and import batch field order, basic field metadata, reviewed completeness rules, and approved-use requirements.
 - Do not duplicate reviewed/approved field lists in docs. Reference `data/photo-schema.json` instead.
 - Do not treat `data/photos.csv` as production data. It exists for MVP demos, local UI development, validation fixtures, and future export-format tests.

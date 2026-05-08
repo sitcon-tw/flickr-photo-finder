@@ -3,11 +3,12 @@ import { spawnSync } from "node:child_process";
 import { toCsvLine } from "./csv-utils.mjs";
 import {
   albumsPath,
-  sitconAlbumsUrl,
-  sitconOwnerPath,
+  flickrAlbumsUrl,
+  flickrOwnerPath,
   readAlbumCatalog,
 } from "./album-catalog.mjs";
 import { albumHeaders } from "./photo-schema.mjs";
+import { organizationName } from "./project-config.mjs";
 
 function printUsage() {
   console.log(`Usage:
@@ -17,7 +18,7 @@ function printUsage() {
 Options:
   --write                 Merge discovered albums into data/albums.csv.
   --output <path>         CSV path to write when using --write. Default: data/albums.csv.
-  --source-url <url>      Flickr albums page to fetch. Default: ${sitconAlbumsUrl}
+  --source-url <url>      Flickr albums page to fetch. Default: ${flickrAlbumsUrl}
   --input <html-file>     Read saved Flickr albums HTML as the discovery seed instead of fetching.
 
 Without --write, the command prints a CSV preview and does not modify files.`);
@@ -29,7 +30,7 @@ function parseArgs(argv) {
     help: false,
     input: "",
     output: albumsPath,
-    sourceUrl: sitconAlbumsUrl,
+    sourceUrl: flickrAlbumsUrl,
     write: false,
   };
 
@@ -170,7 +171,7 @@ function extractAnchorAlbums(html, ownerPath) {
   return albums;
 }
 
-function discoverAlbums(html, ownerPath = sitconOwnerPath) {
+function discoverAlbums(html, ownerPath = flickrOwnerPath) {
   const albums = new Map();
   const order = [];
 
@@ -235,7 +236,7 @@ async function fetchApiAlbums({ html, ownerPath }) {
   return albums;
 }
 
-async function discoverAlbumsFromSource(html, ownerPath = sitconOwnerPath) {
+async function discoverAlbumsFromSource(html, ownerPath = flickrOwnerPath) {
   try {
     const apiAlbums = await fetchApiAlbums({ html, ownerPath });
     if (apiAlbums.length > 0) {
@@ -298,7 +299,7 @@ function validateData() {
 
 function printPreview(albums) {
   console.log(toCsv(albums));
-  console.error(`Discovered ${albums.length} SITCON Flickr album(s).`);
+  console.error(`Discovered ${albums.length} ${organizationName} Flickr album(s).`);
 }
 
 async function main() {
@@ -312,7 +313,7 @@ async function main() {
   const discoveredAlbums = await discoverAlbumsFromSource(html);
 
   if (discoveredAlbums.length === 0) {
-    throw new Error("No SITCON Flickr albums were found in the source HTML");
+    throw new Error(`No ${organizationName} Flickr albums were found in the source HTML`);
   }
 
   if (!options.write) {

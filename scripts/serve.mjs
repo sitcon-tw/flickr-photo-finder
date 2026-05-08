@@ -2,6 +2,7 @@ import { createReadStream } from "node:fs";
 import { stat } from "node:fs/promises";
 import { createServer } from "node:http";
 import { extname, join, normalize, resolve } from "node:path";
+import { appTitle } from "./project-config.mjs";
 
 const root = resolve(".");
 const port = Number(process.env.PORT ?? 4173);
@@ -74,5 +75,5 @@ server.on("error", (error) => {
 });
 
 server.listen(port, host, () => {
-  console.log(`SITCON Flickr Photo Finder is running at http://${host}:${port}/`);
+  console.log(`${appTitle} is running at http://${host}:${port}/`);
 });

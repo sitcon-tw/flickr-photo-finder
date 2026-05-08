@@ -1,4 +1,4 @@
-import { dataSources } from "./config.js";
+import { dataSources, projectConfigUrl } from "./config.js";
 
 const listFields = [
   "scene_tags",
@@ -37,8 +37,18 @@ const peopleCountFilters = [
 const grid = document.querySelector("#photoGrid");
 const summary = document.querySelector("#resultSummary");
 const template = document.querySelector("#photoCardTemplate");
+const appTitle = document.querySelector("#appTitle");
+const sourceLink = document.querySelector("#sourceLink");
 
 let photos = [];
+
+function applyProjectConfig(config) {
+  const title = config.frontend?.appTitle ?? "Flickr Photo Finder";
+  document.title = title;
+  appTitle.textContent = title;
+  sourceLink.href = config.flickr?.profileUrl ?? "https://www.flickr.com/";
+  sourceLink.textContent = config.frontend?.sourceLinkLabel ?? "Flickr";
+}
 
 function parseCsv(text) {
   const rows = [];
@@ -331,19 +341,22 @@ function resetFilters() {
 }
 
 async function loadData() {
-  const [photosResponse, taxonomyResponse] = await Promise.all([
+  const [photosResponse, taxonomyResponse, projectConfigResponse] = await Promise.all([
     fetch(dataSources.photosCsvUrl),
     fetch(dataSources.taxonomyJsonUrl),
+    fetch(projectConfigUrl),
   ]);
 
-  if (!photosResponse.ok || !taxonomyResponse.ok) {
+  if (!photosResponse.ok || !taxonomyResponse.ok || !projectConfigResponse.ok) {
     throw new Error("資料載入失敗");
   }
 
-  const [photosText, taxonomy] = await Promise.all([
+  const [photosText, taxonomy, projectConfig] = await Promise.all([
     photosResponse.text(),
     taxonomyResponse.json(),
+    projectConfigResponse.json(),
   ]);
+  applyProjectConfig(projectConfig);
   photos = toObjects(parseCsv(photosText));
   setupFilters(taxonomy);
   render();

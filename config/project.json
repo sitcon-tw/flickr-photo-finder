@@ -1,0 +1,15 @@
+{
+  "organization": {
+    "name": "SITCON",
+    "displayName": "SITCON"
+  },
+  "flickr": {
+    "ownerPath": "sitcon",
+    "albumsUrl": "https://www.flickr.com/photos/sitcon/albums/",
+    "profileUrl": "https://www.flickr.com/photos/sitcon/"
+  },
+  "frontend": {
+    "appTitle": "SITCON Flickr Photo Finder",
+    "sourceLinkLabel": "Flickr"
+  }
+}

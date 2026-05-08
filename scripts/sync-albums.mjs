@@ -3,6 +3,7 @@ import { spawnSync } from "node:child_process";
 import { parseCsv, toCsvLine } from "./csv-utils.mjs";
 import { albumsPath } from "./album-catalog.mjs";
 import { albumHeaders } from "./photo-schema.mjs";
+import { organizationName } from "./project-config.mjs";
 
 function printUsage() {
   console.log(`Usage:
@@ -11,7 +12,7 @@ function printUsage() {
 
 Options:
   --sheets-export <path>  Current Google Sheets albums CSV export. If omitted, start from an empty sheet.
-  --discovered <path>     Discovered SITCON Flickr albums CSV. Default: data/albums.csv.
+  --discovered <path>     Discovered ${organizationName} Flickr albums CSV. Default: data/albums.csv.
   --output <path>         Write merged Sheets-ready albums CSV to this path. If omitted, print to stdout.
   --no-validate           Skip validation for the output path.
 
