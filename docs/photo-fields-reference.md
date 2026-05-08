@@ -1,0 +1,60 @@
+# 照片欄位參考
+
+這份文件是 `data/photos.csv` 的欄位速查表，給整理照片資料的志工使用。更完整的流程與判斷原則請看 `docs/data-entry-guide.md`。
+
+## 格式規則
+
+- 每列代表一張 Flickr 照片。
+- 多值欄位使用分號分隔，例如 `攤位;會眾;交流`。
+- 受控字彙欄位必須使用 `data/tag-taxonomy.json` 中已存在的值。
+- 不確定的欄位可以先留空，但不要硬猜。
+- `reviewed` 與 `featured` 會有更高的完整度要求，請先補齊必要判斷再調整狀態。
+
+## 欄位列表
+
+| 欄位 | 必填 | 多值 | 受控字彙 | 主要維護者 | 填寫重點 |
+| --- | --- | --- | --- | --- | --- |
+| `photo_id` | 是 | 否 | 否 | 匯入工具 | Flickr 照片 ID，用來避免重複匯入。 |
+| `photo_url` | 是 | 否 | 否 | 匯入工具 | Flickr 公開頁面，用來回到原始照片確認脈絡。 |
+| `image_preview_url` | 是 | 否 | 否 | 匯入工具 | 搜尋介面顯示用縮圖。 |
+| `album_title` | 否 | 否 | 否 | 匯入工具或整理者 | Flickr 相簿名稱。若工具暫時抓不到，可以留空。 |
+| `event_name` | 否 | 否 | 否 | 熟悉活動脈絡者 | 例如 `SITCON 年會`、`SITCON Camp`。不確定就留空。 |
+| `event_year` | 否 | 否 | 否 | 熟悉活動脈絡者 | 四位年份，例如 `2026`。 |
+| `photographer` | 否 | 否 | 否 | 匯入工具或整理者 | 攝影師署名。SITCON 是 Flickr 帳號擁有者，不等於攝影師。 |
+| `license` | 否 | 否 | 否 | 整理者 | Flickr 顯示的授權資訊。不確定時留空並使用 `needs_review`。 |
+| `scene_tags` | 否 | 是 | 是 | 整理者 | 照片中看見的事實，例如 `攤位`、`會眾`、`舞台`。 |
+| `mood_tags` | 否 | 是 | 是 | 宣傳、設計、整理者 | 照片帶來的感受，例如 `熱鬧`、`專注`、`青春感`。 |
+| `recommended_uses` | 否 | 是 | 是 | 各組整理者 | 適合的工作用途，例如 `社群貼文`、`贊助提案`。 |
+| `sponsorship_items` | 否 | 是 | 是 | 行銷組或熟悉贊助者 | 對應 CFS 贊助品項，必須對齊 `data/sponsorship-items.json`。 |
+| `sponsorship_tags` | 否 | 是 | 是 | 行銷組或熟悉贊助者 | 贊助價值或佐證用途，例如 `品牌露出`、`會眾互動`。 |
+| `orientation` | 否 | 否 | 是 | 設計、整理者 | `landscape`、`portrait`、`square`。 |
+| `has_negative_space` | 否 | 否 | 否 | 設計、整理者 | `true` 或 `false`，表示是否有明顯留白可放字。 |
+| `safe_crop` | 否 | 是 | 是 | 設計、整理者 | 適合裁切的比例，例如 `1:1`、`16:9`。 |
+| `public_use_status` | 否 | 否 | 是 | 熟悉公開素材風險者 | `approved`、`needs_review`、`avoid`。不確定用 `needs_review`。 |
+| `quality_score` | 否 | 否 | 否 | 整理者 | 1 到 5 的快速可用性評分。不是美學精密評分。 |
+| `collections` | 否 | 是 | 否 | 各組整理者 | 素材包，例如 `志工招募`、`贊助提案`、`網站 hero`。 |
+| `internal_notes` | 否 | 否 | 否 | 整理者 | 公開 repo 中仍視為公開資料，不要寫入敏感內部資訊。 |
+| `curation_status` | 否 | 否 | 是 | 整理者 | `unreviewed`、`ai_labeled`、`reviewed`、`featured`、`archived`。 |
+
+## Reviewed 與 Featured 門檻
+
+照片標成 `reviewed` 或 `featured` 前，至少要補齊：
+
+- `scene_tags`
+- `mood_tags`
+- `recommended_uses`
+- `public_use_status`
+- `quality_score`
+
+若 `public_use_status` 是 `approved`，還必須補齊：
+
+- `photographer`
+- `license`
+
+這些規則由 `npm run validate:data` 檢查。
+
+## 欄位責任不是組織邊界
+
+表格中的「主要維護者」只是常見判斷來源，不代表只有該組能填。SITCON 籌備工作常常跨組協作，實際維護時可以由任何熟悉脈絡的人先填，再由相關組別回頭確認。
+
+若某個欄位在實際整理時經常卡住，應回到欄位設計討論，而不是要求志工硬填。

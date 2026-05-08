@@ -74,6 +74,7 @@ npm run album:add -- https://www.flickr.com/photos/sitcon/albums/ALBUM_ID/ --app
 - `scripts/validate-data.mjs`: 檢查資料格式與標籤字典一致性。
 - `docs/data-entry-guide.md`: 照片索引填寫指南。
 - `docs/database-collaboration-strategy.md`: 資料庫與志工協作維護策略。
+- `docs/photo-fields-reference.md`: `data/photos.csv` 欄位速查表。
 - `docs/photo-finder-mvp.md`: MVP 產品判斷紀錄。
 - `docs/mvp-implementation-plan.md`: MVP 實作計畫。
 - `AGENTS.md`: agent 協作規則。
