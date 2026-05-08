@@ -2,7 +2,7 @@ import { spawnSync } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { parseCsv } from "./csv-utils.mjs";
-import { createSheetsService, quoteSheetName } from "./google-sheets-client.mjs";
+import { createSheetsService, explainGoogleSheetsError, quoteSheetName } from "./google-sheets-client.mjs";
 import { googleSheetsSpreadsheetId } from "./project-config.mjs";
 import { albumHeaders, importBatchHeaders, photoHeaders } from "./photo-schema.mjs";
 
@@ -329,6 +329,6 @@ async function main() {
 try {
   await main();
 } catch (error) {
-  console.error(`Could not apply intake run: ${error.message}`);
+  console.error(`Could not apply intake run: ${explainGoogleSheetsError(error)}`);
   process.exitCode = 1;
 }

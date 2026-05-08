@@ -551,6 +551,20 @@ domain-wide delegation 不是 MVP 需求。只有在未來需要 service account
 export GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
 ```
 
+`export` 只會影響同一個 shell session 後續啟動的 process。若指令是由另一個 terminal、agent、CI job、IDE task 或新的 worktree 環境執行，不能假設它會繼承你剛剛在目前 shell 設定的環境變數。執行 SDK 工具前，請先確認該執行環境真的看得到：
+
+```bash
+printenv GOOGLE_APPLICATION_CREDENTIALS
+```
+
+若要避免環境傳遞混淆，可以用單次 inline env 執行：
+
+```bash
+GOOGLE_APPLICATION_CREDENTIALS="$PWD/credentials.json" pnpm sheets:apply-intake -- --run-dir tmp/intake-runs/RUN_ID
+```
+
+這只是讓 Google SDK 在該 process 使用指定 credential，不需要也不應該讀取或印出 credential 檔案內容。
+
 7. 確認 `config/project.json` 的 `googleSheets.spreadsheetId` 指向正式 Google Sheets。
 8. 先 dry-run：
 
@@ -565,6 +579,14 @@ pnpm sheets:apply-init -- --write
 ```
 
 service account key 是敏感 credential，不能 commit，也不應放在 `tmp/`、repo 目錄、issue、PR 或公開文件中。若 SITCON 有更好的組織級方式，例如不落地長期 key 的 workload identity 或由受控環境掛載 service account，應優先使用組織既有安全做法；repo 只要求工具能透過 ADC 取得具有 Sheets 編輯權限的身份。
+
+### 常見 ADC / scope 問題
+
+若 SDK 工具顯示 `Request had insufficient authentication scopes`，代表 Google client library 找到了某個 ADC credential，但這個 credential 沒有取得 `https://www.googleapis.com/auth/spreadsheets` scope。常見情境是使用個人 OAuth / `gcloud auth application-default login` 取得過較窄的 token；此時只更新 repo 設定或重新分享 Sheet 不會修好，必須改用已分享為 Editor 的 service account credential，或重新建立包含 Sheets scope 的個人 ADC/OAuth credential。
+
+若你已經在某個 shell 裡 `export GOOGLE_APPLICATION_CREDENTIALS=...`，但工具仍顯示 `GOOGLE_APPLICATION_CREDENTIALS is not set`，代表實際執行工具的 process 沒有繼承該環境變數。請改在同一個 shell 執行工具，或使用上方的 inline env 寫法。
+
+若錯誤是 permission / forbidden，通常代表 credential scope 足夠，但該 service account 或 OAuth 使用者沒有目標 Sheet 的讀取或編輯權限。dry-run / export 至少需要能讀取目標 Sheet，`--write` 還需要編輯權限。
 
 ## 授權方式與驗證邏輯
 
