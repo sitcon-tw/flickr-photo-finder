@@ -5,7 +5,14 @@ import { photoHeaders } from "./photo-schema.mjs";
 import { aiRunsDir, sheetsExportPhotosPath } from "./workflow-paths.mjs";
 
 const defaultLimit = 50;
+const defaultImageSize = "large-1024";
 const defaultStatus = "unreviewed";
+const imageSizeSuffixes = new Map([
+  ["medium-640", "z"],
+  ["medium-800", "c"],
+  ["large-1024", "b"],
+]);
+const imageSizeOptions = ["preview", ...imageSizeSuffixes.keys(), "original"];
 
 function printUsage() {
   console.log(`Usage:
@@ -17,6 +24,8 @@ Options:
                         Use "all" to include every status.
   --photo-ids <ids>     Comma-separated photo IDs to include.
   --limit <number>      Maximum selected photos. Default: 50.
+  --image-size <size>   Image size for AI downloads. Default: large-1024.
+                        Options: ${imageSizeOptions.join(", ")}.
   --output-dir <path>   Directory for AI run folders. Default: tmp/ai-runs.
   --run-id <id>         Run folder name. Default: ai-prepare-<timestamp>.
   --no-download         Create metadata files without downloading image files.
@@ -32,6 +41,7 @@ function parseArgs(argv) {
   const options = {
     download: true,
     help: false,
+    imageSize: defaultImageSize,
     limit: defaultLimit,
     outputDir: aiRunsDir,
     photoIds: [],
@@ -55,6 +65,9 @@ function parseArgs(argv) {
       index += 1;
     } else if (arg === "--limit") {
       options.limit = Number.parseInt(args[index + 1] ?? "", 10);
+      index += 1;
+    } else if (arg === "--image-size") {
+      options.imageSize = args[index + 1] ?? "";
       index += 1;
     } else if (arg === "--output-dir") {
       options.outputDir = args[index + 1] ?? "";
@@ -81,6 +94,9 @@ function parseArgs(argv) {
     }
     if (options.statusValues.length === 0) {
       throw new Error("--status requires at least one value");
+    }
+    if (!imageSizeOptions.includes(options.imageSize)) {
+      throw new Error(`--image-size must be one of: ${imageSizeOptions.join(", ")}`);
     }
     if (options.runId && sanitizeRunId(options.runId) !== options.runId) {
       throw new Error("--run-id may contain only letters, numbers, dots, underscores, and hyphens");
@@ -143,6 +159,77 @@ function csvFromPhotos(photos) {
   return `${[photoHeaders.join(","), ...photos.map((photo) => toCsvLine(photoHeaders, photo))].join("\n")}\n`;
 }
 
+function buildSizedImageUrl(previewUrl, imageSize) {
+  if (imageSize === "preview") {
+    return previewUrl;
+  }
+
+  const suffix = imageSizeSuffixes.get(imageSize);
+  if (!suffix) {
+    throw new Error(`Cannot derive ${imageSize} from image_preview_url`);
+  }
+
+  let url;
+  try {
+    url = new URL(previewUrl);
+  } catch {
+    throw new Error(`Invalid image_preview_url: ${previewUrl}`);
+  }
+
+  const match = url.pathname.match(/^(.*\/\d+_[^/_]+)(?:_(?:s|q|t|m|n|w|z|c|b))?(\.[A-Za-z0-9]+)$/);
+  if (!match) {
+    throw new Error(`Could not derive Flickr ${imageSize} URL from: ${previewUrl}`);
+  }
+
+  url.pathname = `${match[1]}_${suffix}${match[2]}`;
+  return url.toString();
+}
+
+function originalSizesUrl(photoUrl) {
+  const url = new URL(photoUrl);
+  url.hash = "";
+  url.search = "";
+  url.pathname = url.pathname.replace(/\/$/, "");
+  url.pathname = `${url.pathname}/sizes/o/`;
+  return url.toString();
+}
+
+async function fetchOriginalImageUrl(photo) {
+  if (!photo.photo_url) {
+    throw new Error(`${photo.photo_id} has no photo_url`);
+  }
+
+  const response = await fetch(originalSizesUrl(photo.photo_url));
+  if (!response.ok) {
+    throw new Error(`${photo.photo_id} original size page fetch failed: HTTP ${response.status}`);
+  }
+
+  const html = await response.text();
+  const match = html.match(/(?:https?:)?\/\/live\.staticflickr\.com\/[^"'\s<>]+_o\.[A-Za-z0-9]+|live\.staticflickr\.com\/[^"'\s<>]+_o\.[A-Za-z0-9]+/);
+  if (!match) {
+    throw new Error(`${photo.photo_id} original image URL was not found; Flickr may restrict original downloads`);
+  }
+
+  const url = match[0];
+  if (url.startsWith("http")) {
+    return url;
+  }
+  if (url.startsWith("//")) {
+    return `https:${url}`;
+  }
+  return `https://${url}`;
+}
+
+async function resolveImageDownloadUrl(photo, imageSize) {
+  if (imageSize === "original") {
+    return fetchOriginalImageUrl(photo);
+  }
+  if (!photo.image_preview_url) {
+    throw new Error(`${photo.photo_id} has no image_preview_url`);
+  }
+  return buildSizedImageUrl(photo.image_preview_url, imageSize);
+}
+
 function extensionFromUrl(url) {
   try {
     const extension = extname(basename(new URL(url).pathname)).toLowerCase();
@@ -168,12 +255,9 @@ function safeFileStem(value) {
   return value.replaceAll(/[^A-Za-z0-9._-]/g, "-").replaceAll(/^-+|-+$/g, "");
 }
 
-async function downloadImage(photo, imagesDir) {
-  if (!photo.image_preview_url) {
-    throw new Error(`${photo.photo_id} has no image_preview_url`);
-  }
-
-  const response = await fetch(photo.image_preview_url);
+async function downloadImage(photo, imagesDir, imageSize) {
+  const downloadUrl = await resolveImageDownloadUrl(photo, imageSize);
+  const response = await fetch(downloadUrl);
   if (!response.ok) {
     throw new Error(`${photo.photo_id} image download failed: HTTP ${response.status}`);
   }
@@ -183,7 +267,7 @@ async function downloadImage(photo, imagesDir) {
     throw new Error(`${photo.photo_id} image download returned ${contentType}`);
   }
 
-  const extension = extensionFromContentType(contentType) || extensionFromUrl(photo.image_preview_url) || ".img";
+  const extension = extensionFromContentType(contentType) || extensionFromUrl(downloadUrl) || ".img";
   const fileStem = safeFileStem(photo.photo_id);
   if (!fileStem) {
     throw new Error(`${photo.photo_id} cannot be used as an image filename`);
@@ -196,6 +280,7 @@ async function downloadImage(photo, imagesDir) {
   return {
     bytes: buffer.byteLength,
     content_type: contentType,
+    download_url: downloadUrl,
     path: filePath,
   };
 }
@@ -225,16 +310,28 @@ async function prepareRun(options) {
   for (const photo of selectedPhotos) {
     const item = {
       ...photo,
+      image_download_url: "",
+      image_size: options.imageSize,
       local_image_path: "",
     };
 
     if (options.download) {
       try {
-        const image = await downloadImage(photo, imagesDir);
+        const image = await downloadImage(photo, imagesDir, options.imageSize);
         downloadedCount += 1;
+        item.image_download_url = image.download_url;
         item.local_image_path = relative(runDir, image.path);
         item.local_image_bytes = image.bytes;
         item.local_image_content_type = image.content_type;
+      } catch (error) {
+        errors.push({
+          message: error.message,
+          photo_id: photo.photo_id,
+        });
+      }
+    } else {
+      try {
+        item.image_download_url = await resolveImageDownloadUrl(photo, options.imageSize);
       } catch (error) {
         errors.push({
           message: error.message,
@@ -255,6 +352,7 @@ async function prepareRun(options) {
     created_at: createdAt,
     download_enabled: options.download,
     downloaded_photo_count: downloadedCount,
+    image_size: options.imageSize,
     input_photos_csv: "input-photos.csv",
     manifest_version: 1,
     photos_json: "photos.json",
