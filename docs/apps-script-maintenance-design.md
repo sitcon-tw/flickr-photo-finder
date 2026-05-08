@@ -39,20 +39,9 @@ Apps Script 的定位是授權後的 Sheets 維護輔助，不是另一套資料
 
 ### 檢查 reviewed 完整度
 
-當 `curation_status = reviewed` 時，Apps Script 應提醒是否缺少：
+Apps Script 應依 `data/photo-schema.json` 的 `reviewed_required_fields` 與 `approved_required_fields` 提醒缺漏欄位。
 
-- `scene_tags`
-- `mood_tags`
-- `recommended_uses`
-- `public_use_status`
-- `priority_level`
-
-當 `public_use_status = approved` 時，Apps Script 應提醒是否缺少：
-
-- `photographer`
-- `license`
-
-這些規則來自 `data/photo-schema.json`，不要在 Apps Script 中另寫一份永久分歧的規則。
+不要在 Apps Script 中另寫一份永久分歧的規則，也不要在文件中重複維護欄位清單。
 
 ### 檢查公開讀取格式
 

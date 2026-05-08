@@ -18,6 +18,7 @@ The main goal is not to replace Flickr. The repository should keep a practical i
 - `docs/sheets-sync-workflow.md`: workflow for syncing Google Sheets with repo tools.
 - `docs/ai-readable-dataset.md`: guidance for public AI and read-only tools consuming the dataset.
 - `docs/apps-script-maintenance-design.md`: Apps Script maintenance helper design.
+- `docs/README.md`: documentation index, implementation status, and source-of-truth map.
 - `docs/photo-fields-reference.md`: field reference for the Google Sheets photo table and CSV export format.
 - `docs/public-frontend-architecture.md`: GitHub Pages public read-only frontend architecture.
 - `README.md`: human-facing project overview and quick start.
@@ -37,6 +38,7 @@ The main goal is not to replace Flickr. The repository should keep a practical i
 - Google Sheets is the authoritative photo index database. If Google Sheets and repo sample data disagree, Google Sheets wins.
 - This repo is the governance and tooling layer: schema, taxonomy, validation, import/export scripts, Apps Script source or generators, AI prompts, and maintenance documentation.
 - Treat `data/photo-schema.json` as the machine-readable source for photo field order, basic field metadata, reviewed completeness rules, and approved-use requirements.
+- Do not duplicate reviewed/approved field lists in docs. Reference `data/photo-schema.json` instead.
 - Do not treat `data/photos.csv` as production data. It exists for MVP demos, local UI development, validation fixtures, and future export-format tests.
 - The public GitHub Pages frontend is read-only. It should read Google Sheets public output data and must not contain secrets or database-write credentials.
 - `photos` is the public photo index. Public CSV/JSON exports are transport formats with the same fields, not an additional filtered table.

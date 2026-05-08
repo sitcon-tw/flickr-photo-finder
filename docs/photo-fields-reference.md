@@ -39,20 +39,12 @@
 
 ## Reviewed 與 Approved 門檻
 
-照片標成 `reviewed` 前，至少要補齊：
+`reviewed` 完整度與 `approved` 使用要求由 `data/photo-schema.json` 定義：
 
-- `scene_tags`
-- `mood_tags`
-- `recommended_uses`
-- `public_use_status`
-- `priority_level`
+- `reviewed_required_fields`
+- `approved_required_fields`
 
-若 `public_use_status` 是 `approved`，還必須補齊：
-
-- `photographer`
-- `license`
-
-這些規則由 `npm run validate:data` 檢查。
+請不要在文件中另外維護一份欄位清單。若規則改變，先改 `data/photo-schema.json`，再讓 `npm run validate:data` 和相關文件跟著更新。
 
 精選、素材包與不推薦使用不放在 `curation_status`。優先推薦用 `priority_level` 或 `collections` 表達；不建議推薦使用用 `public_use_status = avoid` 表達。
 

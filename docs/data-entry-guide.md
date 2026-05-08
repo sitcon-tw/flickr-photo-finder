@@ -12,12 +12,13 @@
 
 ## 基本流程
 
-1. 從 Flickr 找到候選照片。
-2. 確認照片有公開頁面與可用縮圖。
-3. 在正式 Google Sheets 新增或更新照片資料；技術匯入時可以先用 `npm run photo:add -- <flickr-photo-url> --append` 產生本機候選資料。
-4. 先填必填欄位，再補情境、標籤與使用判斷。
-5. 若資料經過 repo 工具、CSV 匯出或同步流程，執行 `npm run validate:data`。
-6. 若驗證工具擋下資料，先修正欄位或標籤；若是標籤字典不足，另外提出要新增的標籤。
+1. 從已盤點的 SITCON Flickr 相簿清單選擇本次要處理的相簿。
+2. 由工具匯入或更新候選照片資料。
+3. 確認照片有公開頁面與可用縮圖。
+4. 在正式 Google Sheets 新增或更新照片資料；技術匯入時可以先用本機工具產生 sample/export 候選資料。
+5. 先填必填欄位，再補情境、標籤與使用判斷。
+6. 若資料經過 repo 工具、CSV 匯出或同步流程，執行 `npm run validate:data`。
+7. 若驗證工具擋下資料，先修正欄位或標籤；若是標籤字典不足，另外提出要新增的標籤。
 
 ## 從 Flickr URL 建立資料列
 
@@ -151,7 +152,7 @@ scene_tags
 - `ai_labeled`: 經過 AI 初標，但尚未人工確認。
 - `reviewed`: 已由人確認到可以被搜尋與初步使用判斷。
 
-標成 `reviewed` 前，至少要補上 `scene_tags`、`mood_tags`、`recommended_uses`、`public_use_status` 與 `priority_level`。若 `public_use_status` 是 `approved`，還必須補上 `photographer` 與 `license`，避免使用者誤以為授權與署名已經確認。
+`reviewed` 完整度與 `approved` 使用要求由 `data/photo-schema.json` 的 `reviewed_required_fields` 與 `approved_required_fields` 定義，並由 `npm run validate:data` 檢查。不要在這份指南另外維護欄位清單；若規則改變，請先更新 schema。
 
 優先推薦不要用整理狀態表示，請用 `priority_level`、`collections` 或素材包來表達。不建議推薦使用的照片請用 `public_use_status = avoid`，不要另外建立封存狀態。
 

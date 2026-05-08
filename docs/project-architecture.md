@@ -83,24 +83,7 @@ flowchart TD
   J --> H
 ```
 
-匯入階段只要求最低必要欄位：
-
-- `photo_id`
-- `photo_url`
-- `image_preview_url`
-
-整理到 `curation_status = reviewed` 前，至少應補齊：
-
-- `scene_tags`
-- `mood_tags`
-- `recommended_uses`
-- `public_use_status`
-- `priority_level`
-
-若 `public_use_status = approved`，還必須補齊：
-
-- `photographer`
-- `license`
+匯入階段最低必要欄位、`reviewed` 完整度與 `approved` 使用要求由 `data/photo-schema.json` 定義，並由 `npm run validate:data` 檢查。文件只說明流程與判斷，不另外維護欄位清單。
 
 ## 找圖流程
 

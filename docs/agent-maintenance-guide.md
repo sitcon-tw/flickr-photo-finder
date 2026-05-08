@@ -87,15 +87,16 @@ node --check app/main.js
 
 1. `README.md`
 2. `AGENTS.md`
-3. `docs/project-architecture.md`
-4. `docs/database-collaboration-strategy.md`
-5. `docs/google-sheets-database-design.md`
-6. `docs/sheets-sync-workflow.md`
-7. `docs/ai-readable-dataset.md`
-8. `docs/apps-script-maintenance-design.md`
-9. `docs/photo-fields-reference.md`
-10. `docs/data-entry-guide.md`
-11. `docs/photo-finder-mvp.md`
-12. `docs/mvp-implementation-plan.md`
+3. `docs/README.md`
+4. `docs/project-architecture.md`
+5. `docs/database-collaboration-strategy.md`
+6. `docs/google-sheets-database-design.md`
+7. `docs/sheets-sync-workflow.md`
+8. `docs/ai-readable-dataset.md`
+9. `docs/apps-script-maintenance-design.md`
+10. `docs/photo-fields-reference.md`
+11. `docs/data-entry-guide.md`
+12. `docs/photo-finder-mvp.md`
+13. `docs/mvp-implementation-plan.md`
 
 如果文件互相矛盾，以 Google Sheets-first 架構為準，並優先修正文件矛盾。

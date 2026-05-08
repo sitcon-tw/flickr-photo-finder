@@ -92,6 +92,7 @@ npm run album:add -- https://www.flickr.com/photos/sitcon/albums/ALBUM_ID/ --app
 - `docs/data-entry-guide.md`: 照片索引填寫指南。
 - `docs/database-collaboration-strategy.md`: 資料庫與志工協作維護策略。
 - `docs/google-sheets-database-design.md`: 正式 Google Sheets 資料庫表格設計。
+- `docs/README.md`: 文件入口、目前狀態與真理來源。
 - `docs/photo-fields-reference.md`: Google Sheets 與 CSV 匯出欄位速查表。
 - `docs/photo-finder-mvp.md`: MVP 產品判斷紀錄。
 - `docs/project-architecture.md`: 專案使用流程、資料流與部署架構總覽。
@@ -103,6 +104,7 @@ npm run album:add -- https://www.flickr.com/photos/sitcon/albums/ALBUM_ID/ --app
 ## 架構總覽
 
 完整使用流程與架構圖請看 `docs/project-architecture.md`。
+目前已實作與規劃中的功能狀態請看 `docs/README.md`。
 
 重點原則：
 

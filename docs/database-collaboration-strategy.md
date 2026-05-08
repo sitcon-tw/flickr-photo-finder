@@ -119,7 +119,7 @@ AI 可以在資料匯入階段協助初標，但不應取代人工判斷。
 
 `curation_status` 只描述資料是否經過人工確認，不描述推薦優先度。優先推薦由 `priority_level`、`collections` 或素材包判斷；不建議推薦使用由 `public_use_status = avoid` 判斷。
 
-外部 AI 如何解讀公開資料集，記錄在 `docs/ai-readable-dataset.md`。
+外部 AI 如何解讀照片索引資料，記錄在 `docs/ai-readable-dataset.md`。
 
 ## 公開資料邊界
 
@@ -141,7 +141,19 @@ AI 可以在資料匯入階段協助初標，但不應取代人工判斷。
 - 會讓照片主體被不必要識別、標記或推論的細節。
 - 只適合內部溝通的評論。
 
-目前欄位仍保留 `internal_notes` 名稱以維持 CSV sample 與工具相容，但它在 Sheets-first 架構中必須被視為公開欄位。若未來要避免誤解，可以評估改名為 `curation_notes` 或 `public_notes`。
+目前欄位仍保留 `internal_notes` 名稱以維持 CSV sample 與工具相容，但它在 Sheets-first 架構中必須被視為公開欄位。這個名稱已知會誤導使用者，應優先評估改名為 `curation_notes`。
+
+改名時至少需要同步處理：
+
+- `data/photo-schema.json` 欄位名稱與說明。
+- `data/photos.csv` sample/export header 與資料。
+- `scripts/flickr-intake.mjs` 產生 Flickr title 備註的欄位。
+- `app/main.js` 的搜尋與卡片顯示。
+- Google Sheets `photos` header。
+- Apps Script 欄位驗證與公開讀取格式檢查。
+- 所有提到 `internal_notes` 的文件。
+
+改名前不要只改文件警語，否則會繼續把命名債留給填表者。
 
 ## 志工維護方式
 
