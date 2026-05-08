@@ -23,6 +23,12 @@
 npm run photo:add -- https://www.flickr.com/photos/sitcon/PHOTO_ID
 ```
 
+也可以一次處理多張照片：
+
+```bash
+npm run photo:add -- https://www.flickr.com/photos/sitcon/PHOTO_ID https://www.flickr.com/photos/sitcon/PHOTO_ID_2
+```
+
 預設只會輸出 CSV 資料列，不會修改檔案。確認內容後，可以加上 `--append` 寫入 `data/photos.csv`：
 
 ```bash

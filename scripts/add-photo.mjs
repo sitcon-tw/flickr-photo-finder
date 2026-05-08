@@ -29,11 +29,11 @@ const headers = [
 
 function printUsage() {
   console.log(`Usage:
-  npm run photo:add -- <flickr-photo-url>
-  npm run photo:add -- <flickr-photo-url> --append
+  npm run photo:add -- <flickr-photo-url> [more-flickr-photo-urls...]
+  npm run photo:add -- <flickr-photo-url> [more-flickr-photo-urls...] --append
 
 Options:
-  --append  Append the generated row to data/photos.csv and validate data.
+  --append  Append generated rows to data/photos.csv and validate data.
 
 The script uses Flickr oEmbed to fill photo_id, photo_url, image_preview_url,
 photographer, and a basic internal note. Other curation fields stay blank for
@@ -44,9 +44,9 @@ function parseArgs(argv) {
   const args = argv.slice(2);
   const append = args.includes("--append");
   const help = args.includes("--help") || args.includes("-h");
-  const photoUrl = args.find((arg) => !arg.startsWith("--"));
+  const photoUrls = args.filter((arg) => !arg.startsWith("--"));
 
-  return { append, help, photoUrl };
+  return { append, help, photoUrls };
 }
 
 function normalizeFlickrUrl(value) {
@@ -106,11 +106,13 @@ async function fetchOEmbed(photoUrl) {
   return response.json();
 }
 
-async function assertPhotoIsNew(photoId) {
+async function getExistingPhotoIds() {
   const text = await readFile(photosPath, "utf8");
   const rows = text.trimEnd().split(/\r?\n/);
-  const existingIds = new Set(rows.slice(1).map((row) => row.split(",", 1)[0]));
+  return new Set(rows.slice(1).map((row) => row.split(",", 1)[0]));
+}
 
+function assertPhotoIsNew(photoId, existingIds) {
   if (existingIds.has(photoId)) {
     throw new Error(`Photo ${photoId} already exists in ${photosPath}`);
   }
@@ -131,36 +133,50 @@ function validateDataAfterAppend() {
 }
 
 async function main() {
-  const { append, help, photoUrl: inputUrl } = parseArgs(process.argv);
+  const { append, help, photoUrls } = parseArgs(process.argv);
 
-  if (help || !inputUrl) {
+  if (help || photoUrls.length === 0) {
     printUsage();
     process.exitCode = help ? 0 : 1;
     return;
   }
 
-  const { photoId, photoUrl } = normalizeFlickrUrl(inputUrl);
-  await assertPhotoIsNew(photoId);
+  const normalizedPhotos = photoUrls.map(normalizeFlickrUrl);
+  const seenInputIds = new Set();
+  for (const { photoId } of normalizedPhotos) {
+    if (seenInputIds.has(photoId)) {
+      throw new Error(`Photo ${photoId} was provided more than once`);
+    }
+    seenInputIds.add(photoId);
+  }
 
-  const oembed = await fetchOEmbed(photoUrl);
-  assertRequiredOEmbedData(oembed);
+  const existingIds = await getExistingPhotoIds();
+  for (const { photoId } of normalizedPhotos) {
+    assertPhotoIsNew(photoId, existingIds);
+  }
 
-  const photo = {
-    photo_id: photoId,
-    photo_url: photoUrl,
-    image_preview_url: oembed.thumbnail_url ?? "",
-    photographer: oembed.author_name ?? "",
-    internal_notes: oembed.title ? `Flickr title: ${oembed.title}` : "",
-    curation_status: "unreviewed",
-  };
-  const row = toCsvRow(photo);
+  const rows = [];
+  for (const { photoId, photoUrl } of normalizedPhotos) {
+    const oembed = await fetchOEmbed(photoUrl);
+    assertRequiredOEmbedData(oembed);
+
+    const photo = {
+      photo_id: photoId,
+      photo_url: photoUrl,
+      image_preview_url: oembed.thumbnail_url ?? "",
+      photographer: oembed.author_name ?? "",
+      internal_notes: oembed.title ? `Flickr title: ${oembed.title}` : "",
+      curation_status: "unreviewed",
+    };
+    rows.push(toCsvRow(photo));
+  }
 
   if (append) {
-    await appendFile(photosPath, `${row}\n`);
-    console.log(`Added Flickr photo ${photoId} to ${photosPath}`);
+    await appendFile(photosPath, `${rows.join("\n")}\n`);
+    console.log(`Added ${rows.length} Flickr photo row(s) to ${photosPath}`);
     validateDataAfterAppend();
   } else {
-    console.log(row);
+    console.log(rows.join("\n"));
   }
 }
 

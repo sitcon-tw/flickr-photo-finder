@@ -20,6 +20,12 @@ npm run validate:data
 npm run photo:add -- https://www.flickr.com/photos/sitcon/PHOTO_ID
 ```
 
+也可以一次處理多張：
+
+```bash
+npm run photo:add -- https://www.flickr.com/photos/sitcon/PHOTO_ID https://www.flickr.com/photos/sitcon/PHOTO_ID_2
+```
+
 確認輸出後寫入 `data/photos.csv`：
 
 ```bash
