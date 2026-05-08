@@ -175,7 +175,7 @@ pnpm albums:select -- --unprocessed
 若要產生一次可審核的相簿匯入產物，請使用目前正式 Sheets 匯出的 `photos` 與 `albums`：
 
 ```bash
-pnpm intake:run -- --album ALBUM_ID --albums tmp/sheets-export/albums.csv --photos-export tmp/sheets-export/photos.csv
+pnpm intake:run -- --album ALBUM_ID
 ```
 
 `intake:run` 會建立 `tmp/intake-runs/<run-id>/`，並產生：
@@ -189,7 +189,9 @@ summary.json
 
 這是目前建議的人機協作接口。`photos-to-append.csv` 是缺少照片的候選列，`albums-updated.csv` 是更新 `last_processed_at` 後的完整 albums CSV，`import-batch.csv` 是本次操作紀錄，`summary.json` 則讓人類、agent 或未來 Apps Script 先確認本次 run 的範圍與統計。
 
-正式寫回前應由人類確認，並避免覆蓋既有人工整理欄位。SDK-based Sheets 寫入工具應在這個人類確認流程跑通後再自動化；工具必須提供 dry-run、目標 tab/header 檢查、追加或更新範圍摘要，以及寫入後讀回驗證。
+`intake:run` 預設使用 `tmp/sheets-export/albums.csv` 與 `tmp/sheets-export/photos.csv`。若要使用 repo fixture 做本機測試，請明確指定 `--albums fixtures/albums.csv --photos-export fixtures/photos.csv`，避免正式流程誤用 sample data。
+
+正式寫回前應由人類確認，並避免覆蓋既有人工整理欄位。SDK-based Sheets 寫入工具會提供 dry-run、目標 tab/header 檢查、追加或更新範圍摘要，以及寫入後讀回驗證。
 
 套用前先檢查整包產物：
 
@@ -235,7 +237,7 @@ pnpm sheets:apply-intake -- --run-dir tmp/intake-runs/RUN_ID --write
 若只需要低階輸出，可以直接指定各 CSV 路徑：
 
 ```bash
-pnpm photos:import -- --album ALBUM_ID --photos-export /path/to/sheets-photos.csv --output /tmp/photos-to-append.csv --albums-output /tmp/albums-updated.csv --batch-output /tmp/import-batch.csv
+pnpm photos:import -- --album ALBUM_ID --output /tmp/photos-to-append.csv --albums-output /tmp/albums-updated.csv --batch-output /tmp/import-batch.csv
 ```
 
 `photos:import` 會從 `albums` CSV 取得相簿名稱、活動名稱與年份，掃描該相簿中的照片，排除已存在於 `photos` 匯出檔的 `photo_id`，再用 Flickr oEmbed 補 `image_preview_url`、攝影師候選署名與可公開整理備註。

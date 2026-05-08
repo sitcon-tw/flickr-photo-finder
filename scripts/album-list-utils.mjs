@@ -1,5 +1,7 @@
-export const defaultAlbumsPath = "tmp/sheets-export/albums.csv";
-export const defaultPhotosExportPath = "tmp/sheets-export/photos.csv";
+import { sheetsExportAlbumsPath, sheetsExportPhotosPath } from "./workflow-paths.mjs";
+
+export const defaultAlbumsPath = sheetsExportAlbumsPath;
+export const defaultPhotosExportPath = sheetsExportPhotosPath;
 export const listOutputFormats = new Set(["table", "ids", "commands", "json"]);
 export const selectOutputFormats = new Set(["id", "ids", "command", "commands", "json"]);
 

@@ -130,9 +130,9 @@ pnpm albums:discover
 pnpm albums:list
 pnpm albums:select
 pnpm albums:sync -- --sheets-export <albums-csv> --output <albums-csv>
-pnpm intake:run -- --album <album-id> --photos-export <photos-csv>
+pnpm intake:run -- --album <album-id>
 pnpm intake:validate -- --run-dir <dir>
-pnpm photos:import -- --album <album-id> --photos-export <photos-csv> --output <photos-csv> --albums-output <albums-csv> --batch-output <batch-csv>
+pnpm photos:import -- --album <album-id> --output <photos-csv> --albums-output <albums-csv> --batch-output <batch-csv>
 pnpm album:add -- <flickr-album-url>
 pnpm album:add -- <album-id>
 pnpm photo:add -- <flickr-photo-url>

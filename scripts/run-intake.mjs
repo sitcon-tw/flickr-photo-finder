@@ -2,13 +2,12 @@ import { spawnSync } from "node:child_process";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
-  albumsPath,
   readAlbumCatalog,
   resolveAlbumInput,
 } from "./album-catalog.mjs";
 import { parseCsv } from "./csv-utils.mjs";
-import { photosPath } from "./flickr-intake.mjs";
 import { importBatchHeaders } from "./photo-schema.mjs";
+import { sheetsExportAlbumsPath, sheetsExportPhotosPath } from "./workflow-paths.mjs";
 
 const defaultRunsDir = "tmp/intake-runs";
 
@@ -18,8 +17,8 @@ function printUsage() {
 
 Options:
   --album <value>         Album ID from the albums CSV. Flickr album URLs are accepted for debugging.
-  --albums <path>         Google Sheets albums CSV export or local fixture. Default: fixtures/albums.csv.
-  --photos-export <path>  Current Google Sheets photos CSV export for duplicate detection. Default: fixtures/photos.csv.
+  --albums <path>         Google Sheets albums CSV export or local fixture. Default: tmp/sheets-export/albums.csv.
+  --photos-export <path>  Current Google Sheets photos CSV export for duplicate detection. Default: tmp/sheets-export/photos.csv.
   --input <html-file>     Read saved Flickr album HTML instead of fetching the album page.
   --runs-dir <path>       Directory for intake run artifacts. Default: tmp/intake-runs.
   --run-id <value>        Explicit run ID. Default: intake-<album-id>-<timestamp>.
@@ -38,12 +37,12 @@ function parseArgs(argv) {
   const args = argv.slice(2).filter((arg) => arg !== "--");
   const options = {
     album: "",
-    albums: albumsPath,
+    albums: sheetsExportAlbumsPath,
     help: false,
     importedAt: "",
     input: "",
     operator: "",
-    photosExport: photosPath,
+    photosExport: sheetsExportPhotosPath,
     runId: "",
     runsDir: defaultRunsDir,
     validate: true,

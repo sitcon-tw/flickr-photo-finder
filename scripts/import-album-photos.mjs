@@ -1,7 +1,6 @@
 import { spawnSync } from "node:child_process";
 import { readFile, writeFile } from "node:fs/promises";
 import {
-  albumsPath,
   readAlbumCatalog,
   resolveAlbumInput,
 } from "./album-catalog.mjs";
@@ -11,10 +10,10 @@ import {
   buildCsvRows,
   filterNewPhotos,
   getExistingPhotoIds,
-  photosPath,
 } from "./flickr-intake.mjs";
 import { toCsvLine } from "./csv-utils.mjs";
 import { albumHeaders, importBatchHeaders, photoHeaders } from "./photo-schema.mjs";
+import { sheetsExportAlbumsPath, sheetsExportPhotosPath } from "./workflow-paths.mjs";
 
 function printUsage() {
   console.log(`Usage:
@@ -22,8 +21,8 @@ function printUsage() {
 
 Options:
   --album <value>         Album ID from the albums CSV, or a full SITCON Flickr album URL.
-  --albums <path>         Google Sheets albums CSV export or local fixture. Default: fixtures/albums.csv.
-  --photos-export <path>  Current Google Sheets photos CSV export for duplicate detection. Default: fixtures/photos.csv.
+  --albums <path>         Google Sheets albums CSV export or local fixture. Default: tmp/sheets-export/albums.csv.
+  --photos-export <path>  Current Google Sheets photos CSV export for duplicate detection. Default: tmp/sheets-export/photos.csv.
   --input <html-file>     Read saved Flickr album HTML instead of fetching the album page.
   --output <path>         Write candidate photo rows to this CSV. If omitted, print to stdout.
   --albums-output <path>  Write an albums CSV with last_processed_at updated for this album.
@@ -41,7 +40,7 @@ function parseArgs(argv) {
   const args = argv.slice(2).filter((arg) => arg !== "--");
   const options = {
     album: "",
-    albums: albumsPath,
+    albums: sheetsExportAlbumsPath,
     albumsOutput: "",
     batchOutput: "",
     help: false,
@@ -49,7 +48,7 @@ function parseArgs(argv) {
     importedAt: "",
     operator: "",
     output: "",
-    photosExport: photosPath,
+    photosExport: sheetsExportPhotosPath,
     sourceTool: "pnpm photos:import",
     validate: true,
   };
