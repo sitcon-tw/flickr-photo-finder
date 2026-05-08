@@ -298,13 +298,29 @@ AI 可以協助初標，但不能取代人工確認。
 
 建議流程：
 
-1. 從 Google Sheets 讀取待整理照片，例如 `curation_status = unreviewed`。
-2. AI 讀取縮圖、Flickr title、相簿脈絡、既有欄位、taxonomy 與 sponsorship items。
-3. AI 產生候選欄位值。
-4. 工具產生 diff，讓人類確認是否回寫。
-5. 人類確認後才寫入正式欄位。
-6. AI 協助後但尚未人工完整確認的列標成 `curation_status = ai_labeled`。
-7. 人類檢核並補齊必要欄位後，才改成 `curation_status = reviewed`。
+1. 先用 `pnpm sheets:export` 匯出正式 Sheets 工作快取。
+2. 用 `pnpm ai:prepare` 從 `tmp/sheets-export/photos.csv` 選出待整理照片，例如 `curation_status = unreviewed`。
+3. 工具建立 `tmp/ai-runs/<run-id>/`，輸出 `input-photos.csv`、`photos.json`、`manifest.json`，並下載縮圖到 `images/`。
+4. AI 讀取 `photos.json`、`images/`、相簿脈絡、既有欄位、taxonomy 與 sponsorship items。
+5. AI 產生候選欄位值。
+6. 工具產生 diff，讓人類確認是否回寫。
+7. 人類確認後才寫入正式欄位。
+8. AI 協助後但尚未人工完整確認的列標成 `curation_status = ai_labeled`。
+9. 人類檢核並補齊必要欄位後，才改成 `curation_status = reviewed`。
+
+準備一批 AI 初標輸入：
+
+```bash
+pnpm ai:prepare -- --limit 50
+```
+
+若只想產生 metadata 檔、不下載圖片，可用：
+
+```bash
+pnpm ai:prepare -- --limit 50 --no-download
+```
+
+`ai:prepare` 只建立本機 `tmp/ai-runs/` 工作目錄，不寫入 Google Sheets。後續 AI 產生的欄位調整仍應以可審核 diff 表達，不能直接覆蓋 Sheets。
 
 若人類重新觸發 AI 調整欄位，工具仍應提供可審核 diff，不應靜默覆蓋人工整理內容。
 

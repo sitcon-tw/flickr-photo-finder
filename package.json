@@ -10,6 +10,7 @@
     "albums:list": "node scripts/list-albums.mjs",
     "albums:select": "node scripts/select-album.mjs",
     "albums:sync": "node scripts/sync-albums.mjs",
+    "ai:prepare": "node scripts/prepare-ai-run.mjs",
     "dev": "node scripts/serve.mjs",
     "intake:run": "node scripts/run-intake.mjs",
     "intake:validate": "node scripts/validate-intake-run.mjs",

@@ -1,0 +1,297 @@
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { basename, extname, join, relative } from "node:path";
+import { parseCsv, toCsvLine } from "./csv-utils.mjs";
+import { photoHeaders } from "./photo-schema.mjs";
+import { aiRunsDir, sheetsExportPhotosPath } from "./workflow-paths.mjs";
+
+const defaultLimit = 50;
+const defaultStatus = "unreviewed";
+
+function printUsage() {
+  console.log(`Usage:
+  pnpm ai:prepare
+
+Options:
+  --photos <path>       Source photos CSV. Default: tmp/sheets-export/photos.csv.
+  --status <values>     Comma-separated curation_status values. Default: unreviewed.
+                        Use "all" to include every status.
+  --photo-ids <ids>     Comma-separated photo IDs to include.
+  --limit <number>      Maximum selected photos. Default: 50.
+  --output-dir <path>   Directory for AI run folders. Default: tmp/ai-runs.
+  --run-id <id>         Run folder name. Default: ai-prepare-<timestamp>.
+  --no-download         Create metadata files without downloading image files.
+  --help, -h            Show this help.
+
+The command creates tmp/ai-runs/<run-id>/ with input-photos.csv, photos.json,
+manifest.json, and downloaded images when downloads are enabled. It does not
+write Google Sheets.`);
+}
+
+function parseArgs(argv) {
+  const args = argv.slice(2).filter((arg) => arg !== "--");
+  const options = {
+    download: true,
+    help: false,
+    limit: defaultLimit,
+    outputDir: aiRunsDir,
+    photoIds: [],
+    photosPath: sheetsExportPhotosPath,
+    runId: "",
+    statusValues: [defaultStatus],
+  };
+
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+    if (arg === "--help" || arg === "-h") {
+      options.help = true;
+    } else if (arg === "--photos") {
+      options.photosPath = args[index + 1] ?? "";
+      index += 1;
+    } else if (arg === "--status") {
+      options.statusValues = parseListOption(args[index + 1] ?? "");
+      index += 1;
+    } else if (arg === "--photo-ids") {
+      options.photoIds = parseListOption(args[index + 1] ?? "");
+      index += 1;
+    } else if (arg === "--limit") {
+      options.limit = Number.parseInt(args[index + 1] ?? "", 10);
+      index += 1;
+    } else if (arg === "--output-dir") {
+      options.outputDir = args[index + 1] ?? "";
+      index += 1;
+    } else if (arg === "--run-id") {
+      options.runId = args[index + 1] ?? "";
+      index += 1;
+    } else if (arg === "--no-download") {
+      options.download = false;
+    } else {
+      throw new Error(`Unknown option: ${arg}`);
+    }
+  }
+
+  if (!options.help) {
+    if (!options.photosPath) {
+      throw new Error("--photos requires a path");
+    }
+    if (!options.outputDir) {
+      throw new Error("--output-dir requires a path");
+    }
+    if (!Number.isInteger(options.limit) || options.limit <= 0) {
+      throw new Error("--limit must be a positive integer");
+    }
+    if (options.statusValues.length === 0) {
+      throw new Error("--status requires at least one value");
+    }
+    if (options.runId && sanitizeRunId(options.runId) !== options.runId) {
+      throw new Error("--run-id may contain only letters, numbers, dots, underscores, and hyphens");
+    }
+  }
+
+  return options;
+}
+
+function parseListOption(value) {
+  return value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function sanitizeRunId(value) {
+  return value.replaceAll(/[^A-Za-z0-9._-]/g, "-");
+}
+
+function defaultRunId() {
+  return `ai-prepare-${new Date().toISOString().replaceAll(/[:.]/g, "-")}`;
+}
+
+function validateHeaders(headers) {
+  const matches = headers.length === photoHeaders.length
+    && photoHeaders.every((header, index) => headers[index] === header);
+  if (!matches) {
+    throw new Error("photos CSV headers do not match data/photo-schema.json");
+  }
+}
+
+function toRecord(headers, row) {
+  return Object.fromEntries(headers.map((header, index) => [header, row[index] ?? ""]));
+}
+
+async function readPhotosCsv(path) {
+  const text = await readFile(path, "utf8");
+  const [headers, ...rows] = parseCsv(text);
+  if (!headers) {
+    throw new Error(`${path} is empty`);
+  }
+  validateHeaders(headers);
+  return rows.map((row) => toRecord(headers, row));
+}
+
+function selectPhotos(photos, options) {
+  const statusFilter = new Set(options.statusValues);
+  const includeAllStatuses = statusFilter.has("all");
+  const photoIdFilter = new Set(options.photoIds);
+
+  return photos
+    .filter((photo) => photo.photo_id)
+    .filter((photo) => photoIdFilter.size === 0 || photoIdFilter.has(photo.photo_id))
+    .filter((photo) => includeAllStatuses || statusFilter.has(photo.curation_status || ""))
+    .slice(0, options.limit);
+}
+
+function csvFromPhotos(photos) {
+  return `${[photoHeaders.join(","), ...photos.map((photo) => toCsvLine(photoHeaders, photo))].join("\n")}\n`;
+}
+
+function extensionFromUrl(url) {
+  try {
+    const extension = extname(basename(new URL(url).pathname)).toLowerCase();
+    if ([".jpg", ".jpeg", ".png", ".webp", ".gif"].includes(extension)) {
+      return extension === ".jpeg" ? ".jpg" : extension;
+    }
+  } catch {
+    return "";
+  }
+  return "";
+}
+
+function extensionFromContentType(contentType) {
+  const normalized = contentType.split(";")[0]?.trim().toLowerCase();
+  if (normalized === "image/jpeg") return ".jpg";
+  if (normalized === "image/png") return ".png";
+  if (normalized === "image/webp") return ".webp";
+  if (normalized === "image/gif") return ".gif";
+  return "";
+}
+
+function safeFileStem(value) {
+  return value.replaceAll(/[^A-Za-z0-9._-]/g, "-").replaceAll(/^-+|-+$/g, "");
+}
+
+async function downloadImage(photo, imagesDir) {
+  if (!photo.image_preview_url) {
+    throw new Error(`${photo.photo_id} has no image_preview_url`);
+  }
+
+  const response = await fetch(photo.image_preview_url);
+  if (!response.ok) {
+    throw new Error(`${photo.photo_id} image download failed: HTTP ${response.status}`);
+  }
+
+  const contentType = response.headers.get("content-type") ?? "";
+  if (contentType && !contentType.toLowerCase().startsWith("image/")) {
+    throw new Error(`${photo.photo_id} image download returned ${contentType}`);
+  }
+
+  const extension = extensionFromContentType(contentType) || extensionFromUrl(photo.image_preview_url) || ".img";
+  const fileStem = safeFileStem(photo.photo_id);
+  if (!fileStem) {
+    throw new Error(`${photo.photo_id} cannot be used as an image filename`);
+  }
+
+  const filePath = join(imagesDir, `${fileStem}${extension}`);
+  const buffer = Buffer.from(await response.arrayBuffer());
+  await writeFile(filePath, buffer);
+
+  return {
+    bytes: buffer.byteLength,
+    content_type: contentType,
+    path: filePath,
+  };
+}
+
+async function prepareRun(options) {
+  const photos = await readPhotosCsv(options.photosPath);
+  const selectedPhotos = selectPhotos(photos, options);
+  if (selectedPhotos.length === 0) {
+    throw new Error("No photos matched the requested filters");
+  }
+
+  const runId = options.runId || defaultRunId();
+  const runDir = join(options.outputDir, runId);
+  const imagesDir = join(runDir, "images");
+
+  await mkdir(runDir, { recursive: true });
+  if (options.download) {
+    await mkdir(imagesDir, { recursive: true });
+  }
+
+  await writeFile(join(runDir, "input-photos.csv"), csvFromPhotos(selectedPhotos));
+
+  const preparedPhotos = [];
+  let downloadedCount = 0;
+  const errors = [];
+
+  for (const photo of selectedPhotos) {
+    const item = {
+      ...photo,
+      local_image_path: "",
+    };
+
+    if (options.download) {
+      try {
+        const image = await downloadImage(photo, imagesDir);
+        downloadedCount += 1;
+        item.local_image_path = relative(runDir, image.path);
+        item.local_image_bytes = image.bytes;
+        item.local_image_content_type = image.content_type;
+      } catch (error) {
+        errors.push({
+          message: error.message,
+          photo_id: photo.photo_id,
+        });
+      }
+    }
+
+    preparedPhotos.push(item);
+  }
+
+  if (errors.length > 0) {
+    throw new Error(`Failed to download ${errors.length} image(s): ${errors.map((error) => `${error.photo_id}: ${error.message}`).join("; ")}`);
+  }
+
+  const createdAt = new Date().toISOString();
+  const manifest = {
+    created_at: createdAt,
+    download_enabled: options.download,
+    downloaded_photo_count: downloadedCount,
+    input_photos_csv: "input-photos.csv",
+    manifest_version: 1,
+    photos_json: "photos.json",
+    photos_source: options.photosPath,
+    requested_limit: options.limit,
+    requested_photo_ids: options.photoIds,
+    requested_status: options.statusValues,
+    run_id: runId,
+    selected_photo_count: selectedPhotos.length,
+  };
+
+  await writeFile(join(runDir, "photos.json"), `${JSON.stringify(preparedPhotos, null, 2)}\n`);
+  await writeFile(join(runDir, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`);
+
+  return {
+    manifest,
+    runDir,
+  };
+}
+
+async function main() {
+  const options = parseArgs(process.argv);
+  if (options.help) {
+    printUsage();
+    return;
+  }
+
+  const result = await prepareRun(options);
+  console.log(`AI run prepared: ${result.runDir}`);
+  console.log(`- selected photos: ${result.manifest.selected_photo_count}`);
+  console.log(`- downloaded images: ${result.manifest.downloaded_photo_count}`);
+  console.log("- next: use photos.json and images/ as AI labeling input, then review generated proposals before writing Sheets.");
+}
+
+try {
+  await main();
+} catch (error) {
+  console.error(`Could not prepare AI run: ${error.message}`);
+  process.exitCode = 1;
+}
