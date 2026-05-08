@@ -14,6 +14,14 @@
 npm run validate:data
 ```
 
+啟動搜尋介面：
+
+```bash
+npm run dev
+```
+
+開啟 `http://localhost:4173/`。
+
 從 Flickr 照片 URL 產生一列 CSV：
 
 ```bash
@@ -45,7 +53,9 @@ npm run validate:data
 - `data/photos.csv`: 第一版照片索引。
 - `data/tag-taxonomy.json`: 受控標籤與列舉值欄位。
 - `data/sponsorship-items.json`: SITCON 2026 CFS 贊助品項固定版本資料。
+- `app/`: 本機照片搜尋介面。
 - `scripts/add-photo.mjs`: 從 Flickr URL 產生或寫入 CSV 資料列。
+- `scripts/serve.mjs`: 本機靜態 server。
 - `scripts/validate-data.mjs`: 檢查資料格式與標籤字典一致性。
 - `docs/data-entry-guide.md`: 照片索引填寫指南。
 - `docs/photo-finder-mvp.md`: MVP 產品判斷紀錄。

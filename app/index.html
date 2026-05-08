@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SITCON Flickr Photo Finder</title>
+    <link rel="stylesheet" href="/app/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div>
+          <h1>SITCON Flickr Photo Finder</h1>
+          <p id="resultSummary">載入中</p>
+        </div>
+        <a class="source-link" href="https://www.flickr.com/photos/sitcon/" target="_blank" rel="noreferrer">Flickr</a>
+      </header>
+
+      <section class="toolbar" aria-label="篩選照片">
+        <label class="search-field">
+          <span>搜尋</span>
+          <input id="searchInput" type="search" placeholder="志工、攤位、hero、贊助" autocomplete="off" />
+        </label>
+
+        <label>
+          <span>用途</span>
+          <select id="useFilter"></select>
+        </label>
+
+        <label>
+          <span>氛圍</span>
+          <select id="moodFilter"></select>
+        </label>
+
+        <label>
+          <span>場景</span>
+          <select id="sceneFilter"></select>
+        </label>
+
+        <label>
+          <span>贊助品項</span>
+          <select id="sponsorshipItemFilter"></select>
+        </label>
+
+        <label>
+          <span>公開狀態</span>
+          <select id="publicStatusFilter"></select>
+        </label>
+
+        <label>
+          <span>素材包</span>
+          <select id="collectionFilter"></select>
+        </label>
+
+        <button id="resetButton" type="button">清除</button>
+      </section>
+
+      <section id="photoGrid" class="photo-grid" aria-live="polite"></section>
+    </main>
+
+    <template id="photoCardTemplate">
+      <article class="photo-card">
+        <a class="photo-link" target="_blank" rel="noreferrer">
+          <img alt="" loading="lazy" />
+        </a>
+        <div class="photo-body">
+          <div class="photo-meta">
+            <strong class="photo-title"></strong>
+            <span class="photo-year"></span>
+          </div>
+          <dl class="details"></dl>
+          <p class="notes"></p>
+        </div>
+      </article>
+    </template>
+
+    <script type="module" src="/app/main.js"></script>
+  </body>
+</html>

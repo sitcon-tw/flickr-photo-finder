@@ -12,10 +12,12 @@ The main goal is not to replace Flickr. The repository should keep a practical i
 - `docs/mvp-implementation-plan.md`: executable MVP plan, field types, taxonomy, curation workflow, and validation criteria.
 - `docs/data-entry-guide.md`: data entry rules for the first curated photo index.
 - `README.md`: human-facing project overview and quick start.
+- `app/`: local static search UI for the MVP.
 - `data/photos.csv`: photo index template.
 - `data/tag-taxonomy.json`: controlled taxonomy for photo tags and enum fields.
 - `data/sponsorship-items.json`: fixed snapshot derived from SITCON 2026 CFS sponsorship item data.
 - `scripts/add-photo.mjs`: helper for generating or appending a CSV row from a Flickr photo URL.
+- `scripts/serve.mjs`: local static server for the MVP UI.
 - `scripts/validate-data.mjs`: data validation script.
 
 ## Data Principles
@@ -58,6 +60,7 @@ The validation script currently checks:
 ## Useful Commands
 
 ```bash
+npm run dev
 npm run photo:add -- <flickr-photo-url>
 npm run validate:data
 git status --short
