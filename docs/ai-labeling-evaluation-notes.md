@@ -97,6 +97,79 @@ pnpm sheets:apply-ai-updates -- --run-dir tmp/ai-runs/<run-id>
   - 比第一輪更接近可審核成果，但仍不應直接全量寫回。
   - 適合作為新版 prompt 重跑後的比較基準。
 
+## 不完整相簿基底測試觀察
+
+以下觀察來自相簿 `72177720331149380` 的三次模型測試。這輪測試發生時，intake 工具仍只從 Flickr 相簿初始 HTML 擷取照片，因此只選到 24 張；該相簿實際應有 37 張。這批結果只能用來觀察模型輸出品質、prompt 行為與 review 工具警訊，不應作為完整相簿評估，也不應直接回寫正式 Sheets。
+
+後續已修正 intake 工具，改為優先使用 Flickr API 取得完整 `photosets.getPhotos` 結果，並在相簿 `photo_count` 和實際取得數量不一致時拒絕產生不完整 artifact。完整 37 張相簿應以修正後重新建立的 AI run 為準。
+
+### `ai-prepare-2026-05-08T21-07-04-991Z`
+
+- 使用者紀錄模型：Gemini 3。
+- 檔案紀錄 producer: `Gemini CLI Agent`。
+- 相簿：`72177720331149380`。
+- 圖片尺寸：`large-1024`。
+- 選入照片：24 張；完整相簿應為 37 張。
+- `pnpm ai:review` 通過，產生 216 筆 planned updates。
+- 優點：
+  - 24 張都有 `people_count`、`orientation`、`has_negative_space`、`safe_crop`、`scene_tags`、`mood_tags`、`recommended_uses`、`public_use_status` 與 `curation_status`。
+  - 每張都保守標為 `public_use_status = needs_review`，沒有直接推成 `approved`。
+  - `safe_crop` 和 `recommended_uses` 有一定變化，沒有完全落在單一值。
+- 主要問題：
+  - 有 7 張照片建議 `贊助成果報告`，但沒有 `sponsorship_items` 或 `sponsorship_tags`，需要人工確認贊助脈絡。
+  - `public_use_status = needs_review` 出現在 24 張全部照片，資訊量偏低。
+  - 沒有提供 `confidence`，格式允許但不利於人工排序與抽查。
+  - 抽查時發現 `people_count` 可能偏離實際畫面，例如把約 4 人的互動畫面標成 12 人，或把 3 人畫面標成 1 人。
+  - 對 `贊助成果報告` 的判斷偏積極，容易在沒有明確贊助 exposure 或品項線索時推論用途。
+- 判斷：
+  - 產物完整且可被工具處理，但品質風險較高。
+  - 回寫前必須嚴格抽查 `people_count`、`recommended_uses`、`public_use_status` 與贊助相關推論。
+  - 這輪也顯示 `ai:review` 可再補強「整批缺少 confidence」的警訊。
+
+### `ai-prepare-2026-05-08T21-08-30-941Z`
+
+- 使用者紀錄模型：Claude Opus 4.7。
+- 檔案紀錄 producer: `claude-opus-4-7`。
+- 相簿：`72177720331149380`。
+- 圖片尺寸：`large-1024`。
+- 選入照片：24 張；完整相簿應為 37 張。
+- `pnpm ai:review` 通過，產生 202 筆 planned updates。
+- 優點：
+  - `pnpm ai:review` 未偵測到明顯批次層級警訊。
+  - 24 張都有核心欄位，且 `confidence` 大多有填。
+  - `safe_crop` 沒有每張都硬填；24 張中有 22 張提出候選值。
+  - reason 通常能描述可見畫面，對人數與工作人員互動的判斷相對保守。
+  - 沒有出現 `贊助成果報告` 過度推論。
+- 主要問題：
+  - `recommended_uses` 仍偏集中，`活動回顧` 出現 20 次、`志工招募` 出現 12 次。
+  - `public_use_status` 只出現在 12 張；這不一定錯，但需要確認模型是否有穩定判斷邏輯。
+  - 由於本輪只涵蓋 24/37 張，不能代表整本相簿的欄位分布。
+- 判斷：
+  - 三輪中相對保守、可審核性高，適合作為人工抽查與 prompt 比較基準。
+  - 若要回寫，仍應先用完整 37 張 run 重跑，不能直接使用這批不完整基底的結果。
+
+### `ai-prepare-2026-05-08T21-09-56-815Z`
+
+- 使用者紀錄模型：GPT 5.5。
+- 檔案紀錄 producer: `codex`。
+- 相簿：`72177720331149380`。
+- 圖片尺寸：`large-1024`。
+- 選入照片：24 張；完整相簿應為 37 張。
+- `pnpm ai:review` 通過，產生 196 筆 planned updates。
+- 優點：
+  - 24 張都有核心欄位，且 `priority_level` 只出現在 4 張，沒有把優先級當成每張必填。
+  - `recommended_uses` 分布比前兩輪更分散，包含 `活動回顧`、`志工招募`、`簡報`、`社群介紹`、`社群貼文`、`講者宣傳`、`報名宣傳`、`新聞稿`。
+  - `people_count` 抽查結果相對接近實際畫面。
+  - 沒有出現 `贊助成果報告` 無脈絡推論。
+- 主要問題：
+  - 沒有提供 `public_use_status` 候選值；若本批沒有明顯 avoid 照片可以接受，但回寫前仍需要人工確認。
+  - 有些 `scene_tags` 可能過度解讀，例如把一般背景或旗幟附近畫面標成 `背板`。
+  - `confidence = 1` 主要出現在 orientation，尚可接受；但仍要避免未來擴散到人數、情緒或用途判斷。
+  - 由於本輪只涵蓋 24/37 張，不能用來判斷完整相簿的模型穩定度。
+- 判斷：
+  - 在這三個不完整基底測試中，最接近可進入人工抽查與 dry-run 的候選結果。
+  - 但資料基底已確認不完整，因此應改用完整 37 張新 run 重新標記，再評估是否回寫。
+
 ## 目前已知容易失準的欄位
 
 ### `safe_crop`
