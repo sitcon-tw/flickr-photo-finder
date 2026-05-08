@@ -13,6 +13,7 @@
 | 公開 Google Sheets ID | `config/project.json` 的 `googleSheets.spreadsheetId` | 這份 Sheets 預期可公開讀取；寫入權限由 Google Drive/Sheets 管理。 |
 | Sheets 表格讀寫技術選擇 | `docs/sheets-sync-workflow.md` | repo CLI 應以官方 Google Sheets API SDK 為主要方向；Google Drive 檔案搬運不是 Sheets 寫入主流程。 |
 | Sheets 正式寫入身份 | `docs/sheets-sync-workflow.md` | 建議使用 SITCON 管理的 service account，並將 service account email 加入正式 Sheets 編輯者。 |
+| AI 初標輸入與輸出格式 | `docs/ai-labeling-contract.md` | 定義 `tmp/ai-runs/<run-id>/` 的輸入檔、圖片來源、`metadata-proposals.json` 格式與驗證流程。 |
 | 正式照片索引資料 | Google Sheets `photos` | repo 內 `fixtures/photos.csv` 只是 sample、fixture 與匯出格式參考。 |
 | 正式相簿清單資料 | Google Sheets `albums` | repo 內 `fixtures/albums.csv` 只是 sample、fixture 與匯出格式參考。 |
 | 正式匯入批次資料 | Google Sheets `import_batches` | repo 內 `fixtures/import-batches.csv` 只是 sample、fixture 與匯出格式參考。 |
@@ -63,7 +64,7 @@
 | 技術志工 | `docs/project-architecture.md`、`docs/sheets-sync-workflow.md`、`docs/google-sheets-database-design.md` |
 | 維護 Apps Script 的人 | `docs/apps-script-maintenance-design.md`、`data/photo-schema.json`、`data/tag-taxonomy.json` |
 | 維護 GitHub Pages 前端的人 | `docs/public-frontend-architecture.md`、`app/config.js` |
-| AI / agent | `AGENTS.md`、`docs/agent-maintenance-guide.md`、`docs/ai-readable-dataset.md` |
+| AI / agent | `AGENTS.md`、`docs/agent-maintenance-guide.md`、`docs/ai-labeling-contract.md`、`docs/ai-readable-dataset.md` |
 
 ## 文件分工
 
@@ -75,6 +76,7 @@
 - `apps-script-maintenance-design.md`: Apps Script 維護輔助與 `clasp` 部署原則。
 - `public-frontend-architecture.md`: GitHub Pages 唯讀前端資料流。
 - `ai-readable-dataset.md`: AI 如何讀取照片索引資料。
+- `ai-labeling-contract.md`: AI 初標工作包的輸入、輸出、限制與驗證合約。
 - `data-entry-guide.md`: 人工整理照片資料的判斷流程。
 - `photo-fields-reference.md`: 欄位速查；欄位清單仍以 `data/photo-schema.json` 為準。
 - `database-collaboration-strategy.md`: Sheets-first 協作、公開資料邊界與未來遷移判斷。

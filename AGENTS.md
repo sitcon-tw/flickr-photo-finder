@@ -21,6 +21,7 @@ The main goal is not to replace Flickr. The repository should keep a practical i
 - `docs/README.md`: documentation index, implementation status, and source-of-truth map.
 - `docs/photo-fields-reference.md`: field reference for the Google Sheets photo table and CSV export format.
 - `docs/public-frontend-architecture.md`: GitHub Pages public read-only frontend architecture.
+- `docs/ai-labeling-contract.md`: AI labeling run input, output, boundary, and validation contract.
 - `README.md`: human-facing project overview and quick start.
 - `app/`: GitHub Pages and local static search UI for the MVP.
 - `app/config.js`: public frontend data source configuration.
@@ -87,6 +88,7 @@ The main goal is not to replace Flickr. The repository should keep a practical i
 - Read `docs/project-architecture.md` before changing end-to-end workflow, deployment boundaries, or user-facing architecture.
 - For database shape, read `docs/google-sheets-database-design.md` before changing Sheets or sync assumptions.
 - For public AI behavior, read `docs/ai-readable-dataset.md` before changing photo index read semantics.
+- For AI labeling run inputs or `metadata-proposals.json` output, read `docs/ai-labeling-contract.md` before changing tooling or producing proposals.
 - For Apps Script helpers, read `docs/apps-script-maintenance-design.md` before adding Sheets-side validation.
 - Help maintain the repo so future agents can understand how to scan albums, validate data, assist AI labeling, and sync with Google Sheets.
 - Do not store Google Drive, Google API, OAuth token, third-party tool, or AI API credentials in this repo.
