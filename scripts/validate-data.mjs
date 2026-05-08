@@ -16,9 +16,9 @@ import {
 
 function parseArgs(argv) {
   const paths = {
-    albums: "data/albums.csv",
-    importBatches: "data/import-batches.csv",
-    photos: "data/photos.csv",
+    albums: "fixtures/albums.csv",
+    importBatches: "fixtures/import-batches.csv",
+    photos: "fixtures/photos.csv",
     taxonomy: "data/tag-taxonomy.json",
     sponsorshipItems: "data/sponsorship-items.json",
   };

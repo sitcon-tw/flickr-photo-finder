@@ -306,7 +306,7 @@ function render() {
   if (photos.length === 0) {
     const empty = document.createElement("div");
     empty.className = "empty";
-    empty.textContent = "data/photos.csv 目前沒有照片資料";
+    empty.textContent = "fixtures/photos.csv 目前沒有照片資料";
     grid.append(empty);
     return;
   }

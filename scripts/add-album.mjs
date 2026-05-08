@@ -18,12 +18,12 @@ function printUsage() {
   pnpm album:add -- <album-id> --append
 
 Options:
-  --append  Append missing album photo rows to data/photos.csv and validate data.
+  --append  Append missing album photo rows to fixtures/photos.csv and validate data.
 
 Without --append, the command reports album coverage and prints missing photo
 URLs. With --append, it imports the missing photos using Flickr oEmbed.
 
-Album IDs are resolved from data/albums.csv. Use pnpm albums:discover --
+Album IDs are resolved from fixtures/albums.csv. Use pnpm albums:discover --
 --write to update that local fixture before selecting by ID.`);
 }
 

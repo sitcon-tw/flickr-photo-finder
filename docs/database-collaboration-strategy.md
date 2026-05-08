@@ -12,7 +12,8 @@ MVP 階段採用 Google Sheets-first 架構：
 
 - Google Sheets 是正式照片索引資料庫，也是主要人工維護介面。
 - Repo 是治理與工具層，保存 schema、taxonomy、validation、匯入工具、Apps Script 來源、AI prompt 與操作文件。
-- `data/photos.csv` 目前只是 MVP sample、local fixture 與未來 Sheets 匯出格式參考，不是正式資料來源。
+- `fixtures/*.csv` 只是 MVP sample、local fixture 與未來 Sheets 匯出格式參考，不是正式資料來源，也不是 Sheets 快取。
+- `tmp/sheets-export/*.csv` 才是從正式 Google Sheets 匯出的本機工作快取，不應 commit。
 - 若 Sheets 與 repo 內 sample data 發生衝突，以 Sheets 為準。
 - 正式 Sheets 表格設計記錄在 `docs/google-sheets-database-design.md`。
 

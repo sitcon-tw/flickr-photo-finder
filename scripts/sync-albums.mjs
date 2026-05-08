@@ -12,7 +12,7 @@ function printUsage() {
 
 Options:
   --sheets-export <path>  Current Google Sheets albums CSV export. If omitted, start from an empty sheet.
-  --discovered <path>     Discovered ${organizationName} Flickr albums CSV. Default: data/albums.csv.
+  --discovered <path>     Discovered ${organizationName} Flickr albums CSV. Default: fixtures/albums.csv.
   --output <path>         Write merged Sheets-ready albums CSV to this path. If omitted, print to stdout.
   --no-validate           Skip validation for the output path.
 

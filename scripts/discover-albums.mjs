@@ -16,8 +16,8 @@ function printUsage() {
   pnpm albums:discover -- --write
 
 Options:
-  --write                 Merge discovered albums into data/albums.csv.
-  --output <path>         CSV path to write when using --write. Default: data/albums.csv.
+  --write                 Merge discovered albums into fixtures/albums.csv.
+  --output <path>         CSV path to write when using --write. Default: fixtures/albums.csv.
   --source-url <url>      Flickr albums page to fetch. Default: ${flickrAlbumsUrl}
   --input <html-file>     Read saved Flickr albums HTML as the discovery seed instead of fetching.
 

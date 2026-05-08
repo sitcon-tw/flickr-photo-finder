@@ -4,7 +4,7 @@ import { URL } from "node:url";
 import { parseCsv, toCsvLine } from "./csv-utils.mjs";
 import { photoHeaders } from "./photo-schema.mjs";
 
-export const photosPath = "data/photos.csv";
+export const photosPath = "fixtures/photos.csv";
 
 export function toCsvRow(photo) {
   return toCsvLine(photoHeaders, photo);

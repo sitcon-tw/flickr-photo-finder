@@ -4,7 +4,7 @@ import { parseCsv } from "./csv-utils.mjs";
 import { albumHeaders } from "./photo-schema.mjs";
 import { flickrAlbumsUrl, flickrOwnerPath, organizationName } from "./project-config.mjs";
 
-export const albumsPath = "data/albums.csv";
+export const albumsPath = "fixtures/albums.csv";
 export { flickrAlbumsUrl, flickrOwnerPath };
 
 export function normalizeFlickrAlbumUrl(value) {

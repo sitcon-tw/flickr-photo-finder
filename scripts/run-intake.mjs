@@ -18,8 +18,8 @@ function printUsage() {
 
 Options:
   --album <value>         Album ID from the albums CSV. Flickr album URLs are accepted for debugging.
-  --albums <path>         Google Sheets albums CSV export or local fixture. Default: data/albums.csv.
-  --photos-export <path>  Current Google Sheets photos CSV export for duplicate detection. Default: data/photos.csv.
+  --albums <path>         Google Sheets albums CSV export or local fixture. Default: fixtures/albums.csv.
+  --photos-export <path>  Current Google Sheets photos CSV export for duplicate detection. Default: fixtures/photos.csv.
   --input <html-file>     Read saved Flickr album HTML instead of fetching the album page.
   --runs-dir <path>       Directory for intake run artifacts. Default: tmp/intake-runs.
   --run-id <value>        Explicit run ID. Default: intake-<album-id>-<timestamp>.

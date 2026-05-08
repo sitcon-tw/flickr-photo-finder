@@ -17,7 +17,7 @@ function printUsage() {
 
 Options:
   --output-dir <path>  Directory for generated Google Sheets initialization CSVs. Default: tmp/sheets-init.
-  --albums <path>      Existing discovered albums CSV to seed the albums sheet. Default: data/albums.csv.
+  --albums <path>      Existing discovered albums CSV to seed the albums sheet. Default: fixtures/albums.csv.
   --empty-albums       Generate albums.csv with only the header row.
   --no-validate        Skip validation for generated photos/albums/import_batches CSVs.
 

@@ -25,9 +25,9 @@ The main goal is not to replace Flickr. The repository should keep a practical i
 - `app/`: GitHub Pages and local static search UI for the MVP.
 - `app/config.js`: public frontend data source configuration.
 - `config/project.json`: project-level organization, Flickr account, and frontend display configuration.
-- `data/albums.csv`: MVP sample, local fixture, and Sheets export format reference for the SITCON Flickr album catalog. It is not the authoritative album database.
-- `data/photos.csv`: MVP sample, local fixture, and Sheets export format reference. It is not the authoritative photo database.
-- `data/import-batches.csv`: MVP sample, local fixture, and Sheets export format reference for import batch records. It is not the authoritative import batch database.
+- `fixtures/albums.csv`: MVP sample, local fixture, and Sheets export format reference for the SITCON Flickr album catalog. It is not the authoritative album database or a Sheets cache.
+- `fixtures/photos.csv`: MVP sample, local fixture, and Sheets export format reference. It is not the authoritative photo database or a Sheets cache.
+- `fixtures/import-batches.csv`: MVP sample, local fixture, and Sheets export format reference for import batch records. It is not the authoritative import batch database or a Sheets cache.
 - `data/photo-schema.json`: shared field schema for Google Sheets, CSV exports, Apps Script helpers, and CLI validation.
 - `data/tag-taxonomy.json`: controlled taxonomy for photo tags and enum fields.
 - `data/sponsorship-items.json`: fixed snapshot derived from SITCON 2026 CFS sponsorship item data.
@@ -61,8 +61,9 @@ The main goal is not to replace Flickr. The repository should keep a practical i
 - Document required capabilities, OAuth scopes, credential expectations, dry-run behavior, and verification steps separately from local credential setup.
 - Treat `data/photo-schema.json` as the machine-readable source for photo, album, and import batch field order, basic field metadata, reviewed completeness rules, and approved-use requirements.
 - Do not duplicate reviewed/approved field lists in docs. Reference `data/photo-schema.json` instead.
-- Do not treat `data/photos.csv` as production data. It exists for MVP demos, local UI development, validation fixtures, and future export-format tests.
-- Do not treat `data/albums.csv` as production data. It exists for MVP demos, local selection by album ID, validation fixtures, and future export-format tests.
+- Do not treat `fixtures/photos.csv` as production data. It exists for MVP demos, local UI development, validation fixtures, and future export-format tests.
+- Do not treat `fixtures/albums.csv` as production data. It exists for MVP demos, debugging, validation fixtures, and future export-format tests.
+- Treat `tmp/sheets-export/*.csv` as local work cache exported from the formal Google Sheets database. Do not commit it.
 - The public GitHub Pages frontend is read-only. It should read Google Sheets public output data and must not contain secrets or database-write credentials.
 - `photos` is the public photo index. Public CSV/JSON exports are transport formats with the same fields, not an additional filtered table.
 - Album intake should start from the SITCON Flickr album catalog discovered by tools. Users should choose which discovered album to process instead of manually supplying album URLs as the primary workflow.
@@ -101,9 +102,9 @@ pnpm validate:data
 
 The validation script currently checks:
 
-- `data/albums.csv` headers and basic album catalog fields, derived from `data/photo-schema.json`.
-- `data/import-batches.csv` headers and basic import batch fields, derived from `data/photo-schema.json`.
-- `data/photos.csv` headers for the local sample/export format, derived from `data/photo-schema.json`.
+- `fixtures/albums.csv` headers and basic album catalog fields, derived from `data/photo-schema.json`.
+- `fixtures/import-batches.csv` headers and basic import batch fields, derived from `data/photo-schema.json`.
+- `fixtures/photos.csv` headers for the local sample/export format, derived from `data/photo-schema.json`.
 - Required photo fields.
 - URL format.
 - non-negative integer fields such as `people_count` and album `photo_count`.

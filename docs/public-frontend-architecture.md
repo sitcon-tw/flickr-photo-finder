@@ -62,7 +62,7 @@ Repo
 
 ```js
 export const dataSources = {
-  photosCsvUrl: "../data/photos.csv",
+  photosCsvUrl: "../fixtures/photos.csv",
   taxonomyJsonUrl: "../data/tag-taxonomy.json",
 };
 ```

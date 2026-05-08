@@ -13,16 +13,17 @@
 | 公開 Google Sheets ID | `config/project.json` 的 `googleSheets.spreadsheetId` | 這份 Sheets 預期可公開讀取；寫入權限由 Google Drive/Sheets 管理。 |
 | Sheets 表格讀寫技術選擇 | `docs/sheets-sync-workflow.md` | repo CLI 應以官方 Google Sheets API SDK 為主要方向；Google Drive 檔案搬運不是 Sheets 寫入主流程。 |
 | Sheets 正式寫入身份 | `docs/sheets-sync-workflow.md` | 建議使用 SITCON 管理的 service account，並將 service account email 加入正式 Sheets 編輯者。 |
-| 正式照片索引資料 | Google Sheets `photos` | repo 內 `data/photos.csv` 只是 sample、fixture 與匯出格式參考。 |
-| 正式相簿清單資料 | Google Sheets `albums` | repo 內 `data/albums.csv` 只是 sample、fixture 與匯出格式參考。 |
-| 正式匯入批次資料 | Google Sheets `import_batches` | repo 內 `data/import-batches.csv` 只是 sample、fixture 與匯出格式參考。 |
+| 正式照片索引資料 | Google Sheets `photos` | repo 內 `fixtures/photos.csv` 只是 sample、fixture 與匯出格式參考。 |
+| 正式相簿清單資料 | Google Sheets `albums` | repo 內 `fixtures/albums.csv` 只是 sample、fixture 與匯出格式參考。 |
+| 正式匯入批次資料 | Google Sheets `import_batches` | repo 內 `fixtures/import-batches.csv` 只是 sample、fixture 與匯出格式參考。 |
+| 本機 Sheets 工作快取 | `tmp/sheets-export/*.csv` | 從正式 Google Sheets 匯出，供 validation 與 intake 使用；可刪除，不 commit。 |
 | 專案角色與資料流 | `docs/project-architecture.md` | 若架構改變，先更新架構總覽，再同步相關文件。 |
 
 ## 目前狀態
 
 ### 目前可用
 
-- 本機 static search UI，預設讀 `data/photos.csv`。
+- 本機 static search UI，預設讀 `fixtures/photos.csv`。
 - `pnpm validate:data`，檢查 sample/export data、schema 與 taxonomy。
 - `pnpm sheets:init`，產生建立 Google Sheets MVP 所需的初始 CSV。
 - `pnpm sheets:check`，只讀檢查公開 Google Sheets 固定 tabs 的 header 與初始化覆蓋風險。
@@ -30,7 +31,7 @@
 - `pnpm sheets:export`，透過官方 Google Sheets API SDK 匯出正式 Sheets 固定 tabs，供 validation 與 intake 流程使用。
 - `pnpm albums:list`，從正式 Sheets 匯出的 `albums.csv` 列出與篩選相簿，協助選擇 intake 目標。
 - `pnpm albums:discover`，盤點 SITCON Flickr 公開相簿清單並輸出 CSV 預覽。
-- `pnpm albums:discover -- --write`，更新本機 `data/albums.csv` fixture，方便用相簿 ID 選擇要處理的相簿。
+- `pnpm albums:discover -- --write`，更新本機 `fixtures/albums.csv` fixture，供 demo、除錯或 fixture validation 使用。
 - `pnpm albums:sync -- --sheets-export <csv> --output <csv>`，合併 Sheets 匯出與盤點結果，產生可回寫 Google Sheets `albums` 的 CSV。
 - `pnpm intake:run -- --album <album-id> --photos-export <csv>`，從選定相簿產生一次可審核的 intake run artifact，包含候選 `photos`、更新後 `albums`、`import_batches` 與 `summary.json`。
 - `pnpm intake:validate -- --run-dir <dir>`，套用到 Google Sheets 前檢查 intake run artifact 是否完整一致。

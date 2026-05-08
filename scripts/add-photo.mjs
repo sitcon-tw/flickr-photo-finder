@@ -15,7 +15,7 @@ function printUsage() {
   pnpm photo:add -- <flickr-photo-url> [more-flickr-photo-urls...] --append
 
 Options:
-  --append  Append generated rows to data/photos.csv and validate data.
+  --append  Append generated rows to fixtures/photos.csv and validate data.
 
 The script uses Flickr oEmbed to fill photo_id, photo_url, image_preview_url,
 photographer, and a basic internal note. Other curation fields stay blank for

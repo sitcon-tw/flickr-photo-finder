@@ -2,7 +2,7 @@
   "version": "2026-mvp-1",
   "tables": {
     "photos": {
-      "export_path": "data/photos.csv",
+      "export_path": "fixtures/photos.csv",
       "description_zh": "SITCON Flickr 照片索引。正式資料以 Google Sheets 為準，此 schema 也定義 CSV 匯出格式。",
       "reviewed_required_fields": [
         "scene_tags",
@@ -234,7 +234,7 @@
       ]
     },
     "albums": {
-      "export_path": "data/albums.csv",
+      "export_path": "fixtures/albums.csv",
       "description_zh": "SITCON Flickr 相簿清單與處理狀態。正式資料以 Google Sheets 為準，此 schema 也定義本機 sample/export 格式。",
       "fields": [
         {
@@ -312,7 +312,7 @@
       ]
     },
     "import_batches": {
-      "export_path": "data/import-batches.csv",
+      "export_path": "fixtures/import-batches.csv",
       "description_zh": "相簿匯入批次紀錄。正式資料以 Google Sheets 為準，此 schema 也定義本機 sample/export 格式。",
       "fields": [
         {

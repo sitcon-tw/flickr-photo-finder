@@ -57,7 +57,7 @@ SITCON Flickr 上的照片擁有者是 SITCON，但攝影師 credit 會放在 Fl
 
 ## CSV 與多值格式
 
-Google Sheets 欄位與 `data/photos.csv` 匯出格式使用同一套欄位定義。多值欄位用分號分隔，不要用逗號。
+Google Sheets 欄位與 `fixtures/photos.csv` 匯出格式使用同一套欄位定義。多值欄位用分號分隔，不要用逗號。
 
 例如：
 

@@ -22,8 +22,8 @@ function printUsage() {
 
 Options:
   --album <value>         Album ID from the albums CSV, or a full SITCON Flickr album URL.
-  --albums <path>         Google Sheets albums CSV export or local fixture. Default: data/albums.csv.
-  --photos-export <path>  Current Google Sheets photos CSV export for duplicate detection. Default: data/photos.csv.
+  --albums <path>         Google Sheets albums CSV export or local fixture. Default: fixtures/albums.csv.
+  --photos-export <path>  Current Google Sheets photos CSV export for duplicate detection. Default: fixtures/photos.csv.
   --input <html-file>     Read saved Flickr album HTML instead of fetching the album page.
   --output <path>         Write candidate photo rows to this CSV. If omitted, print to stdout.
   --albums-output <path>  Write an albums CSV with last_processed_at updated for this album.
