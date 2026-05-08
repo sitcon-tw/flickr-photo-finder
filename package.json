@@ -1,0 +1,8 @@
+{
+  "name": "sitcon-flickr-photo-finder",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "validate:data": "node scripts/validate-data.mjs"
+  }
+}
