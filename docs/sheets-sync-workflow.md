@@ -156,6 +156,14 @@ pnpm sheets:export
 
 這會將固定 tabs 輸出到 `tmp/sheets-export/`。其中 `photos.csv` 用於 `photo_id` 重複檢查，`albums.csv` 用於相簿 ID 解析、活動脈絡與 `last_processed_at` 更新。
 
+使用 `albums:list` 從正式 Sheets 匯出的 `albums.csv` 選擇要處理的相簿：
+
+```bash
+pnpm albums:list
+pnpm albums:list -- --unprocessed
+pnpm albums:list -- --query "SITCON 2026"
+```
+
 若要產生一次可審核的相簿匯入產物，請使用目前正式 Sheets 匯出的 `photos` 與 `albums`：
 
 ```bash
