@@ -20,6 +20,7 @@ const controls = {
   scene: document.querySelector("#sceneFilter"),
   sponsorshipItem: document.querySelector("#sponsorshipItemFilter"),
   publicStatus: document.querySelector("#publicStatusFilter"),
+  curationStatus: document.querySelector("#curationStatusFilter"),
   collection: document.querySelector("#collectionFilter"),
   reset: document.querySelector("#resetButton"),
 };
@@ -120,6 +121,7 @@ function setupFilters(taxonomy) {
   fillSelect(controls.scene, "全部場景", taxonomy.scene_tags ?? []);
   fillSelect(controls.sponsorshipItem, "全部品項", taxonomy.sponsorship_items ?? []);
   fillSelect(controls.publicStatus, "全部狀態", taxonomy.public_use_status ?? []);
+  fillSelect(controls.curationStatus, "全部整理狀態", taxonomy.curation_status ?? []);
   fillSelect(
     controls.collection,
     "全部素材包",
@@ -168,7 +170,8 @@ function matchesFilters(photo) {
     hasListValue(photo, "scene_tags", controls.scene.value) &&
     hasListValue(photo, "sponsorship_items", controls.sponsorshipItem.value) &&
     hasListValue(photo, "collections", controls.collection.value) &&
-    (!controls.publicStatus.value || photo.public_use_status === controls.publicStatus.value)
+    (!controls.publicStatus.value || photo.public_use_status === controls.publicStatus.value) &&
+    (!controls.curationStatus.value || photo.curation_status === controls.curationStatus.value)
   );
 }
 
@@ -219,8 +222,12 @@ function renderPhoto(photo) {
   appendDetail(details, "贊助品項", photo.sponsorship_items);
   appendDetail(details, "贊助價值", photo.sponsorship_tags);
   appendDetail(details, "素材包", photo.collections);
+  appendDetail(details, "攝影", photo.photographer);
+  appendDetail(details, "授權", photo.license);
   appendDetail(details, "公開狀態", photo.public_use_status, { status: true });
+  appendDetail(details, "整理狀態", photo.curation_status, { status: true });
   appendDetail(details, "裁切", photo.safe_crop);
+  appendDetail(details, "Flickr ID", photo.photo_id);
 
   notes.textContent = photo.internal_notes || "";
   if (!notes.textContent) {
@@ -265,6 +272,7 @@ function resetFilters() {
   controls.scene.value = "";
   controls.sponsorshipItem.value = "";
   controls.publicStatus.value = "";
+  controls.curationStatus.value = "";
   controls.collection.value = "";
   render();
 }

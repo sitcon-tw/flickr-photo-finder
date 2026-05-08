@@ -22,6 +22,8 @@ npm run dev
 
 開啟 `http://localhost:4173/`。
 
+相簿匯入後，可以在搜尋介面用「整理狀態」篩選 `unreviewed`，逐步補齊場景、氛圍、用途、贊助品項、授權與公開使用判斷。
+
 從 Flickr 照片 URL 產生一列 CSV：
 
 ```bash

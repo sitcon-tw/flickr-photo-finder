@@ -75,7 +75,7 @@ button {
 
 .toolbar {
   display: grid;
-  grid-template-columns: minmax(240px, 1.7fr) repeat(6, minmax(150px, 1fr)) auto;
+  grid-template-columns: minmax(240px, 1.7fr) repeat(7, minmax(145px, 1fr)) auto;
   gap: 12px;
   align-items: end;
   margin-bottom: 20px;
@@ -233,6 +233,36 @@ button:hover,
   border-color: #fecaca;
   color: #991b1b;
   background: #fef2f2;
+}
+
+.tag.status-unreviewed {
+  border-color: #d6d3d1;
+  color: #57534e;
+  background: #fafaf9;
+}
+
+.tag.status-ai_labeled {
+  border-color: #c4b5fd;
+  color: #5b21b6;
+  background: #f5f3ff;
+}
+
+.tag.status-reviewed {
+  border-color: #bfdbfe;
+  color: #1d4ed8;
+  background: #eff6ff;
+}
+
+.tag.status-featured {
+  border-color: #fde68a;
+  color: #92400e;
+  background: #fffbeb;
+}
+
+.tag.status-archived {
+  border-color: #cbd5e1;
+  color: #475569;
+  background: #f8fafc;
 }
 
 .notes {
