@@ -330,6 +330,53 @@ repo 不保存：
 
 SITCON 組織已有文件存放與交接制度。此 repo 只記錄本專案需要哪些資產、工具如何運作，以及未來 agent 如何接手維護流程；實際權限交接由 SITCON 既有 Google Drive 與文件管理原則處理。
 
+## 建議的正式寫入身份
+
+正式 Google Sheets 還是空白時，通常不是資料產生工具失敗，而是尚未完成「誰有權代表專案寫入 Sheets」這個前置設定。
+
+此專案建議使用 **SITCON 管理的 service account** 作為正式 repo CLI 寫入身份，而不是依賴某位志工個人的 Google OAuth token。
+
+理由：
+
+- service account 是非個人身份，適合讓 CLI、agent 或未來自動化工具穩定使用。
+- 志工交接時，不需要接手某位個人的 browser login、OAuth token cache 或本機狀態。
+- 權限可以集中在正式 Google Sheets 檔案層級管理，只授予編輯這份試算表所需的最小權限。
+- repo 工具目前使用 Google Application Default Credentials，service account credential 可以透過 `GOOGLE_APPLICATION_CREDENTIALS` 提供，不需要修改程式。
+
+個人 OAuth / `gcloud auth application-default login` 仍可作為臨時本機操作或除錯方式，但不應成為正式交接方案。若用個人身份寫入，寫入者就是該個人帳號；離任、換機或 token 過期時都會影響流程。
+
+domain-wide delegation 不是 MVP 需求。只有在未來需要 service account 代表特定 Workspace 使用者操作、存取使用者私有資料，或受組織政策限制無法直接分享 Sheet 給 service account 時，才應重新評估。MVP 只需要把目標 Google Sheets 明確分享給 service account email，讓它對該試算表有編輯權限。
+
+### Service account 前置步驟
+
+建議由 SITCON 管理的 Google Cloud project 或組織既有雲端資產負責建立 service account。
+
+1. 在 Google Cloud project 啟用 Google Sheets API。
+2. 建立用途明確的 service account，例如 `flickr-photo-finder-writer`。
+3. 取得這個 service account 的 email，例如 `flickr-photo-finder-writer@PROJECT_ID.iam.gserviceaccount.com`。
+4. 將正式 Google Sheets 分享給該 service account email，權限設為 `Editor`。
+5. 產生或取得本機執行用 credential，並依 SITCON 既有文件制度保存與交接。
+6. 在本機設定：
+
+```bash
+export GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
+```
+
+7. 確認 `config/project.json` 的 `googleSheets.spreadsheetId` 指向正式 Google Sheets。
+8. 先 dry-run：
+
+```bash
+pnpm sheets:apply-init
+```
+
+9. 人類確認 dry-run 沒有覆蓋風險後才寫入：
+
+```bash
+pnpm sheets:apply-init -- --write
+```
+
+service account key 是敏感 credential，不能 commit，也不應放在 `tmp/`、repo 目錄、issue、PR 或公開文件中。若 SITCON 有更好的組織級方式，例如不落地長期 key 的 workload identity 或由受控環境掛載 service account，應優先使用組織既有安全做法；repo 只要求工具能透過 ADC 取得具有 Sheets 編輯權限的身份。
+
 ## 授權方式與驗證邏輯
 
 不同維護者本機可用的授權方式不一定相同。此 repo 不應假設某個人的 Google 帳號、OAuth token cache、`gcloud`、瀏覽器登入狀態、`clasp` 權限或第三方工具登入狀態能在其他人手上重現。

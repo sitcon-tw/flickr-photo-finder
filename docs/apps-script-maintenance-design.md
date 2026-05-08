@@ -77,7 +77,7 @@ MVP Apps Script 不處理：
 - 正式審核工作流。
 - 複雜的搜尋 UI。
 
-上述工作應由 repo CLI、agent、官方 Google Sheets API SDK 寫入工具、SITCON 既有交接制度或 GitHub Pages 前端處理。
+上述工作應由 repo CLI、agent、官方 Google Sheets API SDK 寫入工具、SITCON 既有交接制度或 GitHub Pages 前端處理。正式 repo CLI 寫入身份建議使用 SITCON 管理的 service account；Apps Script 的使用者授權與 `clasp` 部署身份是另一條流程，不應混在一起。
 
 ## 部署方式
 

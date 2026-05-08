@@ -12,6 +12,7 @@
 | 組織名稱、Flickr 帳號與前端標題 | `config/project.json` | SITCON 是此 repo 的預設實例；其他組織 fork 時應先改這份設定。 |
 | 公開 Google Sheets ID | `config/project.json` 的 `googleSheets.spreadsheetId` | 這份 Sheets 預期可公開讀取；寫入權限由 Google Drive/Sheets 管理。 |
 | Sheets 表格讀寫技術選擇 | `docs/sheets-sync-workflow.md` | repo CLI 應以官方 Google Sheets API SDK 為主要方向；Google Drive 檔案搬運不是 Sheets 寫入主流程。 |
+| Sheets 正式寫入身份 | `docs/sheets-sync-workflow.md` | 建議使用 SITCON 管理的 service account，並將 service account email 加入正式 Sheets 編輯者。 |
 | 正式照片索引資料 | Google Sheets `photos` | repo 內 `data/photos.csv` 只是 sample、fixture 與匯出格式參考。 |
 | 正式相簿清單資料 | Google Sheets `albums` | repo 內 `data/albums.csv` 只是 sample、fixture 與匯出格式參考。 |
 | 正式匯入批次資料 | Google Sheets `import_batches` | repo 內 `data/import-batches.csv` 只是 sample、fixture 與匯出格式參考。 |

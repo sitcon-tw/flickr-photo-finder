@@ -87,9 +87,9 @@ pnpm sheets:check
 
 確認沒有覆蓋風險後，正式 Sheets 寫入流程應由 repo CLI 透過官方 Google Sheets API SDK 執行，並保留 preflight、dry-run、人類確認與寫入後驗證。這個 repo 不自製 Google Drive 檔案搬運流程；若未來需要 Drive 檔案備份或搬運，再交由組織既有工具處理。
 
-不同維護者的本機授權方式不一定相同。這個 repo 會記錄官方 SDK 需要的能力、OAuth scope、credential 類型、驗證方式與不可 commit 的檔案；Google Cloud project、OAuth client、Google 帳號、Apps Script/clasp 權限等交接仍應由使用者或 SITCON 既有流程處理。完整說明見 `docs/sheets-sync-workflow.md` 的「授權方式與驗證邏輯」。
+正式寫入建議使用 SITCON 管理的 service account 作為 repo CLI 寫入身份，並把該 service account email 加到正式 Google Sheets 的編輯者。個人 OAuth / ADC 可作為臨時本機操作，但不應作為正式交接方案。完整前置需求見 `docs/sheets-sync-workflow.md` 的「建議的正式寫入身份」。
 
-若已設定 Google Application Default Credentials，並且授權身份對目標 Sheets 有編輯權限，可以先 dry-run 檢查初始化套用計畫：
+若已設定 Google Application Default Credentials，例如 `GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json`，並且授權身份對目標 Sheets 有編輯權限，可以先 dry-run 檢查初始化套用計畫：
 
 ```bash
 pnpm sheets:apply-init

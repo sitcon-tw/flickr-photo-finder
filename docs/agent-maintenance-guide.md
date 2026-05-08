@@ -42,7 +42,7 @@ SITCON 組織已有既有文件存放與交接制度。這個 repo 不保存 cre
 
 遇到權限問題時，agent 應該：
 
-1. 先確認需要哪一類資產或權限，例如 Google Sheets 編輯權限、Google Sheets API OAuth credential、Apps Script/clasp、第三方工具或 AI API。
+1. 先確認需要哪一類資產或權限，例如 Google Sheets 編輯權限、Google Sheets API service account credential、Apps Script/clasp、第三方工具或 AI API。
 2. 檢查 repo 內是否有本專案的資產地圖或操作文件。
 3. 若需要組織權限或 credential，請人類依 SITCON 既有文件與 Google Drive 管理流程處理。
 4. 不要把 token、API key、credential 或私人連結寫入 repo。
@@ -50,7 +50,8 @@ SITCON 組織已有既有文件存放與交接制度。這個 repo 不保存 cre
 Agent 應把「可公開讀取」、「可寫入」、「資料格式正確」視為三件不同的事：
 
 - `pnpm sheets:check` 只驗證公開讀取與初始化覆蓋風險，不代表具備寫入權限。
-- 正式 Sheets 表格寫入的 repo CLI 方向是官方 Google Sheets API SDK；agent 不應因為自己本機某種授權可用，就把該 credential 或 token 流程寫成唯一交接方式。
+- 正式 Sheets 表格寫入的 repo CLI 方向是官方 Google Sheets API SDK；建議正式寫入身份是 SITCON 管理的 service account，且該 service account email 必須被加入正式 Google Sheets 編輯者。
+- agent 不應因為自己本機某種授權可用，就把該 credential 或 token 流程寫成唯一交接方式。
 - `pnpm validate:data` 驗證資料格式與 schema，不代表 Google Drive/Sheets 權限正確。
 - `pnpm intake:validate` 驗證本次匯入產物內部一致，不代表它已經成功套用到正式 Sheets。
 
