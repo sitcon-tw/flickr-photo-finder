@@ -43,9 +43,11 @@ npm run photo:add -- https://www.flickr.com/photos/sitcon/PHOTO_ID --append
 
 SITCON Flickr 上的照片擁有者是 SITCON，但攝影師 credit 會放在 Flickr title 裡。請不要把 Flickr oEmbed 回傳的帳號擁有者直接填成攝影師；若 title 看不出攝影師署名，`photographer` 應先留空，並保留完整 Flickr title 在 `internal_notes` 供後續人工確認。
 
-## 從 Flickr 相簿檢查匯入狀態
+## 從 SITCON Flickr 相簿檢查匯入狀態
 
-實際整理時，通常會以 Flickr 相簿為單位提供資料來源。可以先檢查相簿中哪些照片尚未匯入：
+實際整理時，應以 SITCON Flickr 相簿為單位處理。正式流程應由工具先盤點 SITCON Flickr 目前有哪些相簿，更新 Google Sheets `albums` 清單，再讓使用者選擇本次要處理哪一本。
+
+目前低階工具仍可用相簿 URL 檢查特定相簿中哪些照片尚未匯入：
 
 ```bash
 npm run album:add -- https://www.flickr.com/photos/sitcon/albums/ALBUM_ID/
@@ -57,7 +59,7 @@ npm run album:add -- https://www.flickr.com/photos/sitcon/albums/ALBUM_ID/
 npm run album:add -- https://www.flickr.com/photos/sitcon/albums/ALBUM_ID/ --append
 ```
 
-相簿匯入只會新增缺少的照片，不會重複加入已經存在於本機 `data/photos.csv` 的 `photo_id`。正式流程仍應把確認後的資料同步回 Google Sheets。
+相簿匯入只會新增缺少的照片，不會重複加入已經存在於本機 `data/photos.csv` 的 `photo_id`。正式流程仍應把確認後的資料同步回 Google Sheets，並更新 `albums.last_processed_at`。
 
 相簿匯入後只會有 Flickr 基本中繼資料。請接著人工補上 `scene_tags`、`mood_tags`、`recommended_uses`、`public_use_status`、`priority_level`、`collections` 等欄位，讓照片能被實際搜尋與判斷。
 

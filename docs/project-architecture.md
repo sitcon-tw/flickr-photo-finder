@@ -30,7 +30,7 @@ flowchart LR
   AI[External AI / agents<br/>photo search and metadata assist]
   Users[Organizers and public users]
 
-  Flickr -->|album URL / photo metadata| Repo
+  Flickr -->|album catalog / photo metadata| Repo
   Repo -->|candidate rows / sync workflow| Sheets
   Repo -->|clasp deploy| AppsScript
   AppsScript -->|validate and assist editing| Sheets
@@ -52,7 +52,7 @@ flowchart LR
 - `photos`: 照片索引主表。每列是一張 Flickr 照片，欄位依 `data/photo-schema.json`。
 - `taxonomy`: 從 `data/tag-taxonomy.json` 同步的受控字彙。
 - `sponsorship_items`: 從 `data/sponsorship-items.json` 同步的 SITCON 2026 CFS 贊助品項固定版本資料。
-- `albums`: 使用者提供的 Flickr 相簿來源與匯入狀態。
+- `albums`: 程式從 SITCON Flickr 盤點出的相簿清單，以及每本相簿最後一次處理日期。
 - `import_batches`: 每次匯入相簿或照片的批次紀錄。
 - `schema_meta`: Sheets 目前使用的 schema、taxonomy 與同步狀態。
 
@@ -62,20 +62,22 @@ flowchart LR
 
 ```mermaid
 flowchart TD
-  A[使用者提供 Flickr 相簿 URL]
-  B[技術志工或 agent 用 repo CLI 掃描相簿]
-  C[比對 Google Sheets photos 既有 photo_id]
-  D[新增缺少照片的最低必要欄位]
-  E[更新 albums 與 import_batches]
+  A[repo 工具盤點 SITCON Flickr 相簿清單]
+  B[更新 Google Sheets albums]
+  C[使用者選擇本次要處理的相簿]
+  D[技術志工或 agent 掃描選定相簿]
+  E[比對 Google Sheets photos 既有 photo_id]
+  K[新增缺少照片的最低必要欄位]
+  L[更新 album last_processed_at 與 import_batches]
   F[AI 產生候選 metadata]
   G[人類檢查 diff 並確認是否回寫]
   H[志工在 Google Sheets 補齊或修正欄位]
   I[Apps Script 即時提示與欄位驗證]
   J[必要時匯出並跑 repo validation]
 
-  A --> B --> C --> D --> E
-  E --> F --> G --> H
-  E --> H
+  A --> B --> C --> D --> E --> K --> L
+  L --> F --> G --> H
+  L --> H
   H --> I
   H --> J
   J --> H
@@ -171,12 +173,12 @@ Repo 不保存：
 
 目前最重要的不是導入正式後台或 PostgreSQL，而是先讓以下流程成立：
 
-1. 使用者能提供 Flickr 相簿。
-2. 技術志工或 agent 能掃描並匯入缺少照片。
-3. 非技術志工能在 Google Sheets 補 metadata。
-4. Apps Script 能用 repo 規則提供即時驗證與提示。
-5. GitHub Pages 和外部 AI 能讀同一份公開照片索引。
-6. 真實使用者能用工作需求找到照片，並回饋標籤或欄位是否足夠。
+1. 技術志工或 agent 能從 SITCON Flickr 盤點目前有哪些相簿。
+2. 使用者能從已盤點的相簿清單選擇本次要處理哪一本。
+3. 技術志工或 agent 能掃描選定相簿並匯入缺少照片。
+4. 非技術志工能在 Google Sheets 補 metadata。
+5. Apps Script 能用 repo 規則提供即時驗證與提示。
+6. GitHub Pages 和外部 AI 能讀同一份公開照片索引。
+7. 真實使用者能用工作需求找到照片，並回饋標籤或欄位是否足夠。
 
 若未來真的出現權限分層、非公開欄位、審核歷程、多人衝突或查詢效能問題，再評估正式資料庫或後台。
-

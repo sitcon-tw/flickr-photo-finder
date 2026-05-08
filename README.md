@@ -7,8 +7,10 @@
 目前的資料流方向：
 
 ```text
-Flickr 相簿
-  -> repo 工具掃描與產生候選資料
+SITCON Flickr 相簿清單
+  -> repo 工具盤點相簿
+  -> 使用者選擇本次要處理的相簿
+  -> repo 工具掃描選定相簿並產生候選資料
   -> Google Sheets photos 主表
   -> Apps Script 驗證與提示
   -> GitHub Pages 與外部 AI 讀取 photos 或同欄位公開匯出
@@ -60,13 +62,13 @@ npm run validate:data
 
 `--append` 寫入後會自動跑一次資料驗證；補齊人工欄位後仍建議再跑一次。
 
-檢查 Flickr 相簿有哪些照片尚未匯入：
+正式流程應由工具盤點 SITCON Flickr 相簿清單，再讓使用者選擇本次要處理哪一本。現有低階工具仍可用相簿 URL 檢查特定相簿有哪些照片尚未匯入：
 
 ```bash
 npm run album:add -- https://www.flickr.com/photos/sitcon/albums/ALBUM_ID/
 ```
 
-匯入相簿中尚未索引的照片：
+匯入該相簿中尚未索引的照片：
 
 ```bash
 npm run album:add -- https://www.flickr.com/photos/sitcon/albums/ALBUM_ID/ --append
@@ -80,7 +82,7 @@ npm run album:add -- https://www.flickr.com/photos/sitcon/albums/ALBUM_ID/ --app
 - `data/sponsorship-items.json`: SITCON 2026 CFS 贊助品項固定版本資料。
 - `app/`: GitHub Pages / 本機照片搜尋介面。
 - `app/config.js`: 公開前端資料來源設定。
-- `scripts/add-album.mjs`: 檢查或匯入 Flickr 相簿中的照片。
+- `scripts/add-album.mjs`: 低階相簿匯入工具；目前可用 Flickr 相簿 URL 檢查或匯入照片，正式流程應由工具先盤點 SITCON Flickr 相簿清單。
 - `scripts/add-photo.mjs`: 從 Flickr URL 產生或寫入 CSV 資料列。
 - `scripts/serve.mjs`: 本機靜態 server。
 - `scripts/validate-data.mjs`: 檢查資料格式與標籤字典一致性。
@@ -105,6 +107,7 @@ npm run album:add -- https://www.flickr.com/photos/sitcon/albums/ALBUM_ID/ --app
 重點原則：
 
 - Google Sheets `photos` 是正式照片索引資料庫，也是公開可讀的索引主表。
+- 相簿處理應以 SITCON Flickr 既有相簿清單為入口，使用者只需選擇本次要處理哪一本。
 - GitHub Pages 只提供唯讀搜尋，不寫入資料庫。
 - Apps Script 用於 Sheets 內的維護輔助與驗證，source 應保存在 repo，並透過 `clasp` 部署。
 - AI 與 agent 應讀取照片索引、schema、taxonomy 與文件，協助找圖或產生可審核的 metadata diff。

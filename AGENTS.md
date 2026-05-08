@@ -28,7 +28,7 @@ The main goal is not to replace Flickr. The repository should keep a practical i
 - `data/tag-taxonomy.json`: controlled taxonomy for photo tags and enum fields.
 - `data/sponsorship-items.json`: fixed snapshot derived from SITCON 2026 CFS sponsorship item data.
 - `scripts/add-photo.mjs`: helper for generating or appending a CSV row from a Flickr photo URL.
-- `scripts/add-album.mjs`: helper for checking or importing missing photos from a Flickr album URL.
+- `scripts/add-album.mjs`: low-level helper for checking or importing missing photos from a Flickr album URL. The target workflow should first discover SITCON Flickr albums, then let users choose which album to process.
 - `scripts/serve.mjs`: local static server for the MVP UI.
 - `scripts/validate-data.mjs`: data validation script.
 
@@ -40,6 +40,7 @@ The main goal is not to replace Flickr. The repository should keep a practical i
 - Do not treat `data/photos.csv` as production data. It exists for MVP demos, local UI development, validation fixtures, and future export-format tests.
 - The public GitHub Pages frontend is read-only. It should read Google Sheets public output data and must not contain secrets or database-write credentials.
 - `photos` is the public photo index. Public CSV/JSON exports are transport formats with the same fields, not an additional filtered table.
+- Album intake should start from the SITCON Flickr album catalog discovered by tools. Users should choose which discovered album to process instead of manually supplying album URLs as the primary workflow.
 - GitHub Pages should be deployed through a GitHub Actions artifact, not by publishing the whole repository root.
 - Apps Script should be deployed through `clasp`. Keep Apps Script source in the repo, but do not commit personal clasp credentials, Google API credentials, or tokens.
 - Treat `data/sponsorship-items.json` as a fixed snapshot. SITCON 2026 CFS has ended, so do not build auto-sync behavior for that data.
