@@ -272,6 +272,33 @@ repo 不保存：
 
 SITCON 組織已有文件存放與交接制度。此 repo 只記錄本專案需要哪些資產、工具如何運作，以及未來 agent 如何接手維護流程；實際權限交接由 SITCON 既有 Google Drive 與文件管理原則處理。
 
+## 授權方式與驗證邏輯
+
+不同維護者本機可用的授權方式不一定相同。此 repo 不應假設某個人的 `rclone`、Google 帳號、`gcloud`、瀏覽器登入狀態或 Apps Script 權限能在其他人手上重現。
+
+因此文件與工具應分清楚以下幾種能力：
+
+| 能力 | 是否需要授權 | 驗證方式 | 失敗時代表什麼 |
+| --- | --- | --- | --- |
+| 產生初始化 CSV | 不需要 Google 授權 | `pnpm sheets:init` 通過並產生 `tmp/sheets-init/` | repo 工具或本機環境有問題，不代表 Sheets 權限有問題。 |
+| 讀取公開 Sheets 狀態 | 不需要寫入權限；需要 Sheets 已公開可讀 | `pnpm sheets:check` 能讀固定 tabs 並回報狀態 | 可能是 Sheets 尚未公開、tab 不存在、網路受限或 ID 錯誤，不代表寫入權限不足。 |
+| 將 CSV 套用到 Sheets | 需要人類或工具具備 Google Drive/Sheets 寫入權限 | 由 rclone、Google Drive UI、Apps Script 或組織既有工具回報成功，再匯出/公開讀取驗證 | 失敗原因應由該工具的授權與錯誤訊息判斷，不應由 repo 猜測。 |
+| 驗證正式資料格式 | 不需要寫入權限；需要能取得 Sheets 匯出的 CSV | `pnpm validate:data -- --photos <csv> --albums <csv> --import-batches <csv>` | 代表匯出資料和 repo schema 不一致，或匯出檔不是預期格式。 |
+| 檢查 intake run artifact | 不需要 Google 授權 | `pnpm intake:validate -- --run-dir <dir>` | 代表本次匯入產物內部不一致，套用前應先修正。 |
+| 部署 Apps Script | 需要 clasp 可用且 Google 帳號有 script 權限 | `clasp` 指令成功，且 Apps Script 專案顯示更新 | clasp 或 Google 帳號授權問題，不代表 repo schema 錯。 |
+
+`sheets:check` 是公開讀取檢查，不是權限檢查。它只能回答「這份公開 Sheets 目前看起來是否適合初始化」，不能保證某個人或某個工具有寫入權限。
+
+`rclone` 或其他 Google Drive/Sheets 寫入工具的設定與 token 不應 commit。若專案要記錄操作方式，只能記錄需要的能力、檔案對應與驗證步驟，不記錄個人 token 或組織內部權限細節。
+
+建議的可攜驗證順序：
+
+1. 執行 `pnpm sheets:init`，確認初始化 CSV 可由 repo 產生。
+2. 執行 `pnpm sheets:check`，確認公開 Sheets 固定 tabs 沒有覆蓋風險。
+3. 使用 rclone、Google Drive UI、Apps Script 或組織既有工具套用 CSV。
+4. 再執行 `pnpm sheets:check`，確認 tabs 已有資料且 header 合理；此時出現 `has data` 是預期結果，不應再拿它判斷是否適合初始化。
+5. 從 Sheets 匯出相關 CSV，執行 `pnpm validate:data` 驗證正式資料格式。
+
 ## Commit 時機
 
 適合 commit 的內容：

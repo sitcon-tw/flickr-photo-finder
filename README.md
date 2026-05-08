@@ -85,6 +85,8 @@ pnpm sheets:check
 
 確認沒有覆蓋風險後，Google Drive / Sheets 的檔案讀寫與匯入應交由 rclone、Google Drive UI、Apps Script 或組織既有工具處理。repo 工具不直接自製 Google Drive 檔案讀寫流程。
 
+不同維護者的本機授權方式不一定相同。這個 repo 只記錄需要的能力與驗證方式；rclone remote、Google 帳號登入、Apps Script/clasp 權限等細節應由使用者或 SITCON 既有交接流程處理。完整說明見 `docs/sheets-sync-workflow.md` 的「授權方式與驗證邏輯」。
+
 盤點 `config/project.json` 指定的 Flickr 帳號公開相簿清單：
 
 ```bash
