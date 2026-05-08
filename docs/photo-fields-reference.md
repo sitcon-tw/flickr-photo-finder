@@ -37,7 +37,7 @@
 | `internal_notes` | 否 | 否 | 否 | 整理者 | 公開 repo 中仍視為公開資料，不要寫入敏感內部資訊。 |
 | `curation_status` | 否 | 否 | 是 | 整理者 | `unreviewed`、`ai_labeled`、`reviewed`。 |
 
-## Reviewed 與 Featured 門檻
+## Reviewed 與 Approved 門檻
 
 照片標成 `reviewed` 前，至少要補齊：
 

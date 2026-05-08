@@ -11,26 +11,25 @@ Google Sheets 是正式照片索引資料庫，Apps Script 可以作為具有授
 - GitHub Pages 前端是公開、唯讀、無登入門檻的搜尋介面。
 - 資料來源仍是 Google Sheets，不是 repo 內 sample data。
 - GitHub Pages 前端不保存 secret，也不使用需要私人 credential 的 Google API。
-- 前端應讀取 Google Sheets 的公開輸出層，例如 `published_photos` sheet 匯出的 CSV 或 JSON。
-- Apps Script 保留為授權維護介面，以及產生公開輸出層的工具。
+- 前端應讀取 Google Sheets `photos` 主表，或讀取由 `photos` 以同一套欄位匯出的公開 CSV/JSON。
+- Apps Script 保留為授權維護介面與欄位驗證工具，不負責建立額外篩選表。
 
 ## 建議資料流
 
 ```text
 Google Sheets
-  photos              人工編輯主表
+  photos              照片索引主表，公開可讀
   taxonomy            受控字彙
   sponsorship_items   贊助品項
-  published_photos    給公開前端讀取的乾淨輸出
 
 Apps Script
   欄位驗證
   編輯輔助
-  產生或更新 published_photos
+  檢查 photos 公開讀取格式
 
 GitHub Pages
   唯讀搜尋 UI
-  讀取 published_photos 公開輸出
+  讀取 photos 或同欄位公開匯出
 
 Repo
   schema
@@ -42,18 +41,20 @@ Repo
   GitHub Pages UI
 ```
 
-## 為什麼不要直接讀人工編輯主表
+## 為什麼不建立額外公開表
 
-即使照片索引資料預設可以公開，公開前端仍不應直接讀人工編輯主表。
+目前資料庫的目標是替 Flickr 照片加註 metadata，讓人類、前端與 AI 可以依欄位自行挑選。它不是要在資料庫內先做出另一層篩選結果。
 
-原因：
+因此 MVP 不建立 `photos` 之外的公開篩選表。公開前端可以直接讀 `photos`，或讀由 `photos` 匯出的同欄位 CSV/JSON。
 
-- 人工編輯主表可能包含暫存欄位、檢查欄或整理中的資料。
-- 未整理照片可能還不適合被一般使用者搜尋到。
-- 公開前端需要穩定欄位與資料格式，人工編輯主表可能因整理需要而調整。
-- 未來若需要隱藏某些維護欄位，公開輸出層比較容易控管。
+這個設計的好處：
 
-因此應建立 `published_photos` 或等價的公開輸出。公開前端只讀這個乾淨輸出層。
+- 不會讓維護者以為有兩份照片資料需要同步。
+- 不會讓 AI 誤以為公開匯出已經替它篩選過照片。
+- 未整理照片仍可被搜尋，但會透過 `curation_status`、`public_use_status`、`priority_level` 等欄位排序與提示。
+- 若未來真的需要隱藏欄位或拆分公開/非公開資料，再重新設計資料邊界。
+
+前端不應依賴 Sheets 的顏色、註解、排序或篩選檢視。所有可搜尋、可排序、可提醒的語意都應來自欄位值。
 
 ## 前端資料來源設定
 
@@ -66,9 +67,11 @@ export const dataSources = {
 };
 ```
 
-本機開發預設讀 repo 內 sample/export data。部署到 GitHub Pages 時，`photosCsvUrl` 應改成 Google Sheets `published_photos` 的公開 CSV 或 JSON 輸出 URL。
+本機開發預設讀 repo 內 sample/export data。部署到 GitHub Pages 時，`photosCsvUrl` 應改成 Google Sheets `photos` 的公開 CSV 或 JSON 輸出 URL。
 
 前端可以讀公開資料 URL，但不能使用任何需要保密的 token、API key 或 OAuth credential。
+
+公開讀取規則記錄在 `docs/google-sheets-database-design.md`，外部 AI 讀取方式記錄在 `docs/ai-readable-dataset.md`。
 
 ## GitHub Pages 部署注意事項
 
@@ -91,7 +94,7 @@ GitHub Pages 應透過 GitHub Actions 發布乾淨的 Pages artifact，不應直
 
 ## 搜尋規模
 
-MVP 的 100 到 300 張精選照片可以由前端一次載入並在瀏覽器內搜尋。
+MVP 初期的 100 到 300 張公開索引照片可以由前端一次載入並在瀏覽器內搜尋。
 
 若未來資料量增加到數千張以上，再評估：
 
@@ -103,8 +106,8 @@ MVP 的 100 到 300 張精選照片可以由前端一次載入並在瀏覽器內
 ## 殘餘風險
 
 - Google Sheets 公開輸出 URL 的格式或 CORS 行為可能改變。
-- Google Sheets 更新到公開輸出可能有延遲。
-- 若公開輸出層沒有驗證，前端可能載入不完整資料。
+- Google Sheets 更新到公開匯出 URL 可能有延遲。
+- 若 `photos` 欄位格式沒有驗證，前端可能載入不完整資料。
 - 若前端直接讀太大的 CSV，載入速度會下降。
 
-這些風險應由 Apps Script、repo validation、同步工具與公開輸出層共同處理，而不是讓 GitHub Pages 前端承擔資料治理責任。
+這些風險應由 Apps Script、repo validation 與同步工具共同處理，而不是讓 GitHub Pages 前端承擔資料治理責任。

@@ -56,7 +56,7 @@ AI 只能作為資料匯入與整理輔助。
 2. Agent 依照 `data/tag-taxonomy.json` 和欄位文件產生候選欄位值。
 3. Agent 呈現變更差異，讓人類決定是否回寫。
 4. AI 協助過但尚未人工確認的資料應標成 `ai_labeled`。
-5. 人類修正與確認後，才可以改成 `reviewed` 或 `approved`。
+5. 人類修正與確認後，才可以把 `curation_status` 改成 `reviewed`。若公開使用判斷合適，再把 `public_use_status` 設為 `approved`。
 
 `curation_status` 只描述資料可信度：`unreviewed`、`ai_labeled`、`reviewed`。不要用它表達精選或封存。推薦優先度請看 `priority_level`、`collections` 與 `public_use_status`。
 
@@ -88,9 +88,13 @@ node --check app/main.js
 1. `README.md`
 2. `AGENTS.md`
 3. `docs/database-collaboration-strategy.md`
-4. `docs/photo-fields-reference.md`
-5. `docs/data-entry-guide.md`
-6. `docs/photo-finder-mvp.md`
-7. `docs/mvp-implementation-plan.md`
+4. `docs/google-sheets-database-design.md`
+5. `docs/sheets-sync-workflow.md`
+6. `docs/ai-readable-dataset.md`
+7. `docs/apps-script-maintenance-design.md`
+8. `docs/photo-fields-reference.md`
+9. `docs/data-entry-guide.md`
+10. `docs/photo-finder-mvp.md`
+11. `docs/mvp-implementation-plan.md`
 
 如果文件互相矛盾，以 Google Sheets-first 架構為準，並優先修正文件矛盾。

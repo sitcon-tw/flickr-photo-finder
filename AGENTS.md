@@ -13,6 +13,10 @@ The main goal is not to replace Flickr. The repository should keep a practical i
 - `docs/data-entry-guide.md`: data entry rules for the first curated photo index.
 - `docs/database-collaboration-strategy.md`: Sheets-first database and volunteer collaboration strategy.
 - `docs/agent-maintenance-guide.md`: maintenance guide for future agents and technical volunteers.
+- `docs/google-sheets-database-design.md`: formal Google Sheets database table design.
+- `docs/sheets-sync-workflow.md`: workflow for syncing Google Sheets with repo tools.
+- `docs/ai-readable-dataset.md`: guidance for public AI and read-only tools consuming the dataset.
+- `docs/apps-script-maintenance-design.md`: Apps Script maintenance helper design.
 - `docs/photo-fields-reference.md`: field reference for the Google Sheets photo table and CSV export format.
 - `docs/public-frontend-architecture.md`: GitHub Pages public read-only frontend architecture.
 - `README.md`: human-facing project overview and quick start.
@@ -34,6 +38,7 @@ The main goal is not to replace Flickr. The repository should keep a practical i
 - Treat `data/photo-schema.json` as the machine-readable source for photo field order, basic field metadata, reviewed completeness rules, and approved-use requirements.
 - Do not treat `data/photos.csv` as production data. It exists for MVP demos, local UI development, validation fixtures, and future export-format tests.
 - The public GitHub Pages frontend is read-only. It should read Google Sheets public output data and must not contain secrets or database-write credentials.
+- `photos` is the public photo index. Public CSV/JSON exports are transport formats with the same fields, not an additional filtered table.
 - GitHub Pages should be deployed through a GitHub Actions artifact, not by publishing the whole repository root.
 - Treat `data/sponsorship-items.json` as a fixed snapshot. SITCON 2026 CFS has ended, so do not build auto-sync behavior for that data.
 - Future CFS versions should be introduced explicitly as new or replacement versioned data, not by assuming the 2026 snapshot keeps changing.
@@ -49,6 +54,9 @@ The main goal is not to replace Flickr. The repository should keep a practical i
 ## Agent Responsibilities
 
 - Read `docs/agent-maintenance-guide.md` before making data workflow or AI-assist changes.
+- For database shape, read `docs/google-sheets-database-design.md` before changing Sheets or sync assumptions.
+- For public AI behavior, read `docs/ai-readable-dataset.md` before changing photo index read semantics.
+- For Apps Script helpers, read `docs/apps-script-maintenance-design.md` before adding Sheets-side validation.
 - Help maintain the repo so future agents can understand how to scan albums, validate data, assist AI labeling, and sync with Google Sheets.
 - Do not store Google Drive, rclone, Google API, or AI API credentials in this repo.
 - For organization-level access and handoff, rely on SITCON's existing documentation and Google Drive management practices rather than inventing repo-local credential rules.

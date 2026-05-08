@@ -4,6 +4,16 @@
 
 這裡不取代 Flickr，也不保存原圖。正式照片索引資料以 Google Sheets 維護；這個 repo 保存 schema、受控字彙、驗證規則、匯入工具、AI/agent 維護脈絡、GitHub Pages 公開檢索前端原始碼與 sample/export 格式。
 
+目前的資料流方向：
+
+```text
+Flickr 相簿
+  -> repo 工具掃描與產生候選資料
+  -> Google Sheets photos 主表
+  -> Apps Script 驗證與提示
+  -> GitHub Pages 與外部 AI 讀取 photos 或同欄位公開匯出
+```
+
 ## 快速開始
 
 目前不需要安裝額外套件。需要 Node.js，已知可用版本為 `v24.15.0`。
@@ -22,7 +32,7 @@ npm run dev
 
 開啟 `http://localhost:4173/`。
 
-相簿匯入後，可以在搜尋介面用「整理狀態」篩選 `unreviewed`，逐步補齊場景、氛圍、用途、贊助品項、授權與公開使用判斷。這個本機介面預設讀取 repo 內 sample/export data；部署到 GitHub Pages 時可透過 `app/config.js` 改讀 Google Sheets 的公開輸出層。
+相簿匯入後，可以在搜尋介面用「整理狀態」篩選 `unreviewed`，逐步補齊場景、氛圍、用途、贊助品項、授權與公開使用判斷。這個本機介面預設讀取 repo 內 sample/export data；部署到 GitHub Pages 時可透過 `app/config.js` 改讀 Google Sheets `photos` 的公開 CSV/JSON。
 
 從 Flickr 照片 URL 產生一列 CSV：
 
@@ -75,17 +85,22 @@ npm run album:add -- https://www.flickr.com/photos/sitcon/albums/ALBUM_ID/ --app
 - `scripts/serve.mjs`: 本機靜態 server。
 - `scripts/validate-data.mjs`: 檢查資料格式與標籤字典一致性。
 - `docs/agent-maintenance-guide.md`: agent 與技術志工維護指南。
+- `docs/ai-readable-dataset.md`: 外部 AI 與唯讀工具如何解讀照片索引資料。
+- `docs/apps-script-maintenance-design.md`: Google Sheets Apps Script 維護輔助設計。
 - `docs/data-entry-guide.md`: 照片索引填寫指南。
 - `docs/database-collaboration-strategy.md`: 資料庫與志工協作維護策略。
+- `docs/google-sheets-database-design.md`: 正式 Google Sheets 資料庫表格設計。
 - `docs/photo-fields-reference.md`: Google Sheets 與 CSV 匯出欄位速查表。
 - `docs/photo-finder-mvp.md`: MVP 產品判斷紀錄。
 - `docs/mvp-implementation-plan.md`: MVP 實作計畫。
 - `docs/public-frontend-architecture.md`: GitHub Pages 公開唯讀前端資料流。
+- `docs/sheets-sync-workflow.md`: Sheets 與 repo 工具同步流程。
 - `AGENTS.md`: agent 協作規則。
 
 ## 資料填寫原則
 
 - Google Sheets 是正式照片索引資料庫；repo 內 `data/photos.csv` 只是 sample、fixture 與匯出格式參考。
+- `photos` 主表本身就是公開照片索引；公開 CSV/JSON 只是同欄位匯出，不是額外篩選表。
 - 多值欄位用分號分隔，例如 `攤位;會眾;交流`。
 - `sponsorship_items` 必須對齊 `data/sponsorship-items.json` 的 CFS 品項。
 - `scene_tags` 描述照片裡看到什麼。

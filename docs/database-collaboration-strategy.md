@@ -14,6 +14,7 @@ MVP 階段採用 Google Sheets-first 架構：
 - Repo 是治理與工具層，保存 schema、taxonomy、validation、匯入工具、Apps Script 來源、AI prompt 與操作文件。
 - `data/photos.csv` 目前只是 MVP sample、local fixture 與未來 Sheets 匯出格式參考，不是正式資料來源。
 - 若 Sheets 與 repo 內 sample data 發生衝突，以 Sheets 為準。
+- 正式 Sheets 表格設計記錄在 `docs/google-sheets-database-design.md`。
 
 這個選擇的重點是讓非技術背景志工可以直接理解、篩選與維護資料，同時保留技術志工與 agent 可重跑、可驗證、可交接的工具鏈。
 
@@ -63,7 +64,7 @@ Sheets 應支援：
 
 - 非技術志工直接整理照片。
 - 欄位下拉選單與格式提示。
-- 用篩選檢視處理 `unreviewed`、`needs_review`、贊助品項、素材包等工作佇列。
+- 用篩選檢視處理 `unreviewed`、`ai_labeled`、`needs_review`、贊助品項、素材包等工作佇列。
 - 透過 Google Sheets 版本紀錄復原誤操作。
 - 透過 Apps Script 提供即時提醒與欄位輔助。
 
@@ -94,9 +95,11 @@ Apps Script 的規則來源應來自 `data/photo-schema.json`、`data/tag-taxono
 
 GitHub Pages 適合做公開、唯讀、無登入門檻的檢索前端，讓更多人能夠搜尋與使用照片索引。
 
-GitHub Pages 不應直接操作資料庫，也不應保存任何 secret 或 credential。它應讀取 Google Sheets 的公開輸出層，例如 `published_photos` 匯出的 CSV 或 JSON。
+GitHub Pages 不應直接操作資料庫，也不應保存任何 secret 或 credential。它應讀取 Google Sheets `photos` 主表，或讀取由 `photos` 以同一套欄位匯出的公開 CSV/JSON。
 
 更完整的公開前端資料流記錄在 `docs/public-frontend-architecture.md`。
+
+MVP 不建立額外的公開篩選表。未 review 的照片仍可被搜尋，但前端與 AI 應使用 `curation_status`、`public_use_status`、`priority_level` 與 `collections` 做排序與提醒。
 
 ## AI 輔助原則
 
@@ -108,11 +111,13 @@ AI 可以在資料匯入階段協助初標，但不應取代人工判斷。
 2. AI 讀取照片縮圖與既有脈絡，產生初步欄位內容。
 3. AI 產生結果寫入正式欄位前，必須讓人類看到差異並確認是否取代。
 4. AI 輔助後的資料狀態應是 `ai_labeled`。
-5. 具有 Sheets 編輯權限的志工檢核並修正後，才能改成 `reviewed` 或 `approved`。
+5. 具有 Sheets 編輯權限的志工檢核並修正後，才能把 `curation_status` 改成 `reviewed`。若公開使用判斷合適，再把 `public_use_status` 設為 `approved`。
 
 不另外拆分 AI 欄位是為了降低資料表複雜度；因此 `curation_status` 的語意必須清楚。`ai_labeled` 代表資料曾經由 AI 協助，但尚未完成人工確認。
 
 `curation_status` 只描述資料是否經過人工確認，不描述推薦優先度。優先推薦由 `priority_level`、`collections` 或素材包判斷；不建議推薦使用由 `public_use_status = avoid` 判斷。
+
+外部 AI 如何解讀公開資料集，記錄在 `docs/ai-readable-dataset.md`。
 
 ## 公開資料邊界
 
