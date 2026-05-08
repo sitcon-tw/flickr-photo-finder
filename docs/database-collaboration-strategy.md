@@ -90,6 +90,14 @@ Apps Script 適合做編輯輔助，不應成為另一套資料治理來源。
 
 Apps Script 的規則來源應來自 `data/photo-schema.json`、`data/tag-taxonomy.json` 與其他 repo 設定，repo validation 仍是最後的權威檢查。
 
+## GitHub Pages 的角色
+
+GitHub Pages 適合做公開、唯讀、無登入門檻的檢索前端，讓更多人能夠搜尋與使用照片索引。
+
+GitHub Pages 不應直接操作資料庫，也不應保存任何 secret 或 credential。它應讀取 Google Sheets 的公開輸出層，例如 `published_photos` 匯出的 CSV 或 JSON。
+
+更完整的公開前端資料流記錄在 `docs/public-frontend-architecture.md`。
+
 ## AI 輔助原則
 
 AI 可以在資料匯入階段協助初標，但不應取代人工判斷。

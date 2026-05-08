@@ -2,7 +2,7 @@
 
 這個 repo 用來建立 SITCON Flickr 照片索引，協助籌備團隊用實際工作情境找照片，例如社群宣傳、網站視覺、贊助提案、贊助成果報告、新聞稿、志工招募與活動回顧。
 
-這裡不取代 Flickr，也不保存原圖。正式照片索引資料以 Google Sheets 維護；這個 repo 保存 schema、受控字彙、驗證規則、匯入工具、AI/agent 維護脈絡、本機搜尋 UI 與 sample/export 格式。
+這裡不取代 Flickr，也不保存原圖。正式照片索引資料以 Google Sheets 維護；這個 repo 保存 schema、受控字彙、驗證規則、匯入工具、AI/agent 維護脈絡、GitHub Pages 公開檢索前端原始碼與 sample/export 格式。
 
 ## 快速開始
 
@@ -22,7 +22,7 @@ npm run dev
 
 開啟 `http://localhost:4173/`。
 
-相簿匯入後，可以在搜尋介面用「整理狀態」篩選 `unreviewed`，逐步補齊場景、氛圍、用途、贊助品項、授權與公開使用判斷。這個本機介面目前讀取 repo 內 sample/export data；正式資料以 Google Sheets 為準。
+相簿匯入後，可以在搜尋介面用「整理狀態」篩選 `unreviewed`，逐步補齊場景、氛圍、用途、贊助品項、授權與公開使用判斷。這個本機介面預設讀取 repo 內 sample/export data；部署到 GitHub Pages 時可透過 `app/config.js` 改讀 Google Sheets 的公開輸出層。
 
 從 Flickr 照片 URL 產生一列 CSV：
 
@@ -68,7 +68,8 @@ npm run album:add -- https://www.flickr.com/photos/sitcon/albums/ALBUM_ID/ --app
 - `data/photo-schema.json`: Google Sheets、CSV 匯出、Apps Script 與 CLI 共用的欄位 schema。
 - `data/tag-taxonomy.json`: 受控標籤與列舉值欄位。
 - `data/sponsorship-items.json`: SITCON 2026 CFS 贊助品項固定版本資料。
-- `app/`: 本機照片搜尋介面。
+- `app/`: GitHub Pages / 本機照片搜尋介面。
+- `app/config.js`: 公開前端資料來源設定。
 - `scripts/add-album.mjs`: 檢查或匯入 Flickr 相簿中的照片。
 - `scripts/add-photo.mjs`: 從 Flickr URL 產生或寫入 CSV 資料列。
 - `scripts/serve.mjs`: 本機靜態 server。
@@ -79,6 +80,7 @@ npm run album:add -- https://www.flickr.com/photos/sitcon/albums/ALBUM_ID/ --app
 - `docs/photo-fields-reference.md`: Google Sheets 與 CSV 匯出欄位速查表。
 - `docs/photo-finder-mvp.md`: MVP 產品判斷紀錄。
 - `docs/mvp-implementation-plan.md`: MVP 實作計畫。
+- `docs/public-frontend-architecture.md`: GitHub Pages 公開唯讀前端資料流。
 - `AGENTS.md`: agent 協作規則。
 
 ## 資料填寫原則

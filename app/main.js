@@ -1,7 +1,4 @@
-const paths = {
-  photos: "/data/photos.csv",
-  taxonomy: "/data/tag-taxonomy.json",
-};
+import { dataSources } from "./config.js";
 
 const listFields = [
   "scene_tags",
@@ -279,8 +276,8 @@ function resetFilters() {
 
 async function loadData() {
   const [photosResponse, taxonomyResponse] = await Promise.all([
-    fetch(paths.photos),
-    fetch(paths.taxonomy),
+    fetch(dataSources.photosCsvUrl),
+    fetch(dataSources.taxonomyJsonUrl),
   ]);
 
   if (!photosResponse.ok || !taxonomyResponse.ok) {

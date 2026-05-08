@@ -14,8 +14,10 @@ The main goal is not to replace Flickr. The repository should keep a practical i
 - `docs/database-collaboration-strategy.md`: Sheets-first database and volunteer collaboration strategy.
 - `docs/agent-maintenance-guide.md`: maintenance guide for future agents and technical volunteers.
 - `docs/photo-fields-reference.md`: field reference for the Google Sheets photo table and CSV export format.
+- `docs/public-frontend-architecture.md`: GitHub Pages public read-only frontend architecture.
 - `README.md`: human-facing project overview and quick start.
-- `app/`: local static search UI for the MVP.
+- `app/`: GitHub Pages and local static search UI for the MVP.
+- `app/config.js`: public frontend data source configuration.
 - `data/photos.csv`: MVP sample, local fixture, and Sheets export format reference. It is not the authoritative photo database.
 - `data/photo-schema.json`: shared field schema for Google Sheets, CSV exports, Apps Script helpers, and CLI validation.
 - `data/tag-taxonomy.json`: controlled taxonomy for photo tags and enum fields.
@@ -31,6 +33,8 @@ The main goal is not to replace Flickr. The repository should keep a practical i
 - This repo is the governance and tooling layer: schema, taxonomy, validation, import/export scripts, Apps Script source or generators, AI prompts, and maintenance documentation.
 - Treat `data/photo-schema.json` as the machine-readable source for photo field order, basic field metadata, reviewed completeness rules, and approved-use requirements.
 - Do not treat `data/photos.csv` as production data. It exists for MVP demos, local UI development, validation fixtures, and future export-format tests.
+- The public GitHub Pages frontend is read-only. It should read Google Sheets public output data and must not contain secrets or database-write credentials.
+- GitHub Pages should be deployed through a GitHub Actions artifact, not by publishing the whole repository root.
 - Treat `data/sponsorship-items.json` as a fixed snapshot. SITCON 2026 CFS has ended, so do not build auto-sync behavior for that data.
 - Future CFS versions should be introduced explicitly as new or replacement versioned data, not by assuming the 2026 snapshot keeps changing.
 - `sponsorship_items` should align with CFS item names. Do not invent a parallel sponsorship item vocabulary unless the documents explain why.

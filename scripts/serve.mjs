@@ -17,7 +17,7 @@ const mimeTypes = {
 
 function resolveRequestPath(urlPath) {
   const decodedPath = decodeURIComponent(urlPath.split("?")[0]);
-  const relativePath = decodedPath === "/" ? "app/index.html" : decodedPath.replace(/^\/+/, "");
+  const relativePath = decodedPath === "/" ? "app/" : decodedPath.replace(/^\/+/, "");
   const absolutePath = resolve(root, normalize(relativePath));
 
   if (!absolutePath.startsWith(root)) {
@@ -40,7 +40,19 @@ const server = createServer(async (request, response) => {
   }
 
   try {
-    const fileStat = await stat(filePath);
+    let targetPath = filePath;
+    let fileStat = await stat(targetPath);
+    if (fileStat.isDirectory()) {
+      const requestPath = request.url?.split("?")[0] ?? "/";
+      if (!requestPath.endsWith("/")) {
+        response.writeHead(301, { location: `${requestPath}/` });
+        response.end();
+        return;
+      }
+      targetPath = join(targetPath, "index.html");
+      fileStat = await stat(targetPath);
+    }
+
     if (!fileStat.isFile()) {
       sendText(response, 404, "Not found");
       return;
@@ -48,9 +60,9 @@ const server = createServer(async (request, response) => {
 
     response.writeHead(200, {
       "content-length": fileStat.size,
-      "content-type": mimeTypes[extname(filePath)] ?? "application/octet-stream",
+      "content-type": mimeTypes[extname(targetPath)] ?? "application/octet-stream",
     });
-    createReadStream(filePath).pipe(response);
+    createReadStream(targetPath).pipe(response);
   } catch {
     sendText(response, 404, "Not found");
   }
