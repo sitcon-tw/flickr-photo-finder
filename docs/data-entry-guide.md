@@ -17,7 +17,7 @@
 
 ## 從 Flickr URL 建立資料列
 
-可以用工具從 Flickr oEmbed 取得照片 ID、縮圖 URL、攝影者與標題備註：
+可以用工具從 Flickr oEmbed 取得照片 ID、縮圖 URL 與標題備註，並從 Flickr title 解析攝影師署名：
 
 ```bash
 npm run photo:add -- https://www.flickr.com/photos/sitcon/PHOTO_ID
@@ -36,6 +36,8 @@ npm run photo:add -- https://www.flickr.com/photos/sitcon/PHOTO_ID --append
 ```
 
 使用 `--append` 時，工具會在寫入後自動執行資料驗證。這個工具只處理 Flickr 基本中繼資料；情緒、用途、贊助品項、公開使用狀態等仍需人工判斷。
+
+SITCON Flickr 上的照片擁有者是 SITCON，但攝影師 credit 會放在 Flickr title 裡。請不要把 Flickr oEmbed 回傳的帳號擁有者直接填成攝影師；若 title 看不出攝影師署名，`photographer` 應先留空，並保留完整 Flickr title 在 `internal_notes` 供後續人工確認。
 
 ## 從 Flickr 相簿檢查匯入狀態
 
@@ -88,7 +90,7 @@ scene_tags
 | --- | --- |
 | `event_name` | 例如 `SITCON 年會`、`SITCON Camp`。不確定就留空，不要硬猜。 |
 | `event_year` | 四位年份，例如 `2026`。 |
-| `photographer` | 攝影者或 Flickr 上可辨識的署名資訊。 |
+| `photographer` | 攝影者署名。SITCON Flickr 的帳號擁有者是 SITCON，攝影師 credit 通常要從 Flickr title 判斷；不確定就留空，不要填成 SITCON。 |
 | `license` | Flickr 顯示的授權資訊。若不確定，先留空並將 `public_use_status` 設為 `needs_review`。 |
 | `orientation` | `landscape`、`portrait`、`square`。 |
 | `has_negative_space` | `true` 或 `false`，表示是否有明顯留白可放字。 |

@@ -26,6 +26,7 @@ The main goal is not to replace Flickr. The repository should keep a practical i
 - Treat `data/sponsorship-items.json` as a fixed snapshot. SITCON 2026 CFS has ended, so do not build auto-sync behavior for that data.
 - Future CFS versions should be introduced explicitly as new or replacement versioned data, not by assuming the 2026 snapshot keeps changing.
 - `sponsorship_items` should align with CFS item names. Do not invent a parallel sponsorship item vocabulary unless the documents explain why.
+- SITCON is the owner of the SITCON Flickr account, but photographer credit is listed in the Flickr title when available. Do not treat Flickr oEmbed `author_name` as the photographer.
 - Keep `scene_tags`, `sponsorship_items`, and `sponsorship_tags` conceptually separate:
   - `scene_tags`: visual facts in the photo.
   - `sponsorship_items`: sponsor inventory item.

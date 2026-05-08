@@ -62,6 +62,27 @@ export function assertRequiredOEmbedData(oembed) {
   }
 }
 
+export function extractPhotographerCredit(title) {
+  const normalizedTitle = String(title ?? "").trim();
+  if (!normalizedTitle) {
+    return "";
+  }
+
+  const cameraTokenMatch = normalizedTitle.match(/^(.+?)(?:DSC|IMG)[-_]?\d+/i);
+  if (cameraTokenMatch?.[1]?.trim()) {
+    return cameraTokenMatch[1].trim();
+  }
+
+  for (const separator of ["-", "_"]) {
+    const separatorIndex = normalizedTitle.indexOf(separator);
+    if (separatorIndex > 0) {
+      return normalizedTitle.slice(0, separatorIndex).trim();
+    }
+  }
+
+  return "";
+}
+
 export async function getExistingPhotoIds() {
   const text = await readFile(photosPath, "utf8");
   const rows = text.trimEnd().split(/\r?\n/);
@@ -87,13 +108,14 @@ export async function buildCsvRows(normalizedPhotos) {
   for (const { photoId, photoUrl } of normalizedPhotos) {
     const oembed = await fetchOEmbed(photoUrl);
     assertRequiredOEmbedData(oembed);
+    const flickrTitle = oembed.title ?? "";
 
     const photo = {
       photo_id: photoId,
       photo_url: photoUrl,
       image_preview_url: oembed.thumbnail_url ?? "",
-      photographer: oembed.author_name ?? "",
-      internal_notes: oembed.title ? `Flickr title: ${oembed.title}` : "",
+      photographer: extractPhotographerCredit(flickrTitle),
+      internal_notes: flickrTitle ? `Flickr title: ${flickrTitle}` : "",
       curation_status: "unreviewed",
     };
     rows.push(toCsvRow(photo));
