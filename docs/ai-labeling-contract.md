@@ -37,10 +37,13 @@ tmp/ai-runs/<run-id>/
 input-photos.csv
 photos.json
 manifest.json
+ai-labeling-prompt.md
 images/
 ```
 
 AI 或 agent 應以 `photos.json` 作為主要機器可讀輸入；`input-photos.csv` 只供人類檢查或除錯使用。
+
+`ai-labeling-prompt.md` 是可直接交給模型或 agent 的本次任務提示，會包含 run 目錄路徑與通用 `prompts/ai-labeling.md` 內容。
 
 ## 必讀檔案
 

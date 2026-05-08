@@ -237,7 +237,7 @@ pnpm sheets:export
 pnpm ai:prepare -- --limit 50
 ```
 
-這會建立 `tmp/ai-runs/<run-id>/`，包含 `input-photos.csv`、`photos.json`、`manifest.json` 與 `images/`。這些檔案只供本機 AI 初標與人工審核使用，不會寫入 Google Sheets。`ai:prepare` 預設下載 Flickr 1024px 圖片作為 AI 判讀素材；`image_preview_url` 仍是正式 Sheets 中給前端預覽用的小縮圖。若只想測試 metadata 輸出，可加上 `--no-download`。
+這會建立 `tmp/ai-runs/<run-id>/`，包含 `input-photos.csv`、`photos.json`、`manifest.json`、`ai-labeling-prompt.md` 與 `images/`。這些檔案只供本機 AI 初標與人工審核使用，不會寫入 Google Sheets。`ai:prepare` 預設下載 Flickr 1024px 圖片作為 AI 判讀素材；`image_preview_url` 仍是正式 Sheets 中給前端預覽用的小縮圖。若只想測試 metadata 輸出，可加上 `--no-download`。
 
 AI 圖片尺寸可依任務調整：
 
@@ -257,7 +257,7 @@ pnpm ai:prepare -- --image-size original
 pnpm ai:prepare -- --album ALBUM_ID --limit all
 ```
 
-使用互動入口時，`pnpm workflow` 的「準備 AI 初標工作包」會先從正式 Sheets 匯出的 `albums` 清單選相簿，再把選到的 album id 傳給 `ai:prepare`。工作包建立完成後，workflow 會印出可直接複製給模型或 agent 的 prompt，並寫入該 run 目錄的 `ai-labeling-prompt.md`。
+使用互動入口時，`pnpm workflow` 的「準備 AI 初標工作包」會先從正式 Sheets 匯出的 `albums` 清單選相簿，再把選到的 album id 傳給 `ai:prepare`。工作包建立完成後，`ai:prepare` 會寫入該 run 目錄的 `ai-labeling-prompt.md`；workflow 也會把同一份 prompt 印出，方便直接複製給模型或 agent。
 
 這仍會套用預設 `curation_status = unreviewed` 篩選。若要整本相簿所有整理狀態都放進工作包，請加上：
 

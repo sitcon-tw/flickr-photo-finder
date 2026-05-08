@@ -1,5 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { basename, extname, join, relative } from "node:path";
+import { writeAiLabelingPrompt } from "./ai-labeling-prompt.mjs";
 import { parseCsv, parseSemicolonList, toCsvLine } from "./csv-utils.mjs";
 import { photoHeaders } from "./photo-schema.mjs";
 import { aiRunsDir, sheetsExportPhotosPath } from "./workflow-paths.mjs";
@@ -34,8 +35,8 @@ Options:
   --help, -h            Show this help.
 
 The command creates tmp/ai-runs/<run-id>/ with input-photos.csv, photos.json,
-manifest.json, and downloaded images when downloads are enabled. It does not
-write Google Sheets.`);
+manifest.json, ai-labeling-prompt.md, and downloaded images when downloads are
+enabled. It does not write Google Sheets.`);
 }
 
 function parseArgs(argv) {
@@ -386,9 +387,11 @@ async function prepareRun(options) {
 
   await writeFile(join(runDir, "photos.json"), `${JSON.stringify(preparedPhotos, null, 2)}\n`);
   await writeFile(join(runDir, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`);
+  const { promptPath } = writeAiLabelingPrompt(runDir);
 
   return {
     manifest,
+    promptPath,
     runDir,
   };
 }
@@ -404,7 +407,8 @@ async function main() {
   console.log(`AI run prepared: ${result.runDir}`);
   console.log(`- selected photos: ${result.manifest.selected_photo_count}`);
   console.log(`- downloaded images: ${result.manifest.downloaded_photo_count}`);
-  console.log("- next: use photos.json and images/ as AI labeling input, then review generated proposals before writing Sheets.");
+  console.log(`- prompt: ${result.promptPath}`);
+  console.log("- next: give ai-labeling-prompt.md and this run directory to the model, then review generated proposals before writing Sheets.");
 }
 
 try {

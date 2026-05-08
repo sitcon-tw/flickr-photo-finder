@@ -44,7 +44,7 @@ pnpm ai:prepare -- --album ALBUM_ID --limit all --status all --image-size large-
 pnpm ai:prepare -- --photo-ids PHOTO_ID --image-size original
 ```
 
-`--limit all` 代表不設上限；若不指定，預設最多準備 50 張。`ai:prepare` 會輸出 `tmp/ai-runs/<run-id>/`。後續所有 AI 初標工作都應限制在這個 run 目錄內。
+`--limit all` 代表不設上限；若不指定，預設最多準備 50 張。`ai:prepare` 會輸出 `tmp/ai-runs/<run-id>/`，並在同一個目錄寫入 `ai-labeling-prompt.md`。後續所有 AI 初標工作都應限制在這個 run 目錄內。
 
 ### 3. 交給模型前先確認工作包
 
@@ -52,12 +52,13 @@ pnpm ai:prepare -- --photo-ids PHOTO_ID --image-size original
 
 - `manifest.json` 存在且 `selected_photo_count` 符合預期。
 - `photos.json` 存在且每筆都有 `photo_id`。
+- `ai-labeling-prompt.md` 存在，可直接交給模型或 agent。
 - 若要讀本機圖片，`local_image_path` 有值且指向 `images/` 下的圖片。
 - 若 `local_image_path` 為空，模型需要使用 `image_download_url`，或重新執行有下載圖片的 `ai:prepare`。
 
 ### 4. 將 prompt 與工作包交給模型
 
-模型應使用 `prompts/ai-labeling.md` 作為任務提示，並讀取：
+模型應使用 run 目錄中的 `ai-labeling-prompt.md` 作為任務提示。這份檔案會引用本次 run 目錄，並包含 `prompts/ai-labeling.md` 的通用提示內容。模型仍應讀取：
 
 - `docs/ai-labeling-contract.md`
 - `data/photo-schema.json`
