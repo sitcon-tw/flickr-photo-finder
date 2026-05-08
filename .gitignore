@@ -6,6 +6,10 @@ credentials.json
 token.json
 .google-auth/
 
+# Local Google Apps Script / clasp project binding
+.clasp.json
+apps-script/.clasp.json
+
 # Editor and OS noise
 *.swp
 *.swo

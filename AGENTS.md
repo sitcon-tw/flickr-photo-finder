@@ -26,6 +26,7 @@ The main goal is not to replace Flickr. The repository should keep a practical i
 - `docs/ai-labeling-evaluation-notes.md`: AI labeling quality evaluation notes and known failure patterns.
 - `README.md`: human-facing project overview and quick start.
 - `app/`: GitHub Pages and local static search UI for the MVP.
+- `apps-script/`: Google Apps Script source for Sheets-side maintenance helpers. `GeneratedConfig.js` is generated from repo schema and taxonomy.
 - `app/config.js`: public frontend data source configuration.
 - `config/project.json`: project-level organization, Flickr account, and frontend display configuration.
 - `fixtures/albums.csv`: MVP sample, local fixture, and Sheets export format reference for the SITCON Flickr album catalog. It is not the authoritative album database or a Sheets cache.
@@ -40,6 +41,7 @@ The main goal is not to replace Flickr. The repository should keep a practical i
 - `scripts/discover-albums.mjs`: helper for discovering SITCON Flickr albums and writing the local album fixture.
 - `scripts/list-albums.mjs`: helper for listing and filtering exported Google Sheets albums before choosing an intake target.
 - `scripts/sync-albums.mjs`: helper for merging a Google Sheets albums CSV export with discovered albums and producing a Sheets-ready CSV.
+- `scripts/build-apps-script-config.mjs`: helper for generating Apps Script config from repo schema and taxonomy.
 - `scripts/run-intake.mjs`: helper for producing a complete intake run artifact from a selected album.
 - `scripts/validate-intake-run.mjs`: helper for checking an intake run artifact before applying it to Google Sheets.
 - `scripts/validate-ai-fixtures.mjs`: helper for checking AI proposal fixtures against the current validator boundary.
@@ -142,6 +144,7 @@ pnpm albums:list -- --source sheets
 pnpm albums:select
 pnpm albums:select -- --source sheets
 pnpm albums:sync -- --sheets-export <albums-csv> --output <albums-csv>
+pnpm apps-script:build-config
 pnpm ai:review -- --run-dir <dir>
 pnpm ai:diff -- --run-dir <dir>
 pnpm ai:plan -- --run-dir <dir>

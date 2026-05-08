@@ -468,6 +468,7 @@ async function runSheetsTools() {
     ["sheets:apply-init", "dry-run 套用初始化 CSV"],
     ["sheets:migrate-headers", "dry-run 安全 header 遷移"],
     ["sheets:export", "匯出正式 Sheets 工作快取"],
+    ["apps-script:build-config", "從 schema 與 taxonomy 產生 Apps Script 設定"],
   ];
 
   choices.forEach(([script, description], index) => {

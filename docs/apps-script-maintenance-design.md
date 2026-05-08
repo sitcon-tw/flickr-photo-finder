@@ -90,12 +90,23 @@ Apps Script 應透過 `clasp` 進行部署。
 - 未來 agent 或技術志工可以從 repo 理解目前部署內容，不需要只靠 Google Apps Script 編輯器。
 - 部署權限與 Google 帳號授權仍交由 SITCON 既有 Google Drive 與文件管理制度處理，不把 credential 放進 repo。
 
-建議未來實作時：
+目前 repo 內已有最小 Apps Script source：
 
-- Apps Script source 放在 repo 內明確目錄，例如 `apps-script/`。
-- `clasp` 設定只保存可公開的 script metadata；不提交個人 credential 或 token。
-- 部署前先確認 repo schema、taxonomy 與 Apps Script 使用的設定一致。
-- 部署後更新 `schema_meta` 或相關文件中的版本資訊。
+- `apps-script/Code.js`：Sheets 選單、欄位提示、基本下拉選單與資料檢查。
+- `apps-script/GeneratedConfig.js`：由 repo schema 與 taxonomy 產生，供 Apps Script 使用。不要手動編輯。
+- `apps-script/appsscript.json`：Apps Script manifest。
+- `apps-script/.clasp.json.example`：本機 clasp 綁定範例，不是正式 credential。
+- `scripts/build-apps-script-config.mjs`：從 `data/photo-schema.json` 與 `data/tag-taxonomy.json` 重新產生 `GeneratedConfig.js`。
+
+更新 Apps Script 設定來源時，先執行：
+
+```bash
+pnpm apps-script:build-config
+```
+
+實際部署應由有 Google Apps Script 權限的維護者使用 `clasp` 操作。若是既有 Apps Script 專案，維護者可以在 `apps-script/` 目錄建立本機 `.clasp.json`，內容可參考 `.clasp.json.example`；這個檔案不應 commit。
+
+部署前先確認 repo schema、taxonomy 與 Apps Script 產生設定一致。部署後若已建立 `schema_meta` 流程，再更新 `schema_meta` 或相關文件中的版本資訊。
 
 `clasp` 是部署工具，不是資料治理來源。Apps Script 的驗證規則仍應來自 repo 中的 schema 與 taxonomy。
 
