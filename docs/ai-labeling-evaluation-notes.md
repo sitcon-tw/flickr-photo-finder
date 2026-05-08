@@ -239,6 +239,25 @@ pnpm sheets:apply-ai-updates -- --run-dir tmp/ai-runs/<run-id>
 3. 確認 `public_use_status = needs_review` 是否只是保守預設，或有真正需要提醒的照片。
 4. 修改 proposal 後重新跑 `pnpm ai:review`，再執行 Sheets dry-run。
 
+### 本輪套用結果
+
+後續已建立 `ai-prepare-2026-05-08T21-48-29-597Z-claude-curated`，保留原始 Claude 輸出，並只做以下修剪：
+
+- 移除 3 筆 `sponsorship_tags = 品牌露出`。
+- 從 2 筆 `recommended_uses` 移除 `贊助提案`。
+
+curated 版重新執行 `pnpm ai:review` 後通過，planned updates 從 298 筆降為 295 筆。`sheets:apply-ai-updates` dry-run 無衝突後，已寫入正式 Google Sheets 並完成讀回驗證。
+
+寫入後重新匯出正式 Sheets，確認相簿 `72177720331149380`：
+
+- 共 37 張照片。
+- 37 張 `curation_status = ai_labeled`。
+- 37 張有 `people_count`。
+- 36 張 `public_use_status = needs_review`。
+- `sponsorship_items` 與 `sponsorship_tags` 仍為空白。
+
+這些值仍是 AI 初標候選，不代表人工 `reviewed`。後續人工整理應在 Google Sheets 中修正錯誤、補齊欄位，再由志工決定是否標為 `reviewed` 或 `approved`。
+
 ## 目前已知容易失準的欄位
 
 ### `safe_crop`
