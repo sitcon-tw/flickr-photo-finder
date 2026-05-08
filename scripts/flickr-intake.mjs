@@ -1,7 +1,7 @@
 import { appendFile, readFile } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
 import { URL } from "node:url";
-import { toCsvLine } from "./csv-utils.mjs";
+import { parseCsv, toCsvLine } from "./csv-utils.mjs";
 import { photoHeaders } from "./photo-schema.mjs";
 
 export const photosPath = "data/photos.csv";
@@ -76,10 +76,19 @@ export function extractPhotographerCredit(title) {
   return "";
 }
 
-export async function getExistingPhotoIds() {
-  const text = await readFile(photosPath, "utf8");
-  const rows = text.trimEnd().split(/\r?\n/);
-  return new Set(rows.slice(1).map((row) => row.split(",", 1)[0]));
+export async function getExistingPhotoIds(path = photosPath) {
+  const text = await readFile(path, "utf8");
+  const [headers, ...rows] = parseCsv(text);
+  const photoIdIndex = headers?.indexOf("photo_id") ?? -1;
+  if (photoIdIndex < 0) {
+    throw new Error(`${path} is missing photo_id header`);
+  }
+
+  return new Set(
+    rows
+      .map((row) => row[photoIdIndex] ?? "")
+      .filter(Boolean),
+  );
 }
 
 export function assertUniqueInputPhotoIds(normalizedPhotos) {
@@ -96,7 +105,7 @@ export function filterNewPhotos(normalizedPhotos, existingIds) {
   return normalizedPhotos.filter(({ photoId }) => !existingIds.has(photoId));
 }
 
-export async function buildCsvRows(normalizedPhotos) {
+export async function buildCsvRows(normalizedPhotos, defaults = {}) {
   const rows = [];
   for (const { photoId, photoUrl } of normalizedPhotos) {
     const oembed = await fetchOEmbed(photoUrl);
@@ -104,6 +113,9 @@ export async function buildCsvRows(normalizedPhotos) {
     const flickrTitle = oembed.title ?? "";
 
     const photo = {
+      album_title: defaults.album_title ?? "",
+      event_name: defaults.event_name ?? "",
+      event_year: defaults.event_year ?? "",
       photo_id: photoId,
       photo_url: photoUrl,
       image_preview_url: oembed.thumbnail_url ?? "",

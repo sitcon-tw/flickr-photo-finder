@@ -19,7 +19,7 @@
 
 以下列出正式 Google Sheets 應有的工作表，以及目前 repo 工具或本機 fixture 的支援狀態。
 
-### photos（正式主表；Sheets 建置時必備）
+### photos（正式主表；Sheets 建置時必備；候選列 CSV 目前可產生）
 
 正式照片索引主表。每列代表一張 Flickr 照片。
 

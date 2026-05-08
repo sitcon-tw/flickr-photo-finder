@@ -1,11 +1,11 @@
 import { resolveAlbumInput } from "./album-catalog.mjs";
+import { extractAlbumPhotoUrls, fetchAlbumHtml } from "./flickr-album-photos.mjs";
 import {
   appendCsvRows,
   assertUniqueInputPhotoIds,
   buildCsvRows,
   filterNewPhotos,
   getExistingPhotoIds,
-  normalizeFlickrPhotoUrl,
   photosPath,
   validateData,
 } from "./flickr-intake.mjs";
@@ -34,33 +34,6 @@ function parseArgs(argv) {
   const albumUrl = args.find((arg) => !arg.startsWith("--"));
 
   return { append, help, albumUrl };
-}
-
-async function fetchAlbumHtml(albumUrl) {
-  const response = await fetch(albumUrl);
-  if (!response.ok) {
-    throw new Error(`Flickr album fetch failed: ${response.status} ${response.statusText}`);
-  }
-  return response.text();
-}
-
-function extractAlbumPhotoUrls(html, ownerPath) {
-  const pattern = new RegExp(`photos/${ownerPath}/([0-9]+)`, "g");
-  const photoIds = [];
-  const seen = new Set();
-  let match;
-
-  while ((match = pattern.exec(html)) !== null) {
-    const photoId = match[1];
-    if (!seen.has(photoId)) {
-      seen.add(photoId);
-      photoIds.push(photoId);
-    }
-  }
-
-  return photoIds.map((photoId) =>
-    normalizeFlickrPhotoUrl(`https://www.flickr.com/photos/${ownerPath}/${photoId}`),
-  );
 }
 
 async function main() {
