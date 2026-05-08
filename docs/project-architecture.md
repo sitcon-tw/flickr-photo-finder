@@ -70,7 +70,7 @@ flowchart LR
 6. AI 候選值必須以 diff 形式給人類確認，確認後才回寫。
 7. Apps Script 在 Sheets 內提供即時提示；必要時匯出資料並執行 repo validation。
 
-匯入階段最低必要欄位、`reviewed` 完整度與 `approved` 使用要求由 `data/photo-schema.json` 定義，並由 `npm run validate:data` 檢查。文件只說明流程與判斷，不另外維護欄位清單。
+匯入階段最低必要欄位、`reviewed` 完整度與 `approved` 使用要求由 `data/photo-schema.json` 定義，並由 `pnpm validate:data` 檢查。文件只說明流程與判斷，不另外維護欄位清單。
 
 ## 找圖流程
 

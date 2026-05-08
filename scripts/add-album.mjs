@@ -12,10 +12,10 @@ import {
 
 function printUsage() {
   console.log(`Usage:
-  npm run album:add -- <flickr-album-url>
-  npm run album:add -- <album-id>
-  npm run album:add -- <flickr-album-url> --append
-  npm run album:add -- <album-id> --append
+  pnpm album:add -- <flickr-album-url>
+  pnpm album:add -- <album-id>
+  pnpm album:add -- <flickr-album-url> --append
+  pnpm album:add -- <album-id> --append
 
 Options:
   --append  Append missing album photo rows to data/photos.csv and validate data.
@@ -23,7 +23,7 @@ Options:
 Without --append, the command reports album coverage and prints missing photo
 URLs. With --append, it imports the missing photos using Flickr oEmbed.
 
-Album IDs are resolved from data/albums.csv. Use npm run albums:discover --
+Album IDs are resolved from data/albums.csv. Use pnpm albums:discover --
 --write to update that local fixture before selecting by ID.`);
 }
 

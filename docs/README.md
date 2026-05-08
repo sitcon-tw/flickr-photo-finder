@@ -18,11 +18,11 @@
 ### 目前可用
 
 - 本機 static search UI，預設讀 `data/photos.csv`。
-- `npm run validate:data`，檢查 sample/export data、schema 與 taxonomy。
-- `npm run albums:discover`，盤點 SITCON Flickr 公開相簿清單並輸出 CSV 預覽。
-- `npm run albums:discover -- --write`，更新本機 `data/albums.csv` fixture，方便用相簿 ID 選擇要處理的相簿。
-- `npm run photo:add -- <flickr-photo-url>`，從單張 Flickr 照片產生候選列。
-- `npm run album:add -- <album-id-or-flickr-album-url>`，檢查或匯入單本相簿到本機 sample。
+- `pnpm validate:data`，檢查 sample/export data、schema 與 taxonomy。
+- `pnpm albums:discover`，盤點 SITCON Flickr 公開相簿清單並輸出 CSV 預覽。
+- `pnpm albums:discover -- --write`，更新本機 `data/albums.csv` fixture，方便用相簿 ID 選擇要處理的相簿。
+- `pnpm photo:add -- <flickr-photo-url>`，從單張 Flickr 照片產生候選列。
+- `pnpm album:add -- <album-id-or-flickr-album-url>`，檢查或匯入單本相簿到本機 sample。
 - schema、taxonomy、sponsorship items 與欄位文件。
 
 ### 目標流程，尚未完整實作

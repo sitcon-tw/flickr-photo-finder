@@ -11,8 +11,8 @@ import {
 
 function printUsage() {
   console.log(`Usage:
-  npm run photo:add -- <flickr-photo-url> [more-flickr-photo-urls...]
-  npm run photo:add -- <flickr-photo-url> [more-flickr-photo-urls...] --append
+  pnpm photo:add -- <flickr-photo-url> [more-flickr-photo-urls...]
+  pnpm photo:add -- <flickr-photo-url> [more-flickr-photo-urls...] --append
 
 Options:
   --append  Append generated rows to data/photos.csv and validate data.

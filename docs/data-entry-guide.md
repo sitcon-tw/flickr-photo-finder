@@ -15,7 +15,7 @@
 3. 確認照片有公開頁面與可用縮圖。
 4. 先補足能判斷搜尋與使用風險的欄位。
 5. 不確定的欄位先留空或使用 `needs_review`，不要硬猜。
-6. 若資料經過 repo 工具、CSV 匯出或同步流程，執行 `npm run validate:data`。
+6. 若資料經過 repo 工具、CSV 匯出或同步流程，執行 `pnpm validate:data`。
 7. 若驗證失敗，先修正欄位或標籤；若是標籤字典不足，再提出 taxonomy 調整。
 
 第一批資料不追求完整收錄 Flickr。請優先整理高機率被籌備團隊重複使用的照片，例如社群宣傳、贊助提案、網站視覺、新聞稿、志工招募、活動回顧會用到的照片。
@@ -27,11 +27,11 @@
 本機操作請看 `README.md` 的「本機操作」；Sheets 同步流程請看 `docs/sheets-sync-workflow.md`。常用指令包含：
 
 ```bash
-npm run albums:discover
-npm run albums:discover -- --write
-npm run album:add -- ALBUM_ID
-npm run album:add -- ALBUM_ID --append
-npm run photo:add -- https://www.flickr.com/photos/sitcon/PHOTO_ID
+pnpm albums:discover
+pnpm albums:discover -- --write
+pnpm album:add -- ALBUM_ID
+pnpm album:add -- ALBUM_ID --append
+pnpm photo:add -- https://www.flickr.com/photos/sitcon/PHOTO_ID
 ```
 
 `--append` 只會修改本機測試資料。正式流程仍應把確認後的資料同步回 Google Sheets。
@@ -53,7 +53,7 @@ SITCON Flickr 上的照片擁有者是 SITCON，但攝影師 credit 會放在 Fl
 | `collections` | 素材包，例如志工招募、贊助提案、網站 hero、活動回顧。 |
 | `curation_notes` | 可公開閱讀的整理脈絡、注意事項或使用建議。不要寫敏感內部資訊。 |
 
-`reviewed` 完整度與 `approved` 使用要求由 `data/photo-schema.json` 的 `reviewed_required_fields` 與 `approved_required_fields` 定義，並由 `npm run validate:data` 檢查。不要在這份指南另外維護欄位清單；若規則改變，請先更新 schema。
+`reviewed` 完整度與 `approved` 使用要求由 `data/photo-schema.json` 的 `reviewed_required_fields` 與 `approved_required_fields` 定義，並由 `pnpm validate:data` 檢查。不要在這份指南另外維護欄位清單；若規則改變，請先更新 schema。
 
 ## CSV 與多值格式
 
@@ -128,7 +128,7 @@ scene_tags
 修改本機測試資料、`data/tag-taxonomy.json` 或 `data/sponsorship-items.json` 後，請執行：
 
 ```bash
-npm run validate:data
+pnpm validate:data
 ```
 
 驗證通過只代表資料格式與受控字彙合理，不代表照片一定適合公開使用。公開使用仍需要人判斷。

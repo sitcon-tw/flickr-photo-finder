@@ -67,7 +67,7 @@ AI 只能作為資料匯入與整理輔助。
 更動 `data/photo-schema.json`、taxonomy、sample data 或 validation logic 後，請執行：
 
 ```bash
-npm run validate:data
+pnpm validate:data
 ```
 
 更動 JavaScript 後，請至少執行對應的語法檢查：

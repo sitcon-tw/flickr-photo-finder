@@ -66,7 +66,7 @@ export async function resolveAlbumInput(input, path = albumsPath) {
     const album = albums.find((item) => item.album_id === input);
     if (!album) {
       throw new Error(
-        `Album ${input} not found in ${path}. Run npm run albums:discover -- --write first, or provide the full Flickr album URL.`,
+        `Album ${input} not found in ${path}. Run pnpm albums:discover -- --write first, or provide the full Flickr album URL.`,
       );
     }
     return normalizeFlickrAlbumUrl(album.album_url);

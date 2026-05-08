@@ -76,7 +76,7 @@ The main goal is not to replace Flickr. The repository should keep a practical i
 Run data validation after changing local sample/export data, `data/photo-schema.json`, taxonomy files, or validation logic:
 
 ```bash
-npm run validate:data
+pnpm validate:data
 ```
 
 The validation script currently checks:
@@ -94,6 +94,7 @@ The validation script currently checks:
 ## Editing Guidance
 
 - Keep documentation in Traditional Chinese unless there is a reason to write technical metadata in English.
+- Use pnpm as the only package manager. Do not run npm or yarn commands in this repo.
 - Prefer small, reviewable commits around coherent decisions or implementation slices.
 - When a meaningful section is completed, suggest a commit point to the user.
 - Do not add dependencies unless the benefit is concrete and documented.
@@ -102,11 +103,11 @@ The validation script currently checks:
 ## Useful Commands
 
 ```bash
-npm run dev
-npm run albums:discover
-npm run album:add -- <flickr-album-url>
-npm run album:add -- <album-id>
-npm run photo:add -- <flickr-photo-url>
-npm run validate:data
+pnpm dev
+pnpm albums:discover
+pnpm album:add -- <flickr-album-url>
+pnpm album:add -- <album-id>
+pnpm photo:add -- <flickr-photo-url>
+pnpm validate:data
 git status --short
 ```

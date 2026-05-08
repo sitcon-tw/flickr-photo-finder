@@ -125,7 +125,7 @@ MVP 階段不建立額外的公開篩選表。GitHub Pages、外部 AI 與其他
 
 ## 最低資料品質
 
-能進入 `photos` 的最低條件、`curation_status = reviewed` 的完整度要求，以及 `public_use_status = approved` 的使用要求，都由 `data/photo-schema.json` 定義，並由 `npm run validate:data` 檢查。
+能進入 `photos` 的最低條件、`curation_status = reviewed` 的完整度要求，以及 `public_use_status = approved` 的使用要求，都由 `data/photo-schema.json` 定義，並由 `pnpm validate:data` 檢查。
 
 這份文件只記錄資料表設計與欄位責任；不要在這裡另外維護一份必填欄位清單。
 

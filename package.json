@@ -2,7 +2,9 @@
   "name": "sitcon-flickr-photo-finder",
   "private": true,
   "type": "module",
+  "packageManager": "pnpm@10.18.0",
   "scripts": {
+    "preinstall": "node scripts/ensure-pnpm.mjs",
     "album:add": "node scripts/add-album.mjs",
     "albums:discover": "node scripts/discover-albums.mjs",
     "dev": "node scripts/serve.mjs",

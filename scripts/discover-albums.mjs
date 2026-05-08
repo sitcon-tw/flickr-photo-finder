@@ -11,8 +11,8 @@ import { albumHeaders } from "./photo-schema.mjs";
 
 function printUsage() {
   console.log(`Usage:
-  npm run albums:discover
-  npm run albums:discover -- --write
+  pnpm albums:discover
+  pnpm albums:discover -- --write
 
 Options:
   --write                 Merge discovered albums into data/albums.csv.

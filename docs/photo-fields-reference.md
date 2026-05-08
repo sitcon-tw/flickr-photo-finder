@@ -45,7 +45,7 @@
 - `reviewed_required_fields`
 - `approved_required_fields`
 
-請不要在文件中另外維護一份欄位清單。若規則改變，先改 `data/photo-schema.json`，再讓 `npm run validate:data` 和相關文件跟著更新。
+請不要在文件中另外維護一份欄位清單。若規則改變，先改 `data/photo-schema.json`，再讓 `pnpm validate:data` 和相關文件跟著更新。
 
 精選、素材包與不推薦使用不放在 `curation_status`。優先推薦用 `priority_level` 或 `collections` 表達；不建議推薦使用用 `public_use_status = avoid` 表達。
 
