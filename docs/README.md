@@ -50,6 +50,7 @@
 - `pnpm ai:diff -- --run-dir <dir>`，只將已驗證的 AI 候選 metadata 轉成 `metadata-diff.md`，供人類審核，不寫入 Sheets。
 - `pnpm ai:plan -- --run-dir <dir>`，只將已驗證的 AI 候選 metadata 轉成 `metadata-update-plan.json` 與 CSV，作為後續 dry-run 更新工具輸入，不寫入 Sheets。
 - `pnpm sheets:apply-ai-updates -- --run-dir <dir>`，對 AI metadata 更新計畫執行 Sheets dry-run；加上 `--write` 才會更新 cells，且會檢查 current value 避免覆蓋人工變更。
+- AI 初標候選 metadata 已可經由 `ai:prepare`、`ai:review`、人工檢查、`sheets:apply-ai-updates` dry-run/write 寫回 `photos` 主表；這只是候選 metadata 回寫，不代表照片已人工 review。
 - `pnpm photos:import -- --album <album-id> --output <csv>`，低階工具；從選定相簿產生可追加到 Google Sheets `photos` 的候選照片 CSV，並可同步產生 `albums` 更新與 `import_batches` 批次紀錄。
 - `pnpm photo:add -- <flickr-photo-url>`，從單張 Flickr 照片產生候選列。
 - `pnpm album:add -- <album-id-or-flickr-album-url>`，檢查或匯入單本相簿到本機 sample。
@@ -57,9 +58,9 @@
 
 ### 目標流程，尚未完整實作
 
-- AI 輔助 metadata 人工確認後的回寫流程。`ai:prepare`、`ai:review`、`ai:validate`、`ai:diff`、`ai:plan` 與 `sheets:apply-ai-updates` 目前提供本機初標輸入/輸出、dry-run 與可選寫入；正式 review 仍在 Google Sheets 中發生。
 - Apps Script source 進 repo，並透過 `clasp` deploy。
 - GitHub Pages 透過 GitHub Actions artifact deploy，資料來源改讀 Google Sheets `photos` 或同欄位公開匯出。
+- 更順手的多人 review 操作仍應在 Google Sheets 與後續 Apps Script 輔助中完善；AI 候選值寫入不等於 `curation_status = reviewed`。
 
 ## 依角色閱讀
 

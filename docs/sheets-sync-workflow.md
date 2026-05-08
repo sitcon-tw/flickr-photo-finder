@@ -492,7 +492,7 @@ https://developers.google.com/workspace/sheets/api/quickstart/nodejs
 - 寫入前的 preflight 與 dry-run 行為。
 - 寫入後如何讀回驗證。
 
-現階段 repo 已有 `pnpm sheets:apply-init` 可以用 SDK 套用初始化 CSV，也有 `pnpm sheets:apply-intake` 可以 dry-run/write 已審核的 intake run artifact。正式 Sheets `albums` 目前透過 `pnpm sheets:export` 產生本機工作 CSV，再由 `pnpm albums:list` 或 `pnpm albums:select` 協助選擇 intake 目標；後續若要減少中介 CSV，才需要讓選擇流程直接讀取 Sheets API。
+現階段 repo 已有 `pnpm sheets:apply-init` 可以用 SDK 套用初始化 CSV，`pnpm sheets:apply-intake` 可以 dry-run/write 已檢查的 intake run artifact，`pnpm sheets:apply-ai-updates` 可以 dry-run/write AI 初標候選 metadata 更新計畫。正式 Sheets `albums` 目前透過 `pnpm sheets:export` 產生本機工作 CSV，再由 `pnpm albums:list` 或 `pnpm albums:select` 協助選擇 intake 目標；後續若要減少中介 CSV，才需要讓選擇流程直接讀取 Sheets API。
 
 若未來需要 Google Drive 檔案備份、匯出檔搬運或組織既有檔案工作流，應視為 Sheets API SDK 之外的檔案維護工作，不作為 Sheets tab/range 寫入的主要流程。
 
