@@ -95,6 +95,7 @@ schema 與同步狀態紀錄。這張表讓人類、Apps Script 與 agent 能確
 - `scene_tags`
 - `mood_tags`
 - `recommended_uses`
+- `people_count`
 - `sponsorship_items`
 - `sponsorship_tags`
 - `orientation`

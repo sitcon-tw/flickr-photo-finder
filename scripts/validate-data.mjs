@@ -34,6 +34,10 @@ function isValidUrl(value) {
   }
 }
 
+function isNonNegativeInteger(value) {
+  return /^(0|[1-9]\d*)$/.test(value);
+}
+
 function formatRow(rowNumber, field) {
   return `${paths.photos}:${rowNumber} ${field}`;
 }
@@ -128,6 +132,10 @@ function validatePhotoRow(row, rowNumber, taxonomy) {
 
   if (photo.event_year && !/^\d{4}$/.test(photo.event_year)) {
     addError(`${formatRow(rowNumber, "event_year")} must be a four-digit year`);
+  }
+
+  if (photo.people_count && !isNonNegativeInteger(photo.people_count)) {
+    addError(`${formatRow(rowNumber, "people_count")} must be a non-negative integer`);
   }
 
   if (photo.has_negative_space && !["true", "false"].includes(photo.has_negative_space)) {
@@ -244,7 +252,7 @@ function validateAlbumRow(row, rowNumber) {
     addError(`${formatAlbumRow(rowNumber, "event_year")} must be a four-digit year`);
   }
 
-  if (album.photo_count && !/^(0|[1-9]\d*)$/.test(album.photo_count)) {
+  if (album.photo_count && !isNonNegativeInteger(album.photo_count)) {
     addError(`${formatAlbumRow(rowNumber, "photo_count")} must be a non-negative integer`);
   }
 

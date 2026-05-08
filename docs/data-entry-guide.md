@@ -81,7 +81,7 @@ npm run album:add -- ALBUM_ID --append
 
 相簿匯入只會新增缺少的照片，不會重複加入已經存在於本機 `data/photos.csv` 的 `photo_id`。正式流程仍應把確認後的資料同步回 Google Sheets，並更新 `albums.last_processed_at`。
 
-相簿匯入後只會有 Flickr 基本中繼資料。請接著人工補上 `scene_tags`、`mood_tags`、`recommended_uses`、`public_use_status`、`priority_level`、`collections` 等欄位，讓照片能被實際搜尋與判斷。
+相簿匯入後只會有 Flickr 基本中繼資料。請接著人工補上 `people_count`、`scene_tags`、`mood_tags`、`recommended_uses`、`public_use_status`、`priority_level`、`collections` 等欄位，讓照片能被實際搜尋與判斷。
 
 ## CSV 填寫格式
 
@@ -116,6 +116,7 @@ scene_tags
 | --- | --- |
 | `event_name` | 例如 `SITCON 年會`、`SITCON Camp`。不確定就留空，不要硬猜。 |
 | `event_year` | 四位年份，例如 `2026`。 |
+| `people_count` | 照片中可辨識的人數估計值。無人可填 `0`，人數很多但無法精確計算時可估算或先留空。 |
 | `photographer` | 攝影者署名。SITCON Flickr 的帳號擁有者是 SITCON，攝影師 credit 通常要從 Flickr title 判斷；不確定就留空，不要填成 SITCON。 |
 | `license` | Flickr 顯示的授權資訊。若不確定，先留空並將 `public_use_status` 設為 `needs_review`。 |
 | `orientation` | `landscape`、`portrait`、`square`。 |

@@ -71,6 +71,15 @@
           "description_zh": "四位年份，例如 2026。"
         },
         {
+          "name": "people_count",
+          "label_zh": "照片中的人數",
+          "type": "integer",
+          "required": false,
+          "multi_value": false,
+          "maintainer_zh": "AI 或整理者",
+          "description_zh": "照片中可辨識的人數估計值。可留空；若無人可填 0，值必須是非負整數。"
+        },
+        {
           "name": "photographer",
           "label_zh": "攝影師署名",
           "type": "string",

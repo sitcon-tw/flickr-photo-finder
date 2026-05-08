@@ -15,6 +15,7 @@ const controls = {
   use: document.querySelector("#useFilter"),
   mood: document.querySelector("#moodFilter"),
   scene: document.querySelector("#sceneFilter"),
+  peopleCount: document.querySelector("#peopleCountFilter"),
   sponsorshipItem: document.querySelector("#sponsorshipItemFilter"),
   publicStatus: document.querySelector("#publicStatusFilter"),
   priority: document.querySelector("#priorityFilter"),
@@ -22,6 +23,16 @@ const controls = {
   collection: document.querySelector("#collectionFilter"),
   reset: document.querySelector("#resetButton"),
 };
+
+const peopleCountFilters = [
+  { label: "全部人數", value: "" },
+  { label: "未標記", value: "unknown" },
+  { label: "無人", value: "0" },
+  { label: "1 人", value: "1" },
+  { label: "2-5 人", value: "2-5" },
+  { label: "6-20 人", value: "6-20" },
+  { label: "21 人以上", value: "21+" },
+];
 
 const grid = document.querySelector("#photoGrid");
 const summary = document.querySelector("#resultSummary");
@@ -117,6 +128,9 @@ function setupFilters(taxonomy) {
   fillSelect(controls.use, "全部用途", taxonomy.recommended_uses ?? []);
   fillSelect(controls.mood, "全部氛圍", taxonomy.mood_tags ?? []);
   fillSelect(controls.scene, "全部場景", taxonomy.scene_tags ?? []);
+  controls.peopleCount.replaceChildren(
+    ...peopleCountFilters.map(({ label, value }) => new Option(label, value)),
+  );
   fillSelect(controls.sponsorshipItem, "全部品項", taxonomy.sponsorship_items ?? []);
   fillSelect(controls.publicStatus, "全部狀態", taxonomy.public_use_status ?? []);
   fillSelect(controls.priority, "全部優先度", taxonomy.priority_level ?? []);
@@ -138,6 +152,7 @@ function textMatches(photo, query) {
     photo.album_title,
     photo.event_name,
     photo.event_year,
+    photo.people_count,
     photo.photographer,
     photo.license,
     photo.orientation,
@@ -162,12 +177,40 @@ function hasListValue(photo, field, value) {
   return !value || photo[field].includes(value);
 }
 
+function matchesPeopleCount(photo, value) {
+  if (!value) {
+    return true;
+  }
+
+  const normalized = String(photo.people_count ?? "").trim();
+  if (value === "unknown") {
+    return normalized === "";
+  }
+
+  if (!/^(0|[1-9]\d*)$/.test(normalized)) {
+    return false;
+  }
+
+  const count = Number(normalized);
+  if (value === "21+") {
+    return count >= 21;
+  }
+
+  if (value.includes("-")) {
+    const [min, max] = value.split("-").map(Number);
+    return count >= min && count <= max;
+  }
+
+  return count === Number(value);
+}
+
 function matchesFilters(photo) {
   return (
     textMatches(photo, controls.search.value.trim()) &&
     hasListValue(photo, "recommended_uses", controls.use.value) &&
     hasListValue(photo, "mood_tags", controls.mood.value) &&
     hasListValue(photo, "scene_tags", controls.scene.value) &&
+    matchesPeopleCount(photo, controls.peopleCount.value) &&
     hasListValue(photo, "sponsorship_items", controls.sponsorshipItem.value) &&
     hasListValue(photo, "collections", controls.collection.value) &&
     (!controls.publicStatus.value || photo.public_use_status === controls.publicStatus.value) &&
@@ -199,6 +242,11 @@ function appendDetail(details, label, values, options = {}) {
   details.append(row);
 }
 
+function formatPeopleCount(photo) {
+  const value = String(photo.people_count ?? "").trim();
+  return value === "" ? "" : `${value} 人`;
+}
+
 function renderPhoto(photo) {
   const fragment = template.content.cloneNode(true);
   const card = fragment.querySelector(".photo-card");
@@ -220,6 +268,7 @@ function renderPhoto(photo) {
   appendDetail(details, "用途", photo.recommended_uses);
   appendDetail(details, "氛圍", photo.mood_tags);
   appendDetail(details, "場景", photo.scene_tags);
+  appendDetail(details, "人數", formatPeopleCount(photo));
   appendDetail(details, "贊助品項", photo.sponsorship_items);
   appendDetail(details, "贊助價值", photo.sponsorship_tags);
   appendDetail(details, "素材包", photo.collections);
@@ -272,6 +321,7 @@ function resetFilters() {
   controls.use.value = "";
   controls.mood.value = "";
   controls.scene.value = "";
+  controls.peopleCount.value = "";
   controls.sponsorshipItem.value = "";
   controls.publicStatus.value = "";
   controls.priority.value = "";

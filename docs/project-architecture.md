@@ -95,7 +95,7 @@ flowchart TD
   D[情緒與宣傳感受<br/>mood_tags]
   E[工作用途<br/>recommended_uses / collections]
   F[贊助品項與價值<br/>sponsorship_items / sponsorship_tags]
-  G[構圖條件<br/>orientation / safe_crop / has_negative_space]
+  G[畫面條件<br/>people_count / orientation / safe_crop / has_negative_space]
   H[搜尋 photos]
   I[依狀態排序與提醒<br/>public_use_status / curation_status / priority_level]
   J[回到 Flickr 確認原圖、credit、授權]

@@ -46,6 +46,7 @@ MVP 應該先建立一個 Flickr 之上的照片索引層，而不是取代 Flic
 | `album_title` | 保留原始相簿脈絡。 |
 | `event_name` | 標示活動名稱，例如年會、Camp、Hackathon。 |
 | `event_year` | 支援跨年度搜尋與回顧。 |
+| `people_count` | 支援依畫面中人數篩選，例如無人、單人、小組、大合照或群眾。 |
 | `photographer` | 攝影者與署名資訊。 |
 | `license` | 判斷是否能對外使用與如何署名。 |
 | `scene_tags` | 描述畫面內容，例如講者、會眾、報到、攤位、工作人員、合照、交流、舞台。 |

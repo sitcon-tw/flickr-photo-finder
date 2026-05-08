@@ -85,6 +85,7 @@ The validation script currently checks:
 - `data/photos.csv` headers for the local sample/export format, derived from `data/photo-schema.json`.
 - Required photo fields.
 - URL format.
+- non-negative integer fields such as `people_count` and album `photo_count`.
 - controlled taxonomy values.
 - duplicate list values.
 - controlled `priority_level` values.

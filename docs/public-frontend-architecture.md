@@ -100,7 +100,7 @@ MVP 初期的 100 到 300 張公開索引照片可以由前端一次載入並在
 
 - 產生搜尋索引。
 - 分頁或 lazy loading。
-- 依 `curation_status`、`public_use_status`、`priority_level` 與 `collections` 產生推薦排序。
+- 依 `people_count`、`curation_status`、`public_use_status`、`priority_level` 與 `collections` 產生篩選或推薦排序。
 - 改用 API 或正式資料庫。
 
 ## 殘餘風險
