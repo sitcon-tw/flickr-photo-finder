@@ -1,31 +1,9 @@
 import { readFile, appendFile } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
 import { URL } from "node:url";
+import { photoHeaders } from "./photo-schema.mjs";
 
 const photosPath = "data/photos.csv";
-const headers = [
-  "photo_id",
-  "photo_url",
-  "image_preview_url",
-  "album_title",
-  "event_name",
-  "event_year",
-  "photographer",
-  "license",
-  "scene_tags",
-  "mood_tags",
-  "recommended_uses",
-  "sponsorship_items",
-  "sponsorship_tags",
-  "orientation",
-  "has_negative_space",
-  "safe_crop",
-  "public_use_status",
-  "quality_score",
-  "collections",
-  "internal_notes",
-  "curation_status",
-];
 
 function printUsage() {
   console.log(`Usage:
@@ -84,7 +62,7 @@ function csvEscape(value) {
 }
 
 function toCsvRow(photo) {
-  return headers.map((header) => csvEscape(photo[header] ?? "")).join(",");
+  return photoHeaders.map((header) => csvEscape(photo[header] ?? "")).join(",");
 }
 
 function assertRequiredOEmbedData(oembed) {

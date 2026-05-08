@@ -1,59 +1,18 @@
 import { readFile } from "node:fs/promises";
 import { URL } from "node:url";
+import {
+  controlledListFields,
+  controlledScalarFields,
+  listFields,
+  photoHeaders,
+  requiredFields,
+} from "./photo-schema.mjs";
 
 const paths = {
   photos: "data/photos.csv",
   taxonomy: "data/tag-taxonomy.json",
   sponsorshipItems: "data/sponsorship-items.json",
 };
-
-const expectedHeaders = [
-  "photo_id",
-  "photo_url",
-  "image_preview_url",
-  "album_title",
-  "event_name",
-  "event_year",
-  "photographer",
-  "license",
-  "scene_tags",
-  "mood_tags",
-  "recommended_uses",
-  "sponsorship_items",
-  "sponsorship_tags",
-  "orientation",
-  "has_negative_space",
-  "safe_crop",
-  "public_use_status",
-  "quality_score",
-  "collections",
-  "internal_notes",
-  "curation_status",
-];
-
-const requiredFields = ["photo_id", "photo_url", "image_preview_url"];
-const listFields = [
-  "scene_tags",
-  "mood_tags",
-  "recommended_uses",
-  "sponsorship_items",
-  "sponsorship_tags",
-  "safe_crop",
-  "collections",
-];
-const controlledListFields = [
-  "scene_tags",
-  "mood_tags",
-  "recommended_uses",
-  "sponsorship_items",
-  "sponsorship_tags",
-  "safe_crop",
-];
-const controlledScalarFields = [
-  "orientation",
-  "public_use_status",
-  "curation_status",
-];
 
 const errors = [];
 
@@ -134,13 +93,13 @@ function formatRow(rowNumber, field) {
 }
 
 function validateHeaders(headers) {
-  if (headers.length !== expectedHeaders.length) {
+  if (headers.length !== photoHeaders.length) {
     addError(
-      `${paths.photos}: expected ${expectedHeaders.length} headers, got ${headers.length}`,
+      `${paths.photos}: expected ${photoHeaders.length} headers, got ${headers.length}`,
     );
   }
 
-  expectedHeaders.forEach((expected, index) => {
+  photoHeaders.forEach((expected, index) => {
     if (headers[index] !== expected) {
       addError(
         `${paths.photos}: header ${index + 1} should be "${expected}", got "${headers[index] ?? ""}"`,
@@ -201,11 +160,11 @@ function validateTaxonomy(taxonomy, sponsorshipItems) {
 }
 
 function validatePhotoRow(row, rowNumber, taxonomy) {
-  const photo = Object.fromEntries(expectedHeaders.map((header, index) => [header, row[index] ?? ""]));
+  const photo = Object.fromEntries(photoHeaders.map((header, index) => [header, row[index] ?? ""]));
 
-  if (row.length !== expectedHeaders.length) {
+  if (row.length !== photoHeaders.length) {
     addError(
-      `${paths.photos}:${rowNumber} expected ${expectedHeaders.length} columns, got ${row.length}`,
+      `${paths.photos}:${rowNumber} expected ${photoHeaders.length} columns, got ${row.length}`,
     );
   }
 
@@ -269,7 +228,7 @@ function validateUniquePhotoFields(photoRows) {
   photoRows.forEach((row, index) => {
     const rowNumber = index + 2;
     const photo = Object.fromEntries(
-      expectedHeaders.map((header, fieldIndex) => [header, row[fieldIndex] ?? ""]),
+      photoHeaders.map((header, fieldIndex) => [header, row[fieldIndex] ?? ""]),
     );
 
     for (const field of Object.keys(seen)) {
