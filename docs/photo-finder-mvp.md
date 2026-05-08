@@ -57,7 +57,7 @@ MVP 應該先建立一個 Flickr 之上的照片索引層，而不是取代 Flic
 | `has_negative_space` | 是否有留白可放文字。 |
 | `safe_crop` | 是否適合裁切成常見比例，例如 1:1、16:9、9:16。 |
 | `public_use_status` | 可公開、需確認、避免公開。 |
-| `quality_score` | 方便排序與快速挑選高可用照片。 |
+| `priority_level` | 推薦使用優先度，方便排序與快速挑選候選照片。 |
 | `collections` | 素材包關聯，例如志工招募精選、贊助提案、SITCON 介紹。 |
 | `internal_notes` | 留給籌備團隊的脈絡、注意事項或使用建議。 |
 | `curation_status` | 未整理、AI 初標、已審核。只描述資料是否經過人工確認；精選或不推薦使用由其他欄位表達。 |

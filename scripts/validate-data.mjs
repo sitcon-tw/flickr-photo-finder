@@ -190,13 +190,6 @@ function validatePhotoRow(row, rowNumber, taxonomy) {
     addError(`${formatRow(rowNumber, "has_negative_space")} must be true or false`);
   }
 
-  if (photo.quality_score) {
-    const score = Number(photo.quality_score);
-    if (!Number.isInteger(score) || score < 1 || score > 5) {
-      addError(`${formatRow(rowNumber, "quality_score")} must be an integer from 1 to 5`);
-    }
-  }
-
   for (const field of controlledScalarFields) {
     if (photo[field] && !taxonomy[field]?.includes(photo[field])) {
       addError(

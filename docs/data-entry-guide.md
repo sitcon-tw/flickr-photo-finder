@@ -59,7 +59,7 @@ npm run album:add -- https://www.flickr.com/photos/sitcon/albums/ALBUM_ID/ --app
 
 相簿匯入只會新增缺少的照片，不會重複加入已經存在於本機 `data/photos.csv` 的 `photo_id`。正式流程仍應把確認後的資料同步回 Google Sheets。
 
-相簿匯入後只會有 Flickr 基本中繼資料。請接著人工補上 `scene_tags`、`mood_tags`、`recommended_uses`、`public_use_status`、`quality_score`、`collections` 等欄位，讓照片能被實際搜尋與判斷。
+相簿匯入後只會有 Flickr 基本中繼資料。請接著人工補上 `scene_tags`、`mood_tags`、`recommended_uses`、`public_use_status`、`priority_level`、`collections` 等欄位，讓照片能被實際搜尋與判斷。
 
 ## CSV 填寫格式
 
@@ -100,7 +100,7 @@ scene_tags
 | `has_negative_space` | `true` 或 `false`，表示是否有明顯留白可放字。 |
 | `safe_crop` | 可安全裁切的比例，例如 `1:1;16:9`。 |
 | `public_use_status` | `approved`、`needs_review`、`avoid`。 |
-| `quality_score` | 1 到 5。先用人工快速判斷，不需要假裝精密。 |
+| `priority_level` | `high`、`normal`、`low`。表示推薦使用優先度，不是客觀照片品質。 |
 | `curation_status` | `unreviewed`、`ai_labeled`、`reviewed`。 |
 
 ## 標籤欄位
@@ -149,9 +149,19 @@ scene_tags
 - `ai_labeled`: 經過 AI 初標，但尚未人工確認。
 - `reviewed`: 已由人確認到可以被搜尋與初步使用判斷。
 
-標成 `reviewed` 前，至少要補上 `scene_tags`、`mood_tags`、`recommended_uses`、`public_use_status` 與 `quality_score`。若 `public_use_status` 是 `approved`，還必須補上 `photographer` 與 `license`，避免使用者誤以為授權與署名已經確認。
+標成 `reviewed` 前，至少要補上 `scene_tags`、`mood_tags`、`recommended_uses`、`public_use_status` 與 `priority_level`。若 `public_use_status` 是 `approved`，還必須補上 `photographer` 與 `license`，避免使用者誤以為授權與署名已經確認。
 
-優先推薦不要用整理狀態表示，請用 `quality_score`、`collections` 或素材包來表達。不建議推薦使用的照片請用 `public_use_status = avoid`，不要另外建立封存狀態。
+優先推薦不要用整理狀態表示，請用 `priority_level`、`collections` 或素材包來表達。不建議推薦使用的照片請用 `public_use_status = avoid`，不要另外建立封存狀態。
+
+## 推薦優先度
+
+`priority_level` 是找圖時的排序提示，不是照片品質分數。
+
+- `high`: 優先推薦。適合多數相關需求，畫面清楚且代表性高。
+- `normal`: 一般候選。可用，但需要看需求情境。
+- `low`: 低優先。可被搜尋到，但除非很符合需求，否則不優先推薦。
+
+如果不確定，先留空或用 `normal`，不要為了製造精準感而硬判斷。
 
 ## 素材包
 

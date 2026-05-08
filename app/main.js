@@ -17,6 +17,7 @@ const controls = {
   scene: document.querySelector("#sceneFilter"),
   sponsorshipItem: document.querySelector("#sponsorshipItemFilter"),
   publicStatus: document.querySelector("#publicStatusFilter"),
+  priority: document.querySelector("#priorityFilter"),
   curationStatus: document.querySelector("#curationStatusFilter"),
   collection: document.querySelector("#collectionFilter"),
   reset: document.querySelector("#resetButton"),
@@ -118,6 +119,7 @@ function setupFilters(taxonomy) {
   fillSelect(controls.scene, "全部場景", taxonomy.scene_tags ?? []);
   fillSelect(controls.sponsorshipItem, "全部品項", taxonomy.sponsorship_items ?? []);
   fillSelect(controls.publicStatus, "全部狀態", taxonomy.public_use_status ?? []);
+  fillSelect(controls.priority, "全部優先度", taxonomy.priority_level ?? []);
   fillSelect(controls.curationStatus, "全部整理狀態", taxonomy.curation_status ?? []);
   fillSelect(
     controls.collection,
@@ -140,6 +142,7 @@ function textMatches(photo, query) {
     photo.license,
     photo.orientation,
     photo.public_use_status,
+    photo.priority_level,
     photo.internal_notes,
     photo.curation_status,
     ...photo.scene_tags,
@@ -168,6 +171,7 @@ function matchesFilters(photo) {
     hasListValue(photo, "sponsorship_items", controls.sponsorshipItem.value) &&
     hasListValue(photo, "collections", controls.collection.value) &&
     (!controls.publicStatus.value || photo.public_use_status === controls.publicStatus.value) &&
+    (!controls.priority.value || photo.priority_level === controls.priority.value) &&
     (!controls.curationStatus.value || photo.curation_status === controls.curationStatus.value)
   );
 }
@@ -222,6 +226,7 @@ function renderPhoto(photo) {
   appendDetail(details, "攝影", photo.photographer);
   appendDetail(details, "授權", photo.license);
   appendDetail(details, "公開狀態", photo.public_use_status, { status: true });
+  appendDetail(details, "推薦優先度", photo.priority_level, { status: true });
   appendDetail(details, "整理狀態", photo.curation_status, { status: true });
   appendDetail(details, "裁切", photo.safe_crop);
   appendDetail(details, "Flickr ID", photo.photo_id);
@@ -269,6 +274,7 @@ function resetFilters() {
   controls.scene.value = "";
   controls.sponsorshipItem.value = "";
   controls.publicStatus.value = "";
+  controls.priority.value = "";
   controls.curationStatus.value = "";
   controls.collection.value = "";
   render();

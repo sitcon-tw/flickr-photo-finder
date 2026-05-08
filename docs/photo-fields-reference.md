@@ -32,7 +32,7 @@
 | `has_negative_space` | 否 | 否 | 否 | 設計、整理者 | `true` 或 `false`，表示是否有明顯留白可放字。 |
 | `safe_crop` | 否 | 是 | 是 | 設計、整理者 | 適合裁切的比例，例如 `1:1`、`16:9`。 |
 | `public_use_status` | 否 | 否 | 是 | 熟悉公開素材風險者 | `approved`、`needs_review`、`avoid`。不確定用 `needs_review`。 |
-| `quality_score` | 否 | 否 | 否 | 整理者 | 1 到 5 的快速可用性評分。不是美學精密評分。 |
+| `priority_level` | 否 | 否 | 是 | 整理者 | `high`、`normal`、`low`。表示推薦使用優先度，不是客觀照片品質。 |
 | `collections` | 否 | 是 | 否 | 各組整理者 | 素材包，例如 `志工招募`、`贊助提案`、`網站 hero`。 |
 | `internal_notes` | 否 | 否 | 否 | 整理者 | 公開 repo 中仍視為公開資料，不要寫入敏感內部資訊。 |
 | `curation_status` | 否 | 否 | 是 | 整理者 | `unreviewed`、`ai_labeled`、`reviewed`。 |
@@ -45,7 +45,7 @@
 - `mood_tags`
 - `recommended_uses`
 - `public_use_status`
-- `quality_score`
+- `priority_level`
 
 若 `public_use_status` 是 `approved`，還必須補齊：
 
@@ -54,7 +54,7 @@
 
 這些規則由 `npm run validate:data` 檢查。
 
-精選、素材包與不推薦使用不放在 `curation_status`。優先推薦用 `quality_score` 或 `collections` 表達；不建議推薦使用用 `public_use_status = avoid` 表達。
+精選、素材包與不推薦使用不放在 `curation_status`。優先推薦用 `priority_level` 或 `collections` 表達；不建議推薦使用用 `public_use_status = avoid` 表達。
 
 ## 欄位責任不是組織邊界
 

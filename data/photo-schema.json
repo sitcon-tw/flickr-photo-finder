@@ -9,7 +9,7 @@
         "mood_tags",
         "recommended_uses",
         "public_use_status",
-        "quality_score"
+        "priority_level"
       ],
       "approved_required_fields": [
         "photographer",
@@ -184,16 +184,15 @@
           "description_zh": "approved、needs_review、avoid。不確定用 needs_review。"
         },
         {
-          "name": "quality_score",
-          "label_zh": "可用性評分",
-          "type": "integer",
-          "min": 1,
-          "max": 5,
+          "name": "priority_level",
+          "label_zh": "推薦優先度",
+          "type": "taxonomy",
+          "taxonomy_key": "priority_level",
           "required": false,
           "required_for_reviewed": true,
           "multi_value": false,
           "maintainer_zh": "整理者",
-          "description_zh": "1 到 5 的快速可用性評分。不是美學精密評分。"
+          "description_zh": "high、normal、low。表示推薦使用優先度，不是照片品質分數。"
         },
         {
           "name": "collections",
@@ -221,7 +220,7 @@
           "required": false,
           "multi_value": false,
           "maintainer_zh": "整理者",
-          "description_zh": "unreviewed、ai_labeled、reviewed。精選或封存不放在整理狀態；優先推薦用 quality_score 或 collections，避免推薦用 public_use_status = avoid。"
+          "description_zh": "unreviewed、ai_labeled、reviewed。精選或封存不放在整理狀態；優先推薦用 priority_level 或 collections，避免推薦用 public_use_status = avoid。"
         }
       ]
     }

@@ -75,7 +75,7 @@ button {
 
 .toolbar {
   display: grid;
-  grid-template-columns: minmax(240px, 1.7fr) repeat(7, minmax(145px, 1fr)) auto;
+  grid-template-columns: minmax(240px, 1.7fr) repeat(8, minmax(140px, 1fr)) auto;
   gap: 12px;
   align-items: end;
   margin-bottom: 20px;
@@ -233,6 +233,24 @@ button:hover,
   border-color: #fecaca;
   color: #991b1b;
   background: #fef2f2;
+}
+
+.tag.status-high {
+  border-color: #99f6e4;
+  color: #115e59;
+  background: #f0fdfa;
+}
+
+.tag.status-normal {
+  border-color: #bfdbfe;
+  color: #1d4ed8;
+  background: #eff6ff;
+}
+
+.tag.status-low {
+  border-color: #d6d3d1;
+  color: #57534e;
+  background: #fafaf9;
 }
 
 .tag.status-unreviewed {

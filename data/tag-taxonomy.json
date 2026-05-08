@@ -116,6 +116,11 @@
     "needs_review",
     "avoid"
   ],
+  "priority_level": [
+    "high",
+    "normal",
+    "low"
+  ],
   "curation_status": [
     "unreviewed",
     "ai_labeled",

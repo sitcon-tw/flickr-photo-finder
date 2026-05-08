@@ -69,7 +69,7 @@ The validation script currently checks:
 - URL format.
 - controlled taxonomy values.
 - duplicate list values.
-- `quality_score` range.
+- controlled `priority_level` values.
 - taxonomy consistency with `data/sponsorship-items.json`.
 
 ## Editing Guidance
