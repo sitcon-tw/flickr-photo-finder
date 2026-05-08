@@ -31,6 +31,7 @@ The main goal is not to replace Flickr. The repository should keep a practical i
 - `data/sponsorship-items.json`: fixed snapshot derived from SITCON 2026 CFS sponsorship item data.
 - `scripts/add-photo.mjs`: helper for generating or appending a CSV row from a Flickr photo URL.
 - `scripts/discover-albums.mjs`: helper for discovering SITCON Flickr albums and writing the local album fixture.
+- `scripts/sync-albums.mjs`: helper for merging a Google Sheets albums CSV export with discovered albums and producing a Sheets-ready CSV.
 - `scripts/add-album.mjs`: low-level helper for checking or importing missing photos from a discovered album ID or Flickr album URL.
 - `scripts/serve.mjs`: local static server for the MVP UI.
 - `scripts/validate-data.mjs`: data validation script.
@@ -105,6 +106,7 @@ The validation script currently checks:
 ```bash
 pnpm dev
 pnpm albums:discover
+pnpm albums:sync -- --sheets-export <albums-csv> --output <albums-csv>
 pnpm album:add -- <flickr-album-url>
 pnpm album:add -- <album-id>
 pnpm photo:add -- <flickr-photo-url>

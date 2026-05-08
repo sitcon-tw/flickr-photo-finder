@@ -23,7 +23,7 @@ human review.`);
 }
 
 function parseArgs(argv) {
-  const args = argv.slice(2);
+  const args = argv.slice(2).filter((arg) => arg !== "--");
   const append = args.includes("--append");
   const help = args.includes("--help") || args.includes("-h");
   const photoUrls = args.filter((arg) => !arg.startsWith("--"));

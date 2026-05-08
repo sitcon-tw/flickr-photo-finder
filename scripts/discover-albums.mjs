@@ -24,7 +24,7 @@ Without --write, the command prints a CSV preview and does not modify files.`);
 }
 
 function parseArgs(argv) {
-  const args = argv.slice(2);
+  const args = argv.slice(2).filter((arg) => arg !== "--");
   const options = {
     help: false,
     input: "",

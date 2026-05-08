@@ -12,12 +12,51 @@ import {
   reviewedRequiredFields,
 } from "./photo-schema.mjs";
 
-const paths = {
-  albums: "data/albums.csv",
-  photos: "data/photos.csv",
-  taxonomy: "data/tag-taxonomy.json",
-  sponsorshipItems: "data/sponsorship-items.json",
-};
+function parseArgs(argv) {
+  const paths = {
+    albums: "data/albums.csv",
+    photos: "data/photos.csv",
+    taxonomy: "data/tag-taxonomy.json",
+    sponsorshipItems: "data/sponsorship-items.json",
+  };
+
+  const args = argv.slice(2).filter((arg) => arg !== "--");
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+    if (arg === "--albums") {
+      paths.albums = args[index + 1] ?? "";
+      index += 1;
+    } else if (arg === "--photos") {
+      paths.photos = args[index + 1] ?? "";
+      index += 1;
+    } else if (arg === "--taxonomy") {
+      paths.taxonomy = args[index + 1] ?? "";
+      index += 1;
+    } else if (arg === "--sponsorship-items") {
+      paths.sponsorshipItems = args[index + 1] ?? "";
+      index += 1;
+    } else {
+      throw new Error(`Unknown option: ${arg}`);
+    }
+  }
+
+  const optionNames = {
+    albums: "--albums",
+    photos: "--photos",
+    sponsorshipItems: "--sponsorship-items",
+    taxonomy: "--taxonomy",
+  };
+
+  for (const [name, path] of Object.entries(paths)) {
+    if (!path) {
+      throw new Error(`${optionNames[name]} requires a path`);
+    }
+  }
+
+  return paths;
+}
+
+const paths = parseArgs(process.argv);
 
 const errors = [];
 

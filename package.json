@@ -7,6 +7,7 @@
     "preinstall": "node scripts/ensure-pnpm.mjs",
     "album:add": "node scripts/add-album.mjs",
     "albums:discover": "node scripts/discover-albums.mjs",
+    "albums:sync": "node scripts/sync-albums.mjs",
     "dev": "node scripts/serve.mjs",
     "photo:add": "node scripts/add-photo.mjs",
     "validate:data": "node scripts/validate-data.mjs"

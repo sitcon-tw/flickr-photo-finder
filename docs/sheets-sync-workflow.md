@@ -48,6 +48,16 @@ pnpm albums:discover -- --write
 
 `data/albums.csv` 仍只是 sample/export fixture，不是正式 Google Sheets 資料。正式流程要把相同欄位同步到 Google Sheets `albums`，再讓使用者從那張表選擇本次要處理的相簿。
 
+若已經有正式 Google Sheets `albums` 匯出的 CSV，可以把它和目前盤點結果合併，產生可回寫 Sheets 的 CSV：
+
+```bash
+pnpm albums:sync -- --sheets-export /path/to/sheets-albums.csv --output /tmp/albums-to-import.csv
+```
+
+`albums:sync` 會保留 Sheets 上的人工作業欄位，例如 `event_name`、`event_year`、`last_processed_at` 與 `notes`，並用盤點結果更新 `album_id`、`album_url`、`album_title` 與 `photo_count`。若是第一次建立 `albums` 工作表，還沒有 Sheets 匯出檔，可以省略 `--sheets-export`。
+
+產出的 CSV 通過 validation 後，再由人類匯入或貼回正式 Google Sheets。這一步不需要把正式 Sheets 資料 commit 回 repo。
+
 若本機 `data/albums.csv` 已更新，低階相簿匯入工具可以用相簿 ID 解析 URL：
 
 ```bash
@@ -65,6 +75,12 @@ pnpm album:add -- ALBUM_ID
 5. 回到 Google Sheets 修正。
 
 正式資料不需要 commit 回 repo。只有 schema、taxonomy、工具、文件或 sample fixture 有意義改變時才需要 commit。
+
+若要驗證 Sheets 匯出的 `albums` CSV，可以指定 albums 路徑：
+
+```bash
+pnpm validate:data -- --albums /path/to/sheets-albums.csv
+```
 
 ## AI 輔助流程
 
