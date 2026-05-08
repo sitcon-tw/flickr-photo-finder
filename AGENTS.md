@@ -43,6 +43,7 @@ The main goal is not to replace Flickr. The repository should keep a practical i
 - `scripts/check-sheets.mjs`: read-only helper for checking public Google Sheets fixed tabs and initialization overwrite risk.
 - `scripts/apply-sheets-init.mjs`: SDK-based helper for applying `sheets:init` CSVs to Google Sheets after an authenticated dry-run.
 - `scripts/init-sheets.mjs`: helper for generating Google Sheets MVP initialization CSVs.
+- `scripts/export-sheets.mjs`: SDK-based helper for exporting fixed Google Sheets tabs to local CSV files for validation and intake workflows.
 - `scripts/serve.mjs`: local static server for the MVP UI.
 - `scripts/validate-data.mjs`: data validation script.
 
@@ -134,6 +135,7 @@ pnpm photo:add -- <flickr-photo-url>
 pnpm sheets:apply-init
 pnpm sheets:apply-intake -- --run-dir <dir>
 pnpm sheets:check
+pnpm sheets:export
 pnpm sheets:init
 pnpm validate:data
 git status --short

@@ -148,10 +148,18 @@ pnpm albums:sync -- --sheets-export /path/to/sheets-albums.csv --output /tmp/alb
 pnpm album:add -- ALBUM_ID
 ```
 
-若要產生一次可審核的相簿匯入產物，請使用目前 Sheets `photos` 匯出檔做重複檢查：
+正式 Google Sheets 已初始化後，應先匯出目前正式資料作為工作輸入：
 
 ```bash
-pnpm intake:run -- --album ALBUM_ID --photos-export /path/to/sheets-photos.csv
+pnpm sheets:export
+```
+
+這會將固定 tabs 輸出到 `tmp/sheets-export/`。其中 `photos.csv` 用於 `photo_id` 重複檢查，`albums.csv` 用於相簿 ID 解析、活動脈絡與 `last_processed_at` 更新。
+
+若要產生一次可審核的相簿匯入產物，請使用目前正式 Sheets 匯出的 `photos` 與 `albums`：
+
+```bash
+pnpm intake:run -- --album ALBUM_ID --albums tmp/sheets-export/albums.csv --photos-export tmp/sheets-export/photos.csv
 ```
 
 `intake:run` 會建立 `tmp/intake-runs/<run-id>/`，並產生：
@@ -398,6 +406,7 @@ service account key 是敏感 credential，不能 commit，也不應放在 `tmp/
 | --- | --- | --- | --- |
 | 產生初始化 CSV | 不需要 Google 授權 | `pnpm sheets:init` 通過並產生 `tmp/sheets-init/` | repo 工具或本機環境有問題，不代表 Sheets 權限有問題。 |
 | 讀取公開 Sheets 狀態 | 不需要寫入權限；需要 Sheets 已公開可讀 | `pnpm sheets:check` 能讀固定 tabs 並回報狀態 | 可能是 Sheets 尚未公開、tab 不存在、網路受限或 ID 錯誤，不代表寫入權限不足。 |
+| 匯出正式 Sheets 工作 CSV | 需要 Google Sheets API credential 與目標 Sheets 讀取權限 | `pnpm sheets:export` 產生 `tmp/sheets-export/*.csv` 並檢查 header | 可能是 OAuth credential、scope、Sheets 權限、tab/header 或網路問題。 |
 | 套用初始化 CSV | 需要 Google Sheets API credential 與目標 Sheets 編輯權限 | `pnpm sheets:apply-init` dry-run 通過，人工確認後執行 `pnpm sheets:apply-init -- --write`，寫入後讀回驗證通過 | 可能是 OAuth credential、scope、Sheets 權限、tab/header 或資料格式問題，應依工具錯誤分類處理。 |
 | 套用 intake run artifact | 需要 Google Sheets API credential 與目標 Sheets 編輯權限 | `pnpm sheets:apply-intake -- --run-dir <dir>` dry-run 通過，人工確認後加上 `--write`，寫入後讀回驗證通過 | 可能是 OAuth credential、scope、Sheets 權限、tab/header、重複 `photo_id`、重複 `batch_id` 或找不到相簿列。 |
 | 透過官方 SDK 寫入 Sheets | 需要 Google Sheets API credential 與目標 Sheets 編輯權限 | SDK 寫入工具的 preflight、dry-run、confirmed write 與寫入後讀回驗證都通過 | 可能是 OAuth credential、scope、Sheets 權限、tab/header 或資料格式問題，應依工具錯誤分類處理。 |
