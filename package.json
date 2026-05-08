@@ -21,6 +21,7 @@
     "photo:add": "node scripts/add-photo.mjs",
     "sheets:apply-init": "node scripts/apply-sheets-init.mjs",
     "sheets:apply-intake": "node scripts/apply-intake-run.mjs",
+    "sheets:apply-ai-updates": "node scripts/apply-ai-update-plan.mjs",
     "sheets:check": "node scripts/check-sheets.mjs",
     "sheets:export": "node scripts/export-sheets.mjs",
     "sheets:init": "node scripts/init-sheets.mjs",

@@ -306,8 +306,9 @@ AI 可以協助初標，但不能取代人工確認。
 6. 用 `pnpm ai:validate -- --run-dir tmp/ai-runs/<run-id>` 檢查候選欄位格式、受控字彙與責任邊界。
 7. 用 `pnpm ai:diff -- --run-dir tmp/ai-runs/<run-id>` 產生 `metadata-diff.md`，讓人類確認是否回寫。
 8. 用 `pnpm ai:plan -- --run-dir tmp/ai-runs/<run-id>` 產生機器可讀更新計畫。
-9. 人類確認後才寫入正式欄位。
-10. AI 協助後但尚未人工完整確認的列標成 `curation_status = ai_labeled`。
+9. 用 `pnpm sheets:apply-ai-updates -- --run-dir tmp/ai-runs/<run-id>` 對正式 Sheets 做 dry-run，確認會更新哪些 cells。
+10. 人類確認後才加上 `--write` 寫入正式欄位。
+11. AI 協助後但尚未人工完整確認的列標成 `curation_status = ai_labeled`。
 
 AI 初標流程到 `ai_labeled` 就應停止。`curation_status = reviewed` 不應是本機 AI run 的收尾步驟，而是照片資料回到 Google Sheets 後，由具有 Sheets 編輯權限的志工們在同一份正式資料表中協作檢核、修正並補齊必要欄位後才更新。
 
@@ -388,6 +389,20 @@ pnpm ai:plan -- --run-dir tmp/ai-runs/<run-id>
 ```
 
 `ai:plan` 會先執行同一套 proposal validation，再輸出 `metadata-update-plan.json` 與 `metadata-update-plan.csv`。這份計畫只列出實際會改變的欄位，供後續 dry-run Sheets 更新工具使用；它不寫入 Google Sheets。
+
+dry-run 檢查正式 Sheets 更新：
+
+```bash
+pnpm sheets:apply-ai-updates -- --run-dir tmp/ai-runs/<run-id>
+```
+
+`sheets:apply-ai-updates` 會讀取正式 `photos` 工作表，確認 header 符合 repo schema、`photo_id` 存在，並確認目前 cell 值仍等於 update plan 的 `current_value`。若 dry-run 顯示的 cell 範圍與變更內容符合預期，才加上 `--write`：
+
+```bash
+pnpm sheets:apply-ai-updates -- --run-dir tmp/ai-runs/<run-id> --write
+```
+
+若 Sheets 已被其他志工修改，造成目前 cell 值和 plan 不一致，工具會阻擋寫入，避免覆蓋人工整理結果。
 
 若人類重新觸發 AI 調整欄位，工具仍應提供可審核 diff，不應靜默覆蓋人工整理內容。
 

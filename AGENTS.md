@@ -142,6 +142,7 @@ pnpm album:add -- <flickr-album-url>
 pnpm album:add -- <album-id>
 pnpm photo:add -- <flickr-photo-url>
 pnpm sheets:apply-init
+pnpm sheets:apply-ai-updates -- --run-dir <dir>
 pnpm sheets:apply-intake -- --run-dir <dir>
 pnpm sheets:check
 pnpm sheets:export
