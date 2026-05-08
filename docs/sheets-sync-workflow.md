@@ -165,9 +165,12 @@ pnpm albums:list
 pnpm albums:list -- --unprocessed
 pnpm albums:list -- --query "SITCON 2026"
 pnpm albums:list -- --unprocessed --format commands --limit 5
+pnpm albums:select -- --unprocessed
 ```
 
 `--format commands` 會輸出可直接複製執行的 `pnpm intake:run` 指令；`--format ids` 適合接給 shell 工具，`--format json` 適合讓 agent 或後續互動式選單讀取。若輸出要接給 shell pipeline、JSON parser 或其他程式，請用 `pnpm --silent albums:list -- --format json` 這類形式避免 pnpm script header 混入輸出。
+
+`albums:select` 會把候選清單印到 stderr，讓 stdout 保持為選定相簿的輸出結果。預設輸出可直接執行的 `intake:run` 指令，也可用 `--format id` 或 `--format json` 調整；若要在非互動環境測試或自動化，可加上 `--choice <number>` 選擇畫面上的第 N 筆。
 
 若要產生一次可審核的相簿匯入產物，請使用目前正式 Sheets 匯出的 `photos` 與 `albums`：
 
@@ -335,7 +338,7 @@ https://developers.google.com/workspace/sheets/api/quickstart/nodejs
 - 寫入前的 preflight 與 dry-run 行為。
 - 寫入後如何讀回驗證。
 
-現階段 repo 已有 `pnpm sheets:apply-init` 可以用 SDK 套用初始化 CSV，也有 `pnpm sheets:apply-intake` 可以 dry-run/write 已審核的 intake run artifact。後續仍需把正式 Sheets `albums` 讀取整合進相簿選擇與 intake 產生流程。
+現階段 repo 已有 `pnpm sheets:apply-init` 可以用 SDK 套用初始化 CSV，也有 `pnpm sheets:apply-intake` 可以 dry-run/write 已審核的 intake run artifact。正式 Sheets `albums` 目前透過 `pnpm sheets:export` 產生本機工作 CSV，再由 `pnpm albums:list` 或 `pnpm albums:select` 協助選擇 intake 目標；後續若要減少中介 CSV，才需要讓選擇流程直接讀取 Sheets API。
 
 若未來需要 Google Drive 檔案備份、匯出檔搬運或組織既有檔案工作流，應視為 Sheets API SDK 之外的檔案維護工作，不作為 Sheets tab/range 寫入的主要流程。
 

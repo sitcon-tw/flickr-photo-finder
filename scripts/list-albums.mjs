@@ -1,8 +1,14 @@
 import { readAlbumCatalog } from "./album-catalog.mjs";
-
-const defaultAlbumsPath = "tmp/sheets-export/albums.csv";
-const defaultPhotosExportPath = "tmp/sheets-export/photos.csv";
-const outputFormats = new Set(["table", "ids", "commands", "json"]);
+import {
+  defaultAlbumsPath,
+  defaultPhotosExportPath,
+  filterAndSortAlbums,
+  listOutputFormats,
+  printAlbumCommands,
+  printAlbumIds,
+  printAlbumJson,
+  printAlbumTable,
+} from "./album-list-utils.mjs";
 
 function printUsage() {
   console.log(`Usage:
@@ -70,8 +76,8 @@ function parseArgs(argv) {
     if (!options.photosExport) {
       throw new Error("--photos-export requires a path");
     }
-    if (!outputFormats.has(options.format)) {
-      throw new Error(`--format must be one of: ${Array.from(outputFormats).join(", ")}`);
+    if (!listOutputFormats.has(options.format)) {
+      throw new Error(`--format must be one of: ${Array.from(listOutputFormats).join(", ")}`);
     }
     if (!options.all && (!Number.isInteger(options.limit) || options.limit < 1)) {
       throw new Error("--limit must be a positive integer");
@@ -81,117 +87,6 @@ function parseArgs(argv) {
   return options;
 }
 
-function matchesQuery(album, query) {
-  if (!query) {
-    return true;
-  }
-
-  const needle = query.toLocaleLowerCase("zh-TW");
-  return [
-    album.album_id,
-    album.album_title,
-    album.event_name,
-    album.event_year,
-    album.notes,
-  ]
-    .join(" ")
-    .toLocaleLowerCase("zh-TW")
-    .includes(needle);
-}
-
-function compareAlbums(left, right) {
-  const leftProcessed = left.last_processed_at ? 1 : 0;
-  const rightProcessed = right.last_processed_at ? 1 : 0;
-  if (leftProcessed !== rightProcessed) {
-    return leftProcessed - rightProcessed;
-  }
-
-  const leftCount = Number(left.photo_count || 0);
-  const rightCount = Number(right.photo_count || 0);
-  if (leftCount !== rightCount) {
-    return rightCount - leftCount;
-  }
-
-  return left.album_title.localeCompare(right.album_title, "zh-TW");
-}
-
-function truncate(value, maxLength) {
-  const text = String(value ?? "");
-  if (text.length <= maxLength) {
-    return text;
-  }
-  return `${text.slice(0, maxLength - 1)}…`;
-}
-
-function printAlbums(albums, { all, limit }) {
-  const rows = selectRows(albums, { all, limit });
-  console.log(["album_id", "photo_count", "last_processed_at", "album_title"].join("\t"));
-  for (const album of rows) {
-    console.log(
-      [
-        album.album_id,
-        album.photo_count,
-        album.last_processed_at,
-        truncate(album.album_title, 64),
-      ].join("\t"),
-    );
-  }
-
-  if (!all && albums.length > rows.length) {
-    console.log(`... ${albums.length - rows.length} more row(s). Use --all or --limit <number> to show more.`);
-  }
-}
-
-function selectRows(albums, { all, limit }) {
-  return all ? albums : albums.slice(0, limit);
-}
-
-function shellQuote(value) {
-  const text = String(value ?? "");
-  if (/^[A-Za-z0-9_./:=@+-]+$/.test(text)) {
-    return text;
-  }
-  return `'${text.replaceAll("'", "'\\''")}'`;
-}
-
-function printIds(albums, options) {
-  for (const album of selectRows(albums, options)) {
-    console.log(album.album_id);
-  }
-}
-
-function printCommands(albums, options) {
-  for (const album of selectRows(albums, options)) {
-    console.log(
-      [
-        "pnpm intake:run --",
-        "--album",
-        shellQuote(album.album_id),
-        "--albums",
-        shellQuote(options.albums),
-        "--photos-export",
-        shellQuote(options.photosExport),
-      ].join(" "),
-    );
-  }
-}
-
-function printJson(albums, options) {
-  const rows = selectRows(albums, options);
-  console.log(
-    JSON.stringify(
-      {
-        source: options.albums,
-        matching: albums.length,
-        shown: rows.length,
-        albums: rows,
-      },
-      null,
-      2,
-    ),
-  );
-}
-
 async function main() {
   const options = parseArgs(process.argv);
   if (options.help) {
@@ -199,22 +94,18 @@ async function main() {
     return;
   }
 
-  const albums = (await readAlbumCatalog(options.albums))
-    .filter((album) => album.album_id)
-    .filter((album) => !options.unprocessed || !album.last_processed_at)
-    .filter((album) => matchesQuery(album, options.query))
-    .sort(compareAlbums);
+  const albums = filterAndSortAlbums(await readAlbumCatalog(options.albums), options);
 
   if (options.format === "ids") {
-    printIds(albums, options);
+    printAlbumIds(albums, options);
   } else if (options.format === "commands") {
-    printCommands(albums, options);
+    printAlbumCommands(albums, options);
   } else if (options.format === "json") {
-    printJson(albums, options);
+    printAlbumJson(albums, options);
   } else {
     console.log(`Albums source: ${options.albums}`);
     console.log(`Matching albums: ${albums.length}`);
-    printAlbums(albums, options);
+    printAlbumTable(albums, options);
   }
 }
 
