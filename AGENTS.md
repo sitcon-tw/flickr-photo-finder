@@ -36,6 +36,7 @@ The main goal is not to replace Flickr. The repository should keep a practical i
 - `scripts/sync-albums.mjs`: helper for merging a Google Sheets albums CSV export with discovered albums and producing a Sheets-ready CSV.
 - `scripts/run-intake.mjs`: helper for producing a complete intake run artifact from a selected album.
 - `scripts/validate-intake-run.mjs`: helper for checking an intake run artifact before applying it to Google Sheets.
+- `scripts/apply-intake-run.mjs`: SDK-based helper for applying a reviewed intake run artifact to Google Sheets.
 - `scripts/import-album-photos.mjs`: helper for generating Sheets-ready candidate photo rows, updated album rows, and import batch rows from a selected album.
 - `scripts/flickr-album-photos.mjs`: shared Flickr album photo URL extraction helper.
 - `scripts/add-album.mjs`: low-level helper for checking or importing missing photos from a discovered album ID or Flickr album URL.
@@ -131,6 +132,7 @@ pnpm album:add -- <flickr-album-url>
 pnpm album:add -- <album-id>
 pnpm photo:add -- <flickr-photo-url>
 pnpm sheets:apply-init
+pnpm sheets:apply-intake -- --run-dir <dir>
 pnpm sheets:check
 pnpm sheets:init
 pnpm validate:data

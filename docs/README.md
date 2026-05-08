@@ -31,6 +31,7 @@
 - `pnpm albums:sync -- --sheets-export <csv> --output <csv>`，合併 Sheets 匯出與盤點結果，產生可回寫 Google Sheets `albums` 的 CSV。
 - `pnpm intake:run -- --album <album-id> --photos-export <csv>`，從選定相簿產生一次可審核的 intake run artifact，包含候選 `photos`、更新後 `albums`、`import_batches` 與 `summary.json`。
 - `pnpm intake:validate -- --run-dir <dir>`，套用到 Google Sheets 前檢查 intake run artifact 是否完整一致。
+- `pnpm sheets:apply-intake -- --run-dir <dir>`，透過官方 Google Sheets API SDK dry-run 已審核 intake run artifact；加上 `--write` 才會追加照片、更新該相簿 `last_processed_at` 並追加批次紀錄。
 - `pnpm photos:import -- --album <album-id> --photos-export <csv> --output <csv>`，低階工具；從選定相簿產生可追加到 Google Sheets `photos` 的候選照片 CSV，並可同步產生 `albums` 更新與 `import_batches` 批次紀錄。
 - `pnpm photo:add -- <flickr-photo-url>`，從單張 Flickr 照片產生候選列。
 - `pnpm album:add -- <album-id-or-flickr-album-url>`，檢查或匯入單本相簿到本機 sample。
@@ -38,7 +39,7 @@
 
 ### 目標流程，尚未完整實作
 
-- 將 `albums` 更新與 intake run artifact 以官方 Google Sheets API SDK 寫回 Google Sheets。
+- 讓正式 Google Sheets `albums` 匯出或 SDK 讀取流程直接提供 `intake:run` 使用。
 - 讓使用者從正式 Google Sheets `albums` 清單選擇本次要處理哪本相簿。
 - 將已審核的 intake run artifact、AI 輔助與驗證結果自動同步回正式 Google Sheets。
 - Apps Script source 進 repo，並透過 `clasp` deploy。
