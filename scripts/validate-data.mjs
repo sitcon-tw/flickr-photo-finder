@@ -217,6 +217,36 @@ function validatePhotoRow(row, rowNumber, taxonomy) {
       }
     }
   }
+
+  validateReviewedPhotoRow(photo, rowNumber);
+}
+
+function validateReviewedPhotoRow(photo, rowNumber) {
+  if (!["reviewed", "featured"].includes(photo.curation_status)) {
+    return;
+  }
+
+  const requiredReviewedFields = [
+    "scene_tags",
+    "mood_tags",
+    "recommended_uses",
+    "public_use_status",
+    "quality_score",
+  ];
+
+  for (const field of requiredReviewedFields) {
+    if (!photo[field].trim()) {
+      addError(`${formatRow(rowNumber, field)} is required for reviewed photos`);
+    }
+  }
+
+  if (photo.public_use_status === "approved") {
+    for (const field of ["photographer", "license"]) {
+      if (!photo[field].trim()) {
+        addError(`${formatRow(rowNumber, field)} is required when public_use_status is approved`);
+      }
+    }
+  }
 }
 
 function validateUniquePhotoFields(photoRows) {

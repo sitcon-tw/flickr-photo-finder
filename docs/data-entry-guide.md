@@ -137,6 +137,18 @@ scene_tags
 
 如果不確定，請用 `needs_review`，不要為了讓資料漂亮而標成 `approved`。
 
+## 整理狀態
+
+`curation_status` 代表這筆資料整理到什麼程度，不是照片品質評分。
+
+- `unreviewed`: 只匯入 Flickr 基本資料，還沒人工判斷。
+- `ai_labeled`: 經過 AI 初標，但尚未人工確認。
+- `reviewed`: 已由人確認到可以被搜尋與初步使用判斷。
+- `featured`: 可作為優先推薦素材。
+- `archived`: 暫時不作為常用素材。
+
+標成 `reviewed` 或 `featured` 前，至少要補上 `scene_tags`、`mood_tags`、`recommended_uses`、`public_use_status` 與 `quality_score`。若 `public_use_status` 是 `approved`，還必須補上 `photographer` 與 `license`，避免使用者誤以為授權與署名已經確認。
+
 ## 素材包
 
 `collections` 用來標示素材包。常見素材包包含：
