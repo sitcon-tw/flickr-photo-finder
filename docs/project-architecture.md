@@ -60,78 +60,39 @@ flowchart LR
 
 ## 維護流程
 
-```mermaid
-flowchart TD
-  A[repo 工具盤點 SITCON Flickr 相簿清單]
-  B[更新 Google Sheets albums]
-  C[使用者選擇本次要處理的相簿]
-  D[技術志工或 agent 掃描選定相簿]
-  E[比對 Google Sheets photos 既有 photo_id]
-  K[新增缺少照片的最低必要欄位]
-  L[更新 album last_processed_at 與 import_batches]
-  F[AI 產生候選 metadata]
-  G[人類檢查 diff 並確認是否回寫]
-  H[志工在 Google Sheets 補齊或修正欄位]
-  I[Apps Script 即時提示與欄位驗證]
-  J[必要時匯出並跑 repo validation]
+維護流程從 SITCON Flickr 相簿開始：
 
-  A --> B --> C --> D --> E --> K --> L
-  L --> F --> G --> H
-  L --> H
-  H --> I
-  H --> J
-  J --> H
-```
+1. repo 工具盤點 SITCON Flickr 相簿清單，更新 Google Sheets `albums`。
+2. 使用者從 `albums` 選擇本次要處理的相簿。
+3. 技術志工或 agent 掃描選定相簿，比對 Google Sheets `photos` 既有 `photo_id`。
+4. 工具新增缺少照片的最低必要欄位，並更新 `albums.last_processed_at` 與 `import_batches`。
+5. 新照片可以直接由志工在 Google Sheets 補資料，也可以先由 AI 產生候選 metadata。
+6. AI 候選值必須以 diff 形式給人類確認，確認後才回寫。
+7. Apps Script 在 Sheets 內提供即時提示；必要時匯出資料並執行 repo validation。
 
 匯入階段最低必要欄位、`reviewed` 完整度與 `approved` 使用要求由 `data/photo-schema.json` 定義，並由 `npm run validate:data` 檢查。文件只說明流程與判斷，不另外維護欄位清單。
 
 ## 找圖流程
 
-```mermaid
-flowchart TD
-  A[使用者提出找圖需求]
-  B{需求類型}
-  C[場景與畫面內容<br/>scene_tags]
-  D[情緒與宣傳感受<br/>mood_tags]
-  E[工作用途<br/>recommended_uses / collections]
-  F[贊助品項與價值<br/>sponsorship_items / sponsorship_tags]
-  G[畫面條件<br/>people_count / orientation / safe_crop / has_negative_space]
-  H[搜尋 photos]
-  I[依狀態排序與提醒<br/>public_use_status / curation_status / priority_level]
-  J[回到 Flickr 確認原圖、credit、授權]
+找圖流程應把自然語言需求拆成可搜尋條件：
 
-  A --> B
-  B --> C --> H
-  B --> D --> H
-  B --> E --> H
-  B --> F --> H
-  B --> G --> H
-  H --> I --> J
-```
+- 場景與畫面內容：`scene_tags`。
+- 情緒與宣傳感受：`mood_tags`。
+- 工作用途或素材包：`recommended_uses`、`collections`。
+- 贊助品項與贊助價值：`sponsorship_items`、`sponsorship_tags`。
+- 畫面條件：`people_count`、`orientation`、`safe_crop`、`has_negative_space`。
+
+搜尋後再依 `public_use_status`、`curation_status`、`priority_level` 排序與提醒。使用者採用前仍應回到 Flickr 確認原圖、credit 與授權。
 
 找圖結果不應只依 `reviewed` 篩掉其他照片。SITCON Flickr 照片量很大，`unreviewed` 與 `ai_labeled` 仍可用於探索，但必須在排序與提示上清楚標示。
 
 ## 部署流程
 
-```mermaid
-flowchart LR
-  Repo[GitHub repo]
-  PagesActions[GitHub Actions<br/>build Pages artifact]
-  Pages[GitHub Pages]
-  Clasp[clasp]
-  AppsScript[Google Apps Script]
-  Sheets[Google Sheets]
+公開前端與 Sheets 維護工具分開部署：
 
-  Repo -->|frontend source and config| PagesActions
-  PagesActions -->|deploy artifact| Pages
-  Repo -->|Apps Script source| Clasp
-  Clasp -->|deploy| AppsScript
-  AppsScript -->|bound or authorized helper| Sheets
-```
-
-GitHub Pages 應透過 GitHub Actions 發布 artifact，不應直接把整個 repo root 當成 Pages source。
-
-Apps Script 應透過 `clasp` 部署。Apps Script source 應保存在 repo 中，讓修改能被 review，也讓未來 agent 能理解目前部署內容。`clasp` credential、Google API credential、rclone token 與 AI API key 都不應 commit。
+- GitHub Pages 應透過 GitHub Actions 發布 artifact，不應直接把整個 repo root 當成 Pages source。
+- Apps Script 應透過 `clasp` 部署。Apps Script source 應保存在 repo 中，讓修改能被 review，也讓未來 agent 能理解目前部署內容。
+- `clasp` credential、Google API credential、rclone token 與 AI API key 都不應 commit。
 
 ## Repo 的責任
 
