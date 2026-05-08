@@ -25,6 +25,7 @@
 - `pnpm validate:data`，檢查 sample/export data、schema 與 taxonomy。
 - `pnpm sheets:init`，產生建立 Google Sheets MVP 所需的初始 CSV。
 - `pnpm sheets:check`，只讀檢查公開 Google Sheets 固定 tabs 的 header 與初始化覆蓋風險。
+- `pnpm sheets:apply-init`，透過官方 Google Sheets API SDK dry-run 初始化套用計畫；加上 `--write` 才會建立缺少 tabs 並寫入初始化資料。
 - `pnpm albums:discover`，盤點 SITCON Flickr 公開相簿清單並輸出 CSV 預覽。
 - `pnpm albums:discover -- --write`，更新本機 `data/albums.csv` fixture，方便用相簿 ID 選擇要處理的相簿。
 - `pnpm albums:sync -- --sheets-export <csv> --output <csv>`，合併 Sheets 匯出與盤點結果，產生可回寫 Google Sheets `albums` 的 CSV。
@@ -37,8 +38,7 @@
 
 ### 目標流程，尚未完整實作
 
-- 以官方 Google Sheets API SDK 實作 preflight、dry-run、confirmed write 與寫入後驗證。
-- 將可回寫的 `albums` CSV 或等價資料實際寫回 Google Sheets。
+- 將 `albums` 更新與 intake run artifact 以官方 Google Sheets API SDK 寫回 Google Sheets。
 - 讓使用者從正式 Google Sheets `albums` 清單選擇本次要處理哪本相簿。
 - 將已審核的 intake run artifact、AI 輔助與驗證結果自動同步回正式 Google Sheets。
 - Apps Script source 進 repo，並透過 `clasp` deploy。

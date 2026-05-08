@@ -40,6 +40,7 @@ The main goal is not to replace Flickr. The repository should keep a practical i
 - `scripts/flickr-album-photos.mjs`: shared Flickr album photo URL extraction helper.
 - `scripts/add-album.mjs`: low-level helper for checking or importing missing photos from a discovered album ID or Flickr album URL.
 - `scripts/check-sheets.mjs`: read-only helper for checking public Google Sheets fixed tabs and initialization overwrite risk.
+- `scripts/apply-sheets-init.mjs`: SDK-based helper for applying `sheets:init` CSVs to Google Sheets after an authenticated dry-run.
 - `scripts/init-sheets.mjs`: helper for generating Google Sheets MVP initialization CSVs.
 - `scripts/serve.mjs`: local static server for the MVP UI.
 - `scripts/validate-data.mjs`: data validation script.
@@ -129,6 +130,7 @@ pnpm photos:import -- --album <album-id> --photos-export <photos-csv> --output <
 pnpm album:add -- <flickr-album-url>
 pnpm album:add -- <album-id>
 pnpm photo:add -- <flickr-photo-url>
+pnpm sheets:apply-init
 pnpm sheets:check
 pnpm sheets:init
 pnpm validate:data
