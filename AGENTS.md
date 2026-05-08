@@ -53,6 +53,7 @@ The main goal is not to replace Flickr. The repository should keep a practical i
 - `scripts/export-sheets.mjs`: SDK-based helper for exporting fixed Google Sheets tabs to local CSV files for validation and intake workflows.
 - `scripts/serve.mjs`: local static server for the MVP UI.
 - `scripts/validate-data.mjs`: data validation script.
+- `scripts/workflow.mjs`: guided interactive entrypoint for common project workflows.
 
 ## Data Principles
 
@@ -133,6 +134,7 @@ The validation script currently checks:
 
 ```bash
 pnpm dev
+pnpm workflow
 pnpm albums:discover
 pnpm albums:list
 pnpm albums:select

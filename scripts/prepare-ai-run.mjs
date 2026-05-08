@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { basename, extname, join, relative } from "node:path";
-import { parseCsv, toCsvLine } from "./csv-utils.mjs";
+import { parseCsv, parseSemicolonList, toCsvLine } from "./csv-utils.mjs";
 import { photoHeaders } from "./photo-schema.mjs";
 import { aiRunsDir, sheetsExportPhotosPath } from "./workflow-paths.mjs";
 
@@ -22,8 +22,10 @@ Options:
   --photos <path>       Source photos CSV. Default: tmp/sheets-export/photos.csv.
   --status <values>     Comma-separated curation_status values. Default: unreviewed.
                         Use "all" to include every status.
+  --album <album-id>    Only include photos whose album_ids contains this album ID.
   --photo-ids <ids>     Comma-separated photo IDs to include.
-  --limit <number>      Maximum selected photos. Default: 50.
+  --limit <number|all>  Maximum selected photos. Use "all" for no limit.
+                        Default: 50.
   --image-size <size>   Image size for AI downloads. Default: large-1024.
                         Options: ${imageSizeOptions.join(", ")}.
   --output-dir <path>   Directory for AI run folders. Default: tmp/ai-runs.
@@ -40,6 +42,7 @@ function parseArgs(argv) {
   const args = argv.slice(2).filter((arg) => arg !== "--");
   const options = {
     download: true,
+    albumId: "",
     help: false,
     imageSize: defaultImageSize,
     limit: defaultLimit,
@@ -60,11 +63,14 @@ function parseArgs(argv) {
     } else if (arg === "--status") {
       options.statusValues = parseListOption(args[index + 1] ?? "");
       index += 1;
+    } else if (arg === "--album") {
+      options.albumId = args[index + 1] ?? "";
+      index += 1;
     } else if (arg === "--photo-ids") {
       options.photoIds = parseListOption(args[index + 1] ?? "");
       index += 1;
     } else if (arg === "--limit") {
-      options.limit = Number.parseInt(args[index + 1] ?? "", 10);
+      options.limit = parseLimitOption(args[index + 1] ?? "");
       index += 1;
     } else if (arg === "--image-size") {
       options.imageSize = args[index + 1] ?? "";
@@ -89,8 +95,11 @@ function parseArgs(argv) {
     if (!options.outputDir) {
       throw new Error("--output-dir requires a path");
     }
-    if (!Number.isInteger(options.limit) || options.limit <= 0) {
-      throw new Error("--limit must be a positive integer");
+    if (options.albumId && typeof options.albumId !== "string") {
+      throw new Error("--album requires an album ID");
+    }
+    if (options.limit !== "all" && (!Number.isInteger(options.limit) || options.limit <= 0)) {
+      throw new Error('--limit must be a positive integer or "all"');
     }
     if (options.statusValues.length === 0) {
       throw new Error("--status requires at least one value");
@@ -104,6 +113,14 @@ function parseArgs(argv) {
   }
 
   return options;
+}
+
+function parseLimitOption(value) {
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "all") {
+    return "all";
+  }
+  return Number.parseInt(value, 10);
 }
 
 function parseListOption(value) {
@@ -148,11 +165,13 @@ function selectPhotos(photos, options) {
   const includeAllStatuses = statusFilter.has("all");
   const photoIdFilter = new Set(options.photoIds);
 
-  return photos
+  const selected = photos
     .filter((photo) => photo.photo_id)
+    .filter((photo) => !options.albumId || parseSemicolonList(photo.album_ids ?? "").includes(options.albumId))
     .filter((photo) => photoIdFilter.size === 0 || photoIdFilter.has(photo.photo_id))
-    .filter((photo) => includeAllStatuses || statusFilter.has(photo.curation_status || ""))
-    .slice(0, options.limit);
+    .filter((photo) => includeAllStatuses || statusFilter.has(photo.curation_status || ""));
+
+  return options.limit === "all" ? selected : selected.slice(0, options.limit);
 }
 
 function csvFromPhotos(photos) {
@@ -357,6 +376,7 @@ async function prepareRun(options) {
     manifest_version: 1,
     photos_json: "photos.json",
     photos_source: options.photosPath,
+    requested_album_id: options.albumId,
     requested_limit: options.limit,
     requested_photo_ids: options.photoIds,
     requested_status: options.statusValues,

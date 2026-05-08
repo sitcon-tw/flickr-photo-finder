@@ -21,7 +21,7 @@ pnpm sheets:export
 pnpm ai:prepare -- --limit 50 --image-size large-1024
 ```
 
-`ai:prepare` 預設選出 `curation_status = unreviewed` 的照片。若需要特定照片或狀態，應由操作者在建立 run 時使用 `--photo-ids`、`--status`、`--limit` 或 `--image-size` 控制，不應由 AI 自行改動正式 Sheets。
+`ai:prepare` 預設選出 `curation_status = unreviewed` 的照片。若需要特定照片、整本相簿或特定狀態，應由操作者在建立 run 時使用 `--photo-ids`、`--album`、`--status`、`--limit` 或 `--image-size` 控制，不應由 AI 自行改動正式 Sheets。`--limit all` 代表不設上限；整本相簿可使用 `--album <album-id> --limit all`，若要包含所有整理狀態再加上 `--status all`。
 
 ## 輸入位置
 

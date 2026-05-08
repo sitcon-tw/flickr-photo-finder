@@ -26,13 +26,25 @@ pnpm ai:prepare -- --limit 50 --image-size large-1024
 pnpm ai:prepare -- --photo-ids 55200405673,55200257281 --image-size large-1024
 ```
 
+若要準備整本相簿中尚未整理的照片：
+
+```bash
+pnpm ai:prepare -- --album ALBUM_ID --limit all --image-size large-1024
+```
+
+若要整本相簿所有整理狀態都放進工作包：
+
+```bash
+pnpm ai:prepare -- --album ALBUM_ID --limit all --status all --image-size large-1024
+```
+
 若照片需要細節判讀，可少量使用：
 
 ```bash
 pnpm ai:prepare -- --photo-ids PHOTO_ID --image-size original
 ```
 
-`ai:prepare` 會輸出 `tmp/ai-runs/<run-id>/`。後續所有 AI 初標工作都應限制在這個 run 目錄內。
+`--limit all` 代表不設上限；若不指定，預設最多準備 50 張。`ai:prepare` 會輸出 `tmp/ai-runs/<run-id>/`。後續所有 AI 初標工作都應限制在這個 run 目錄內。
 
 ### 3. 交給模型前先確認工作包
 

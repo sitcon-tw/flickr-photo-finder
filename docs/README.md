@@ -26,6 +26,7 @@
 
 ### 目前可用
 
+- `pnpm workflow`，先說明完整資料流，再依階段引導常見工作流程，作為新接觸者與日常操作的主要入口。
 - 本機 static search UI，預設讀 `fixtures/photos.csv`。
 - `pnpm validate:data`，檢查 sample/export data、schema 與 taxonomy。
 - `pnpm sheets:init`，產生建立 Google Sheets MVP 所需的初始 CSV。
@@ -64,7 +65,7 @@
 | --- | --- |
 | 第一次理解專案的人 | `README.md`、`docs/project-architecture.md`、`docs/photo-finder-mvp.md` |
 | 整理照片的志工 | `docs/data-entry-guide.md`、`docs/photo-fields-reference.md` |
-| 技術志工 | `docs/project-architecture.md`、`docs/sheets-sync-workflow.md`、`docs/google-sheets-database-design.md` |
+| 技術志工 | `pnpm workflow`、`docs/project-architecture.md`、`docs/sheets-sync-workflow.md`、`docs/google-sheets-database-design.md` |
 | 維護 Apps Script 的人 | `docs/apps-script-maintenance-design.md`、`data/photo-schema.json`、`data/tag-taxonomy.json` |
 | 維護 GitHub Pages 前端的人 | `docs/public-frontend-architecture.md`、`app/config.js` |
 | AI / agent | `AGENTS.md`、`docs/agent-maintenance-guide.md`、`docs/ai-labeling-operator-guide.md`、`docs/ai-labeling-contract.md`、`docs/ai-readable-dataset.md` |
