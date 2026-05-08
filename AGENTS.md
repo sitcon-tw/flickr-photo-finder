@@ -51,9 +51,10 @@ The main goal is not to replace Flickr. The repository should keep a practical i
 - Keep reusable organization-specific values in `config/project.json` when practical. SITCON is the default instance, but the project should remain forkable by other organizations.
 - `config/project.json` may include the public Google Sheets `spreadsheetId`. This is not treated as a secret for this project; write access is managed by Google Drive/Sheets permissions.
 - Google Sheets tab names are fixed for the MVP: `photos`, `albums`, `import_batches`, `taxonomy`, and `sponsorship_items`.
-- Do not build custom Google Drive file read/write flows when an existing tool such as rclone, Google Drive UI, Apps Script, or an organization-managed workflow should handle the transfer.
-- Do not assume the current user's local authorization method, such as rclone remotes, browser sessions, gcloud accounts, or clasp login, will be available to other users.
-- Document required capabilities and verification steps separately from local credential setup.
+- Use the official Google Sheets API SDK as the primary direction for repo CLI operations that read or write Sheets tabs, ranges, appends, batch updates, and read-back verification.
+- Do not build custom Google Drive file transfer flows for Sheets table semantics. If rclone is used later, keep it limited to Drive file backup, artifact transfer, or organization-managed file workflows.
+- Do not assume the current user's local authorization method, such as OAuth token caches, rclone remotes, browser sessions, gcloud accounts, or clasp login, will be available to other users.
+- Document required capabilities, OAuth scopes, credential expectations, dry-run behavior, and verification steps separately from local credential setup.
 - Treat `data/photo-schema.json` as the machine-readable source for photo, album, and import batch field order, basic field metadata, reviewed completeness rules, and approved-use requirements.
 - Do not duplicate reviewed/approved field lists in docs. Reference `data/photo-schema.json` instead.
 - Do not treat `data/photos.csv` as production data. It exists for MVP demos, local UI development, validation fixtures, and future export-format tests.
@@ -82,7 +83,7 @@ The main goal is not to replace Flickr. The repository should keep a practical i
 - For public AI behavior, read `docs/ai-readable-dataset.md` before changing photo index read semantics.
 - For Apps Script helpers, read `docs/apps-script-maintenance-design.md` before adding Sheets-side validation.
 - Help maintain the repo so future agents can understand how to scan albums, validate data, assist AI labeling, and sync with Google Sheets.
-- Do not store Google Drive, rclone, Google API, or AI API credentials in this repo.
+- Do not store Google Drive, rclone, Google API, OAuth token, or AI API credentials in this repo.
 - For organization-level access and handoff, rely on SITCON's existing documentation and Google Drive management practices rather than inventing repo-local credential rules.
 - AI-generated labels may be written only as human-reviewable candidates. Keep `curation_status` semantics clear: `ai_labeled` is not the same as `reviewed`.
 

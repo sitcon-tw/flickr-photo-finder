@@ -31,7 +31,7 @@ Agent 適合協助：
 Agent 不應自行假設：
 
 - repo 內 sample data 是正式資料。
-- 擁有 Google Drive、Google Sheets、rclone 或 API credential。
+- 擁有 Google Sheets、Google API、OAuth、rclone 或 Apps Script credential。
 - 某位維護者本機可用的授權方式，在其他使用者或未來 agent 手上也一定可用。
 - 可以繞過 SITCON 既有文件與權限交接制度。
 - AI 標註結果可以直接取代人工確認。
@@ -42,7 +42,7 @@ SITCON 組織已有既有文件存放與交接制度。這個 repo 不保存 cre
 
 遇到權限問題時，agent 應該：
 
-1. 先確認需要哪一類資產或權限，例如 Google Sheets、Apps Script、rclone、Google API 或 AI API。
+1. 先確認需要哪一類資產或權限，例如 Google Sheets 編輯權限、Google Sheets API OAuth credential、Apps Script/clasp、rclone 或 AI API。
 2. 檢查 repo 內是否有本專案的資產地圖或操作文件。
 3. 若需要組織權限或 credential，請人類依 SITCON 既有文件與 Google Drive 管理流程處理。
 4. 不要把 token、API key、credential 或私人連結寫入 repo。
@@ -50,7 +50,8 @@ SITCON 組織已有既有文件存放與交接制度。這個 repo 不保存 cre
 Agent 應把「可公開讀取」、「可寫入」、「資料格式正確」視為三件不同的事：
 
 - `pnpm sheets:check` 只驗證公開讀取與初始化覆蓋風險，不代表具備寫入權限。
-- rclone、Google Drive UI、Apps Script 或組織既有工具負責實際檔案讀寫；agent 不應因為自己本機某種授權可用，就把該方式寫成唯一流程。
+- 正式 Sheets 表格寫入的 repo CLI 方向是官方 Google Sheets API SDK；agent 不應因為自己本機某種授權可用，就把該 credential 或 token 流程寫成唯一交接方式。
+- rclone 若被使用，應限於 Drive 檔案搬運、備份或組織既有工作流，不作為 Sheets tab/range 寫入的主要流程。
 - `pnpm validate:data` 驗證資料格式與 schema，不代表 Google Drive/Sheets 權限正確。
 - `pnpm intake:validate` 驗證本次匯入產物內部一致，不代表它已經成功套用到正式 Sheets。
 

@@ -73,11 +73,11 @@ MVP Apps Script 不處理：
 - 大量 Flickr 相簿掃描。
 - 大量 AI 標註。
 - 需要 secret 的外部 API 呼叫。
-- 權限交接。
+- Sheets API SDK credential 或權限交接。
 - 正式審核工作流。
 - 複雜的搜尋 UI。
 
-上述工作應由 repo CLI、agent、Google Drive/SITCON 既有交接制度或 GitHub Pages 前端處理。
+上述工作應由 repo CLI、agent、官方 Google Sheets API SDK 寫入工具、SITCON 既有交接制度或 GitHub Pages 前端處理。
 
 ## 部署方式
 

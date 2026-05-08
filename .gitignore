@@ -1,6 +1,11 @@
 node_modules/
 tmp/
 
+# Local Google API SDK auth files
+credentials.json
+token.json
+.google-auth/
+
 # Editor and OS noise
 *.swp
 *.swo

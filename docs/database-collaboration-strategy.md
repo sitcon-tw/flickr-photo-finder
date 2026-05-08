@@ -42,7 +42,7 @@ Repo 應保存：
 - 贊助品項固定版本資料。
 - 資料驗證規則。
 - Flickr 相簿掃描與匯入工具。
-- Google Sheets 匯入、匯出、同步工具。
+- 以官方 Google Sheets API SDK 實作的匯入、匯出、同步工具。
 - Apps Script 原始碼或產生器。
 - AI prompt、AI 初標流程與人工覆核規則。
 - 給 agent 與技術志工的操作文件。
@@ -50,6 +50,7 @@ Repo 應保存：
 Repo 不應保存：
 
 - Google API credential。
+- OAuth client secret、refresh token 或 SDK token cache。
 - rclone token。
 - 正式 Google Sheets 權限資訊。
 - 任何需要交接但不應公開的機密。
@@ -163,7 +164,7 @@ AI 可以在資料匯入階段協助初標，但不應取代人工判斷。
 MVP 階段應支援兩種維護路徑：
 
 1. 非工程向維護：直接在正式 Google Sheets 補資料、篩選、檢核與調整狀態。
-2. 工程向維護：透過 repo 工具掃描 Flickr 相簿、批次匯入、跑 AI 輔助、匯出驗證與同步回 Sheets。
+2. 工程向維護：透過 repo 工具掃描 Flickr 相簿、批次匯入、跑 AI 輔助、匯出驗證，並以官方 Google Sheets API SDK 同步回 Sheets。
 
 無論哪一種路徑，正式寫回前都應盡可能經過 repo validation 或等價的 Apps Script 檢查。若兩者檢查結果不同，以 repo validation 為準，並回頭修正 Apps Script 規則來源。
 
