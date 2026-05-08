@@ -58,6 +58,7 @@ pnpm workflow
 | 透過官方 SDK 套用匯入產物 | `pnpm sheets:apply-intake -- --run-dir <dir>` |
 | 準備 AI 初標工作目錄 | `pnpm ai:prepare -- --limit 50 --image-size large-1024`，整本相簿可用 `--album <album-id> --limit all` |
 | 檢查 AI 候選 metadata 並產生審核摘要 | `pnpm ai:review -- --run-dir <dir>` |
+| 評估 AI 初標品質與常見失準 | `docs/ai-labeling-evaluation-notes.md` |
 | 檢查 AI proposal 範例 | `pnpm ai:validate-fixtures` |
 | 只驗證 AI 候選 metadata | `pnpm ai:validate -- --run-dir <dir>` |
 | 只產生 AI 候選 metadata diff | `pnpm ai:diff -- --run-dir <dir>` |

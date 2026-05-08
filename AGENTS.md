@@ -23,6 +23,7 @@ The main goal is not to replace Flickr. The repository should keep a practical i
 - `docs/public-frontend-architecture.md`: GitHub Pages public read-only frontend architecture.
 - `docs/ai-labeling-operator-guide.md`: AI labeling prepare-to-validate handoff and operator workflow.
 - `docs/ai-labeling-contract.md`: AI labeling run input, output, boundary, and validation contract.
+- `docs/ai-labeling-evaluation-notes.md`: AI labeling quality evaluation notes and known failure patterns.
 - `README.md`: human-facing project overview and quick start.
 - `app/`: GitHub Pages and local static search UI for the MVP.
 - `app/config.js`: public frontend data source configuration.

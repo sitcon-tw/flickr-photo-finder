@@ -15,6 +15,7 @@
 | Sheets 正式寫入身份 | `docs/sheets-sync-workflow.md` | 建議使用 SITCON 管理的 service account，並將 service account email 加入正式 Sheets 編輯者。 |
 | AI 初標輸入與輸出格式 | `docs/ai-labeling-contract.md` | 定義 `tmp/ai-runs/<run-id>/` 的輸入檔、圖片來源、`metadata-proposals.json` 格式與驗證流程。 |
 | AI 初標操作與 prompt | `docs/ai-labeling-operator-guide.md`、`prompts/ai-labeling.md` | 操作指南說明 prepare-to-validate 交接流程；prompt 是可交給模型使用的任務範本。 |
+| AI 初標品質評估 | `docs/ai-labeling-evaluation-notes.md` | 記錄模型 run 觀察、常見失準欄位與未來可工具化的檢查方向。 |
 | AI proposal 範例 | `fixtures/ai-proposals/` | valid/invalid examples 應由 `pnpm ai:validate-fixtures` 驗證。 |
 | 正式照片索引資料 | Google Sheets `photos` | repo 內 `fixtures/photos.csv` 只是 sample、fixture 與匯出格式參考。 |
 | 正式相簿清單資料 | Google Sheets `albums` | repo 內 `fixtures/albums.csv` 只是 sample、fixture 與匯出格式參考。 |
@@ -69,7 +70,7 @@
 | 技術志工 | `pnpm workflow`、`docs/project-architecture.md`、`docs/sheets-sync-workflow.md`、`docs/google-sheets-database-design.md` |
 | 維護 Apps Script 的人 | `docs/apps-script-maintenance-design.md`、`data/photo-schema.json`、`data/tag-taxonomy.json` |
 | 維護 GitHub Pages 前端的人 | `docs/public-frontend-architecture.md`、`app/config.js` |
-| AI / agent | `AGENTS.md`、`docs/agent-maintenance-guide.md`、`docs/ai-labeling-operator-guide.md`、`docs/ai-labeling-contract.md`、`docs/ai-readable-dataset.md` |
+| AI / agent | `AGENTS.md`、`docs/agent-maintenance-guide.md`、`docs/ai-labeling-operator-guide.md`、`docs/ai-labeling-contract.md`、`docs/ai-labeling-evaluation-notes.md`、`docs/ai-readable-dataset.md` |
 
 ## 文件分工
 
@@ -83,6 +84,7 @@
 - `ai-readable-dataset.md`: AI 如何讀取照片索引資料。
 - `ai-labeling-operator-guide.md`: AI 初標操作者與 agent 的 prepare-to-validate 操作指南。
 - `ai-labeling-contract.md`: AI 初標工作包的輸入、輸出、限制與驗證合約。
+- `ai-labeling-evaluation-notes.md`: AI 初標品質評估紀錄、常見失準欄位與工具化警訊候選。
 - `data-entry-guide.md`: 人工整理照片資料的判斷流程。
 - `photo-fields-reference.md`: 欄位速查；欄位清單仍以 `data/photo-schema.json` 為準。
 - `database-collaboration-strategy.md`: Sheets-first 協作、公開資料邊界與未來遷移判斷。
