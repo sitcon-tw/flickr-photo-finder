@@ -105,6 +105,24 @@ pnpm sheets:init -- --empty-albums
 
 初始化檔只用來建立正式 Sheets 的起點；正式資料後續以 Google Sheets 為準，不需要把完整 Sheets 內容 commit 回 repo。
 
+## 套用 schema header 遷移
+
+當 `data/photo-schema.json` 新增欄位，而正式 Google Sheets 已有資料時，不應重新初始化整份 Sheets。請先使用 header 遷移工具 dry-run：
+
+```bash
+pnpm sheets:migrate-headers
+```
+
+確認輸出只會插入預期欄位後，再執行：
+
+```bash
+pnpm sheets:migrate-headers -- --write
+```
+
+`sheets:migrate-headers` 只處理「目前 header 和 repo schema 順序相容，但缺少部分新增欄位」的情況。它會插入缺少欄位並保留既有資料欄位位置；它不會刪欄、改名、重排或覆蓋資料。若 header 已經被人工改名、調整順序或出現未知欄位，工具會阻擋，應先由人類判斷如何保留資料。
+
+## 相簿工作流程
+
 建議流程：
 
 1. 技術志工或 agent 使用 repo 工具盤點 SITCON Flickr 相簿清單。
@@ -428,6 +446,7 @@ service account key 是敏感 credential，不能 commit，也不應放在 `tmp/
 | 讀取公開 Sheets 狀態 | 不需要寫入權限；需要 Sheets 已公開可讀 | `pnpm sheets:check` 能讀固定 tabs 並回報狀態 | 可能是 Sheets 尚未公開、tab 不存在、網路受限或 ID 錯誤，不代表寫入權限不足。 |
 | 匯出正式 Sheets 工作 CSV | 需要 Google Sheets API credential 與目標 Sheets 讀取權限 | `pnpm sheets:export` 產生 `tmp/sheets-export/*.csv` 並檢查 header | 可能是 OAuth credential、scope、Sheets 權限、tab/header 或網路問題。 |
 | 套用初始化 CSV | 需要 Google Sheets API credential 與目標 Sheets 編輯權限 | `pnpm sheets:apply-init` dry-run 通過，人工確認後執行 `pnpm sheets:apply-init -- --write`，寫入後讀回驗證通過 | 可能是 OAuth credential、scope、Sheets 權限、tab/header 或資料格式問題，應依工具錯誤分類處理。 |
+| 套用 header 遷移 | 需要 Google Sheets API credential 與目標 Sheets 編輯權限 | `pnpm sheets:migrate-headers` dry-run 通過，人工確認後執行 `pnpm sheets:migrate-headers -- --write`，寫入後讀回驗證通過 | 只支援新增缺少欄位；若 header 有未知欄位、改名或順序不相容，工具會阻擋。 |
 | 套用 intake run artifact | 需要 Google Sheets API credential 與目標 Sheets 編輯權限 | `pnpm sheets:apply-intake -- --run-dir <dir>` dry-run 通過，人工確認後加上 `--write`，寫入後讀回驗證通過 | 可能是 OAuth credential、scope、Sheets 權限、tab/header、重複 `photo_id`、重複 `batch_id` 或找不到相簿列。 |
 | 透過官方 SDK 寫入 Sheets | 需要 Google Sheets API credential 與目標 Sheets 編輯權限 | SDK 寫入工具的 preflight、dry-run、confirmed write 與寫入後讀回驗證都通過 | 可能是 OAuth credential、scope、Sheets 權限、tab/header 或資料格式問題，應依工具錯誤分類處理。 |
 | 驗證正式資料格式 | 不需要寫入權限；需要能取得 Sheets 匯出的 CSV | `pnpm validate:data -- --photos <csv> --albums <csv> --import-batches <csv>` | 代表匯出資料和 repo schema 不一致，或匯出檔不是預期格式。 |

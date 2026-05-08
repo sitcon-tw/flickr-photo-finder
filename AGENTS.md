@@ -141,6 +141,7 @@ pnpm sheets:apply-intake -- --run-dir <dir>
 pnpm sheets:check
 pnpm sheets:export
 pnpm sheets:init
+pnpm sheets:migrate-headers
 pnpm validate:data
 git status --short
 ```

@@ -20,6 +20,7 @@
     "sheets:check": "node scripts/check-sheets.mjs",
     "sheets:export": "node scripts/export-sheets.mjs",
     "sheets:init": "node scripts/init-sheets.mjs",
+    "sheets:migrate-headers": "node scripts/migrate-sheets-headers.mjs",
     "validate:data": "node scripts/validate-data.mjs"
   },
   "dependencies": {
