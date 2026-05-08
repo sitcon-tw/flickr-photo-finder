@@ -6,6 +6,7 @@ import {
   approvedRequiredFields,
   controlledListFields,
   controlledScalarFields,
+  importBatchHeaders,
   listFields,
   photoHeaders,
   requiredFields,
@@ -15,6 +16,7 @@ import {
 function parseArgs(argv) {
   const paths = {
     albums: "data/albums.csv",
+    importBatches: "data/import-batches.csv",
     photos: "data/photos.csv",
     taxonomy: "data/tag-taxonomy.json",
     sponsorshipItems: "data/sponsorship-items.json",
@@ -25,6 +27,9 @@ function parseArgs(argv) {
     const arg = args[index];
     if (arg === "--albums") {
       paths.albums = args[index + 1] ?? "";
+      index += 1;
+    } else if (arg === "--import-batches") {
+      paths.importBatches = args[index + 1] ?? "";
       index += 1;
     } else if (arg === "--photos") {
       paths.photos = args[index + 1] ?? "";
@@ -42,6 +47,7 @@ function parseArgs(argv) {
 
   const optionNames = {
     albums: "--albums",
+    importBatches: "--import-batches",
     photos: "--photos",
     sponsorshipItems: "--sponsorship-items",
     taxonomy: "--taxonomy",
@@ -329,8 +335,84 @@ function validateUniqueAlbumFields(albumRows) {
   });
 }
 
-const [albumsText, photosText, taxonomyText, sponsorshipItemsText] = await Promise.all([
+function formatImportBatchRow(rowNumber, field) {
+  return `${paths.importBatches}:${rowNumber} ${field}`;
+}
+
+function validateImportBatchRow(row, rowNumber) {
+  const batch = Object.fromEntries(
+    importBatchHeaders.map((header, index) => [header, row[index] ?? ""]),
+  );
+
+  if (row.length !== importBatchHeaders.length) {
+    addError(
+      `${paths.importBatches}:${rowNumber} expected ${importBatchHeaders.length} columns, got ${row.length}`,
+    );
+  }
+
+  for (const field of [
+    "batch_id",
+    "album_id",
+    "album_url",
+    "imported_at",
+    "source_tool",
+    "found_photo_count",
+    "new_photo_count",
+    "skipped_photo_count",
+  ]) {
+    if (!batch[field].trim()) {
+      addError(`${formatImportBatchRow(rowNumber, field)} is required`);
+    }
+  }
+
+  if (batch.album_id && !/^\d+$/.test(batch.album_id)) {
+    addError(`${formatImportBatchRow(rowNumber, "album_id")} must be a Flickr album ID`);
+  }
+
+  if (batch.album_url && !isValidUrl(batch.album_url)) {
+    addError(`${formatImportBatchRow(rowNumber, "album_url")} must be an http(s) URL`);
+  }
+
+  if (batch.album_url && batch.album_id && !batch.album_url.includes(`/albums/${batch.album_id}`)) {
+    addError(`${formatImportBatchRow(rowNumber, "album_url")} must contain album_id ${batch.album_id}`);
+  }
+
+  if (batch.imported_at && Number.isNaN(Date.parse(batch.imported_at))) {
+    addError(`${formatImportBatchRow(rowNumber, "imported_at")} must be a valid date or datetime`);
+  }
+
+  for (const field of ["found_photo_count", "new_photo_count", "skipped_photo_count"]) {
+    if (batch[field] && !isNonNegativeInteger(batch[field])) {
+      addError(`${formatImportBatchRow(rowNumber, field)} must be a non-negative integer`);
+    }
+  }
+}
+
+function validateUniqueImportBatchFields(importBatchRows) {
+  const seen = new Map();
+
+  importBatchRows.forEach((row, index) => {
+    const rowNumber = index + 2;
+    const batch = Object.fromEntries(
+      importBatchHeaders.map((header, fieldIndex) => [header, row[fieldIndex] ?? ""]),
+    );
+    const value = batch.batch_id.trim();
+
+    if (!value) {
+      return;
+    }
+
+    if (seen.has(value)) {
+      addError(`${formatImportBatchRow(rowNumber, "batch_id")} duplicates row ${seen.get(value)}`);
+    } else {
+      seen.set(value, rowNumber);
+    }
+  });
+}
+
+const [albumsText, importBatchesText, photosText, taxonomyText, sponsorshipItemsText] = await Promise.all([
   readFile(paths.albums, "utf8"),
+  readFile(paths.importBatches, "utf8"),
   readFile(paths.photos, "utf8"),
   readFile(paths.taxonomy, "utf8"),
   readFile(paths.sponsorshipItems, "utf8"),
@@ -339,6 +421,7 @@ const [albumsText, photosText, taxonomyText, sponsorshipItemsText] = await Promi
 const taxonomy = JSON.parse(taxonomyText);
 const sponsorshipItems = JSON.parse(sponsorshipItemsText);
 const albumRows = parseCsv(albumsText);
+const importBatchRows = parseCsv(importBatchesText);
 const rows = parseCsv(photosText);
 
 if (albumRows.length === 0) {
@@ -350,6 +433,18 @@ if (albumRows.length === 0) {
 
   rowsToValidate.forEach((row, index) => {
     validateAlbumRow(row, index + 2);
+  });
+}
+
+if (importBatchRows.length === 0) {
+  addError(`${paths.importBatches}: missing header row`);
+} else {
+  const [headers, ...rowsToValidate] = importBatchRows;
+  validateHeaders(paths.importBatches, headers, importBatchHeaders);
+  validateUniqueImportBatchFields(rowsToValidate);
+
+  rowsToValidate.forEach((row, index) => {
+    validateImportBatchRow(row, index + 2);
   });
 }
 
@@ -374,6 +469,6 @@ if (errors.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    `Data validation passed (${Math.max(rows.length - 1, 0)} photo rows, ${Math.max(albumRows.length - 1, 0)} album rows).`,
+    `Data validation passed (${Math.max(rows.length - 1, 0)} photo rows, ${Math.max(albumRows.length - 1, 0)} album rows, ${Math.max(importBatchRows.length - 1, 0)} import batch rows).`,
   );
 }

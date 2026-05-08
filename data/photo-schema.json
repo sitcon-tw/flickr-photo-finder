@@ -310,6 +310,102 @@
           "description_zh": "可公開的相簿整理備註，不要寫入敏感資訊。"
         }
       ]
+    },
+    "import_batches": {
+      "export_path": "data/import-batches.csv",
+      "description_zh": "相簿匯入批次紀錄。正式資料以 Google Sheets 為準，此 schema 也定義本機 sample/export 格式。",
+      "fields": [
+        {
+          "name": "batch_id",
+          "label_zh": "匯入批次 ID",
+          "type": "string",
+          "required": true,
+          "multi_value": false,
+          "maintainer_zh": "匯入工具",
+          "description_zh": "匯入批次唯一識別，用來追蹤某次相簿處理。"
+        },
+        {
+          "name": "album_id",
+          "label_zh": "Flickr 相簿 ID",
+          "type": "string",
+          "required": true,
+          "multi_value": false,
+          "maintainer_zh": "匯入工具",
+          "description_zh": "對應 albums.album_id。"
+        },
+        {
+          "name": "album_url",
+          "label_zh": "Flickr 相簿 URL",
+          "type": "url",
+          "required": true,
+          "multi_value": false,
+          "maintainer_zh": "匯入工具",
+          "description_zh": "本次匯入來源相簿 URL。"
+        },
+        {
+          "name": "imported_at",
+          "label_zh": "匯入時間",
+          "type": "datetime",
+          "required": true,
+          "multi_value": false,
+          "maintainer_zh": "匯入工具",
+          "description_zh": "本次掃描或匯入完成時間。"
+        },
+        {
+          "name": "operator",
+          "label_zh": "操作者",
+          "type": "string",
+          "required": false,
+          "multi_value": false,
+          "maintainer_zh": "匯入工具或技術志工",
+          "description_zh": "操作者、agent 或執行環境名稱。"
+        },
+        {
+          "name": "source_tool",
+          "label_zh": "來源工具",
+          "type": "string",
+          "required": true,
+          "multi_value": false,
+          "maintainer_zh": "匯入工具",
+          "description_zh": "使用的 repo script、agent 或其他工具。"
+        },
+        {
+          "name": "found_photo_count",
+          "label_zh": "相簿照片數",
+          "type": "integer",
+          "required": true,
+          "multi_value": false,
+          "maintainer_zh": "匯入工具",
+          "description_zh": "本次在相簿頁找到的照片數。"
+        },
+        {
+          "name": "new_photo_count",
+          "label_zh": "新增照片數",
+          "type": "integer",
+          "required": true,
+          "multi_value": false,
+          "maintainer_zh": "匯入工具",
+          "description_zh": "本次候選匯入中尚未存在於 photos 的照片數。"
+        },
+        {
+          "name": "skipped_photo_count",
+          "label_zh": "略過照片數",
+          "type": "integer",
+          "required": true,
+          "multi_value": false,
+          "maintainer_zh": "匯入工具",
+          "description_zh": "因已存在或其他原因略過的照片數。"
+        },
+        {
+          "name": "notes",
+          "label_zh": "備註",
+          "type": "text",
+          "required": false,
+          "multi_value": false,
+          "maintainer_zh": "匯入工具或技術志工",
+          "description_zh": "可公開的匯入備註，不要寫入敏感資訊。"
+        }
+      ]
     }
   }
 }

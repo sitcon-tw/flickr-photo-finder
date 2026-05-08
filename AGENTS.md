@@ -26,13 +26,14 @@ The main goal is not to replace Flickr. The repository should keep a practical i
 - `app/config.js`: public frontend data source configuration.
 - `data/albums.csv`: MVP sample, local fixture, and Sheets export format reference for the SITCON Flickr album catalog. It is not the authoritative album database.
 - `data/photos.csv`: MVP sample, local fixture, and Sheets export format reference. It is not the authoritative photo database.
+- `data/import-batches.csv`: MVP sample, local fixture, and Sheets export format reference for import batch records. It is not the authoritative import batch database.
 - `data/photo-schema.json`: shared field schema for Google Sheets, CSV exports, Apps Script helpers, and CLI validation.
 - `data/tag-taxonomy.json`: controlled taxonomy for photo tags and enum fields.
 - `data/sponsorship-items.json`: fixed snapshot derived from SITCON 2026 CFS sponsorship item data.
 - `scripts/add-photo.mjs`: helper for generating or appending a CSV row from a Flickr photo URL.
 - `scripts/discover-albums.mjs`: helper for discovering SITCON Flickr albums and writing the local album fixture.
 - `scripts/sync-albums.mjs`: helper for merging a Google Sheets albums CSV export with discovered albums and producing a Sheets-ready CSV.
-- `scripts/import-album-photos.mjs`: helper for generating Sheets-ready candidate photo rows from a selected album.
+- `scripts/import-album-photos.mjs`: helper for generating Sheets-ready candidate photo rows, updated album rows, and import batch rows from a selected album.
 - `scripts/flickr-album-photos.mjs`: shared Flickr album photo URL extraction helper.
 - `scripts/add-album.mjs`: low-level helper for checking or importing missing photos from a discovered album ID or Flickr album URL.
 - `scripts/serve.mjs`: local static server for the MVP UI.
@@ -42,7 +43,7 @@ The main goal is not to replace Flickr. The repository should keep a practical i
 
 - Google Sheets is the authoritative photo index database. If Google Sheets and repo sample data disagree, Google Sheets wins.
 - This repo is the governance and tooling layer: schema, taxonomy, validation, import/export scripts, Apps Script source or generators, AI prompts, and maintenance documentation.
-- Treat `data/photo-schema.json` as the machine-readable source for photo and album field order, basic field metadata, reviewed completeness rules, and approved-use requirements.
+- Treat `data/photo-schema.json` as the machine-readable source for photo, album, and import batch field order, basic field metadata, reviewed completeness rules, and approved-use requirements.
 - Do not duplicate reviewed/approved field lists in docs. Reference `data/photo-schema.json` instead.
 - Do not treat `data/photos.csv` as production data. It exists for MVP demos, local UI development, validation fixtures, and future export-format tests.
 - Do not treat `data/albums.csv` as production data. It exists for MVP demos, local selection by album ID, validation fixtures, and future export-format tests.
@@ -85,6 +86,7 @@ pnpm validate:data
 The validation script currently checks:
 
 - `data/albums.csv` headers and basic album catalog fields, derived from `data/photo-schema.json`.
+- `data/import-batches.csv` headers and basic import batch fields, derived from `data/photo-schema.json`.
 - `data/photos.csv` headers for the local sample/export format, derived from `data/photo-schema.json`.
 - Required photo fields.
 - URL format.
@@ -109,7 +111,7 @@ The validation script currently checks:
 pnpm dev
 pnpm albums:discover
 pnpm albums:sync -- --sheets-export <albums-csv> --output <albums-csv>
-pnpm photos:import -- --album <album-id> --photos-export <photos-csv> --output <photos-csv>
+pnpm photos:import -- --album <album-id> --photos-export <photos-csv> --output <photos-csv> --albums-output <albums-csv> --batch-output <batch-csv>
 pnpm album:add -- <flickr-album-url>
 pnpm album:add -- <album-id>
 pnpm photo:add -- <flickr-photo-url>

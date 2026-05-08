@@ -22,6 +22,8 @@ export const photoFields = photoTableSchema.fields;
 export const photoHeaders = getTableHeaders("photos");
 export const albumTableSchema = getTableSchema("albums");
 export const albumHeaders = getTableHeaders("albums");
+export const importBatchTableSchema = getTableSchema("import_batches");
+export const importBatchHeaders = getTableHeaders("import_batches");
 
 export const requiredFields = photoFields
   .filter((field) => field.required)

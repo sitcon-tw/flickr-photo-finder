@@ -9,7 +9,7 @@
 ## 核心決策
 
 - 資料權威與 repo fixture 關係以 `docs/README.md` 的真理來源表為準。
-- `data/photo-schema.json` 是照片主表欄位順序、欄位 metadata 與基本完整度規則的機器可讀來源。
+- `data/photo-schema.json` 是 `photos`、`albums`、`import_batches` 欄位順序、欄位 metadata 與基本完整度規則的機器可讀來源。
 - `data/tag-taxonomy.json` 是受控字彙與列舉值來源。
 - `data/sponsorship-items.json` 是 SITCON 2026 CFS 贊助品項固定版本資料。
 - `photos` 主表本身就是公開照片索引。資料庫的目標是為照片加註 metadata，方便人類、前端與 AI 挑選，而不是另外做一層篩選資料表。
@@ -45,24 +45,11 @@ SITCON Flickr 相簿清單與處理紀錄。這張表應由工具盤點 SITCON F
 
 欄位應以 `data/photo-schema.json` 的 `albums.fields` 為準。工具盤點時應優先填入 `album_id`、`album_url`、`album_title` 與可取得的 `photo_count`；`event_name`、`event_year`、`last_processed_at` 與 `notes` 可由同步或匯入流程後續補上。
 
-### import_batches（規劃中）
+### import_batches（目前可用：Sheets-ready CSV；正式寫回規劃中）
 
 匯入批次紀錄。這張表用來讓技術志工與 agent 回頭理解某次相簿匯入發生了什麼。
 
-建議欄位：
-
-| 欄位 | 用途 |
-| --- | --- |
-| `batch_id` | 匯入批次 ID。 |
-| `album_id` | 對應 `albums.album_id`。 |
-| `album_url` | 匯入來源相簿 URL。 |
-| `imported_at` | 匯入時間。 |
-| `operator` | 操作者或工具名稱。 |
-| `source_tool` | 使用的 repo script、agent 或其他工具。 |
-| `found_photo_count` | 相簿中找到的照片數。 |
-| `new_photo_count` | 新增到 `photos` 的照片數。 |
-| `skipped_photo_count` | 因已存在或格式問題略過的照片數。 |
-| `notes` | 可公開的匯入備註。 |
+欄位應以 `data/photo-schema.json` 的 `import_batches.fields` 為準。工具應填入本次處理的相簿、執行時間、來源工具，以及找到、新增、略過的照片數。
 
 ### schema_meta（規劃中）
 

@@ -125,6 +125,6 @@ Repo 不保存：
 6. GitHub Pages 和外部 AI 能讀同一份公開照片索引。
 7. 真實使用者能用工作需求找到照片，並回饋標籤或欄位是否足夠。
 
-目前 repo 已有本機相簿盤點 CLI、`data/albums.csv` fixture 格式、可回寫 Google Sheets `albums` 的 CSV 產生流程，以及從選定相簿產生 `photos` 候選列的流程；尚未完成的是直接寫回正式 Google Sheets、由正式 `albums` 觸發完整匯入，以及把匯入批次狀態回寫到 `last_processed_at` 與 `import_batches`。
+目前 repo 已有本機相簿盤點 CLI、`data/albums.csv` fixture 格式、可回寫 Google Sheets `albums` 的 CSV 產生流程，以及從選定相簿產生 `photos` 候選列、`albums.last_processed_at` 更新與 `import_batches` 批次紀錄的流程；尚未完成的是直接寫回正式 Google Sheets，以及由正式 `albums` 觸發完整匯入。
 
 若未來真的出現權限分層、非公開欄位、審核歷程、多人衝突或查詢效能問題，再評估正式資料庫或後台。

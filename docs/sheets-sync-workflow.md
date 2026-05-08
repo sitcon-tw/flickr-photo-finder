@@ -67,12 +67,12 @@ pnpm album:add -- ALBUM_ID
 若要產生可追加到 Google Sheets `photos` 的候選照片 CSV，請使用目前 Sheets `photos` 匯出檔做重複檢查：
 
 ```bash
-pnpm photos:import -- --album ALBUM_ID --photos-export /path/to/sheets-photos.csv --output /tmp/photos-to-append.csv
+pnpm photos:import -- --album ALBUM_ID --photos-export /path/to/sheets-photos.csv --output /tmp/photos-to-append.csv --albums-output /tmp/albums-updated.csv --batch-output /tmp/import-batch.csv
 ```
 
 `photos:import` 會從 `albums` CSV 取得相簿名稱、活動名稱與年份，掃描該相簿中的照片，排除已存在於 `photos` 匯出檔的 `photo_id`，再用 Flickr oEmbed 補 `image_preview_url`、攝影師候選署名與可公開整理備註。
 
-產出的 CSV 只包含缺少的候選照片列，不是完整 `photos` 快照。正式寫回前應由人類確認，並避免覆蓋既有人工整理欄位。
+產出的 `photos` CSV 只包含缺少的候選照片列，不是完整 `photos` 快照。`albums-output` 會輸出更新 `last_processed_at` 後的完整 albums CSV；`batch-output` 會輸出本次匯入批次紀錄。正式寫回前應由人類確認，並避免覆蓋既有人工整理欄位。
 
 ## 匯出驗證流程
 
@@ -96,6 +96,12 @@ pnpm validate:data -- --albums /path/to/sheets-albums.csv
 
 ```bash
 pnpm validate:data -- --photos /tmp/photos-to-append.csv
+```
+
+若要驗證匯入批次 CSV，可以指定 import batches 路徑：
+
+```bash
+pnpm validate:data -- --import-batches /tmp/import-batch.csv
 ```
 
 ## AI 輔助流程
