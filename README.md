@@ -73,12 +73,14 @@ npm run album:add -- https://www.flickr.com/photos/sitcon/albums/ALBUM_ID/ --app
 - `scripts/serve.mjs`: 本機靜態 server。
 - `scripts/validate-data.mjs`: 檢查資料格式與標籤字典一致性。
 - `docs/data-entry-guide.md`: 照片索引填寫指南。
+- `docs/database-collaboration-strategy.md`: 資料庫與志工協作維護策略。
 - `docs/photo-finder-mvp.md`: MVP 產品判斷紀錄。
 - `docs/mvp-implementation-plan.md`: MVP 實作計畫。
 - `AGENTS.md`: agent 協作規則。
 
 ## 資料填寫原則
 
+- 目前 `data/` 是公開、可驗證、可版本控管的資料庫；正式資料庫應等協作與查詢需求明確後再導入。
 - 多值欄位用分號分隔，例如 `攤位;會眾;交流`。
 - `sponsorship_items` 必須對齊 `data/sponsorship-items.json` 的 CFS 品項。
 - `scene_tags` 描述照片裡看到什麼。
