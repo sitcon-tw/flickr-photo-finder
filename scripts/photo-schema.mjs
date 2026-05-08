@@ -1,50 +1,28 @@
-export const photoHeaders = [
-  "photo_id",
-  "photo_url",
-  "image_preview_url",
-  "album_title",
-  "event_name",
-  "event_year",
-  "photographer",
-  "license",
-  "scene_tags",
-  "mood_tags",
-  "recommended_uses",
-  "sponsorship_items",
-  "sponsorship_tags",
-  "orientation",
-  "has_negative_space",
-  "safe_crop",
-  "public_use_status",
-  "quality_score",
-  "collections",
-  "internal_notes",
-  "curation_status",
-];
+import { readFileSync } from "node:fs";
 
-export const requiredFields = ["photo_id", "photo_url", "image_preview_url"];
+const schemaUrl = new URL("../data/photo-schema.json", import.meta.url);
 
-export const listFields = [
-  "scene_tags",
-  "mood_tags",
-  "recommended_uses",
-  "sponsorship_items",
-  "sponsorship_tags",
-  "safe_crop",
-  "collections",
-];
+export const photoSchema = JSON.parse(readFileSync(schemaUrl, "utf8"));
+export const photoTableSchema = photoSchema.tables.photos;
+export const photoFields = photoTableSchema.fields;
 
-export const controlledListFields = [
-  "scene_tags",
-  "mood_tags",
-  "recommended_uses",
-  "sponsorship_items",
-  "sponsorship_tags",
-  "safe_crop",
-];
+export const photoHeaders = photoFields.map((field) => field.name);
 
-export const controlledScalarFields = [
-  "orientation",
-  "public_use_status",
-  "curation_status",
-];
+export const requiredFields = photoFields
+  .filter((field) => field.required)
+  .map((field) => field.name);
+
+export const listFields = photoFields
+  .filter((field) => field.multi_value)
+  .map((field) => field.name);
+
+export const controlledListFields = photoFields
+  .filter((field) => field.multi_value && field.taxonomy_key)
+  .map((field) => field.name);
+
+export const controlledScalarFields = photoFields
+  .filter((field) => !field.multi_value && field.taxonomy_key)
+  .map((field) => field.name);
+
+export const reviewedRequiredFields = photoTableSchema.reviewed_required_fields;
+export const approvedRequiredFields = photoTableSchema.approved_required_fields;

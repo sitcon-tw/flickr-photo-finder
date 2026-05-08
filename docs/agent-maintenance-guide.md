@@ -13,7 +13,7 @@ Repo 的角色是：
 - 保存文件，讓未來 agent 能理解專案目標與資料維護方式。
 - 保存 sample / fixture / export format，方便本機開發與測試。
 
-`data/photos.csv` 不是正式資料來源。它目前只用於 MVP 示範、本機 UI、驗證工具與未來匯出格式測試。若它和 Google Sheets 的正式資料不一致，以 Google Sheets 為準。
+`data/photo-schema.json` 是照片欄位順序、欄位 metadata、reviewed 完整度規則與 approved 使用要求的機器可讀來源。`data/photos.csv` 不是正式資料來源。它目前只用於 MVP 示範、本機 UI、驗證工具與未來匯出格式測試。若它和 Google Sheets 的正式資料不一致，以 Google Sheets 為準。
 
 ## Agent 可以協助的工作
 
@@ -62,7 +62,7 @@ AI 只能作為資料匯入與整理輔助。
 
 ## 維護資料時的基本檢查
 
-更動 schema、taxonomy、sample data 或 validation logic 後，請執行：
+更動 `data/photo-schema.json`、taxonomy、sample data 或 validation logic 後，請執行：
 
 ```bash
 npm run validate:data

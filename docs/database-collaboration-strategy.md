@@ -36,7 +36,7 @@ Repo 不保存正式照片資料，但仍然是這個工具能長期維護的關
 
 Repo 應保存：
 
-- 欄位 schema 與欄位文件。
+- 欄位 schema 與欄位文件。`data/photo-schema.json` 是 Google Sheets、CSV 匯出、Apps Script 與 CLI 共用的機器可讀欄位定義。
 - 受控標籤與列舉值。
 - 贊助品項固定版本資料。
 - 資料驗證規則。
@@ -75,7 +75,7 @@ Apps Script 適合做編輯輔助，不應成為另一套資料治理來源。
 
 適合放在 Apps Script 的功能：
 
-- 從 repo schema/taxonomy 產生欄位下拉選單。
+- 從 `data/photo-schema.json` 與 repo taxonomy 產生欄位下拉選單。
 - 檢查必填欄位、受控字彙與常見格式錯誤。
 - 在 `reviewed` 或 `featured` 缺少必要欄位時提醒。
 - 協助開啟 Flickr 原始連結或顯示縮圖。
@@ -88,7 +88,7 @@ Apps Script 適合做編輯輔助，不應成為另一套資料治理來源。
 - 權限敏感操作。
 - 會產生成本或大量外部 API 呼叫的流程。
 
-Apps Script 的規則來源應來自 repo 設定，repo validation 仍是最後的權威檢查。
+Apps Script 的規則來源應來自 `data/photo-schema.json`、`data/tag-taxonomy.json` 與其他 repo 設定，repo validation 仍是最後的權威檢查。
 
 ## AI 輔助原則
 

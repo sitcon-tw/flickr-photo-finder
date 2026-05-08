@@ -1,6 +1,6 @@
 # 照片欄位參考
 
-這份文件是正式 Google Sheets 照片索引與 `data/photos.csv` 匯出格式的欄位速查表，給整理照片資料的志工使用。更完整的流程與判斷原則請看 `docs/data-entry-guide.md`。
+這份文件是正式 Google Sheets 照片索引與 `data/photos.csv` 匯出格式的欄位速查表，給整理照片資料的志工使用。機器可讀版本在 `data/photo-schema.json`；更完整的流程與判斷原則請看 `docs/data-entry-guide.md`。
 
 ## 格式規則
 

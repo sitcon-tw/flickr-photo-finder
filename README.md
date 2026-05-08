@@ -65,6 +65,7 @@ npm run album:add -- https://www.flickr.com/photos/sitcon/albums/ALBUM_ID/ --app
 ## 主要檔案
 
 - `data/photos.csv`: MVP sample、local fixture 與 Sheets 匯出格式參考，不是正式資料來源。
+- `data/photo-schema.json`: Google Sheets、CSV 匯出、Apps Script 與 CLI 共用的欄位 schema。
 - `data/tag-taxonomy.json`: 受控標籤與列舉值欄位。
 - `data/sponsorship-items.json`: SITCON 2026 CFS 贊助品項固定版本資料。
 - `app/`: 本機照片搜尋介面。

@@ -17,6 +17,7 @@ The main goal is not to replace Flickr. The repository should keep a practical i
 - `README.md`: human-facing project overview and quick start.
 - `app/`: local static search UI for the MVP.
 - `data/photos.csv`: MVP sample, local fixture, and Sheets export format reference. It is not the authoritative photo database.
+- `data/photo-schema.json`: shared field schema for Google Sheets, CSV exports, Apps Script helpers, and CLI validation.
 - `data/tag-taxonomy.json`: controlled taxonomy for photo tags and enum fields.
 - `data/sponsorship-items.json`: fixed snapshot derived from SITCON 2026 CFS sponsorship item data.
 - `scripts/add-photo.mjs`: helper for generating or appending a CSV row from a Flickr photo URL.
@@ -28,6 +29,7 @@ The main goal is not to replace Flickr. The repository should keep a practical i
 
 - Google Sheets is the authoritative photo index database. If Google Sheets and repo sample data disagree, Google Sheets wins.
 - This repo is the governance and tooling layer: schema, taxonomy, validation, import/export scripts, Apps Script source or generators, AI prompts, and maintenance documentation.
+- Treat `data/photo-schema.json` as the machine-readable source for photo field order, basic field metadata, reviewed completeness rules, and approved-use requirements.
 - Do not treat `data/photos.csv` as production data. It exists for MVP demos, local UI development, validation fixtures, and future export-format tests.
 - Treat `data/sponsorship-items.json` as a fixed snapshot. SITCON 2026 CFS has ended, so do not build auto-sync behavior for that data.
 - Future CFS versions should be introduced explicitly as new or replacement versioned data, not by assuming the 2026 snapshot keeps changing.
@@ -50,7 +52,7 @@ The main goal is not to replace Flickr. The repository should keep a practical i
 
 ## Validation
 
-Run data validation after changing local sample/export data under `data/` or changing validation logic:
+Run data validation after changing local sample/export data, `data/photo-schema.json`, taxonomy files, or validation logic:
 
 ```bash
 npm run validate:data
@@ -58,7 +60,7 @@ npm run validate:data
 
 The validation script currently checks:
 
-- `data/photos.csv` headers for the local sample/export format.
+- `data/photos.csv` headers for the local sample/export format, derived from `data/photo-schema.json`.
 - Required photo fields.
 - URL format.
 - controlled taxonomy values.

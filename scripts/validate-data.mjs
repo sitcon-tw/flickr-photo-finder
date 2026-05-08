@@ -1,11 +1,13 @@
 import { readFile } from "node:fs/promises";
 import { URL } from "node:url";
 import {
+  approvedRequiredFields,
   controlledListFields,
   controlledScalarFields,
   listFields,
   photoHeaders,
   requiredFields,
+  reviewedRequiredFields,
 } from "./photo-schema.mjs";
 
 const paths = {
@@ -226,22 +228,14 @@ function validateReviewedPhotoRow(photo, rowNumber) {
     return;
   }
 
-  const requiredReviewedFields = [
-    "scene_tags",
-    "mood_tags",
-    "recommended_uses",
-    "public_use_status",
-    "quality_score",
-  ];
-
-  for (const field of requiredReviewedFields) {
+  for (const field of reviewedRequiredFields) {
     if (!photo[field].trim()) {
       addError(`${formatRow(rowNumber, field)} is required for reviewed photos`);
     }
   }
 
   if (photo.public_use_status === "approved") {
-    for (const field of ["photographer", "license"]) {
+    for (const field of approvedRequiredFields) {
       if (!photo[field].trim()) {
         addError(`${formatRow(rowNumber, field)} is required when public_use_status is approved`);
       }

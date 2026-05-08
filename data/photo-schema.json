@@ -1,0 +1,229 @@
+{
+  "version": "2026-mvp-1",
+  "tables": {
+    "photos": {
+      "export_path": "data/photos.csv",
+      "description_zh": "SITCON Flickr 照片索引。正式資料以 Google Sheets 為準，此 schema 也定義 CSV 匯出格式。",
+      "reviewed_required_fields": [
+        "scene_tags",
+        "mood_tags",
+        "recommended_uses",
+        "public_use_status",
+        "quality_score"
+      ],
+      "approved_required_fields": [
+        "photographer",
+        "license"
+      ],
+      "fields": [
+        {
+          "name": "photo_id",
+          "label_zh": "Flickr 照片 ID",
+          "type": "string",
+          "required": true,
+          "multi_value": false,
+          "maintainer_zh": "匯入工具",
+          "description_zh": "Flickr 照片 ID，用來避免重複匯入。"
+        },
+        {
+          "name": "photo_url",
+          "label_zh": "Flickr 公開頁面",
+          "type": "url",
+          "required": true,
+          "multi_value": false,
+          "maintainer_zh": "匯入工具",
+          "description_zh": "Flickr 公開頁面，用來回到原始照片確認脈絡。"
+        },
+        {
+          "name": "image_preview_url",
+          "label_zh": "縮圖 URL",
+          "type": "url",
+          "required": true,
+          "multi_value": false,
+          "maintainer_zh": "匯入工具",
+          "description_zh": "搜尋介面顯示用縮圖。"
+        },
+        {
+          "name": "album_title",
+          "label_zh": "相簿名稱",
+          "type": "string",
+          "required": false,
+          "multi_value": false,
+          "maintainer_zh": "匯入工具或整理者",
+          "description_zh": "Flickr 相簿名稱。若工具暫時抓不到，可以留空。"
+        },
+        {
+          "name": "event_name",
+          "label_zh": "活動名稱",
+          "type": "string",
+          "required": false,
+          "multi_value": false,
+          "maintainer_zh": "熟悉活動脈絡者",
+          "description_zh": "例如 SITCON 年會、SITCON Camp。不確定就留空。"
+        },
+        {
+          "name": "event_year",
+          "label_zh": "活動年份",
+          "type": "year",
+          "required": false,
+          "multi_value": false,
+          "maintainer_zh": "熟悉活動脈絡者",
+          "description_zh": "四位年份，例如 2026。"
+        },
+        {
+          "name": "photographer",
+          "label_zh": "攝影師署名",
+          "type": "string",
+          "required": false,
+          "multi_value": false,
+          "required_when_public_use_status": "approved",
+          "maintainer_zh": "匯入工具或整理者",
+          "description_zh": "攝影師署名。SITCON 是 Flickr 帳號擁有者，不等於攝影師。"
+        },
+        {
+          "name": "license",
+          "label_zh": "授權資訊",
+          "type": "string",
+          "required": false,
+          "multi_value": false,
+          "required_when_public_use_status": "approved",
+          "maintainer_zh": "整理者",
+          "description_zh": "Flickr 顯示的授權資訊。不確定時留空並使用 needs_review。"
+        },
+        {
+          "name": "scene_tags",
+          "label_zh": "場景標籤",
+          "type": "taxonomy",
+          "taxonomy_key": "scene_tags",
+          "required": false,
+          "required_for_reviewed": true,
+          "multi_value": true,
+          "maintainer_zh": "整理者",
+          "description_zh": "照片中看見的事實，例如攤位、會眾、舞台。"
+        },
+        {
+          "name": "mood_tags",
+          "label_zh": "氛圍標籤",
+          "type": "taxonomy",
+          "taxonomy_key": "mood_tags",
+          "required": false,
+          "required_for_reviewed": true,
+          "multi_value": true,
+          "maintainer_zh": "宣傳、設計、整理者",
+          "description_zh": "照片帶來的感受，例如熱鬧、專注、青春感。"
+        },
+        {
+          "name": "recommended_uses",
+          "label_zh": "建議用途",
+          "type": "taxonomy",
+          "taxonomy_key": "recommended_uses",
+          "required": false,
+          "required_for_reviewed": true,
+          "multi_value": true,
+          "maintainer_zh": "各組整理者",
+          "description_zh": "適合的工作用途，例如社群貼文、贊助提案。"
+        },
+        {
+          "name": "sponsorship_items",
+          "label_zh": "贊助品項",
+          "type": "taxonomy",
+          "taxonomy_key": "sponsorship_items",
+          "required": false,
+          "multi_value": true,
+          "maintainer_zh": "行銷組或熟悉贊助者",
+          "description_zh": "對應 CFS 贊助品項，必須對齊 data/sponsorship-items.json。"
+        },
+        {
+          "name": "sponsorship_tags",
+          "label_zh": "贊助價值",
+          "type": "taxonomy",
+          "taxonomy_key": "sponsorship_tags",
+          "required": false,
+          "multi_value": true,
+          "maintainer_zh": "行銷組或熟悉贊助者",
+          "description_zh": "贊助價值或佐證用途，例如品牌露出、會眾互動。"
+        },
+        {
+          "name": "orientation",
+          "label_zh": "照片方向",
+          "type": "taxonomy",
+          "taxonomy_key": "orientation",
+          "required": false,
+          "multi_value": false,
+          "maintainer_zh": "設計、整理者",
+          "description_zh": "landscape、portrait、square。"
+        },
+        {
+          "name": "has_negative_space",
+          "label_zh": "是否有留白",
+          "type": "boolean",
+          "required": false,
+          "multi_value": false,
+          "maintainer_zh": "設計、整理者",
+          "description_zh": "true 或 false，表示是否有明顯留白可放字。"
+        },
+        {
+          "name": "safe_crop",
+          "label_zh": "安全裁切比例",
+          "type": "taxonomy",
+          "taxonomy_key": "safe_crop",
+          "required": false,
+          "multi_value": true,
+          "maintainer_zh": "設計、整理者",
+          "description_zh": "適合裁切的比例，例如 1:1、16:9。"
+        },
+        {
+          "name": "public_use_status",
+          "label_zh": "公開使用狀態",
+          "type": "taxonomy",
+          "taxonomy_key": "public_use_status",
+          "required": false,
+          "required_for_reviewed": true,
+          "multi_value": false,
+          "maintainer_zh": "熟悉公開素材風險者",
+          "description_zh": "approved、needs_review、avoid。不確定用 needs_review。"
+        },
+        {
+          "name": "quality_score",
+          "label_zh": "可用性評分",
+          "type": "integer",
+          "min": 1,
+          "max": 5,
+          "required": false,
+          "required_for_reviewed": true,
+          "multi_value": false,
+          "maintainer_zh": "整理者",
+          "description_zh": "1 到 5 的快速可用性評分。不是美學精密評分。"
+        },
+        {
+          "name": "collections",
+          "label_zh": "素材包",
+          "type": "string",
+          "required": false,
+          "multi_value": true,
+          "maintainer_zh": "各組整理者",
+          "description_zh": "素材包，例如志工招募、贊助提案、網站 hero。"
+        },
+        {
+          "name": "internal_notes",
+          "label_zh": "整理備註",
+          "type": "text",
+          "required": false,
+          "multi_value": false,
+          "maintainer_zh": "整理者",
+          "description_zh": "公開 repo 與正式 Sheets 中仍視為公開資料，不要寫入敏感內部資訊。"
+        },
+        {
+          "name": "curation_status",
+          "label_zh": "整理狀態",
+          "type": "taxonomy",
+          "taxonomy_key": "curation_status",
+          "required": false,
+          "multi_value": false,
+          "maintainer_zh": "整理者",
+          "description_zh": "unreviewed、ai_labeled、reviewed、featured、archived。"
+        }
+      ]
+    }
+  }
+}
