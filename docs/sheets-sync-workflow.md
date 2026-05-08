@@ -70,6 +70,8 @@ pnpm sheets:check
 
 `sheets:check` 只讀取固定 tabs 的公開 CSV export，檢查 header 是否符合預期，以及 tab 是否已經有資料。若任何 tab 已有資料、header 不符合預期，或無法讀取，工具會回報初始化覆蓋風險。
 
+確認沒有覆蓋風險後，Google Drive / Sheets 的檔案讀寫與匯入應交由 rclone、Google Drive UI、Apps Script 或組織既有工具處理。repo 工具負責產生可匯入檔案、schema、validation 與風險檢查，不直接自製 Google Drive 檔案讀寫流程。
+
 如果要用最新 Flickr 相簿清單初始化 `albums`，請先執行：
 
 ```bash
@@ -147,7 +149,7 @@ summary.json
 
 這是目前建議的人機協作接口。`photos-to-append.csv` 是缺少照片的候選列，`albums-updated.csv` 是更新 `last_processed_at` 後的完整 albums CSV，`import-batch.csv` 是本次操作紀錄，`summary.json` 則讓人類、agent 或未來 Apps Script 先確認本次 run 的範圍與統計。
 
-正式寫回前應由人類確認，並避免覆蓋既有人工整理欄位。現階段 Google Sheets 寫回仍由人類手動匯入或貼回；rclone、Google API 或 Apps Script 應在這個手動流程跑通後再自動化。
+正式寫回前應由人類確認，並避免覆蓋既有人工整理欄位。現階段 Google Sheets 寫回仍由人類手動匯入或貼回；rclone、Google Drive UI、Apps Script 或組織既有工具應在這個手動流程跑通後再自動化。
 
 套用前先檢查整包產物：
 

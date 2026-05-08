@@ -45,6 +45,8 @@ pnpm sheets:check
 
 這個檢查用公開 CSV export 讀取固定 tabs，確認 header 與是否已有資料。它不處理 credential，也不寫入 Google Sheets；寫入權限仍由 Google Drive/Sheets 管理。
 
+確認沒有覆蓋風險後，Google Drive / Sheets 的檔案讀寫與匯入應交由 rclone、Google Drive UI、Apps Script 或組織既有工具處理。repo 工具不直接自製 Google Drive 檔案讀寫流程。
+
 ### photos（正式主表；Sheets 建置時必備；候選列 CSV 目前可產生）
 
 正式照片索引主表。每列代表一張 Flickr 照片。

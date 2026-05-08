@@ -51,6 +51,7 @@ The main goal is not to replace Flickr. The repository should keep a practical i
 - Keep reusable organization-specific values in `config/project.json` when practical. SITCON is the default instance, but the project should remain forkable by other organizations.
 - `config/project.json` may include the public Google Sheets `spreadsheetId`. This is not treated as a secret for this project; write access is managed by Google Drive/Sheets permissions.
 - Google Sheets tab names are fixed for the MVP: `photos`, `albums`, `import_batches`, `taxonomy`, and `sponsorship_items`.
+- Do not build custom Google Drive file read/write flows when an existing tool such as rclone, Google Drive UI, Apps Script, or an organization-managed workflow should handle the transfer.
 - Treat `data/photo-schema.json` as the machine-readable source for photo, album, and import batch field order, basic field metadata, reviewed completeness rules, and approved-use requirements.
 - Do not duplicate reviewed/approved field lists in docs. Reference `data/photo-schema.json` instead.
 - Do not treat `data/photos.csv` as production data. It exists for MVP demos, local UI development, validation fixtures, and future export-format tests.
