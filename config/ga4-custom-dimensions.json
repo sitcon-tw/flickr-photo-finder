@@ -1,0 +1,88 @@
+{
+  "customDimensions": [
+    {
+      "parameterName": "result_count_bucket",
+      "displayName": "Result count bucket",
+      "description": "Bucketed photo finder result count.",
+      "scope": "EVENT"
+    },
+    {
+      "parameterName": "search_surface",
+      "displayName": "Search surface",
+      "description": "Photo finder search surface identifier.",
+      "scope": "EVENT"
+    },
+    {
+      "parameterName": "has_filters",
+      "displayName": "Has filters",
+      "description": "Whether search used any filter.",
+      "scope": "EVENT"
+    },
+    {
+      "parameterName": "has_search_term",
+      "displayName": "Has search term",
+      "description": "Whether filtering included a search term.",
+      "scope": "EVENT"
+    },
+    {
+      "parameterName": "recommended_use",
+      "displayName": "Recommended use",
+      "description": "Selected photo recommended use filter.",
+      "scope": "EVENT"
+    },
+    {
+      "parameterName": "public_use_status",
+      "displayName": "Public use status",
+      "description": "Photo public use status at event time.",
+      "scope": "EVENT"
+    },
+    {
+      "parameterName": "priority_level",
+      "displayName": "Priority level",
+      "description": "Photo priority level at event time.",
+      "scope": "EVENT"
+    },
+    {
+      "parameterName": "curation_status",
+      "displayName": "Curation status",
+      "description": "Photo curation status at event time.",
+      "scope": "EVENT"
+    },
+    {
+      "parameterName": "sponsorship_filter_used",
+      "displayName": "Sponsorship filter used",
+      "description": "Whether sponsorship item filter was used.",
+      "scope": "EVENT"
+    },
+    {
+      "parameterName": "collection_filter_used",
+      "displayName": "Collection filter used",
+      "description": "Whether collection filter was used.",
+      "scope": "EVENT"
+    },
+    {
+      "parameterName": "mood_filter_used",
+      "displayName": "Mood filter used",
+      "description": "Whether mood filter was used.",
+      "scope": "EVENT"
+    },
+    {
+      "parameterName": "scene_filter_used",
+      "displayName": "Scene filter used",
+      "description": "Whether scene filter was used.",
+      "scope": "EVENT"
+    },
+    {
+      "parameterName": "people_count_filter",
+      "displayName": "People count filter",
+      "description": "Selected people count filter.",
+      "scope": "EVENT"
+    },
+    {
+      "parameterName": "image_size",
+      "displayName": "Image size",
+      "description": "Opened Flickr image size option.",
+      "scope": "EVENT"
+    }
+  ]
+}

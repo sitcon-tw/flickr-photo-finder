@@ -57,6 +57,7 @@ export const sourceLinkLabel = requireString(
   projectConfig.frontend?.sourceLinkLabel,
   "frontend.sourceLinkLabel",
 );
+export const ga4PropertyId = optionalString(projectConfig.frontend?.ga4PropertyId, "frontend.ga4PropertyId");
 export const googleSheetsSpreadsheetId = optionalString(
   projectConfig.googleSheets?.spreadsheetId,
   "googleSheets.spreadsheetId",
