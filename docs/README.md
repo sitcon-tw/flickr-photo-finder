@@ -28,7 +28,7 @@
 
 ### 目前可用
 
-- `pnpm workflow`，先說明完整資料流，再依階段引導常見工作流程，作為新接觸者與日常操作的主要入口。
+- `pnpm workflow`，先說明完整資料流，再依階段引導常見工作流程，包含相簿匯入、AI prepare/attempt/review/report/search、Sheets 維護與 Pages artifact build/check，作為新接觸者與日常操作的主要入口。
 - 本機 static search UI，預設讀 `fixtures/photos.csv`。
 - `pnpm validate:data`，檢查 sample/export data、schema 與 taxonomy。
 - `pnpm sheets:init`，產生建立 Google Sheets MVP 所需的初始 CSV。
@@ -38,7 +38,7 @@
 - `pnpm sheets:export`，透過官方 Google Sheets API SDK 匯出正式 Sheets 固定 tabs，供 validation 與 intake 流程使用。
 - `pnpm albums:list`，從正式 Sheets 匯出的 `albums.csv` 或 `--source sheets` 直接讀取正式 `albums` 工作表列出與篩選相簿，並可輸出 album id、JSON 或可直接執行的 intake 指令。
 - `pnpm albums:select`，從正式 Sheets 匯出的 `albums.csv` 或 `--source sheets` 直接讀取正式 `albums` 工作表互動式選擇單本相簿，並輸出 album id、JSON 或可直接執行的 intake 指令。
-- `pnpm pages:build`，產生 GitHub Pages artifact 到 `tmp/pages/`，部署版資料來源會讀公開 Google Sheets `photos` CSV。
+- `pnpm pages:build` / `pnpm pages:check`，產生並檢查 GitHub Pages artifact 到 `tmp/pages/`，部署版資料來源會讀公開 Google Sheets `photos` CSV。
 - `pnpm apps-script:build-config`，從 repo schema 與 taxonomy 產生 Apps Script 使用的 `apps-script/GeneratedConfig.js`。
 - `pnpm albums:discover`，盤點 SITCON Flickr 公開相簿清單並輸出 CSV 預覽。
 - `pnpm albums:discover -- --write`，更新本機 `fixtures/albums.csv` fixture，供 demo、除錯或 fixture validation 使用。

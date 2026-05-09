@@ -30,7 +30,7 @@ const tasks = [
     description: "匯出正式 Sheets 工作快取、選擇相簿，並產生 intake run artifact。",
     handler: runAlbumIntake,
     id: "album-intake",
-    inputs: ["正式 Google Sheets", "Google Sheets API 讀取權限", "Flickr 相簿清單"],
+    inputs: ["正式 Google Sheets", "匯出正式資料時需要 GOOGLE_APPLICATION_CREDENTIALS 與讀取權限", "Flickr 相簿清單"],
     next: ["檢查 intake run，確認後 dry-run 或寫回 Google Sheets。"],
     outputs: ["tmp/intake-runs/<run-id>/"],
     phase: "相簿匯入",
@@ -40,7 +40,7 @@ const tasks = [
     description: "驗證 intake run，dry-run 檢查套用內容，並可選擇寫入 Sheets。",
     handler: reviewIntakeRun,
     id: "review-intake",
-    inputs: ["tmp/intake-runs/<run-id>/", "Google Sheets API 讀取權限；若要寫入還需要編輯權限"],
+    inputs: ["tmp/intake-runs/<run-id>/", "dry-run 或寫入 Sheets 時需要 GOOGLE_APPLICATION_CREDENTIALS；寫入還需要編輯權限"],
     next: ["寫入成功後，新增照片會回到 Google Sheets 進行整理；若未寫入，可保留 run artifact 稍後再套用。"],
     outputs: ["intake validation 結果", "Sheets dry-run 結果", "可選的 Sheets 寫入與驗證結果"],
     phase: "相簿匯入",
@@ -50,21 +50,51 @@ const tasks = [
     description: "從正式 Sheets 的 albums 選相簿，再依 photos 建立 AI 初標工作目錄。",
     handler: prepareAiRun,
     id: "ai-prepare",
-    inputs: ["正式 Google Sheets albums / photos", "Google Sheets API 讀取權限", "Flickr 圖片 URL"],
-    next: ["把 tmp/ai-runs/<run-id>/ 交給模型，依 prompts/ai-labeling.md 產生 metadata-proposals.json。"],
+    inputs: ["正式 Google Sheets albums / photos", "匯出正式資料時需要 GOOGLE_APPLICATION_CREDENTIALS 與讀取權限", "Flickr 圖片 URL"],
+    next: ["把 tmp/ai-runs/<run-id>/ 交給模型；若同一批輸入要給多模型或多輪，下一步選「建立 AI attempt」。"],
     outputs: ["tmp/ai-runs/<run-id>/photos.json", "tmp/ai-runs/<run-id>/images/"],
     phase: "AI 初標",
     title: "準備 AI 初標工作包",
+  },
+  {
+    description: "從既有 AI run 建立同一批輸入的模型或輪次 attempt。",
+    handler: createAiAttempt,
+    id: "ai-attempt",
+    inputs: ["tmp/ai-runs/<run-id>/"],
+    next: ["把 attempt 目錄交給模型；模型輸出後選「檢查 AI 初標結果」。"],
+    outputs: ["tmp/ai-runs/<attempt-id>/"],
+    phase: "AI 初標",
+    title: "建立 AI attempt",
   },
   {
     description: "驗證 AI proposals，產生 diff、update plan 與檢視摘要。",
     handler: reviewAiRun,
     id: "ai-review",
     inputs: ["tmp/ai-runs/<run-id>/metadata-proposals.json"],
-    next: ["人類看 metadata-review-summary.md、metadata-update-plan.csv 與 dry-run 結果後，再決定是否寫回 Sheets；正式 reviewed 仍在 Sheets 中完成。"],
+    next: ["人類看 metadata-review-summary.md、metadata-update-plan.csv、AI report 與 dry-run 結果後，再決定是否寫回 Sheets；正式 reviewed 仍在 Sheets 中完成。"],
     outputs: ["metadata-review-summary.md", "metadata-diff.md", "metadata-update-plan.json", "metadata-update-plan.csv", "可選的 Sheets dry-run 結果"],
     phase: "AI 初標",
     title: "檢查 AI 初標結果",
+  },
+  {
+    description: "產生單次檢視或多 run/attempt 比較用的唯讀 HTML 報表。",
+    handler: buildAiReport,
+    id: "ai-report",
+    inputs: ["tmp/ai-runs/<run-id-or-attempt>/"],
+    next: ["閱讀報表後，必要時再跑搜尋實驗或 Sheets dry-run。"],
+    outputs: ["tmp/ai-reports/<report-id>/"],
+    phase: "AI 初標",
+    title: "產生 AI report",
+  },
+  {
+    description: "離線比較 taxonomy-only 與 taxonomy + visual_description 的搜尋排序。",
+    handler: runSearchExperiment,
+    id: "search-experimental",
+    inputs: ["AI run / attempt，或 photos CSV"],
+    next: ["若 description 有實際搜尋增益，再考慮寫回 Sheets 或調整 prompt。"],
+    outputs: ["搜尋比較結果"],
+    phase: "AI 初標",
+    title: "執行 visual_description 搜尋實驗",
   },
   {
     description: "初始化、檢查、匯出或遷移 Google Sheets。",
@@ -87,14 +117,14 @@ const tasks = [
     title: "開啟本機搜尋 UI",
   },
   {
-    description: "產生 GitHub Pages artifact，部署版會讀公開 Google Sheets photos CSV。",
+    description: "產生並檢查 GitHub Pages artifact，部署版會讀公開 Google Sheets photos CSV。",
     handler: buildPagesArtifact,
     id: "pages-build",
-    inputs: ["config/project.json", "app/", "data/tag-taxonomy.json"],
+    inputs: ["config/project.json", "app/", "data/photo-schema.json", "data/tag-taxonomy.json"],
     next: ["檢查 tmp/pages/，或由 GitHub Actions workflow 上傳並部署 artifact。"],
-    outputs: ["tmp/pages/"],
+    outputs: ["tmp/pages/", "Pages artifact check 結果"],
     phase: "檢索與展示",
-    title: "建立 GitHub Pages artifact",
+    title: "建立並檢查 GitHub Pages artifact",
   },
   {
     description: "顯示低階 scripts 對照與文件入口。",
@@ -296,10 +326,11 @@ async function runDevServer() {
 
 async function buildPagesArtifact() {
   runPnpm("pages:build");
+  runPnpm("pages:check");
   console.log("");
   console.log("下一步：");
   console.log("- 本機檢查 tmp/pages/ 內容。");
-  console.log("- GitHub repo 啟用 Pages 的 GitHub Actions 部署來源後，push 到 master 或手動觸發 pages workflow。");
+  console.log("- push 到 master 或手動觸發 pages workflow，讓 GitHub Actions 部署正式 Pages。");
 }
 
 async function showWorkflowOverview() {
@@ -313,7 +344,8 @@ async function showWorkflowOverview() {
   console.log("常見起點：");
   console.log("- 第一次接手：選「檢查專案資料與 AI fixtures」。");
   console.log("- 要匯入照片：選「處理一本 Flickr 相簿」。");
-  console.log("- 要做 AI 初標：先選「準備 AI 初標工作包」，模型輸出後再選「檢查 AI 初標結果」。");
+  console.log("- 要做 AI 初標：先選「準備 AI 初標工作包」，需要多模型或多輪時再選「建立 AI attempt」。");
+  console.log("- 要驗收 AI 結果：選「檢查 AI 初標結果」，再用 report 或搜尋實驗輔助判斷。");
   console.log("- 要部署公開檢索：選「建立 GitHub Pages artifact」。");
   console.log("- 要維護 Sheets：選「Google Sheets 工具」。");
 }
@@ -432,6 +464,32 @@ async function prepareAiRun() {
   console.log("----- COPY PROMPT END -----");
 }
 
+async function createAiAttempt() {
+  const from = await ask("來源 AI run 目錄，例如 tmp/ai-runs/RUN_ID");
+  if (!from) {
+    throw new Error("source run directory is required");
+  }
+
+  const model = await ask("模型或 provider 標籤，例如 claude、gpt、gemini");
+  if (!model) {
+    throw new Error("model label is required");
+  }
+
+  const round = await ask("第幾輪 attempt", "1");
+  const label = await ask("可選短標籤，例如 visual-description；可留空");
+  const copyImages = await askYesNo("圖片用 copy，不用 symlink/hardlink？", false);
+
+  const options = ["--from", from, "--model", model, "--round", round];
+  if (label) {
+    options.push("--label", label);
+  }
+  if (copyImages) {
+    options.push("--copy-images");
+  }
+
+  runPnpm("ai:attempt", pnpmArgsFromOptions(options));
+}
+
 async function askImageSize() {
   console.log("可選圖片尺寸：");
   imageSizeOptions.forEach((value, index) => {
@@ -459,6 +517,54 @@ async function reviewAiRun() {
   if (await askYesNo("要 dry-run 檢查 AI 更新會寫入哪些 Sheets cells 嗎？", false)) {
     runPnpm("sheets:apply-ai-updates", pnpmArgsFromOptions(["--run-dir", runDir]));
   }
+
+  if (await askYesNo("要產生 AI HTML report 嗎？", true)) {
+    runPnpm("ai:report", pnpmArgsFromOptions(["--run", runDir]));
+  }
+}
+
+async function buildAiReport() {
+  const compare = await askYesNo("要比較多個 run / attempt？", false);
+  if (compare) {
+    const runDirs = (await ask("輸入要比較的 run / attempt 目錄，以空白分隔"))
+      .split(/\s+/)
+      .map((value) => value.trim())
+      .filter(Boolean);
+    if (runDirs.length < 2) {
+      throw new Error("comparison report requires at least two run directories");
+    }
+    runPnpm("ai:report", pnpmArgsFromOptions(["--runs", ...runDirs]));
+    return;
+  }
+
+  const runDir = await ask("AI run / attempt 目錄，例如 tmp/ai-runs/RUN_ID");
+  if (!runDir) {
+    throw new Error("run directory is required");
+  }
+  runPnpm("ai:report", pnpmArgsFromOptions(["--run", runDir]));
+}
+
+async function runSearchExperiment() {
+  const runDir = await ask("AI run / attempt 目錄；若要只用 CSV 可留空");
+  const photos = runDir ? "" : await ask("photos CSV 路徑；留空時使用 tmp/sheets-export/photos.csv 或 fixtures/photos.csv");
+  const query = await ask("搜尋查詢；留空時使用內建工作情境查詢");
+  const top = await ask("每種模式顯示幾筆結果", "5");
+
+  const options = [];
+  if (runDir) {
+    options.push("--run-dir", runDir);
+  }
+  if (photos) {
+    options.push("--photos", photos);
+  }
+  if (query) {
+    options.push("--query", query);
+  }
+  if (top) {
+    options.push("--top", top);
+  }
+
+  runPnpm("search:experimental", pnpmArgsFromOptions(options));
 }
 
 async function runSheetsTools() {

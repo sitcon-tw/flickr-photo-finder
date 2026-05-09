@@ -144,7 +144,7 @@ artifact 不應包含：
 5. 非 pull request 時，上傳 `tmp/pages` 作為 GitHub Pages artifact。
 6. 非 pull request 時，使用 GitHub Pages deploy action 發布。
 
-正式啟用前，repository Settings > Pages 的來源需要設定為 GitHub Actions。
+目前 repository Pages 來源已設定為 GitHub Actions。維護時若 Pages 無法部署，應先確認 repository Settings > Pages 仍使用 GitHub Actions 來源，再檢查 `.github/workflows/pages.yml` 的 build/check/deploy 結果。
 
 ## 搜尋規模
 
