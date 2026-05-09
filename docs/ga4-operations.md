@@ -228,6 +228,95 @@ pnpm ga4:dimensions:sync -- --property <GA4_PROPERTY_ID> --write
 - Google Cloud project 已啟用 Google Analytics Admin API。
 - 執行工具的 process 有設定 `GOOGLE_APPLICATION_CREDENTIALS`。
 
+## 目前完成狀態
+
+截至 2026-05-09，本專案已完成：
+
+- GA4 measurement ID 已設定在 `config/project.json` 的 `frontend.ga4MeasurementId`。
+- service account 已依 API Explorer workaround 加入 GA4 property。
+- `config/ga4-custom-dimensions.json` 已定義低基數 event-scoped custom dimensions。
+- `pnpm ga4:dimensions:sync -- --write` 已可將缺少的 custom dimensions 同步到 GA4。
+
+日後維護者應先用 dry-run 檢查 GA4 後台是否仍和 repo 設定一致：
+
+```bash
+export GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
+pnpm ga4:dimensions:check -- --property <GA4_PROPERTY_ID>
+```
+
+若輸出有 missing dimensions，確認差異後再執行：
+
+```bash
+pnpm ga4:dimensions:sync -- --property <GA4_PROPERTY_ID> --write
+```
+
+## 事件驗收清單
+
+每次前端 analytics 事件有調整，或 GA4 後台設定完成後，應至少手動驗收一次：
+
+1. 開啟 finder 頁面，確認 GA4 Realtime 有目前使用者或 page view。
+2. 輸入非空搜尋字串，確認收到 `search`。
+3. 調整任一篩選器，確認收到 `filter_results`。
+4. 點擊照片圖片，確認收到 `select_content` 與 `open_flickr_source`。
+5. 點 `大圖`，確認收到 `open_image_size` 且 `image_size = large_1024`。
+6. 點 `原圖`，確認收到 `open_image_size` 且 `image_size = original`。
+7. 點 `Flickr 連結`，確認收到 `copy_flickr_link`。
+8. 點 `本頁連結`，確認收到 `copy_finder_link`。
+
+Realtime 可用來快速確認事件名稱與單次事件參數；正式報表與 Exploration 通常需要等待 GA4 處理完成。
+
+## 建立初始報表
+
+建議先使用 GA4 `Explore` > `Free form`，不要先自訂標準 Reports。
+
+在 Variables 先 import 這些 dimensions：
+
+- `Event name`
+- `Curation status`
+- `Public use status`
+- `Recommended use`
+- `Result count bucket`
+- `Image size`
+- `Search surface`
+
+在 Metrics import：
+
+- `Event count`
+- `Total users` 或 `Active users`
+
+### 搜尋結果品質
+
+用途：找出哪些工作情境常常沒有結果或結果太少。
+
+- Rows: `Recommended use`, `Result count bucket`
+- Values: `Event count`
+- Filter: `Event name` exactly matches `search` 或 `filter_results`
+
+注意：`Recommended use` 是使用者選擇的用途篩選值，不是照片本身的 `recommended_uses`。
+
+### 取圖意圖
+
+用途：觀察接近取用或討論流程的互動，是否集中在尚未整理或不適合直接公開使用的照片。
+
+- Rows: `Event name`, `Curation status`, `Public use status`
+- Values: `Event count`
+- Filter: `Event name` matches `open_flickr_source|open_image_size|copy_flickr_link|copy_finder_link`
+
+### 原圖需求
+
+用途：判斷使用者只是開大圖預覽，還是接近取得原始解析度。
+
+- Rows: `Image size`, `Curation status`, `Public use status`
+- Values: `Event count`
+- Filter: `Event name` exactly matches `open_image_size`
+
+### 目前不做的報表
+
+目前不要在 GA4 UI 建逐張照片排行榜或原始搜尋字串排行榜。
+
+- `photo_id`、`content_id`、`search_term`、`result_rank` 有送進 event，但沒有註冊成 custom dimensions。
+- 這些值屬於高基數或不穩定資料，若需要逐筆分析，應改用 BigQuery raw events、Data API 匯出，或和 Google Sheets 離線 join。
+
 ## BigQuery 暫不自動化
 
 目前先不把 BigQuery link 納入 CLI 自動化。
