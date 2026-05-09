@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 
@@ -19,14 +20,22 @@ async function readJson(path) {
   return JSON.parse(await readFile(path, "utf8"));
 }
 
+function shortHash(value) {
+  return createHash("sha256").update(JSON.stringify(value)).digest("hex").slice(0, 12);
+}
+
 async function main() {
   const schema = await readJson("data/photo-schema.json");
   const taxonomy = await readJson("data/tag-taxonomy.json");
+  const sponsorshipItems = await readJson("data/sponsorship-items.json");
   const photosTable = schema.tables.photos;
 
   const config = {
     generatedAt: "not recorded in committed source",
     schemaVersion: schema.version,
+    taxonomyVersion: `sha256:${shortHash(taxonomy)}`,
+    sponsorshipItemsVersion: `sha256:${shortHash(sponsorshipItems.items ?? sponsorshipItems)}`,
+    sponsorshipItemsSnapshotNote: sponsorshipItems.snapshot_note ?? "",
     photosSheetName: "photos",
     schemaMetaSheetName: "schema_meta",
     headers: photosTable.fields.map((field) => field.name),

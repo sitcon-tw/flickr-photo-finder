@@ -2,6 +2,9 @@
 var SITCON_PHOTO_FINDER_CONFIG = {
   "generatedAt": "not recorded in committed source",
   "schemaVersion": "2026-mvp-1",
+  "taxonomyVersion": "sha256:3599ed0c6097",
+  "sponsorshipItemsVersion": "sha256:e33bfe6034e1",
+  "sponsorshipItemsSnapshotNote": "SITCON 2026 CFS has ended. Treat this file as a fixed snapshot; future CFS versions should replace or extend it explicitly instead of being automatically synced.",
   "photosSheetName": "photos",
   "schemaMetaSheetName": "schema_meta",
   "headers": [

@@ -1,5 +1,19 @@
 const PHOTO_FINDER_MENU_NAME = "SITCON Photo Finder";
 const PHOTO_FINDER_MAX_ERRORS = 50;
+const PHOTO_FINDER_SCHEMA_META_HEADERS = [
+  "schema_version",
+  "taxonomy_version",
+  "sponsorship_items_version",
+  "last_synced_at",
+  "synced_by",
+  "notes",
+];
+const PHOTO_FINDER_PUBLIC_READ_FIELDS = [
+  "curation_status",
+  "public_use_status",
+  "priority_level",
+  "collections",
+];
 
 function onOpen() {
   SpreadsheetApp.getUi()
@@ -18,8 +32,13 @@ function refreshSchemaAndTaxonomy() {
   const sheet = getPhotosSheet_();
   assertPhotosHeader_(sheet);
   applyColumnHelpers_(sheet);
+  updateSchemaMeta_();
   SpreadsheetApp.getUi().alert(
-    `已更新 photos 欄位提示與下拉選單。\nSchema version: ${getConfig_().schemaVersion}`,
+    [
+      "已更新 photos 欄位提示、下拉選單與 schema_meta。",
+      `Schema version: ${getConfig_().schemaVersion}`,
+      `Taxonomy version: ${getConfig_().taxonomyVersion}`,
+    ].join("\n"),
   );
 }
 
@@ -47,7 +66,7 @@ function validatePhotosSheet() {
 function validatePublicReadFormat() {
   const sheet = getPhotosSheet_();
   assertPhotosHeader_(sheet);
-  const errors = validateAllRows_(sheet);
+  const errors = validatePublicReadFields_().concat(validateAllRows_(sheet));
   showValidationResult_(errors, "公開讀取格式");
 }
 
@@ -55,16 +74,27 @@ function showSchemaStatus() {
   const config = getConfig_();
   const spreadsheet = SpreadsheetApp.getActive();
   const metaSheet = spreadsheet.getSheetByName(config.schemaMetaSheetName);
-  const metaMessage = metaSheet
-    ? `找到 ${config.schemaMetaSheetName} 工作表，可在後續版本寫入同步狀態。`
-    : `尚未找到 ${config.schemaMetaSheetName} 工作表；目前顯示 repo 產生的設定狀態。`;
+  const meta = metaSheet ? readSchemaMeta_(metaSheet) : null;
+  const metaLines = meta
+    ? [
+        `schema_meta schema_version: ${meta.schema_version || "(空白)"}`,
+        `schema_meta taxonomy_version: ${meta.taxonomy_version || "(空白)"}`,
+        `schema_meta sponsorship_items_version: ${meta.sponsorship_items_version || "(空白)"}`,
+        `schema_meta last_synced_at: ${meta.last_synced_at || "(空白)"}`,
+        `schema_meta synced_by: ${meta.synced_by || "(空白)"}`,
+      ]
+    : [`尚未找到 ${config.schemaMetaSheetName} 工作表；請執行 Refresh schema and taxonomy 建立同步狀態。`];
 
   SpreadsheetApp.getUi().alert(
     [
-      `Schema version: ${config.schemaVersion}`,
-      `Generated at: ${config.generatedAt}`,
+      "Repo generated config:",
+      `schema_version: ${config.schemaVersion}`,
+      `taxonomy_version: ${config.taxonomyVersion}`,
+      `sponsorship_items_version: ${config.sponsorshipItemsVersion}`,
+      `generated_at: ${config.generatedAt}`,
       `photos 欄位數: ${config.headers.length}`,
-      metaMessage,
+      "",
+      ...metaLines,
     ].join("\n"),
   );
 }
@@ -128,6 +158,49 @@ function applyColumnHelpers_(sheet) {
       bodyRange.setDataValidation(rule);
     }
   });
+}
+
+function updateSchemaMeta_() {
+  const config = getConfig_();
+  const spreadsheet = SpreadsheetApp.getActive();
+  let sheet = spreadsheet.getSheetByName(config.schemaMetaSheetName);
+  if (!sheet) {
+    sheet = spreadsheet.insertSheet(config.schemaMetaSheetName);
+  }
+
+  const values = [
+    config.schemaVersion,
+    config.taxonomyVersion,
+    config.sponsorshipItemsVersion,
+    new Date().toISOString(),
+    Session.getEffectiveUser().getEmail() || "Apps Script user",
+    config.sponsorshipItemsSnapshotNote,
+  ];
+
+  sheet.getRange(1, 1, 1, PHOTO_FINDER_SCHEMA_META_HEADERS.length).setValues([PHOTO_FINDER_SCHEMA_META_HEADERS]);
+  sheet.getRange(2, 1, 1, values.length).setValues([values]);
+  sheet.setFrozenRows(1);
+}
+
+function readSchemaMeta_(sheet) {
+  const width = PHOTO_FINDER_SCHEMA_META_HEADERS.length;
+  const headers = sheet.getRange(1, 1, 1, width).getValues()[0].map(normalizeText_);
+  const values = sheet.getRange(2, 1, 1, width).getValues()[0].map(normalizeText_);
+  const meta = {};
+  PHOTO_FINDER_SCHEMA_META_HEADERS.forEach((header, index) => {
+    const actualHeader = headers[index];
+    if (actualHeader === header) {
+      meta[header] = values[index];
+    }
+  });
+  return meta;
+}
+
+function validatePublicReadFields_() {
+  const headers = getConfig_().headers;
+  return PHOTO_FINDER_PUBLIC_READ_FIELDS
+    .filter((fieldName) => !headers.includes(fieldName))
+    .map((fieldName) => `photos 公開讀取格式: 缺少必要狀態欄位 ${fieldName}`);
 }
 
 function buildFieldNote_(field, taxonomyValues) {
