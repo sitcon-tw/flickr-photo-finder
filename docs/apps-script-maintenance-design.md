@@ -262,7 +262,9 @@ Apps Script 遇到以下狀況時應停止並提醒：
 
 若 `Refresh schema and taxonomy` 執行後 `schema_meta` 是整張空白，這不是成功狀態。重新推送最新版 Apps Script 後再執行 refresh；目前 source 會在寫入後讀回檢查，若必要欄位仍空白應直接報錯。
 
-若 sidebar 顯示 `Authorization is required to perform that action`，或顯示需要授權但沒有自動跳出 prompt，代表目前使用者尚未完成這份 Apps Script 所需授權。請先從 `SITCON Photo Finder` 選單執行 `Authorize / check access`，點開授權連結並完成 Google 授權後，再重新開啟 sidebar。
+若 sidebar 顯示 `Authorization is required to perform that action`，或顯示需要授權但沒有自動跳出 prompt，先從 `SITCON Photo Finder` 選單執行 `Authorize / check access`，點開授權連結並完成 Google 授權後，再重新開啟 sidebar。
+
+若 `Authorize / check access` 已通過，但 sidebar 內的 `診斷 sidebar 連線` 顯示 `sidebar RPC 本身失敗，尚未進入 Spreadsheet 讀取`，代表問題發生在 HTML sidebar 的 `google.script.run` 呼叫進入 Apps Script 之前，不是 Sheet 讀寫權限。優先用單一 Google 帳號的瀏覽器 profile 或無痕視窗重開 Sheet 測試，避免多帳號 session 讓 sidebar iframe 使用到未授權帳號；同時確認瀏覽器允許 Google 相關第三方 cookie / storage。
 
 若出現 `User has not enabled the Apps Script API`，代表 clasp 登入帳號尚未啟用 Apps Script API。到 <https://script.google.com/home/usersettings> 啟用後，等待幾分鐘再重試 `pnpm apps-script:push`。
 
