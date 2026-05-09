@@ -46,7 +46,7 @@ sidebar 初始資料由 `Open review panel` 選單函式讀取目前選取列後
 - 對 URL、年份、整數、boolean 欄位在選單驗證時提供基本格式檢查。
 - 將 `photos` 資料區設為純文字格式，避免 Google Sheets 將 `9:16`、ID、比例或看似日期/時間的值自動轉型。
 
-Apps Script 讀取 `photos` 列時應使用 Sheets 顯示值，而不是原始 typed value。這可避免 `safe_crop` 的 `9:16` 被 Apps Script 讀成 `Sat Dec 30 1899 09:16:00...` 這類 Date 字串。
+Apps Script 讀取 `photos` 列時應使用 Sheets 顯示值，而不是原始 typed value。這可避免 `safe_crop` 的 `9:16` 等比例字串被 Sheets / Apps Script 當成時間或日期處理。
 
 ### 驗證目前列或整張表
 
@@ -163,8 +163,6 @@ Apps Script manifest 目前需要以下 scopes：
 6. 執行 `pnpm apps-script:status`，確認 tracked files 是 `appsscript.json`、`Code.js`、`GeneratedConfig.js`、`ReviewPanel.html`。
 7. 執行 `pnpm apps-script:push`。
 8. 回正式 Sheet 重新整理，確認出現 `SITCON Photo Finder` 選單。
-
-若第 3 步看到的是空白 Apps Script 專案，不要另外用 clasp create 建一個新的專案；直接複製那份空白專案的 Script ID，讓 `pnpm apps-script:push` 把 repo source 推到它。
 
 ### 綁定 Sheet UI 的 Apps Script 專案
 
@@ -285,4 +283,4 @@ Apps Script 遇到以下狀況時應停止並提醒：
 
 若出現 `指定的權限不足，無法呼叫 Ui.showSidebar` 或要求 `https://www.googleapis.com/auth/script.container.ui`，代表部署的 manifest 缺少 sidebar UI scope。請確認 `apps-script/appsscript.json` 包含 `script.container.ui`，重新執行 `pnpm apps-script:push`，並在 Sheet 重新授權。
 
-若出現 `指定的權限不足，無法呼叫 Session.getEffectiveUser` 或要求 `https://www.googleapis.com/auth/userinfo.email`，代表部署的 Apps Script 版本仍在讀取使用者 email，或 manifest/source 沒有同步到最新版本。目前 repo 版本不需要 `userinfo.email` scope，`synced_by` 會寫入工具來源而不是個人 email。請確認已重新執行 `pnpm apps-script:push`，且 Sheet UI 開啟的是同一份 bound script。
+若錯誤訊息要求目前 manifest 未列出的 scope，通常代表 Sheet UI 使用的 bound script 仍是舊版 source，或本機 `.clasp.json` 綁到錯誤的 Apps Script 專案。請確認已重新執行 `pnpm apps-script:push`，且 Sheet UI 開啟的是同一份 bound script。
