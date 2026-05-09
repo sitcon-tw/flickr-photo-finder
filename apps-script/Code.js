@@ -28,6 +28,8 @@ const PHOTO_FINDER_VALIDATION_REPORT_HEADERS = [
 function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu(PHOTO_FINDER_MENU_NAME)
+    .addItem("Authorize / check access", "authorizeAndCheckAccess")
+    .addSeparator()
     .addItem("Refresh schema and taxonomy", "refreshSchemaAndTaxonomy")
     .addItem("Open review panel", "openPhotoReviewPanel")
     .addSeparator()
@@ -37,6 +39,19 @@ function onOpen() {
     .addSeparator()
     .addItem("Show schema status", "showSchemaStatus")
     .addToUi();
+}
+
+function authorizeAndCheckAccess() {
+  const sheet = getPhotosSheet_();
+  assertPhotosHeader_(sheet);
+  SpreadsheetApp.getUi().alert(
+    [
+      "Apps Script access check passed.",
+      `photos rows: ${Math.max(sheet.getLastRow() - 1, 0)}`,
+      "",
+      "若剛完成授權，請重新開啟 Open review panel。",
+    ].join("\n"),
+  );
 }
 
 function openPhotoReviewPanel() {

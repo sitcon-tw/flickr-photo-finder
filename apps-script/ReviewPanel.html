@@ -342,7 +342,19 @@
 
       function handleFailure(error) {
         setBusy(false);
-        setStatus(error.message || String(error), "error");
+        const message = error.message || String(error);
+        if (/Authorization is required|授權|權限不足/i.test(message)) {
+          setStatus(
+            [
+              "需要先授權 Apps Script 才能讀寫目前試算表。",
+              "請關閉 sidebar，從 SITCON Photo Finder 選單執行 Authorize / check access，完成授權後再重新開啟 Open review panel。",
+              `原始錯誤：${message}`,
+            ].join("\n\n"),
+            "error",
+          );
+          return;
+        }
+        setStatus(message, "error");
       }
 
       function loadActiveRow() {
