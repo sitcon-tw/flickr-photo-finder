@@ -151,6 +151,8 @@ pnpm ai:plan -- --run-dir tmp/ai-runs/<run-id>
 
 ### 9. dry-run Sheets 更新
 
+`sheets:apply-ai-updates` 會讀正式 Google Sheets；執行它的 shell、agent process 或 CI job 必須先設定 `GOOGLE_APPLICATION_CREDENTIALS`，並使用對目標 Sheets 有讀取權限的 service account。
+
 ```bash
 pnpm sheets:apply-ai-updates -- --run-dir tmp/ai-runs/<run-id>
 ```

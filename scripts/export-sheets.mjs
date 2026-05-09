@@ -18,8 +18,10 @@ Options:
   --sheets <names>        Comma-separated sheet names to export. Default: all fixed MVP tabs.
   --help, -h              Show this help.
 
-This command uses the official Google Sheets API SDK and Google Application
-Default Credentials. It only reads Google Sheets and writes local CSV files.`);
+This command uses the official Google Sheets API SDK. The process environment
+must set GOOGLE_APPLICATION_CREDENTIALS to a service account credential with
+read access to the target spreadsheet. It only reads Google Sheets and writes
+local CSV files.`);
 }
 
 function parseArgs(argv) {

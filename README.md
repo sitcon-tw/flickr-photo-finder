@@ -127,9 +127,14 @@ pnpm sheets:check
 
 確認沒有覆蓋風險後，正式 Sheets 寫入流程應由 repo CLI 透過官方 Google Sheets API SDK 執行，並保留 preflight、dry-run、人類確認與寫入後驗證。這個 repo 不自製 Google Drive 檔案搬運流程；若未來需要 Drive 檔案備份或搬運，再交由組織既有工具處理。
 
-正式寫入建議使用 SITCON 管理的 service account 作為 repo CLI 寫入身份，並把該 service account email 加到正式 Google Sheets 的編輯者。個人 OAuth / ADC 可作為臨時本機操作，但不應作為正式交接方案。若不熟悉 service account，請先看 `docs/sheets-sync-workflow.md` 的「建議的正式寫入身份」，其中包含 Google 官方文件入口與完整前置需求。
+正式寫入使用 SITCON 管理的 service account 作為 repo CLI 寫入身份，並把該 service account email 加到正式 Google Sheets 的編輯者。repo 的 Sheets API 工具只從執行環境的 `GOOGLE_APPLICATION_CREDENTIALS` 取得授權，不依賴個人 `gcloud` ADC 或 OAuth token cache。若不熟悉 service account，請先看 `docs/sheets-sync-workflow.md` 的「建議的正式寫入身份」，其中包含 Google 官方文件入口與完整前置需求。
 
-若已設定 Google Application Default Credentials，例如 `GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json`，並且授權身份對目標 Sheets 有編輯權限，可以先 dry-run 檢查初始化套用計畫：
+在同一個 shell、agent process 或 CI job 先設定環境變數，並確認授權身份對目標 Sheets 有編輯權限後，可以先 dry-run 檢查初始化套用計畫：
+
+```bash
+export GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
+printenv GOOGLE_APPLICATION_CREDENTIALS
+```
 
 ```bash
 pnpm sheets:apply-init
@@ -165,7 +170,7 @@ pnpm sheets:export
 
 這會輸出到 `tmp/sheets-export/`，包含 `photos.csv`、`albums.csv`、`import_batches.csv`、`taxonomy.csv`、`sponsorship_items.csv`。其中 `photos.csv` 與 `albums.csv` 應提供給 `intake:run` 使用，避免用 repo fixture 判斷重複照片或相簿脈絡。
 
-列出可處理的相簿。預設會讀 `tmp/sheets-export/albums.csv` 工作快取；若已設定 Google Sheets API credential，也可用 `--source sheets` 直接讀正式 `albums` 工作表：
+列出可處理的相簿。預設會讀 `tmp/sheets-export/albums.csv` 工作快取；若同一個執行環境已設定 `GOOGLE_APPLICATION_CREDENTIALS`，也可用 `--source sheets` 直接讀正式 `albums` 工作表：
 
 ```bash
 pnpm albums:list
@@ -234,7 +239,7 @@ summary.json
 pnpm intake:validate -- --run-dir tmp/intake-runs/RUN_ID
 ```
 
-若已設定 Google Application Default Credentials，並且授權身份對目標 Sheets 有編輯權限，可以 dry-run 檢查這包匯入產物會如何套用：
+若同一個執行環境已設定 `GOOGLE_APPLICATION_CREDENTIALS`，並且授權身份對目標 Sheets 有編輯權限，可以 dry-run 檢查這包匯入產物會如何套用：
 
 ```bash
 pnpm sheets:apply-intake -- --run-dir tmp/intake-runs/RUN_ID

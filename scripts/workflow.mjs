@@ -70,7 +70,7 @@ const tasks = [
     description: "初始化、檢查、匯出或遷移 Google Sheets。",
     handler: runSheetsTools,
     id: "sheets",
-    inputs: ["config/project.json", "正式 Google Sheets；部分操作需要 Google Sheets API credential"],
+    inputs: ["config/project.json", "正式 Google Sheets；部分操作需要 GOOGLE_APPLICATION_CREDENTIALS"],
     next: ["初始化或遷移完成後，回到相簿匯入或 AI 初標流程。"],
     outputs: ["tmp/sheets-init/ 或 tmp/sheets-export/，或 Sheets dry-run 結果"],
     phase: "Google Sheets 維護",

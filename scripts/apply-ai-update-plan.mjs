@@ -35,7 +35,9 @@ Options:
 
 This command reads a validated AI metadata update plan, checks target photos
 and current cell values in Google Sheets, then prints exact cell updates. It
-only writes when --write is passed.`);
+only writes when --write is passed. The process environment must set
+GOOGLE_APPLICATION_CREDENTIALS to a service account credential with access to
+the target spreadsheet.`);
 }
 
 function parseArgs(argv) {

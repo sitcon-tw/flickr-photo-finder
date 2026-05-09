@@ -26,7 +26,9 @@ Options:
 This command appends new photos, updates albums.last_processed_at for the
 selected album, and appends one import_batches row. It refuses to write if
 target headers do not match the repo schema or duplicate photo_id / batch_id
-values are detected.`);
+values are detected. The process environment must set
+GOOGLE_APPLICATION_CREDENTIALS to a service account credential with access to
+the target spreadsheet.`);
 }
 
 function parseArgs(argv) {

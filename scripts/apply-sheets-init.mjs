@@ -18,9 +18,9 @@ Options:
   --help, -h              Show this help.
 
 Authentication:
-  This command uses the official Google Sheets API SDK and Google Application
-  Default Credentials. Set GOOGLE_APPLICATION_CREDENTIALS or use another ADC
-  source that has edit access to the target spreadsheet.
+  This command uses the official Google Sheets API SDK. The process environment
+  must set GOOGLE_APPLICATION_CREDENTIALS to a service account credential that
+  has edit access to the target spreadsheet.
 
 Safety:
   The command refuses to write if any target tab already contains data or has a

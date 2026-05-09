@@ -15,7 +15,9 @@ Options:
 This command only handles additive header migrations. It can insert missing
 columns into existing Sheets when the current header order is otherwise
 compatible with the repo schema. It never deletes, renames, reorders, or
-overwrites data columns.`);
+overwrites data columns. The process environment must set
+GOOGLE_APPLICATION_CREDENTIALS to a service account credential with edit access
+to the target spreadsheet.`);
 }
 
 function parseArgs(argv) {
