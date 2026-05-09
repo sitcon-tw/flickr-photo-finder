@@ -15,6 +15,15 @@ const PHOTO_FINDER_PUBLIC_READ_FIELDS = [
   "priority_level",
   "collections",
 ];
+const PHOTO_FINDER_VALIDATION_REPORT_SHEET_NAME = "validation_report";
+const PHOTO_FINDER_VALIDATION_REPORT_HEADERS = [
+  "checked_at",
+  "target",
+  "status",
+  "row",
+  "field",
+  "message",
+];
 
 function onOpen() {
   SpreadsheetApp.getUi()
@@ -220,7 +229,11 @@ function validatePublicReadFields_() {
   const headers = getConfig_().headers;
   return PHOTO_FINDER_PUBLIC_READ_FIELDS
     .filter((fieldName) => !headers.includes(fieldName))
-    .map((fieldName) => `photos 公開讀取格式: 缺少必要狀態欄位 ${fieldName}`);
+    .map((fieldName) => ({
+      rowNumber: "",
+      fieldName,
+      message: "公開讀取格式缺少必要狀態欄位",
+    }));
 }
 
 function buildFieldNote_(field, taxonomyValues) {
@@ -336,17 +349,63 @@ function isBlank_(value) {
 }
 
 function formatError_(rowNumber, fieldName, message) {
-  return `第 ${rowNumber} 列 ${fieldName}: ${message}`;
+  return { rowNumber, fieldName, message };
 }
 
 function showValidationResult_(errors, target) {
   const ui = SpreadsheetApp.getUi();
+  writeValidationReport_(target, errors);
   if (errors.length === 0) {
-    ui.alert(`${target} 檢查通過。`);
+    ui.alert(`${target} 檢查通過。\n\n已更新 ${PHOTO_FINDER_VALIDATION_REPORT_SHEET_NAME}。`);
     return;
   }
 
   const shownErrors = errors.slice(0, PHOTO_FINDER_MAX_ERRORS);
   const suffix = errors.length > shownErrors.length ? `\n...另有 ${errors.length - shownErrors.length} 個錯誤。` : "";
-  ui.alert(`${target} 檢查發現 ${errors.length} 個問題：\n\n${shownErrors.join("\n")}${suffix}`);
+  ui.alert(
+    [
+      `${target} 檢查發現 ${errors.length} 個問題：`,
+      "",
+      shownErrors.map(formatValidationError_).join("\n"),
+      suffix,
+      "",
+      `完整結果已寫入 ${PHOTO_FINDER_VALIDATION_REPORT_SHEET_NAME}。`,
+    ].join("\n"),
+  );
+}
+
+function writeValidationReport_(target, errors) {
+  const spreadsheet = SpreadsheetApp.getActive();
+  let sheet = spreadsheet.getSheetByName(PHOTO_FINDER_VALIDATION_REPORT_SHEET_NAME);
+  if (!sheet) {
+    sheet = spreadsheet.insertSheet(PHOTO_FINDER_VALIDATION_REPORT_SHEET_NAME);
+  }
+
+  const checkedAt = new Date().toISOString();
+  const rows = errors.length > 0
+    ? errors.map((error) => [
+        checkedAt,
+        target,
+        "failed",
+        error.rowNumber || "",
+        error.fieldName || "",
+        error.message || formatValidationError_(error),
+      ])
+    : [[checkedAt, target, "passed", "", "", "檢查通過"]];
+
+  sheet.clearContents();
+  sheet.getRange(1, 1, 1, PHOTO_FINDER_VALIDATION_REPORT_HEADERS.length).setValues([PHOTO_FINDER_VALIDATION_REPORT_HEADERS]);
+  sheet.getRange(2, 1, rows.length, PHOTO_FINDER_VALIDATION_REPORT_HEADERS.length).setValues(rows);
+  sheet.setFrozenRows(1);
+  sheet.autoResizeColumns(1, PHOTO_FINDER_VALIDATION_REPORT_HEADERS.length);
+}
+
+function formatValidationError_(error) {
+  if (error.rowNumber) {
+    return `第 ${error.rowNumber} 列 ${error.fieldName}: ${error.message}`;
+  }
+  if (error.fieldName) {
+    return `${error.fieldName}: ${error.message}`;
+  }
+  return normalizeText_(error.message || error);
 }

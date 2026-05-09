@@ -35,7 +35,7 @@ Apps Script 的定位是授權後的 Sheets 維護輔助，不是另一套資料
 - `photos` 全表。
 - `photos` 公開讀取格式。
 
-錯誤訊息應以人類可理解方式呈現，例如「`scene_tags` 包含未知值：XXX」而不是只顯示程式錯誤。
+錯誤訊息應以人類可理解方式呈現，例如「`scene_tags` 包含未知值：XXX」而不是只顯示程式錯誤。驗證結果會同時顯示在 alert，並寫入 `validation_report` 工作表，方便處理大量錯誤。
 
 ### 檢查 reviewed 完整度
 
@@ -167,7 +167,8 @@ pnpm apps-script:push
 3. 檢查 `schema_meta` 至少有 header row 與一列同步資訊。`schema_version`、`taxonomy_version`、`sponsorship_items_version`、`last_synced_at` 與 `synced_by` 不應空白；`notes` 可依 sponsorship snapshot 狀態填寫或留空。
 4. 執行 `Show schema status`，確認看得到 repo generated config 與 `schema_meta` 內容。若 `schema_meta` 空白或缺少必要欄位，應重新執行 `Refresh schema and taxonomy`，不能把空白 sheet 當成成功狀態。
 5. 在 `photos` 選一列資料執行 `Validate current row`。正常資料列應通過；可暫時把該列的 URL 欄位改成 `abc`，確認會出現中文錯誤，再復原該儲存格。
-6. 執行 `Validate photos sheet` 與 `Validate public read format`，確認沒有非預期錯誤。`Validate public read format` 只檢查 `photos` 主表，不建立額外公開篩選表。
+6. 檢查 `validation_report` 已更新，內容包含 `checked_at`、`target`、`status`、`row`、`field` 與 `message`。驗證通過時會寫入一列 `passed`；驗證失敗時會逐列列出錯誤。
+7. 執行 `Validate photos sheet` 與 `Validate public read format`，確認沒有非預期錯誤。`Validate public read format` 只檢查 `photos` 主表，不建立額外公開篩選表。
 
 `clasp` 是部署工具，不是資料治理來源。Apps Script 的驗證規則仍應來自 repo 中的 schema 與 taxonomy。
 
@@ -193,6 +194,8 @@ Google Sheets 中可提供以下選單：
 - `SITCON Photo Finder / Show schema status`
 
 選單文字可以在實作時調整，但功能責任應維持清楚。
+
+驗證選單會覆寫 `validation_report`，只保留最近一次檢查結果。它是維護輔助報表，不是正式資料表，也不應被公開前端或 AI 流程當成資料來源。
 
 ## 失敗處理
 

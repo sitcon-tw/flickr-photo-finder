@@ -107,6 +107,23 @@ schema 與同步狀態紀錄。這張表讓人類、Apps Script 與 agent 能確
 | `synced_by` | 同步操作者或工具。 |
 | `notes` | 可公開的同步備註。 |
 
+### validation_report（目前可用：Apps Script 驗證覆寫）
+
+最近一次 Apps Script 驗證結果。這張表由 `Validate current row`、`Validate photos sheet` 或 `Validate public read format` 覆寫，方便維護者處理 alert 放不下的大量錯誤。
+
+`validation_report` 是維護輔助報表，不是正式資料表；公開前端、AI 初標與 repo 匯入流程不應把它當成資料來源。
+
+欄位：
+
+| 欄位 | 用途 |
+| --- | --- |
+| `checked_at` | 檢查時間。 |
+| `target` | 本次檢查目標，例如 `photos` 或公開讀取格式。 |
+| `status` | `passed` 或 `failed`。 |
+| `row` | 錯誤所在列；非列層級錯誤可留空。 |
+| `field` | 錯誤欄位；非欄位層級錯誤可留空。 |
+| `message` | 中文錯誤或通過訊息。 |
+
 ## 欄位責任
 
 工具應優先填入客觀、可從 Flickr 或相簿脈絡取得的資料：
