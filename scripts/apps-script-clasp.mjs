@@ -1,6 +1,7 @@
-import { existsSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { resolve } from "node:path";
+import { tmpdir } from "node:os";
 import {
   appsScriptProjectTitle,
   googleSheetsSpreadsheetId,
@@ -83,7 +84,11 @@ function commandBind(scriptId) {
   if (existsSync(localClaspConfigPath)) {
     throw new Error("apps-script/.clasp.json already exists. Refusing to overwrite the local clasp binding.");
   }
-  const content = `${JSON.stringify({ scriptId: requireScriptId(scriptId), rootDir: "." }, null, 2)}\n`;
+  writeLocalClaspConfig(requireScriptId(scriptId));
+}
+
+function writeLocalClaspConfig(scriptId) {
+  const content = `${JSON.stringify({ scriptId, rootDir: "." }, null, 2)}\n`;
   writeFileSync(localClaspConfigPath, content);
   console.log("Created apps-script/.clasp.json. This local binding file is ignored by git.");
 }
@@ -94,6 +99,7 @@ function commandCreate() {
     throw new Error("apps-script/.clasp.json already exists. Refusing to create a second bound Apps Script project.");
   }
   printAppsScriptApiPrerequisite();
+  const tempRoot = mkdtempSync(resolve(tmpdir(), "photo-finder-clasp-"));
   runClasp([
     "create",
     "--title",
@@ -103,8 +109,11 @@ function commandCreate() {
     "--parentId",
     googleSheetsSpreadsheetId,
     "--rootDir",
-    "apps-script",
-  ]);
+    ".",
+  ], { cwd: tempRoot });
+  const createdConfig = JSON.parse(readFileSync(resolve(tempRoot, ".clasp.json"), "utf8"));
+  rmSync(tempRoot, { recursive: true, force: true });
+  writeLocalClaspConfig(createdConfig.scriptId);
 }
 
 function commandStatus() {
