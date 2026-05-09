@@ -65,9 +65,8 @@ function openPhotoReviewPanel() {
 }
 
 function doGet() {
-  checkAppsScriptAccess_();
   const template = HtmlService.createTemplateFromFile("ReviewWebApp");
-  template.bootstrapState = JSON.stringify(getReviewWebAppState()).replace(/</g, "\\u003c");
+  template.bootstrapState = JSON.stringify(null);
   return template.evaluate()
     .setTitle("SITCON Photo Finder Review")
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
