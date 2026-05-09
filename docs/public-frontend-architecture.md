@@ -135,13 +135,14 @@ artifact 不應包含：
 
 前端檔案應使用相對路徑，避免專案頁部署在 `https://<org>.github.io/<repo>/` 時因絕對路徑失效。
 
-目前 repo 內的 `.github/workflows/pages.yml` 會在 `master` push 或手動觸發時執行：
+目前 repo 內的 `.github/workflows/pages.yml` 會在 pull request 執行 build/check，並在 `master` push 或手動觸發時部署：
 
 1. 安裝 pnpm dependencies。
 2. 執行 `pnpm validate:data`。
 3. 執行 `pnpm pages:build -- --output-dir tmp/pages`。
-4. 上傳 `tmp/pages` 作為 GitHub Pages artifact。
-5. 使用 GitHub Pages deploy action 發布。
+4. 執行 `pnpm pages:check -- --dir tmp/pages`，確認 artifact 真的包含前端與資料設定。
+5. 非 pull request 時，上傳 `tmp/pages` 作為 GitHub Pages artifact。
+6. 非 pull request 時，使用 GitHub Pages deploy action 發布。
 
 正式啟用前，repository Settings > Pages 的來源需要設定為 GitHub Actions。
 

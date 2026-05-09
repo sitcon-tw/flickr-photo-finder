@@ -156,6 +156,7 @@ pnpm search:experimental -- --run-dir <dir>
 pnpm intake:run -- --album <album-id>
 pnpm intake:validate -- --run-dir <dir>
 pnpm pages:build
+pnpm pages:check
 pnpm photos:import -- --album <album-id> --output <photos-csv> --albums-output <albums-csv> --batch-output <batch-csv>
 pnpm album:add -- <flickr-album-url>
 pnpm album:add -- <album-id>
