@@ -330,6 +330,18 @@ function renderSummary({ manifest, plan, proposals, runDir, sample, summaryPath 
     "",
     "## Next Commands",
     "",
+    "Open a single-run HTML report:",
+    "",
+    "```bash",
+    `pnpm ai:report -- --run ${runDir}`,
+    "```",
+    "",
+    "Compare this run with another attempt:",
+    "",
+    "```bash",
+    `pnpm ai:report -- --runs ${runDir} tmp/ai-runs/<other-run-or-attempt>`,
+    "```",
+    "",
     "Dry-run exact Google Sheets cells:",
     "",
     "```bash",
@@ -417,6 +429,8 @@ async function main() {
   console.log("");
   console.log("Next:");
   console.log(`- Review ${result.summaryPath}`);
+  console.log(`- Open single-run report: pnpm ai:report -- --run ${options.runDir}`);
+  console.log(`- Compare attempts: pnpm ai:report -- --runs ${options.runDir} tmp/ai-runs/<other-run-or-attempt>`);
   console.log(`- Open ${result.planCsvPath} to inspect all values that may be written`);
   console.log(`- Dry-run Sheets cells: pnpm sheets:apply-ai-updates -- --run-dir ${options.runDir}`);
 }
