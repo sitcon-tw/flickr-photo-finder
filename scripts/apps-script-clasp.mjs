@@ -28,6 +28,8 @@ Configured defaults:
 Prerequisite:
   Enable the Apps Script API for the clasp login account:
   ${appsScriptApiSettingsUrl}
+  Web App deployment may require the clasp login account to be the script owner
+  or in the same Google Workspace domain as the script owner.
 `);
 }
 

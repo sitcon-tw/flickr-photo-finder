@@ -181,6 +181,8 @@ Apps Script manifest 目前需要以下 scopes：
 
 manifest 也包含 Web App 設定，使用 `ANYONE` + `USER_ACCESSING`。若未來 SITCON 使用 Google Workspace domain 管理校對者，可再評估把 access 收斂成 domain。
 
+建立或更新 Web App deployment 時，clasp 登入帳號可能必須是 Apps Script 專案 owner，或與 owner 位於同一個 Google Workspace domain。若 `pnpm apps-script:deploy-webapp` 回報 `Only users in the same domain as the script owner may deploy this script`，代表目前帳號可推送 source，但不能建立 Web App deployment；請改用符合條件的 Google 帳號重新 `pnpm apps-script:login` 後再部署，或由該 owner/domain 內的維護者在 Apps Script UI 建立 deployment。
+
 ### 第一次部署快速流程
 
 接手者第一次把 repo Apps Script 部署到正式 Sheet 時，請照這個順序：
@@ -325,6 +327,8 @@ Apps Script 遇到以下狀況時應停止並提醒：
 若 sidebar 顯示 `Authorization is required to perform that action`，或顯示需要授權但沒有自動跳出 prompt，先確認使用者已完成 Google 授權。若已授權仍出現同樣錯誤，通常是 Google 多帳號 session 讓 sidebar iframe 使用第一個登入帳號的授權狀態；若第一個登入帳號不是有權限並已授權的帳號，就會在 sidebar 內呼叫 `google.script.run` 時失敗。請改用有權限的 Google 帳號作為第一個登入帳號，或用單一帳號的瀏覽器 profile / 無痕視窗重開 Sheet。
 
 若出現 `User has not enabled the Apps Script API`，代表 clasp 登入帳號尚未啟用 Apps Script API。到 <https://script.google.com/home/usersettings> 啟用後，等待幾分鐘再重試 `pnpm apps-script:push`。
+
+若 `pnpm apps-script:deploy-webapp` 出現 `Only users in the same domain as the script owner may deploy this script`，代表目前 clasp 帳號不是可建立 Web App deployment 的帳號。這不代表 repo source 或 manifest 錯誤；請改用 Apps Script 專案 owner 或同 Workspace domain 的帳號部署。
 
 若出現 `指定的權限不足，無法呼叫 Ui.showSidebar` 或要求 `https://www.googleapis.com/auth/script.container.ui`，代表部署的 manifest 缺少 sidebar UI scope。請確認 `apps-script/appsscript.json` 包含 `script.container.ui`，重新執行 `pnpm apps-script:push`，並在 Sheet 重新授權。
 
