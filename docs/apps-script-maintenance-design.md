@@ -125,6 +125,8 @@ pnpm apps-script:push
 pnpm apps-script:open
 ```
 
+`clasp` create/status/push/open 需要目前登入的 Google 帳號已啟用 Apps Script API。若出現 `User has not enabled the Apps Script API`，先到 <https://script.google.com/home/usersettings> 啟用，等待幾分鐘後重試。
+
 ### 綁定既有 Apps Script 專案
 
 若正式 Sheet 已經有對應的 Apps Script 專案，維護者應先取得該專案的 script ID，然後產生本機 `.clasp.json`：

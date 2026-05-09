@@ -9,6 +9,7 @@ import {
 const repoRoot = resolve(new URL("..", import.meta.url).pathname);
 const appsScriptDir = resolve(repoRoot, "apps-script");
 const localClaspConfigPath = resolve(appsScriptDir, ".clasp.json");
+const appsScriptApiSettingsUrl = "https://script.google.com/home/usersettings";
 
 function printUsage() {
   console.log(`Usage: pnpm apps-script:<command>
@@ -25,6 +26,10 @@ Configured defaults:
   project title: ${appsScriptProjectTitle}
   spreadsheetId: ${googleSheetsSpreadsheetId || "(missing)"}
   rootDir: apps-script
+
+Prerequisite:
+  Enable the Apps Script API for the clasp login account:
+  ${appsScriptApiSettingsUrl}
 `);
 }
 
@@ -45,6 +50,10 @@ function run(command, args, options = {}) {
 
 function runClasp(args, options = {}) {
   run("pnpm", ["dlx", "@google/clasp", ...args], options);
+}
+
+function printAppsScriptApiPrerequisite() {
+  console.log(`Apps Script API prerequisite: enable it for the clasp login account at ${appsScriptApiSettingsUrl}`);
 }
 
 function requireScriptId(value) {
@@ -84,6 +93,7 @@ function commandCreate() {
   if (existsSync(localClaspConfigPath)) {
     throw new Error("apps-script/.clasp.json already exists. Refusing to create a second bound Apps Script project.");
   }
+  printAppsScriptApiPrerequisite();
   runClasp([
     "create",
     "--title",
@@ -99,6 +109,7 @@ function commandCreate() {
 
 function commandStatus() {
   requireLocalClaspConfig();
+  printAppsScriptApiPrerequisite();
   runClasp(["status"], { cwd: appsScriptDir });
 }
 
@@ -106,11 +117,13 @@ function commandPush() {
   requireLocalClaspConfig();
   run("pnpm", ["apps-script:build-config"]);
   run("pnpm", ["validate:data"]);
+  printAppsScriptApiPrerequisite();
   runClasp(["push"], { cwd: appsScriptDir });
 }
 
 function commandOpen() {
   requireLocalClaspConfig();
+  printAppsScriptApiPrerequisite();
   runClasp(["open"], { cwd: appsScriptDir });
 }
 
