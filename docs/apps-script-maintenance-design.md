@@ -26,11 +26,13 @@ Apps Script 提供 Sheet-bound sidebar，讓整理者可以用較易讀的畫面
 - 單值 taxonomy 與 boolean 欄位使用選單。
 - 多值與文字欄位使用可編輯文字區。
 - `photo_id`、`photo_url` 與 `image_preview_url` 在 sidebar 中只讀，避免校對時誤改識別與來源欄位。
-- 儲存後寫回同一列，並立即執行目前列驗證與更新 `validation_report`。
+- 可用列號載入指定 `photos` 列，也可重新讀取 Sheet 目前選取列。
+- 儲存前先驗證目前列；驗證失敗時不寫入 Sheet，錯誤會顯示在 `儲存並驗證` 按鈕附近，並更新 `validation_report`。
+- 載入或切換列失敗時，錯誤會顯示在 sidebar 上方列控制區附近；成功載入後不保留暫時狀態訊息。
 
 這個 sidebar 使用使用者既有的 Sheet / Apps Script 權限寫回資料，不需要 GitHub Pages 保存 credential，也不提供公開寫入 API。
 
-sidebar 初始資料由 `Open review panel` 選單函式讀取目前選取列後注入。若要切換列，請在 Sheet 選取新列後重新開啟 panel；不要在 sidebar 內另做切換列操作。
+sidebar 初始資料由 `Open review panel` 選單函式讀取目前選取列後注入。後續可在 sidebar 內切換列；若使用 Google 多帳號，應確認有權限且已授權的帳號是第一個登入帳號，否則 sidebar iframe 的 `google.script.run` 可能使用未授權帳號而失敗。
 
 ### 套用欄位驗證
 
@@ -42,6 +44,9 @@ sidebar 初始資料由 `Open review panel` 選單函式讀取目前選取列後
 - 對多值欄位提供格式提示，說明使用分號分隔。
 - 對多值欄位檢查同一儲存格內不可重複填寫相同值。
 - 對 URL、年份、整數、boolean 欄位在選單驗證時提供基本格式檢查。
+- 將 `photos` 資料區設為純文字格式，避免 Google Sheets 將 `9:16`、ID、比例或看似日期/時間的值自動轉型。
+
+Apps Script 讀取 `photos` 列時應使用 Sheets 顯示值，而不是原始 typed value。這可避免 `safe_crop` 的 `9:16` 被 Apps Script 讀成 `Sat Dec 30 1899 09:16:00...` 這類 Date 字串。
 
 ### 驗證目前列或整張表
 
@@ -111,6 +116,7 @@ Apps Script 應透過 `clasp` 進行部署。
 
 - `apps-script/Code.js`：Sheets 選單、欄位提示、基本下拉選單、`schema_meta` 同步狀態與資料檢查。
 - `apps-script/GeneratedConfig.js`：由 repo schema、taxonomy 與 sponsorship items snapshot metadata 產生，供 Apps Script 使用。不要手動編輯。
+- `apps-script/ReviewPanel.html`：Sheet-bound 校對 sidebar UI。
 - `apps-script/appsscript.json`：Apps Script manifest。
 - `apps-script/.clasp.json.example`：本機 clasp 綁定範例，不是正式 credential。
 - `scripts/build-apps-script-config.mjs`：從 `data/photo-schema.json`、`data/tag-taxonomy.json` 與 `data/sponsorship-items.json` 重新產生 `GeneratedConfig.js`。
@@ -154,7 +160,7 @@ Apps Script manifest 目前需要以下 scopes：
 3. 打開正式 Sheet，從功能列選 `擴充功能` -> `Apps Script`。這一步打開的專案才是 Sheet UI 會使用的 bound script。
 4. 在 Apps Script 編輯器的 Project Settings 複製 Script ID。
 5. 回 repo 執行 `pnpm apps-script:bind -- <script-id>`，建立本機 `apps-script/.clasp.json`。
-6. 執行 `pnpm apps-script:status`，確認 tracked files 是 `appsscript.json`、`Code.js`、`GeneratedConfig.js`。
+6. 執行 `pnpm apps-script:status`，確認 tracked files 是 `appsscript.json`、`Code.js`、`GeneratedConfig.js`、`ReviewPanel.html`。
 7. 執行 `pnpm apps-script:push`。
 8. 回正式 Sheet 重新整理，確認出現 `SITCON Photo Finder` 選單。
 
@@ -186,13 +192,15 @@ pnpm apps-script:push
 
 1. 選單出現 `SITCON Photo Finder`。
 2. 在 `photos` 選一列資料，執行 `Open review panel`。若 Google 要求授權，完成授權後回到 Sheet 重跑一次；成功時 sidebar 應顯示縮圖、Flickr 連結與欄位表單。
-3. 在 sidebar 修改一個非識別欄位並儲存，確認資料寫回同一列，且 `validation_report` 更新。
+3. 在 sidebar 修改一個非識別欄位並儲存，確認合法資料會寫回同一列，且 `validation_report` 更新。
 4. 執行 `Refresh schema and taxonomy`，確認 `photos` header 有 note、資料區是純文字格式、單值 taxonomy 欄位與 boolean 欄位有下拉選單，且 `schema_meta` 已建立或更新。
 5. 檢查 `schema_meta` 至少有 header row 與一列同步資訊。`schema_version`、`taxonomy_version`、`sponsorship_items_version`、`last_synced_at` 與 `synced_by` 不應空白；`notes` 可依 sponsorship snapshot 狀態填寫或留空。
 6. 執行 `Show schema status`，確認看得到 repo generated config 與 `schema_meta` 內容。若 `schema_meta` 空白或缺少必要欄位，應重新執行 `Refresh schema and taxonomy`，不能把空白 sheet 當成成功狀態。
 7. 在 `photos` 選一列資料執行 `Validate current row`。正常資料列應通過；可暫時把該列的 URL 欄位改成 `abc`，或把多值欄位改成 `合照;會眾;會眾`，確認會出現中文錯誤，再復原該儲存格。
-8. 檢查 `validation_report` 已更新，內容包含 `checked_at`、`target`、`status`、`row`、`field` 與 `message`。驗證通過時會寫入一列 `passed`；驗證失敗時會逐列列出錯誤。
-9. 執行 `Validate photos sheet` 與 `Validate public read format`，確認沒有非預期錯誤。`Validate public read format` 只檢查 `photos` 主表，不建立額外公開篩選表。
+8. 在 sidebar 測試非法儲存，例如把 `recommended_uses` 改成 `講者宣傳;社群貼文;社群貼文`，確認錯誤顯示在 `儲存並驗證` 按鈕附近，且資料不會寫入 Sheet。
+9. 檢查 `safe_crop` 類似 `9:16` 的值在 sidebar 讀取與儲存後仍是文字，不應變成 Date 字串。
+10. 檢查 `validation_report` 已更新，內容包含 `checked_at`、`target`、`status`、`row`、`field` 與 `message`。驗證通過時會寫入一列 `passed`；驗證失敗時會逐列列出錯誤。
+11. 執行 `Validate photos sheet` 與 `Validate public read format`，確認沒有非預期錯誤。`Validate public read format` 只檢查 `photos` 主表，不建立額外公開篩選表。
 
 `clasp` 是部署工具，不是資料治理來源。Apps Script 的驗證規則仍應來自 repo 中的 schema 與 taxonomy。
 
