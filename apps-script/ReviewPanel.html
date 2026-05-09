@@ -91,6 +91,35 @@
         gap: 4px;
       }
 
+      .choice-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+
+      .choice {
+        align-items: center;
+        border: 1px solid #bdc7d5;
+        border-radius: 4px;
+        cursor: pointer;
+        display: inline-flex;
+        font-weight: 400;
+        gap: 4px;
+        min-height: 28px;
+        padding: 4px 7px;
+        user-select: none;
+      }
+
+      .choice input {
+        margin: 0;
+        width: auto;
+      }
+
+      .choice.unknown {
+        border-color: #f59e0b;
+        background: #fffbeb;
+      }
+
       label {
         font-weight: 700;
       }
@@ -287,6 +316,57 @@
         return option;
       }
 
+      function splitList(value) {
+        return String(value || "")
+          .split(";")
+          .map((item) => item.trim())
+          .filter(Boolean);
+      }
+
+      function syncChoiceValue(wrapper) {
+        const hidden = wrapper.querySelector("input[type=hidden]");
+        const selected = Array.from(wrapper.querySelectorAll("input[type=checkbox]:checked"))
+          .map((input) => input.value);
+        hidden.value = selected.join(";");
+      }
+
+      function multiChoiceControl(field, value) {
+        const selectedValues = splitList(value);
+        const options = [...field.options];
+        selectedValues.forEach((item) => {
+          if (!options.includes(item)) {
+            options.push(item);
+          }
+        });
+
+        const wrapper = document.createElement("div");
+        wrapper.className = "choice-grid";
+        const hidden = document.createElement("input");
+        hidden.type = "hidden";
+        hidden.name = field.name;
+        hidden.value = selectedValues.join(";");
+        wrapper.append(hidden);
+
+        options.forEach((option) => {
+          const label = document.createElement("label");
+          label.className = "choice";
+          if (!field.options.includes(option)) {
+            label.classList.add("unknown");
+          }
+          const checkbox = document.createElement("input");
+          checkbox.type = "checkbox";
+          checkbox.value = option;
+          checkbox.checked = selectedValues.includes(option);
+          checkbox.addEventListener("change", () => syncChoiceValue(wrapper));
+          const text = document.createElement("span");
+          text.textContent = option;
+          label.append(checkbox, text);
+          wrapper.append(label);
+        });
+
+        return wrapper;
+      }
+
       function fieldControl(field, value) {
         if (field.options.length > 0 && !field.multiValue) {
           const select = document.createElement("select");
@@ -295,6 +375,10 @@
           field.options.forEach((option) => select.append(optionElement(option)));
           select.value = value;
           return select;
+        }
+
+        if (field.options.length > 0 && field.multiValue) {
+          return multiChoiceControl(field, value);
         }
 
         if (field.multiValue || field.type === "text") {
@@ -339,7 +423,9 @@
           const meta = document.createElement("div");
           meta.className = "meta";
           const parts = [field.name, field.descriptionZh];
-          if (field.multiValue) {
+          if (field.multiValue && field.options.length > 0) {
+            parts.push("可多選");
+          } else if (field.multiValue) {
             parts.push("多值用 ; 分隔");
           }
           meta.textContent = parts.filter(Boolean).join(" - ");

@@ -24,7 +24,7 @@ Apps Script 提供 Sheet-bound sidebar，讓整理者可以用較易讀的畫面
 - 顯示縮圖、`photo_id`、相簿脈絡與 Flickr 連結。
 - 依 repo schema 產生欄位表單。
 - 單值 taxonomy 與 boolean 欄位使用選單。
-- 多值與文字欄位使用可編輯文字區。
+- 多值 taxonomy 欄位使用可點選的多選 chip，降低手打分號與重複值錯誤；自由多值與文字欄位使用可編輯文字區。
 - `photo_id`、`photo_url` 與 `image_preview_url` 在 sidebar 中只讀，避免校對時誤改識別與來源欄位。
 - 可用列號載入指定 `photos` 列，也可重新讀取 Sheet 目前選取列。
 - 儲存前先驗證目前列；驗證失敗時不寫入 Sheet，錯誤會顯示在 `儲存並驗證` 按鈕附近，並更新 `validation_report`。
