@@ -262,7 +262,7 @@ curated 版重新執行 `pnpm ai:review` 後通過，planned updates 從 298 筆
 
 以下觀察來自相簿 `72177720329615498` 的 132 張測試。三個模型都使用同一個 AI run 工作包：`ai-prepare-2026-05-08T22-58-30-741Z`，圖片尺寸為 `large-1024`。這輪的目的不是直接挑選回寫基底，而是檢查模型在較大批次下是否仍會逐張判斷，以及現有 prompt / validator 能否擋住模板化結果。
 
-這輪測試發生時，新的 anti-template validator 與 `visual_description` 欄位尚未完成；後續用新 validator 回頭檢查三個結果時，三者都會被擋下。因此以下 `planned updates` 是舊規則下的產物數量，不代表目前工具會接受這些 proposal。
+這輪測試發生時，新的 anti-template validator 與 `visual_description` 欄位尚未完成。2026-05-09 以新版 `pnpm ai:validate -- --run-dir <dir>` 回頭檢查三個結果時，三者都已被擋下。因此以下 `planned updates` 是舊規則下的產物數量，不代表目前工具會接受這些 proposal。
 
 ### `ai-prepare-2026-05-08T22-58-30-741Z-gpt`
 
@@ -274,7 +274,7 @@ curated 版重新執行 `pnpm ai:review` 後通過，planned updates 從 298 筆
   - 36 張提出 `sponsorship_items = 午餐旗、點心旗`，且 36 張都有 `sponsorship_tags = 品牌露出;參與者體驗;贊助成果佐證`。抽查圖片後，部分只是 SITCON 自身旗幟或一般茶點畫面，不能支持外部贊助品項推論。
   - `recommended_uses = 活動回顧` 出現 93 次，`贊助成果報告` 36 次，`贊助提案` 34 次，贊助用途判斷偏積極且區辨度不足。
   - `public_use_status = needs_review` 出現 131/132 張，接近預設填空。
-- 新 validator 回頭檢查時會失敗，主要原因是讀圖欄位的 `value + reason` 在多張照片重複，以及使用圖片尺寸等非視覺 reason。
+- 新 validator 回頭檢查已失敗，主要原因是讀圖欄位的 `value + reason` 在多張照片重複，以及使用圖片尺寸等非視覺 reason。實際錯誤包含：`orientation` 同值同 reason 重複 70 張與 54 張、`public_use_status = needs_review` 同 reason 重複 131 張、`sponsorship_items = 午餐旗、點心旗` 同 reason 重複 36 張、`sponsorship_tags` 同 reason 重複 36 張。
 - 判斷：
   - 這輪可視為高覆蓋率初稿，但不適合作為 Sheets 回寫基底。
   - 速度與更新量不應直接視為品質優勢；這批結果有批次規則或模板展開的痕跡。
@@ -292,7 +292,7 @@ curated 版重新執行 `pnpm ai:review` 後通過，planned updates 從 298 筆
   - orientation reason 幾乎都是「圖片寬大於高」或「圖片高大於寬」，可審核資訊不足。
   - `public_use_status = needs_review` 出現在 128/132 張，仍然接近預設填空；多組 reason 也重複，例如「可辨識個人，需人工確認」。
   - `has_negative_space`、`mood_tags`、`scene_tags`、`recommended_uses` 仍有多張照片共用同一句 reason 的情形。
-- 新 validator 回頭檢查時會失敗，主要原因是 orientation、public use、negative space 等欄位重複 reason。
+- 新 validator 回頭檢查已失敗，主要原因是 orientation、public use、negative space 等欄位重複 reason。實際錯誤包含：`orientation = landscape` 搭配「圖片寬大於高」重複 126 張、`orientation = portrait` 搭配「圖片高大於寬」重複 5 張，另有多組 `public_use_status = needs_review` reason 分別重複 48、28、11、5 張。
 - 判斷：
   - 三輪中最接近可作為重新標記基底，但仍需要新版 prompt 重新跑，不能直接採用舊 proposal。
   - 若要驗證 `visual_description`，應先用 Claude 單一模型重跑，因為它在 sponsorship 與欄位保守性上比較接近人工審核需求。
@@ -306,7 +306,7 @@ curated 版重新執行 `pnpm ai:review` 後通過，planned updates 從 298 筆
   - 132 張全部輸出 `people_count = 3`、`orientation = landscape`、`has_negative_space = false`、`scene_tags = 會眾;交流`。
   - reason 使用「推測值」、「照片方向預設為橫向」、「推測場景包含會眾交流」等非視覺、模板化語言。
   - 這不是品質稍差，而是沒有逐張讀圖的失敗輸出。
-- 新 validator 回頭檢查時會失敗，且錯誤集中在整批同值、同 reason 與模板語言。
+- 新 validator 回頭檢查已失敗，且錯誤集中在整批同值、同 reason 與模板語言。實際錯誤包含：`people_count = 3`、`orientation = landscape`、`has_negative_space = false`、`scene_tags = 交流;會眾` 的同值同 reason 各重複 132 張，並以「推測值」、「照片方向預設為橫向」觸發非視覺語言檢查。
 - 判斷：
   - 這輪應作為 anti-template validator 的負面案例，不應人工修剪後採用。
 
