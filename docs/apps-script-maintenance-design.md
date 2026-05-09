@@ -142,6 +142,7 @@ pnpm apps-script:smoke-test -- --check
 
 Apps Script manifest 目前需要以下 scopes：
 
+- `https://www.googleapis.com/auth/script.scriptapp`：檢查目前使用者是否已授權 Apps Script 所需 scopes，並在缺少授權時提供授權 URL。
 - `https://www.googleapis.com/auth/spreadsheets.currentonly`：讀寫目前綁定的 spreadsheet。
 - `https://www.googleapis.com/auth/script.container.ui`：在 Google Sheets 容器內顯示 sidebar。
 

@@ -25,6 +25,7 @@ const PHOTO_FINDER_VALIDATION_REPORT_HEADERS = [
   "message",
 ];
 const PHOTO_FINDER_OAUTH_SCOPES = [
+  "https://www.googleapis.com/auth/script.scriptapp",
   "https://www.googleapis.com/auth/script.container.ui",
   "https://www.googleapis.com/auth/spreadsheets.currentonly",
 ];
