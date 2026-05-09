@@ -138,6 +138,11 @@ pnpm apps-script:smoke-test -- --check
 
 `clasp` status/push/open 需要目前登入的 Google 帳號已啟用 Apps Script API。若出現 `User has not enabled the Apps Script API`，先到 <https://script.google.com/home/usersettings> 啟用，等待幾分鐘後重試。
 
+Apps Script manifest 目前需要以下 scopes：
+
+- `https://www.googleapis.com/auth/spreadsheets.currentonly`：讀寫目前綁定的 spreadsheet。
+- `https://www.googleapis.com/auth/script.container.ui`：在 Google Sheets 容器內顯示 sidebar。
+
 ### 第一次部署快速流程
 
 接手者第一次把 repo Apps Script 部署到正式 Sheet 時，請照這個順序：
@@ -253,5 +258,7 @@ Apps Script 遇到以下狀況時應停止並提醒：
 若 `Refresh schema and taxonomy` 執行後 `schema_meta` 是整張空白，這不是成功狀態。重新推送最新版 Apps Script 後再執行 refresh；目前 source 會在寫入後讀回檢查，若必要欄位仍空白應直接報錯。
 
 若出現 `User has not enabled the Apps Script API`，代表 clasp 登入帳號尚未啟用 Apps Script API。到 <https://script.google.com/home/usersettings> 啟用後，等待幾分鐘再重試 `pnpm apps-script:push`。
+
+若出現 `指定的權限不足，無法呼叫 Ui.showSidebar` 或要求 `https://www.googleapis.com/auth/script.container.ui`，代表部署的 manifest 缺少 sidebar UI scope。請確認 `apps-script/appsscript.json` 包含 `script.container.ui`，重新執行 `pnpm apps-script:push`，並在 Sheet 重新授權。
 
 若出現 `指定的權限不足，無法呼叫 Session.getEffectiveUser` 或要求 `https://www.googleapis.com/auth/userinfo.email`，代表部署的 Apps Script 版本仍在讀取使用者 email，或 manifest/source 沒有同步到最新版本。目前 repo 版本不需要 `userinfo.email` scope，`synced_by` 會寫入工具來源而不是個人 email。請確認已重新執行 `pnpm apps-script:push`，且 Sheet UI 開啟的是同一份 bound script。
