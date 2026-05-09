@@ -162,10 +162,11 @@ pnpm apps-script:push
 推送後到正式或測試 Sheet 重新整理頁面，依序檢查：
 
 1. 選單出現 `SITCON Photo Finder`。
-2. 執行 `Refresh schema and taxonomy`，確認 header notes、單值下拉選單與 `schema_meta` 已更新。
-3. 執行 `Show schema status`，確認顯示 repo generated config 與 `schema_meta` 內容。
-4. 選一列資料執行 `Validate current row`。
-5. 執行 `Validate public read format`，確認它只檢查 `photos` 主表，不建立額外公開篩選表。
+2. 執行 `Refresh schema and taxonomy`，確認 `photos` header 有 note、單值 taxonomy 欄位與 boolean 欄位有下拉選單，且 `schema_meta` 已建立或更新。
+3. 檢查 `schema_meta` 至少有 header row 與一列同步資訊。`schema_version`、`taxonomy_version`、`sponsorship_items_version`、`last_synced_at` 與 `synced_by` 不應空白；`notes` 可依 sponsorship snapshot 狀態填寫或留空。
+4. 執行 `Show schema status`，確認看得到 repo generated config 與 `schema_meta` 內容。若 `schema_meta` 空白或缺少必要欄位，應重新執行 `Refresh schema and taxonomy`，不能把空白 sheet 當成成功狀態。
+5. 在 `photos` 選一列資料執行 `Validate current row`。正常資料列應通過；可暫時把該列的 URL 欄位改成 `abc`，確認會出現中文錯誤，再復原該儲存格。
+6. 執行 `Validate photos sheet` 與 `Validate public read format`，確認沒有非預期錯誤。`Validate public read format` 只檢查 `photos` 主表，不建立額外公開篩選表。
 
 `clasp` 是部署工具，不是資料治理來源。Apps Script 的驗證規則仍應來自 repo 中的 schema 與 taxonomy。
 
@@ -199,7 +200,15 @@ Apps Script 遇到以下狀況時應停止並提醒：
 - `photos` header 與 schema 不一致。
 - 缺少必要工作表。
 - taxonomy 中找不到欄位需要的受控字彙。
-- `schema_meta` 顯示版本過舊。
+- `schema_meta` 顯示版本過舊，或同步資訊空白。
 - `photos` 公開讀取格式缺少必要欄位。
 
 不要在欄位不明確時自動猜測或重排資料。
+
+### 常見部署與執行錯誤
+
+若 `Refresh schema and taxonomy` 執行後 `schema_meta` 是整張空白，這不是成功狀態。重新推送最新版 Apps Script 後再執行 refresh；目前 source 會在寫入後讀回檢查，若必要欄位仍空白應直接報錯。
+
+若出現 `User has not enabled the Apps Script API`，代表 clasp 登入帳號尚未啟用 Apps Script API。到 <https://script.google.com/home/usersettings> 啟用後，等待幾分鐘再重試 `pnpm apps-script:push`。
+
+若出現 `指定的權限不足，無法呼叫 Session.getEffectiveUser` 或要求 `https://www.googleapis.com/auth/userinfo.email`，代表部署的 Apps Script 版本仍在讀取使用者 email，或 manifest/source 沒有同步到最新版本。目前 repo 版本不需要 `userinfo.email` scope，`synced_by` 會寫入工具來源而不是個人 email。請確認已重新執行 `pnpm apps-script:push`，且 Sheet UI 開啟的是同一份 bound script。

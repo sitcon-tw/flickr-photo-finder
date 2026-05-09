@@ -90,11 +90,13 @@ SITCON Flickr 相簿清單與處理紀錄。這張表應由工具盤點 SITCON F
 
 欄位應以 `data/photo-schema.json` 的 `import_batches.fields` 為準。工具應填入本次處理的相簿、執行時間、來源工具，以及找到、新增、略過的照片數。
 
-### schema_meta（規劃中）
+### schema_meta（目前可用：Apps Script refresh 寫入）
 
 schema 與同步狀態紀錄。這張表讓人類、Apps Script 與 agent 能確認目前 Sheets 使用哪個 repo 規格。
 
-建議欄位：
+目前由 `SITCON Photo Finder` 選單中的 `Refresh schema and taxonomy` 建立或更新。`schema_meta` 不應是空白工作表；至少應有 header row 與一列同步資訊。若 `schema_version`、`taxonomy_version`、`sponsorship_items_version`、`last_synced_at` 或 `synced_by` 空白，表示 Apps Script refresh 沒有成功完成。
+
+欄位：
 
 | 欄位 | 用途 |
 | --- | --- |
