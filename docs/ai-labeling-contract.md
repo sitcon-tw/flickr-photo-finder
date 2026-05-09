@@ -245,13 +245,14 @@ pnpm ai:diff -- --run-dir tmp/ai-runs/<run-id>
 pnpm ai:plan -- --run-dir tmp/ai-runs/<run-id>
 ```
 
-若要比較多個 run 或 attempt，可以產生唯讀 HTML 報表：
+若要閱讀單一 run 或比較多個 run/attempt，可以產生唯讀 HTML 報表：
 
 ```bash
+pnpm ai:report -- --run tmp/ai-runs/<run-or-attempt>
 pnpm ai:report -- --runs tmp/ai-runs/<run-or-attempt-a> tmp/ai-runs/<run-or-attempt-b>
 ```
 
-報表只讀取本機 artifact，不修改 proposal，也不寫入 Google Sheets。
+單一 run 會使用逐張閱讀介面，多個 run 會使用並排比較介面。報表只讀取本機 artifact，不修改 proposal，也不寫入 Google Sheets。
 
 檢查這份計畫會更新正式 Google Sheets 哪些 cells：
 

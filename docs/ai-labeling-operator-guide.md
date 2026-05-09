@@ -112,13 +112,21 @@ pnpm ai:review -- --run-dir tmp/ai-runs/<run-id>
 | `AI proposals may only set ai_labeled` | AI 把 `curation_status` 設成 `reviewed`。 | 改成 `ai_labeled`，或省略此欄。 |
 | `field is not allowed in AI proposals` | AI 嘗試改 Flickr 基本欄位或人工欄位。 | 移除該欄位 proposal。 |
 
-### 7. 比較多模型或多輪結果
+### 7. 檢視單次結果或比較多模型/多輪結果
+
+若要閱讀單次 AI 初標結果：
+
+```bash
+pnpm ai:report -- --run tmp/ai-runs/<attempt-or-run>
+```
+
+若要比較多個模型或多輪結果：
 
 ```bash
 pnpm ai:report -- --runs tmp/ai-runs/<attempt-a> tmp/ai-runs/<attempt-b> tmp/ai-runs/<attempt-c>
 ```
 
-這會產生 `tmp/ai-reports/<timestamp>/index.html`。報表是唯讀靜態 HTML，會以同一張照片為單位並排顯示各 run/attempt 的 value、reason、confidence、validator 狀態與差異。它不修改 proposal，也不寫入 Sheets。
+這會產生 `tmp/ai-reports/<timestamp>/index.html`。報表是唯讀靜態 HTML；單一 run 會以每張照片為單位呈現縮圖、欄位覆蓋率與各 proposal 細節，多個 run 會並排顯示 value、reason、confidence、validator 狀態與差異。它不修改 proposal，也不寫入 Sheets。
 
 ### 8. 進階：只執行單一步驟
 

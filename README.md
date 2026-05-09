@@ -64,7 +64,7 @@ pnpm workflow
 | 只驗證 AI 候選 metadata | `pnpm ai:validate -- --run-dir <dir>` |
 | 只產生 AI 候選 metadata diff | `pnpm ai:diff -- --run-dir <dir>` |
 | 只產生 AI 候選 metadata 更新計畫 | `pnpm ai:plan -- --run-dir <dir>` |
-| 產生多模型/多輪 AI 初標比較網頁 | `pnpm ai:report -- --runs <dir> <dir>` |
+| 產生單次檢視或多模型/多輪 AI 初標比較網頁 | `pnpm ai:report -- --run <dir>`，或 `pnpm ai:report -- --runs <dir> <dir>` |
 | 比較 taxonomy-only 與 `visual_description` 搜尋結果 | `pnpm search:experimental -- --run-dir <dir>` |
 | dry-run 檢查 AI metadata 將更新哪些 Sheets cells | `pnpm sheets:apply-ai-updates -- --run-dir <dir>` |
 | 了解 AI 初標操作與輸出格式 | `docs/ai-labeling-operator-guide.md`、`docs/ai-labeling-contract.md` |
@@ -311,13 +311,19 @@ pnpm ai:plan -- --run-dir tmp/ai-runs/RUN_ID
 
 這些指令仍然只是審核資料，不會寫入 Google Sheets。
 
-若要比較多個模型或多輪結果，可產生本機靜態 HTML 報表：
+若要檢視單次 AI 初標結果，可產生本機靜態 HTML 報表：
+
+```bash
+pnpm ai:report -- --run tmp/ai-runs/RUN_ID-attempt-claude-r1
+```
+
+單次報表會以照片為單位顯示縮圖、proposal 狀態、欄位覆蓋率，以及每個欄位的 value、reason、confidence。若要比較多個模型或多輪結果，改傳多個 run/attempt：
 
 ```bash
 pnpm ai:report -- --runs tmp/ai-runs/RUN_ID-attempt-claude-r1 tmp/ai-runs/RUN_ID-attempt-claude-r2 tmp/ai-runs/RUN_ID-attempt-gpt-r1
 ```
 
-報表會輸出到 `tmp/ai-reports/<timestamp>/index.html`，以同一張照片並排顯示各 run/attempt 的 value、reason、confidence、validator 狀態與差異。這是 read-only 檢視工具，不會修改 proposal 或寫入 Sheets。
+報表會輸出到 `tmp/ai-reports/<timestamp>/index.html`。多 run 報表會以同一張照片並排顯示各 run/attempt 的 value、reason、confidence、validator 狀態與差異。這是 read-only 檢視工具，不會修改 proposal 或寫入 Sheets。
 
 若要在寫回 Sheets 前評估 `visual_description` 是否真的改善自然語言找圖，可先跑離線搜尋比較：
 
@@ -426,7 +432,7 @@ GitHub Pages 只提供唯讀搜尋，不寫入資料庫。Apps Script 是 Sheets
 | `scripts/validate-data.mjs` | 資料驗證。 |
 | `scripts/validate-ai-fixtures.mjs` | 驗證 AI proposal valid/invalid fixtures 是否符合目前 validator 邊界。 |
 | `scripts/create-ai-attempt.mjs` | 從既有 AI run 建立可重複使用同一輸入的模型/輪次 attempt。 |
-| `scripts/build-ai-report.mjs` | 產生多模型/多輪 AI 初標比較用的唯讀靜態 HTML 報表。 |
+| `scripts/build-ai-report.mjs` | 產生單次檢視或多模型/多輪比較用的 AI 初標唯讀靜態 HTML 報表。 |
 | `scripts/search-experimental.mjs` | 離線比較 taxonomy-only 與 `visual_description` 的搜尋排序差異。 |
 | `scripts/discover-albums.mjs` | SITCON Flickr 相簿盤點。 |
 | `scripts/list-albums.mjs` | 從正式 Sheets 匯出的 `albums.csv` 列出與篩選相簿，並可輸出 album id、JSON 或可直接執行的 intake 指令。 |

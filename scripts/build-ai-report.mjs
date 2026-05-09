@@ -31,8 +31,9 @@ function printUsage() {
 Options:
   --runs <dirs...>     Run or attempt directories to compare. Values are read until the next option.
   --run <dir>          Add one run directory. Can be repeated.
+  --mode <mode>        Report mode: auto, single, or compare. Default: auto.
   --output <dir>       Output report directory. Default: tmp/ai-reports/<timestamp>.
-  --title <text>       Report title. Default: AI 初標比較報表.
+  --title <text>       Report title. Default depends on report mode.
   --help, -h           Show this help.
 
 The command writes a read-only static HTML report. It does not call an LLM,
@@ -43,9 +44,10 @@ function parseArgs(argv) {
   const args = argv.slice(2).filter((arg) => arg !== "--");
   const options = {
     help: false,
+    mode: "auto",
     outputDir: "",
     runDirs: [],
-    title: "AI 初標比較報表",
+    title: "",
   };
 
   function nextValue(index, optionName) {
@@ -73,6 +75,9 @@ function parseArgs(argv) {
     } else if (arg === "--output") {
       options.outputDir = nextValue(index, arg);
       index += 1;
+    } else if (arg === "--mode") {
+      options.mode = nextValue(index, arg);
+      index += 1;
     } else if (arg === "--title") {
       options.title = nextValue(index, arg);
       index += 1;
@@ -84,6 +89,12 @@ function parseArgs(argv) {
   if (!options.help) {
     if (options.runDirs.length === 0) {
       throw new Error("--runs or --run requires at least one run directory");
+    }
+    if (!["auto", "single", "compare"].includes(options.mode)) {
+      throw new Error("--mode must be one of: auto, single, compare");
+    }
+    if (options.mode === "single" && options.runDirs.length !== 1) {
+      throw new Error("--mode single requires exactly one run directory");
     }
     if (!options.outputDir) {
       options.outputDir = join(defaultOutputRoot, `ai-report-${new Date().toISOString().replaceAll(/[:.]/g, "-")}`);
@@ -284,6 +295,7 @@ function buildReportData(runs, options) {
   const orderedFields = fieldOrder(fieldSet);
   const photoIds = uniquePhotoOrder(runs);
   const photoLookup = buildPhotoLookup(runs);
+  const mode = options.mode === "auto" ? (runs.length === 1 ? "single" : "compare") : options.mode;
 
   const photos = photoIds.map((photoId) => {
     const source = photoLookup.get(photoId);
@@ -317,6 +329,7 @@ function buildReportData(runs, options) {
       label: run.label,
       model: run.attempt?.model || "",
       plan_updates: run.planUpdates,
+      proposal_count: run.proposals?.items?.length ?? 0,
       round: run.attempt?.round || "",
       run_dir: run.runDir,
       run_id: run.manifest.run_id || "",
@@ -324,8 +337,9 @@ function buildReportData(runs, options) {
     })),
     fields: orderedFields,
     generated_at: new Date().toISOString(),
+    mode,
     photos,
-    title: options.title,
+    title: options.title || (mode === "single" ? "AI 初標單次檢視報表" : "AI 初標比較報表"),
     warnings: buildWarnings(runs),
   };
 }
@@ -377,7 +391,7 @@ function renderHtml(reportData) {
       font-size: 24px;
       letter-spacing: 0;
     }
-    .summary, .controls, .attempts, .warnings {
+    .summary, .controls, .attempts, .warnings, .coverage {
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
@@ -417,7 +431,7 @@ function renderHtml(reportData) {
       align-items: center;
       color: var(--muted);
     }
-    .attempts { margin: 0 0 14px; }
+    .attempts, .coverage { margin: 0 0 14px; }
     .warnings { margin: 0 0 14px; align-items: stretch; }
     .warning {
       max-width: 100%;
@@ -496,6 +510,59 @@ function renderHtml(reportData) {
     .value { font-weight: 650; margin-bottom: 4px; overflow-wrap: anywhere; }
     .confidence { color: var(--muted); font-size: 12px; margin-bottom: 4px; }
     .reason { color: #475467; overflow-wrap: anywhere; }
+    .single-card {
+      grid-template-columns: minmax(220px, 300px) minmax(0, 1fr);
+    }
+    .single-proposals {
+      min-width: 0;
+    }
+    .single-head {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .proposal-list {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      overflow: hidden;
+      background: #fff;
+    }
+    .proposal-block {
+      padding: 10px 12px;
+      border-top: 1px solid var(--line);
+    }
+    .proposal-block:first-child { border-top: 0; }
+    .proposal-block.watch {
+      border-left: 4px solid var(--accent);
+      padding-left: 8px;
+      background: #fbfffd;
+    }
+    .proposal-field {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: baseline;
+      margin-bottom: 4px;
+      color: #344054;
+      font-weight: 700;
+    }
+    .proposal-value {
+      font-size: 15px;
+      font-weight: 650;
+      overflow-wrap: anywhere;
+      margin-bottom: 4px;
+    }
+    .proposal-meta {
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 4px;
+    }
+    .proposal-reason {
+      color: #475467;
+      overflow-wrap: anywhere;
+    }
     .empty-state {
       border: 1px dashed var(--line);
       border-radius: 8px;
@@ -527,9 +594,10 @@ function renderHtml(reportData) {
         <option value="diff">有差異</option>
         <option value="missing">有缺 proposal</option>
       </select>
-      <label class="toggle"><input id="only-diff-fields" type="checkbox"> 只顯示差異欄位</label>
+      <label id="diff-toggle" class="toggle"><input id="only-diff-fields" type="checkbox"> 只顯示差異欄位</label>
     </section>
     <section id="attempts" class="attempts"></section>
+    <section id="coverage" class="coverage"></section>
     <section id="warnings" class="warnings"></section>
     <section id="photos"></section>
   </main>
@@ -537,6 +605,8 @@ function renderHtml(reportData) {
   <script>
     const data = JSON.parse(document.getElementById("report-data").textContent);
     const preferredFields = ${JSON.stringify(preferredFieldOrder)};
+    const isSingleMode = data.mode === "single";
+    const watchFields = new Set(["visual_description", "sponsorship_items", "sponsorship_tags", "public_use_status", "safe_crop"]);
     const state = {
       field: "all",
       onlyDiffFields: false,
@@ -547,11 +617,13 @@ function renderHtml(reportData) {
     const title = document.getElementById("title");
     const summary = document.getElementById("summary");
     const attempts = document.getElementById("attempts");
+    const coverage = document.getElementById("coverage");
     const warnings = document.getElementById("warnings");
     const photosRoot = document.getElementById("photos");
     const searchInput = document.getElementById("search");
     const fieldFilter = document.getElementById("field-filter");
     const statusFilter = document.getElementById("status-filter");
+    const diffToggle = document.getElementById("diff-toggle");
     const onlyDiffFields = document.getElementById("only-diff-fields");
 
     function el(tag, className, text) {
@@ -616,14 +688,19 @@ function renderHtml(reportData) {
       return parts.join(" ").toLowerCase();
     }
 
+    function currentAttempt(photo) {
+      return photo.attempts[0] ?? { fields: {}, has_photo: false, has_proposal: false };
+    }
+
     function renderSummary() {
       title.textContent = data.title;
       summary.replaceChildren();
       summary.append(
-        el("span", "pill", "Generated " + data.generated_at),
-        el("span", "pill", data.photos.length + " photos"),
-        el("span", "pill", data.attempts.length + " attempts"),
-        el("span", data.warnings.length ? "pill warn" : "pill good", data.warnings.length + " warnings"),
+        el("span", "pill", "產生時間 " + data.generated_at),
+        el("span", "pill", isSingleMode ? "單次檢視" : "比較模式"),
+        el("span", "pill", data.photos.length + " 張照片"),
+        el("span", "pill", data.attempts.length + " 個 run"),
+        el("span", data.warnings.length ? "pill warn" : "pill good", data.warnings.length + " 個警訊"),
       );
     }
 
@@ -631,12 +708,32 @@ function renderHtml(reportData) {
       attempts.replaceChildren();
       for (const attempt of data.attempts) {
         const statusClass = attempt.status === "valid" ? "good" : attempt.status === "missing" ? "warn" : "bad";
+        const statusLabel = attempt.status === "valid" ? "valid" : attempt.status === "missing" ? "missing proposal" : "invalid";
         const parts = [
           attempt.label || attempt.run_id,
-          attempt.status,
+          statusLabel,
+          attempt.proposal_count === undefined ? "" : attempt.proposal_count + " proposals",
           attempt.plan_updates === null ? "" : attempt.plan_updates + " updates",
         ].filter(Boolean);
         attempts.append(el("span", "pill " + statusClass, parts.join(" / ")));
+      }
+    }
+
+    function renderCoverage() {
+      coverage.replaceChildren();
+      if (!isSingleMode) {
+        coverage.hidden = true;
+        return;
+      }
+      coverage.hidden = false;
+      const total = data.photos.length;
+      const attempt = data.attempts[0] ?? {};
+      coverage.append(el("span", "pill", "欄位覆蓋率"));
+      coverage.append(el("span", "pill", (attempt.proposal_count ?? 0) + "/" + total + " proposals"));
+      for (const field of data.fields) {
+        const count = data.photos.filter((photo) => Boolean(currentAttempt(photo).fields[field])).length;
+        const className = count === total ? "pill good" : count === 0 ? "pill warn" : "pill";
+        coverage.append(el("span", className, field + " " + count + "/" + total));
       }
     }
 
@@ -660,10 +757,29 @@ function renderHtml(reportData) {
         option.value = value;
         fieldFilter.append(option);
       }
+
+      const statusOptions = isSingleMode
+        ? [["all", "所有照片"], ["with-proposal", "有 proposal"], ["missing", "缺 proposal"]]
+        : [["all", "所有照片"], ["diff", "有差異"], ["missing", "有缺 proposal"]];
+      if (!statusOptions.some(([value]) => value === state.status)) {
+        state.status = "all";
+      }
+      statusFilter.replaceChildren();
+      for (const [value, label] of statusOptions) {
+        const option = el("option", "", label);
+        option.value = value;
+        option.selected = value === state.status;
+        statusFilter.append(option);
+      }
+
+      diffToggle.hidden = isSingleMode;
+      if (isSingleMode) {
+        state.onlyDiffFields = false;
+        onlyDiffFields.checked = false;
+      }
     }
 
-    function renderPhotoCard(photo) {
-      const card = el("article", "photo-card");
+    function renderMedia(photo) {
       const media = el("div", "media");
       if (photo.image_src) {
         const image = el("img", "thumb");
@@ -683,12 +799,65 @@ function renderHtml(reportData) {
       }
       if (photo.album_title) media.append(el("div", "meta", photo.album_title));
       if (photo.curation_notes) media.append(el("div", "meta", photo.curation_notes));
+      return media;
+    }
+
+    function renderSinglePhotoCard(photo) {
+      const card = el("article", "photo-card single-card");
+      const attempt = currentAttempt(photo);
+      const fieldNames = state.field === "all" ? fieldsForPhoto(photo) : [state.field];
+      const visibleFields = fieldNames.filter((field) => attempt.fields[field]);
+
+      const panel = el("div", "single-proposals");
+      const head = el("div", "single-head");
+      const fieldCount = Object.keys(attempt.fields || {}).length;
+      head.append(el("span", attempt.has_proposal ? "pill good" : "pill warn", attempt.has_proposal ? "有 proposal" : "缺 proposal"));
+      head.append(el("span", "pill", fieldCount + " 個欄位"));
+      if (!attempt.has_photo) {
+        head.append(el("span", "pill warn", "此 run 缺照片"));
+      }
+      panel.append(head);
+
+      const list = el("div", "proposal-list");
+      if (!attempt.has_photo) {
+        list.append(el("div", "proposal-block missing", "此 run 缺照片"));
+      } else if (!attempt.has_proposal) {
+        list.append(el("div", "proposal-block missing", "metadata-proposals.json 沒有這張照片"));
+      } else if (visibleFields.length === 0) {
+        list.append(el("div", "proposal-block missing", "沒有符合目前篩選的欄位。"));
+      } else {
+        for (const field of visibleFields) {
+          const proposal = attempt.fields[field];
+          const block = el("section", "proposal-block" + (watchFields.has(field) ? " watch" : ""));
+          const fieldLine = el("div", "proposal-field");
+          fieldLine.append(el("span", "", field));
+          if (watchFields.has(field)) {
+            fieldLine.append(el("span", "pill", "重點檢查"));
+          }
+          block.append(fieldLine);
+          block.append(el("div", "proposal-value", valueText(proposal.value) || "(空值)"));
+          if (proposal.confidence !== undefined) {
+            block.append(el("div", "proposal-meta", "confidence " + proposal.confidence));
+          }
+          if (proposal.reason) {
+            block.append(el("div", "proposal-reason", proposal.reason));
+          }
+          list.append(block);
+        }
+      }
+      panel.append(list);
+      card.append(renderMedia(photo), panel);
+      return card;
+    }
+
+    function renderComparePhotoCard(photo) {
+      const card = el("article", "photo-card");
 
       const comparison = el("div", "comparison");
       const table = el("table");
       const thead = el("thead");
       const headerRow = el("tr");
-      headerRow.append(el("th", "field-name", "field"));
+      headerRow.append(el("th", "field-name", "欄位"));
       for (const attempt of data.attempts) {
         headerRow.append(el("th", "", attempt.label || attempt.run_id));
       }
@@ -707,9 +876,9 @@ function renderHtml(reportData) {
           const cell = el("td");
           const proposal = attempt.fields[field];
           if (!attempt.has_photo) {
-            cell.append(el("div", "missing", "photo missing"));
+            cell.append(el("div", "missing", "此 run 缺照片"));
           } else if (!proposal) {
-            cell.append(el("div", "missing", "no proposal"));
+            cell.append(el("div", "missing", "缺 proposal"));
           } else {
             cell.append(el("div", "value", valueText(proposal.value)));
             if (proposal.confidence !== undefined) {
@@ -726,7 +895,7 @@ function renderHtml(reportData) {
       }
       if (visibleRows === 0) {
         const row = el("tr");
-        const cell = el("td", "missing", "No fields match the current filters.");
+        const cell = el("td", "missing", "沒有符合目前篩選的欄位。");
         cell.colSpan = data.attempts.length + 1;
         row.append(cell);
         tbody.append(row);
@@ -734,14 +903,25 @@ function renderHtml(reportData) {
       table.append(tbody);
       comparison.append(table);
 
-      card.append(media, comparison);
+      card.append(renderMedia(photo), comparison);
       return card;
+    }
+
+    function renderPhotoCard(photo) {
+      return isSingleMode ? renderSinglePhotoCard(photo) : renderComparePhotoCard(photo);
     }
 
     function filteredPhotos() {
       const query = state.search.trim().toLowerCase();
       return data.photos.filter((photo) => {
         if (query && !searchableText(photo).includes(query)) return false;
+        if (isSingleMode) {
+          const attempt = currentAttempt(photo);
+          if (state.status === "with-proposal" && !attempt.has_proposal) return false;
+          if (state.status === "missing" && !photoHasMissingProposal(photo)) return false;
+          if (state.field !== "all" && !attempt.fields[state.field]) return false;
+          return true;
+        }
         if (state.status === "diff" && !photoHasDiff(photo)) return false;
         if (state.status === "missing" && !photoHasMissingProposal(photo)) return false;
         if (state.field !== "all" && !fieldsForPhoto(photo).includes(state.field)) return false;
@@ -753,7 +933,7 @@ function renderHtml(reportData) {
       photosRoot.replaceChildren();
       const photos = filteredPhotos();
       if (photos.length === 0) {
-        photosRoot.append(el("div", "empty-state", "No photos match the current filters."));
+        photosRoot.append(el("div", "empty-state", "沒有符合目前篩選條件的照片。"));
         return;
       }
       for (const photo of photos) {
@@ -780,6 +960,7 @@ function renderHtml(reportData) {
 
     renderSummary();
     renderAttemptPills();
+    renderCoverage();
     renderWarnings();
     renderFilters();
     renderPhotos();
@@ -797,6 +978,7 @@ async function buildReport(options) {
   const outputPath = join(options.outputDir, "index.html");
   await writeFile(outputPath, html);
   return {
+    mode: reportData.mode,
     outputPath,
     photoCount: reportData.photos.length,
     runCount: reportData.attempts.length,
@@ -813,6 +995,7 @@ async function main() {
 
   const result = await buildReport(options);
   console.log(`AI report written: ${result.outputPath}`);
+  console.log(`- mode: ${result.mode}`);
   console.log(`- runs: ${result.runCount}`);
   console.log(`- photos: ${result.photoCount}`);
   console.log(`- warnings: ${result.warningCount}`);
