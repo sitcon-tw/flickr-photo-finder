@@ -442,7 +442,7 @@
             setStatus(
               [
                 "sidebar RPC 本身失敗，尚未進入 Spreadsheet 讀取。",
-                "如果 Authorize / check access 已通過，請改用單一 Google 帳號的瀏覽器 profile 或無痕視窗重開 Sheet，並確認瀏覽器允許 Google 相關第三方 cookie / storage。",
+                "如果 Authorize / check access 已通過，通常是 Google 多帳號 session 讓 sidebar iframe 使用未授權帳號。請改用已授權帳號作為第一個登入帳號，或用單一帳號的瀏覽器 profile / 無痕視窗重開 Sheet。",
                 `原始錯誤：${error.message || String(error)}`,
               ].join("\n\n"),
               "error",
