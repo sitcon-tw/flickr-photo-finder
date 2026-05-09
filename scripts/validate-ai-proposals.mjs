@@ -19,11 +19,20 @@ const allowedAiFields = new Set([
   "orientation",
   "has_negative_space",
   "safe_crop",
+  "visual_description",
   "public_use_status",
   "priority_level",
   "collections",
   "curation_status",
 ]);
+const repeatedVisualReasonThreshold = 5;
+const visualDescriptionMinLength = 20;
+const visualDescriptionSimilarityThreshold = 0.75;
+const reasonTemplatePattern = /推測值|預設為|照片方向預設|圖片尺寸為|一般而言/;
+const nonVisualLanguagePattern = /推測|可能是|應該是|預設|通常|一般而言|如圖|如題|推測值|畫面尺寸為\s*\d+\s*x\s*\d+|圖片尺寸為\s*\d+\s*x\s*\d+/i;
+const concreteVisualPattern =
+  /桌|椅|旗|布條|背板|看板|投影|螢幕|講台|麥克風|相機|鏡頭|手機|筆電|餐點|茶點|炸雞|披薩|飲料|盤|碗|杯|袋|背包|證件|掛繩|手|臉|眼鏡|口罩|衣|帽|站|坐|拿|看|聽|交談|拍攝|排隊|合照|前景|背景|左側|右側|中央|桌上|牆面|白板|黑板|文字|標誌|logo|Logo|SITCON/;
+const visualEvidenceFields = new Set([...allowedAiFields].filter((field) => field !== "curation_status"));
 
 function printUsage() {
   console.log(`Usage:
@@ -176,6 +185,82 @@ function validateReason(photoId, field, proposal, errors) {
   }
 }
 
+function stableValue(value) {
+  if (Array.isArray(value)) {
+    return JSON.stringify([...value].sort());
+  }
+  return JSON.stringify(value);
+}
+
+function normalizeReason(reason) {
+  return reason.replace(/\s+/g, " ").trim();
+}
+
+function normalizeTextForSimilarity(value) {
+  return String(value)
+    .toLowerCase()
+    .replace(/[，。、「」『』（）()：:；;,.!?！？\s]/g, "")
+    .trim();
+}
+
+function characterBigrams(value) {
+  const normalized = normalizeTextForSimilarity(value);
+  if (normalized.length < 2) {
+    return new Set(normalized ? [normalized] : []);
+  }
+  const bigrams = new Set();
+  for (let index = 0; index < normalized.length - 1; index += 1) {
+    bigrams.add(normalized.slice(index, index + 2));
+  }
+  return bigrams;
+}
+
+function jaccardSimilarity(left, right) {
+  const leftSet = characterBigrams(left);
+  const rightSet = characterBigrams(right);
+  if (leftSet.size === 0 && rightSet.size === 0) {
+    return 1;
+  }
+  const intersectionSize = [...leftSet].filter((value) => rightSet.has(value)).length;
+  const unionSize = new Set([...leftSet, ...rightSet]).size;
+  return unionSize === 0 ? 0 : intersectionSize / unionSize;
+}
+
+function validateVisualDescription(photoId, value, errors) {
+  if (typeof value !== "string" || !value.trim()) {
+    errors.push(formatFieldError(photoId, "visual_description", "value must be a non-empty string"));
+    return;
+  }
+  const normalized = value.replace(/\s+/g, "");
+  if (normalized.length < visualDescriptionMinLength) {
+    errors.push(
+      formatFieldError(
+        photoId,
+        "visual_description",
+        `value must be at least ${visualDescriptionMinLength} non-space characters`,
+      ),
+    );
+  }
+  if (nonVisualLanguagePattern.test(value)) {
+    errors.push(
+      formatFieldError(
+        photoId,
+        "visual_description",
+        "value uses uncertain, template, or non-visual language",
+      ),
+    );
+  }
+  if (!concreteVisualPattern.test(value)) {
+    errors.push(
+      formatFieldError(
+        photoId,
+        "visual_description",
+        "value should include concrete visible details such as objects, actions, text, positions, or spatial relationships",
+      ),
+    );
+  }
+}
+
 function validateTaxonomyValue(photoId, field, value, taxonomy, errors) {
   if (!taxonomy[field]?.includes(value)) {
     errors.push(formatFieldError(photoId, field, `unknown taxonomy value "${value}"`));
@@ -204,6 +289,11 @@ function validateFieldValue(photoId, field, value, taxonomy, fieldSchema, errors
     if (typeof value !== "boolean") {
       errors.push(formatFieldError(photoId, field, "value must be boolean"));
     }
+    return;
+  }
+
+  if (field === "visual_description") {
+    validateVisualDescription(photoId, value, errors);
     return;
   }
 
@@ -284,6 +374,84 @@ function validateProposalItem(item, context, errors) {
   }
 }
 
+function validateBatchReasonQuality(proposals, errors) {
+  if (!Array.isArray(proposals.items)) {
+    return;
+  }
+
+  const repeated = new Map();
+  const templatedReasons = new Map();
+  const visualDescriptions = [];
+  for (const item of proposals.items) {
+    if (!isPlainObject(item) || typeof item.photo_id !== "string" || !isPlainObject(item.fields)) {
+      continue;
+    }
+    for (const [field, proposal] of Object.entries(item.fields)) {
+      if (!visualEvidenceFields.has(field) || !isPlainObject(proposal) || !Object.hasOwn(proposal, "value")) {
+        continue;
+      }
+      if (typeof proposal.reason !== "string" || !proposal.reason.trim()) {
+        continue;
+      }
+
+      if (field === "visual_description" && typeof proposal.value === "string") {
+        visualDescriptions.push({
+          photoId: item.photo_id,
+          value: proposal.value,
+        });
+      }
+
+      const normalizedReason = normalizeReason(proposal.reason);
+      if (reasonTemplatePattern.test(normalizedReason)) {
+        const templateKey = `${field}\u0000${normalizedReason}`;
+        const photoIds = templatedReasons.get(templateKey) ?? [];
+        photoIds.push(item.photo_id);
+        templatedReasons.set(templateKey, photoIds);
+      }
+
+      const key = `${field}\u0000${stableValue(proposal.value)}\u0000${normalizeReason(proposal.reason)}`;
+      const photoIds = repeated.get(key) ?? [];
+      photoIds.push(item.photo_id);
+      repeated.set(key, photoIds);
+    }
+  }
+
+  for (const [key, photoIds] of repeated.entries()) {
+    if (photoIds.length < repeatedVisualReasonThreshold) {
+      continue;
+    }
+    const [field, value, reason] = key.split("\u0000");
+    const sampleIds = photoIds.slice(0, 10).join(", ");
+    const suffix = photoIds.length > 10 ? ", ..." : "";
+    errors.push(
+      `${field}: identical value and reason reused for ${photoIds.length} photos (${sampleIds}${suffix}); value=${value}; reason="${reason}"`,
+    );
+  }
+
+  for (const [key, photoIds] of templatedReasons.entries()) {
+    const [field, reason] = key.split("\u0000");
+    const sampleIds = photoIds.slice(0, 10).join(", ");
+    const suffix = photoIds.length > 10 ? ", ..." : "";
+    errors.push(
+      `${field}: reason uses template or non-visual language for ${photoIds.length} photos (${sampleIds}${suffix}); reason="${reason}"`,
+    );
+  }
+
+  for (let leftIndex = 0; leftIndex < visualDescriptions.length; leftIndex += 1) {
+    for (let rightIndex = leftIndex + 1; rightIndex < visualDescriptions.length; rightIndex += 1) {
+      const left = visualDescriptions[leftIndex];
+      const right = visualDescriptions[rightIndex];
+      const similarity = jaccardSimilarity(left.value, right.value);
+      if (similarity < visualDescriptionSimilarityThreshold) {
+        continue;
+      }
+      errors.push(
+        `visual_description: near-duplicate descriptions for ${left.photoId} and ${right.photoId} (${similarity.toFixed(2)} similarity)`,
+      );
+    }
+  }
+}
+
 export async function validateAiProposals(options) {
   const [manifest, photos, proposals, taxonomy] = await Promise.all([
     readJson(join(options.runDir, "manifest.json")),
@@ -310,6 +478,7 @@ export async function validateAiProposals(options) {
       }
       validateProposalItem(item, { fieldSchemas, photoIds, taxonomy }, errors);
     }
+    validateBatchReasonQuality(proposals, errors);
   }
 
   if (errors.length > 0) {

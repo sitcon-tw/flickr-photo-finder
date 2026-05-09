@@ -167,6 +167,7 @@ AI proposal 目前只允許以下欄位：
 | `orientation` | 字串 | 照片方向。值必須存在於 `data/tag-taxonomy.json`。 |
 | `has_negative_space` | 布林值 | 是否有明顯留白可放字。 |
 | `safe_crop` | 字串陣列 | 適合裁切比例。值必須存在於 `data/tag-taxonomy.json`。 |
+| `visual_description` | 字串 | 1 到 2 句中立畫面描述，用於自然語言搜尋與人工找圖輔助，只能描述照片中可見內容。 |
 | `public_use_status` | 字串 | AI 只能建議 `needs_review` 或 `avoid`，不能建議 `approved`。 |
 | `priority_level` | 字串 | 推薦優先度。值必須存在於 `data/tag-taxonomy.json`。 |
 | `collections` | 字串陣列 | 可建議素材包名稱；仍須由人類判斷是否採用。 |
@@ -209,8 +210,12 @@ AI 應遵守以下限制：
 - 不要覆蓋人工值；proposal 只是候選，後續工具會呈現差異給人類確認。
 - `people_count`、`orientation`、`has_negative_space` 是 AI 初標的基礎讀圖欄位；只要圖片可讀，通常應提出候選值。
 - `safe_crop` 應從版面可用性判斷。只有在裁切後主體、臉部、重要文字與主要物件仍可保留時才提出該比例。
+- `visual_description` 應描述 taxonomy 欄位難以涵蓋的可見細節，例如物件、文字、姿勢、動作、表情、空間位置與構圖關係。它不是照片標題，也不是欄位 reason。
+- `visual_description` 不應重複機械欄位，例如「橫式照片」、「有 5 人」；除非人數或方向對理解畫面構圖有必要。
+- `visual_description` 不應寫活動名稱、年份、身份、單位或贊助商推論，除非文字清楚出現在照片中，且應以「畫面可見文字」描述。
 - `recommended_uses` 應避免全部落在通用用途；請優先提出能幫助取圖排序與情境判斷的用途。
 - `reason` 必須只依據圖片可見內容或 `photos.json` 既有 metadata，不應自行補上未確認的活動名稱、身份、單位或年份。
+- 讀圖欄位的 reason 和 `visual_description` 都不應跨照片重複套用模板。若多張照片建議值相同，也要描述每張照片各自的可見證據。
 - 若現有 taxonomy 無法準確描述照片，應省略不精準欄位，並在人工檢查時另外記錄 taxonomy gap，不要硬套錯誤標籤。
 
 ## 驗證與後續使用

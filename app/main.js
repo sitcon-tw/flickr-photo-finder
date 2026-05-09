@@ -166,6 +166,7 @@ function textMatches(photo, query) {
     photo.photographer,
     photo.license,
     photo.orientation,
+    photo.visual_description,
     photo.public_use_status,
     photo.priority_level,
     photo.curation_notes,
@@ -290,7 +291,7 @@ function renderPhoto(photo) {
   appendDetail(details, "裁切", photo.safe_crop);
   appendDetail(details, "Flickr ID", photo.photo_id);
 
-  notes.textContent = photo.curation_notes || "";
+  notes.textContent = [photo.visual_description, photo.curation_notes].filter(Boolean).join(" ");
   if (!notes.textContent) {
     notes.remove();
   }

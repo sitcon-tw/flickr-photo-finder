@@ -129,6 +129,7 @@ schema 與同步狀態紀錄。這張表讓人類、Apps Script 與 agent 能確
 - `orientation`
 - `has_negative_space`
 - `safe_crop`
+- `visual_description`
 - `public_use_status`
 - `priority_level`
 - `collections`

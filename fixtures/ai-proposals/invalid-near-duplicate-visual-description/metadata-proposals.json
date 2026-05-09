@@ -1,0 +1,31 @@
+{
+  "proposal_version": 1,
+  "run_id": "fixture-invalid-near-duplicate-visual-description",
+  "created_at": "2026-05-09T00:00:00.000Z",
+  "producer": {
+    "type": "ai",
+    "name": "fixture"
+  },
+  "items": [
+    {
+      "photo_id": "92000000001",
+      "fields": {
+        "visual_description": {
+          "value": "桌上排列多個餐點紙盒與綠色 SITCON 桌旗，背景可見站立取餐的人影。",
+          "reason": "Invalid fixture: near-duplicate description should be rejected.",
+          "confidence": 0.8
+        }
+      }
+    },
+    {
+      "photo_id": "92000000002",
+      "fields": {
+        "visual_description": {
+          "value": "桌上排列多個餐點紙盒和綠色 SITCON 桌旗，背景可見站著取餐的人影。",
+          "reason": "Invalid fixture: near-duplicate description should be rejected.",
+          "confidence": 0.8
+        }
+      }
+    }
+  ]
+}

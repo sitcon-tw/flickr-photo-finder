@@ -23,6 +23,7 @@ var SITCON_PHOTO_FINDER_CONFIG = {
     "orientation",
     "has_negative_space",
     "safe_crop",
+    "visual_description",
     "public_use_status",
     "priority_level",
     "collections",
@@ -191,6 +192,15 @@ var SITCON_PHOTO_FINDER_CONFIG = {
       "multiValue": true,
       "taxonomyKey": "safe_crop",
       "descriptionZh": "適合裁切的比例，例如 1:1、16:9。"
+    },
+    {
+      "name": "visual_description",
+      "labelZh": "畫面描述",
+      "type": "text",
+      "required": false,
+      "multiValue": false,
+      "taxonomyKey": "",
+      "descriptionZh": "1 到 2 句中立的可見畫面描述，用於自然語言找圖輔助。只描述照片中看得到的物件、動作、文字、位置與空間關係，不自行補活動名稱、年份、身份、單位或贊助推論。"
     },
     {
       "name": "public_use_status",

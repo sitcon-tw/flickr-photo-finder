@@ -15,6 +15,7 @@ const allowedAiFields = new Set([
   "orientation",
   "has_negative_space",
   "safe_crop",
+  "visual_description",
   "public_use_status",
   "priority_level",
   "collections",

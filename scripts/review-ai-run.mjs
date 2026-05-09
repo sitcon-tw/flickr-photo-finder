@@ -169,7 +169,9 @@ function confidenceStats(items) {
       .filter((value) => typeof value === "number"),
   );
   const perfectCount = confidences.filter((value) => value === 1).length;
+  const confidenceCounts = countValues(confidences);
   return {
+    confidenceCounts,
     perfectCount,
     total: confidences.length,
   };
@@ -196,6 +198,7 @@ function buildReviewNotes(items) {
   const itemCount = items.length;
   const priorityCount = items.filter((item) => item.fields.priority_level).length;
   const publicUseStatusCount = items.filter((item) => item.fields.public_use_status).length;
+  const needsReviewCount = items.filter((item) => item.fields.public_use_status?.value === "needs_review").length;
   const sponsorReportItems = items.filter((item) =>
     valuesForField(item, "recommended_uses").includes("贊助成果報告")
     && valuesForField(item, "sponsorship_items").length === 0
@@ -209,7 +212,7 @@ function buildReviewNotes(items) {
     const hasPeopleScene = sceneValues.some((value) => peopleSceneValues.has(value));
     return hasPeopleScene || peopleReasonPattern.test(allReasonText(item));
   });
-  const { perfectCount, total } = confidenceStats(items);
+  const { confidenceCounts, perfectCount, total } = confidenceStats(items);
 
   if (priorityCount === itemCount && itemCount > 0) {
     notes.push("`priority_level` 每張都有候選值，請確認模型是否把它當成預設欄位。");
@@ -222,6 +225,20 @@ function buildReviewNotes(items) {
     );
   }
 
+  const mostCommonNegativeSpace = mostCommonValue(items, "has_negative_space");
+  if (itemCount > 0 && mostCommonNegativeSpace.count / itemCount >= concentrationThreshold) {
+    notes.push(
+      `\`has_negative_space = ${mostCommonNegativeSpace.value}\` 出現在 ${mostCommonNegativeSpace.count}/${itemCount} 張照片（${formatPercent(mostCommonNegativeSpace.count / itemCount)}），請確認模型是否逐張判斷版面留白。`,
+    );
+  }
+
+  const mostCommonSceneTag = mostCommonValue(items, "scene_tags");
+  if (itemCount > 0 && mostCommonSceneTag.count / itemCount >= concentrationThreshold) {
+    notes.push(
+      `\`scene_tags\` 的 \`${mostCommonSceneTag.value}\` 出現在 ${mostCommonSceneTag.count}/${itemCount} 張照片（${formatPercent(mostCommonSceneTag.count / itemCount)}），請確認是否過度套用同一場景標籤。`,
+    );
+  }
+
   const mostCommonUse = mostCommonValue(items, "recommended_uses");
   if (itemCount > 0 && mostCommonUse.count / itemCount >= concentrationThreshold) {
     notes.push(
@@ -231,11 +248,21 @@ function buildReviewNotes(items) {
 
   if (publicUseStatusCount === 0) {
     notes.push("沒有 `public_use_status` 候選值；若本批沒有明顯 avoid 照片，這可以接受。");
+  } else if (itemCount > 0 && needsReviewCount / itemCount >= concentrationThreshold) {
+    notes.push(
+      `\`public_use_status = needs_review\` 出現在 ${needsReviewCount}/${itemCount} 張照片（${formatPercent(needsReviewCount / itemCount)}），可能被當成預設填空；請確認每張是否有具體公開使用疑慮。`,
+    );
   }
   if (total === 0) {
     notes.push("所有候選值都未提供 `confidence`；格式允許省略，但不利於人工排序與抽查。");
   } else if (perfectCount / total > 0.25) {
     notes.push("有偏多 `confidence = 1`，人數、用途與情緒欄位仍應人工抽查。");
+  }
+  const mostCommonConfidence = confidenceCounts[0];
+  if (mostCommonConfidence && total > 0 && mostCommonConfidence.count / total >= concentrationThreshold) {
+    notes.push(
+      `\`confidence = ${mostCommonConfidence.value}\` 出現在 ${mostCommonConfidence.count}/${total} 個候選欄位（${formatPercent(mostCommonConfidence.count / total)}），信心分數可能沒有逐欄反映不確定性。`,
+    );
   }
   if (sponsorReportItems.length > 0) {
     notes.push(

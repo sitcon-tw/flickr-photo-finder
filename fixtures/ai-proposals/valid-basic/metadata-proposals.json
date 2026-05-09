@@ -58,6 +58,11 @@
           "reason": "原始構圖接近橫幅，保留群像時較適合 16:9。",
           "confidence": 0.72
         },
+        "visual_description": {
+          "value": "一群人站在舞台背板前排成合照隊形，前排人物靠近鏡頭，背景可見大型看板與明亮燈光。",
+          "reason": "畫面中的人物排列、舞台背板與看板細節可作為自然語言找圖線索。",
+          "confidence": 0.82
+        },
         "public_use_status": {
           "value": "needs_review",
           "reason": "AI 無法確認授權與攝影師欄位是否已補齊，需人工確認。",

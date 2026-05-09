@@ -1,0 +1,61 @@
+{
+  "proposal_version": 1,
+  "run_id": "fixture-invalid-repeated-visual-reason",
+  "created_at": "2026-05-09T00:00:00.000Z",
+  "producer": {
+    "type": "ai",
+    "name": "fixture"
+  },
+  "items": [
+    {
+      "photo_id": "90000000001",
+      "fields": {
+        "scene_tags": {
+          "value": ["會眾", "交流"],
+          "reason": "推測場景包含會眾交流。",
+          "confidence": 0.8
+        }
+      }
+    },
+    {
+      "photo_id": "90000000002",
+      "fields": {
+        "scene_tags": {
+          "value": ["會眾", "交流"],
+          "reason": "推測場景包含會眾交流。",
+          "confidence": 0.8
+        }
+      }
+    },
+    {
+      "photo_id": "90000000003",
+      "fields": {
+        "scene_tags": {
+          "value": ["會眾", "交流"],
+          "reason": "推測場景包含會眾交流。",
+          "confidence": 0.8
+        }
+      }
+    },
+    {
+      "photo_id": "90000000004",
+      "fields": {
+        "scene_tags": {
+          "value": ["會眾", "交流"],
+          "reason": "推測場景包含會眾交流。",
+          "confidence": 0.8
+        }
+      }
+    },
+    {
+      "photo_id": "90000000005",
+      "fields": {
+        "scene_tags": {
+          "value": ["會眾", "交流"],
+          "reason": "推測場景包含會眾交流。",
+          "confidence": 0.8
+        }
+      }
+    }
+  ]
+}

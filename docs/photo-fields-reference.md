@@ -34,6 +34,7 @@
 | `orientation` | 否 | 否 | 是 | 設計、整理者 | `landscape`、`portrait`、`square`。 |
 | `has_negative_space` | 否 | 否 | 否 | 設計、整理者 | `true` 或 `false`，表示是否有明顯留白可放字。 |
 | `safe_crop` | 否 | 是 | 是 | 設計、整理者 | 適合裁切的比例，例如 `1:1`、`16:9`。 |
+| `visual_description` | 否 | 否 | 否 | AI 或整理者 | 1 到 2 句中立的可見畫面描述，用於自然語言找圖輔助。 |
 | `public_use_status` | 否 | 否 | 是 | 熟悉公開素材風險者 | `approved`、`needs_review`、`avoid`。不確定用 `needs_review`。 |
 | `priority_level` | 否 | 否 | 是 | 整理者 | `high`、`normal`、`low`。表示推薦使用優先度，不是客觀照片品質。 |
 | `collections` | 否 | 是 | 否 | 各組整理者 | 素材包，例如 `志工招募`、`贊助提案`、`網站 hero`。 |

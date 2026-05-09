@@ -402,7 +402,7 @@ pnpm ai:review -- --run-dir tmp/ai-runs/<run-id>
 - `metadata-diff.md`: 逐欄列出原值、AI 建議值、是否變更、信心與理由。
 - `metadata-update-plan.json` / `metadata-update-plan.csv`: 只列出實際會改變的欄位，供後續 dry-run Sheets 更新工具使用。
 
-AI 候選值只允許讀圖初標合理處理的欄位，例如 `people_count`、`scene_tags`、`mood_tags`、`recommended_uses`、`sponsorship_items`、`sponsorship_tags`、`orientation`、`has_negative_space`、`safe_crop`、`public_use_status`、`priority_level`、`collections` 與 `curation_status`。AI 候選值不能修改 Flickr 基本欄位、攝影師或授權；若建議 `curation_status`，只能是 `ai_labeled`；若建議 `public_use_status`，不能直接給 `approved`。
+AI 候選值只允許讀圖初標合理處理的欄位，例如 `people_count`、`scene_tags`、`mood_tags`、`recommended_uses`、`sponsorship_items`、`sponsorship_tags`、`orientation`、`has_negative_space`、`safe_crop`、`visual_description`、`public_use_status`、`priority_level`、`collections` 與 `curation_status`。AI 候選值不能修改 Flickr 基本欄位、攝影師或授權；若建議 `curation_status`，只能是 `ai_labeled`；若建議 `public_use_status`，不能直接給 `approved`。
 
 若只想執行單一步驟，仍可使用底層指令：
 

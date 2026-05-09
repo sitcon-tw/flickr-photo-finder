@@ -290,12 +290,21 @@ reason 是審核脈絡，不是正式 metadata。它應只描述可見畫面或 
 
 - 若 `priority_level` 出現在所有照片，提示可能變成預設欄位。
 - 若 `safe_crop` 的某個比例出現在 90% 以上照片，提示可能過度套用。
+- 若 `has_negative_space` 的同一值出現在 90% 以上照片，提示可能沒有逐張判斷版面留白。
+- 若 `scene_tags` 的同一值出現在 90% 以上照片，提示可能過度套用同一場景標籤。
 - 若 `recommended_uses` 單一值出現在 90% 以上照片，提示用途區辨度不足。
 - 若沒有任何 `public_use_status` 候選值，提示可接受但需視批次內容確認。
+- 若 `public_use_status = needs_review` 出現在 90% 以上照片，提示可能被當成預設填空。
 - 若所有候選值都沒有 `confidence`，提示不利於人工排序與抽查。
 - 若 `confidence = 1` 比例高於 25%，提示 confidence 失去參考價值。
+- 若同一個 confidence 值出現在 90% 以上候選欄位，提示信心分數可能沒有逐欄反映不確定性。
 - 若 `贊助成果報告` 出現但沒有 `sponsorship_items` 或 `sponsorship_tags`，提示需要人工確認贊助脈絡。
 - 若 `people_count = 0` 但 reason 或 scene_tags 提到會眾、講者、合照等人物相關線索，提示可能矛盾。
+
+`pnpm ai:validate` 也會擋下明顯不符合逐張檢視要求的產物：
+
+- 同一個讀圖欄位的 `value` 與 `reason` 組合在 5 張以上不同照片重複出現。
+- 讀圖欄位 reason 使用 `推測值`、`預設為`、`照片方向預設`、`圖片尺寸為`、`一般而言` 等模板或非視覺語言。
 
 ## 後續可工具化的檢查
 
