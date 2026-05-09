@@ -91,35 +91,6 @@
         gap: 4px;
       }
 
-      .choice-grid {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-      }
-
-      .choice {
-        align-items: center;
-        border: 1px solid #bdc7d5;
-        border-radius: 4px;
-        cursor: pointer;
-        display: inline-flex;
-        font-weight: 400;
-        gap: 4px;
-        min-height: 28px;
-        padding: 4px 7px;
-        user-select: none;
-      }
-
-      .choice input {
-        margin: 0;
-        width: auto;
-      }
-
-      .choice.unknown {
-        border-color: #f59e0b;
-        background: #fffbeb;
-      }
-
       label {
         font-weight: 700;
       }
@@ -149,6 +120,123 @@
       input[readonly] {
         background: #eef1f5;
         color: #4b5563;
+      }
+
+      .multi-select {
+        position: relative;
+      }
+
+      .selected-list {
+        align-items: center;
+        background: #fff;
+        border: 1px solid #bdc7d5;
+        border-radius: 4px;
+        box-sizing: border-box;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+        min-height: 38px;
+        padding: 4px;
+      }
+
+      .selected-list:focus-within {
+        border-color: #0f766e;
+        box-shadow: 0 0 0 2px rgba(15, 118, 110, 0.12);
+      }
+
+      .selected-token {
+        align-items: center;
+        background: #e6f3f1;
+        border: 1px solid #99c8c1;
+        border-radius: 4px;
+        color: #134e4a;
+        display: inline-flex;
+        font-size: 12px;
+        gap: 4px;
+        line-height: 1.2;
+        max-width: 100%;
+        min-height: 24px;
+        padding: 2px 4px 2px 7px;
+      }
+
+      .selected-token.unknown {
+        background: #fffbeb;
+        border-color: #f59e0b;
+        color: #7c2d12;
+      }
+
+      .selected-token span {
+        overflow-wrap: anywhere;
+      }
+
+      .selected-token button {
+        align-items: center;
+        background: transparent;
+        border: 0;
+        border-radius: 3px;
+        color: inherit;
+        cursor: pointer;
+        display: inline-flex;
+        font-size: 16px;
+        font-weight: 700;
+        height: 20px;
+        justify-content: center;
+        line-height: 1;
+        min-height: 20px;
+        padding: 0;
+        width: 20px;
+      }
+
+      .selected-token button:hover {
+        background: rgba(15, 23, 42, 0.12);
+      }
+
+      .combo-input {
+        border: 0;
+        flex: 1 1 120px;
+        min-width: 96px;
+        padding: 5px 3px;
+        width: auto;
+      }
+
+      .combo-input:focus {
+        outline: 0;
+      }
+
+      .option-list {
+        background: #fff;
+        border: 1px solid #bdc7d5;
+        border-radius: 4px;
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.18);
+        box-sizing: border-box;
+        display: none;
+        left: 0;
+        margin-top: 4px;
+        max-height: 220px;
+        overflow-y: auto;
+        position: absolute;
+        right: 0;
+        top: 100%;
+        z-index: 10;
+      }
+
+      .option-list.visible {
+        display: block;
+      }
+
+      .option {
+        cursor: pointer;
+        padding: 8px;
+      }
+
+      .option:hover,
+      .option.active {
+        background: #e6f3f1;
+      }
+
+      .option.empty {
+        color: #64748b;
+        cursor: default;
       }
 
       .actions {
@@ -323,46 +411,149 @@
           .filter(Boolean);
       }
 
-      function syncChoiceValue(wrapper) {
-        const hidden = wrapper.querySelector("input[type=hidden]");
-        const selected = Array.from(wrapper.querySelectorAll("input[type=checkbox]:checked"))
-          .map((input) => input.value);
-        hidden.value = selected.join(";");
-      }
-
       function multiChoiceControl(field, value) {
-        const selectedValues = splitList(value);
-        const options = [...field.options];
-        selectedValues.forEach((item) => {
-          if (!options.includes(item)) {
-            options.push(item);
+        const selectedValues = [];
+        splitList(value).forEach((item) => {
+          if (!selectedValues.includes(item)) {
+            selectedValues.push(item);
           }
         });
 
         const wrapper = document.createElement("div");
-        wrapper.className = "choice-grid";
+        wrapper.className = "multi-select";
         const hidden = document.createElement("input");
         hidden.type = "hidden";
         hidden.name = field.name;
         hidden.value = selectedValues.join(";");
-        wrapper.append(hidden);
 
-        options.forEach((option) => {
-          const label = document.createElement("label");
-          label.className = "choice";
-          if (!field.options.includes(option)) {
-            label.classList.add("unknown");
+        const selectedList = document.createElement("div");
+        selectedList.className = "selected-list";
+
+        const input = document.createElement("input");
+        input.className = "combo-input";
+        input.type = "text";
+        input.autocomplete = "off";
+        input.placeholder = "搜尋或選擇";
+
+        const optionList = document.createElement("div");
+        optionList.className = "option-list";
+
+        function updateHidden() {
+          hidden.value = selectedValues.join(";");
+        }
+
+        function addValue(item) {
+          if (!item || selectedValues.includes(item)) {
+            return;
           }
-          const checkbox = document.createElement("input");
-          checkbox.type = "checkbox";
-          checkbox.value = option;
-          checkbox.checked = selectedValues.includes(option);
-          checkbox.addEventListener("change", () => syncChoiceValue(wrapper));
-          const text = document.createElement("span");
-          text.textContent = option;
-          label.append(checkbox, text);
-          wrapper.append(label);
+          selectedValues.push(item);
+          input.value = "";
+          updateHidden();
+          renderSelected();
+          renderOptions();
+        }
+
+        function removeValue(item) {
+          const index = selectedValues.indexOf(item);
+          if (index === -1) {
+            return;
+          }
+          selectedValues.splice(index, 1);
+          updateHidden();
+          renderSelected();
+          renderOptions();
+        }
+
+        function matchingOptions() {
+          const query = input.value.trim().toLowerCase();
+          return field.options
+            .filter((option) => !selectedValues.includes(option))
+            .filter((option) => !query || option.toLowerCase().includes(query));
+        }
+
+        function renderSelected() {
+          selectedList.textContent = "";
+          selectedValues.forEach((item) => {
+            const token = document.createElement("span");
+            token.className = "selected-token";
+            if (!field.options.includes(item)) {
+              token.classList.add("unknown");
+            }
+            const text = document.createElement("span");
+            text.textContent = item;
+            const remove = document.createElement("button");
+            remove.type = "button";
+            remove.setAttribute("aria-label", `移除 ${item}`);
+            remove.textContent = "×";
+            remove.addEventListener("click", () => {
+              removeValue(item);
+              input.focus();
+            });
+            token.append(text, remove);
+            selectedList.append(token);
+          });
+          selectedList.append(input);
+        }
+
+        function renderOptions() {
+          optionList.textContent = "";
+          const options = matchingOptions();
+          if (options.length === 0) {
+            const empty = document.createElement("div");
+            empty.className = "option empty";
+            empty.textContent = input.value.trim() ? "沒有符合的選項" : "沒有可選項目";
+            optionList.append(empty);
+            return;
+          }
+          options.forEach((option, index) => {
+            const item = document.createElement("div");
+            item.className = index === 0 ? "option active" : "option";
+            item.textContent = option;
+            item.addEventListener("mousedown", (event) => {
+              event.preventDefault();
+              addValue(option);
+            });
+            optionList.append(item);
+          });
+        }
+
+        function openOptions() {
+          renderOptions();
+          optionList.classList.add("visible");
+        }
+
+        function closeOptions() {
+          optionList.classList.remove("visible");
+        }
+
+        input.addEventListener("focus", openOptions);
+        input.addEventListener("input", openOptions);
+        input.addEventListener("keydown", (event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            const first = matchingOptions()[0];
+            if (first) {
+              addValue(first);
+              openOptions();
+            }
+          } else if (event.key === "Escape") {
+            closeOptions();
+          } else if (event.key === "Backspace" && input.value === "" && selectedValues.length > 0) {
+            removeValue(selectedValues[selectedValues.length - 1]);
+          }
         });
+        wrapper.addEventListener("focusout", () => {
+          setTimeout(() => {
+            if (!wrapper.contains(document.activeElement)) {
+              closeOptions();
+            }
+          }, 0);
+        });
+        selectedList.addEventListener("click", () => input.focus());
+
+        renderSelected();
+        renderOptions();
+        wrapper.append(hidden, selectedList, optionList);
 
         return wrapper;
       }
@@ -424,7 +615,7 @@
           meta.className = "meta";
           const parts = [field.name, field.descriptionZh];
           if (field.multiValue && field.options.length > 0) {
-            parts.push("可多選");
+            parts.push("可搜尋多選");
           } else if (field.multiValue) {
             parts.push("多值用 ; 分隔");
           }
