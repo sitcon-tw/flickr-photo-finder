@@ -640,7 +640,7 @@ service account key 是敏感 credential，不能 commit，也不應放在 `tmp/
 | 透過官方 SDK 寫入 Sheets | 需要 `GOOGLE_APPLICATION_CREDENTIALS` 與目標 Sheets 編輯權限 | SDK 寫入工具的 preflight、dry-run、confirmed write 與寫入後讀回驗證都通過 | 可能是環境變數未傳入、credential scope、Sheets 權限、tab/header 或資料格式問題，應依工具錯誤分類處理。 |
 | 驗證正式資料格式 | 不需要寫入權限；需要能取得 Sheets 匯出的 CSV | `pnpm validate:data -- --photos <csv> --albums <csv> --import-batches <csv>` | 代表匯出資料和 repo schema 不一致，或匯出檔不是預期格式。 |
 | 檢查 intake run artifact | 不需要 Google 授權 | `pnpm intake:validate -- --run-dir <dir>` | 代表本次匯入產物內部不一致，套用前應先修正。 |
-| 部署 Apps Script | 需要 clasp 可用且 Google 帳號有 script 權限 | `clasp` 指令成功，且 Apps Script 專案顯示更新 | clasp 或 Google 帳號授權問題，不代表 repo schema 錯。 |
+| 部署 Apps Script | 需要 `pnpm dlx @google/clasp` 可用且 Google 帳號有 script 權限 | `pnpm dlx @google/clasp push` 成功，且 Apps Script 專案顯示更新 | clasp 或 Google 帳號授權問題，不代表 repo schema 錯。 |
 
 `sheets:check` 是公開讀取檢查，不是權限檢查。它只能回答「這份公開 Sheets 目前看起來是否適合初始化」，不能保證某個人或某個工具有寫入權限。
 

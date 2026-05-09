@@ -90,13 +90,13 @@ Apps Script 應透過 `clasp` 進行部署。
 - 未來 agent 或技術志工可以從 repo 理解目前部署內容，不需要只靠 Google Apps Script 編輯器。
 - 部署權限與 Google 帳號授權仍交由 SITCON 既有 Google Drive 與文件管理制度處理，不把 credential 放進 repo。
 
-目前 repo 內已有最小 Apps Script source：
+目前 repo 內已有 MVP Apps Script source：
 
-- `apps-script/Code.js`：Sheets 選單、欄位提示、基本下拉選單與資料檢查。
-- `apps-script/GeneratedConfig.js`：由 repo schema 與 taxonomy 產生，供 Apps Script 使用。不要手動編輯。
+- `apps-script/Code.js`：Sheets 選單、欄位提示、基本下拉選單、`schema_meta` 同步狀態與資料檢查。
+- `apps-script/GeneratedConfig.js`：由 repo schema、taxonomy 與 sponsorship items snapshot metadata 產生，供 Apps Script 使用。不要手動編輯。
 - `apps-script/appsscript.json`：Apps Script manifest。
 - `apps-script/.clasp.json.example`：本機 clasp 綁定範例，不是正式 credential。
-- `scripts/build-apps-script-config.mjs`：從 `data/photo-schema.json` 與 `data/tag-taxonomy.json` 重新產生 `GeneratedConfig.js`。
+- `scripts/build-apps-script-config.mjs`：從 `data/photo-schema.json`、`data/tag-taxonomy.json` 與 `data/sponsorship-items.json` 重新產生 `GeneratedConfig.js`。
 
 更新 Apps Script 設定來源時，先執行：
 
@@ -106,7 +106,53 @@ pnpm apps-script:build-config
 
 實際部署應由有 Google Apps Script 權限的維護者使用 `clasp` 操作。若是既有 Apps Script 專案，維護者可以在 `apps-script/` 目錄建立本機 `.clasp.json`，內容可參考 `.clasp.json.example`；這個檔案不應 commit。
 
-部署前先確認 repo schema、taxonomy 與 Apps Script 產生設定一致。部署後若已建立 `schema_meta` 流程，再更新 `schema_meta` 或相關文件中的版本資訊。
+此 repo 不把 `@google/clasp` 加進 dependency；標準交接指令使用 `pnpm dlx @google/clasp`，避免一般資料工具使用者被迫安裝部署工具。
+
+### 綁定既有 Apps Script 專案
+
+若正式 Sheet 已經有對應的 Apps Script 專案，維護者應先取得該專案的 script ID，然後在 repo 的 `apps-script/` 目錄建立本機 `.clasp.json`：
+
+```json
+{
+  "scriptId": "PASTE_SCRIPT_ID_HERE",
+  "rootDir": "."
+}
+```
+
+也可以用 `pnpm dlx @google/clasp clone <script-id> --rootDir apps-script` 檢查連線，但不要讓 clone 覆蓋 repo source；正式 source 以 repo 版本為準。
+
+### 建立 Sheet-bound Apps Script 專案
+
+若正式 Sheet 還沒有 Apps Script 專案，維護者可用 Sheet spreadsheet ID 建立 container-bound 專案：
+
+```bash
+pnpm dlx @google/clasp create "SITCON Flickr Photo Finder" --type sheets --parentId <spreadsheet-id> --rootDir apps-script
+```
+
+建立後檢查 `apps-script/.clasp.json` 是否只包含 script ID 與 rootDir。這是本機綁定檔，已被 `.gitignore` 排除，不應 commit。
+
+### 推送與驗收
+
+部署前先確認 repo schema、taxonomy 與 Apps Script 產生設定一致：
+
+```bash
+pnpm apps-script:build-config
+pnpm validate:data
+```
+
+確認後由有權限維護者推送：
+
+```bash
+pnpm dlx @google/clasp push
+```
+
+推送後到正式或測試 Sheet 重新整理頁面，依序檢查：
+
+1. 選單出現 `SITCON Photo Finder`。
+2. 執行 `Refresh schema and taxonomy`，確認 header notes、單值下拉選單與 `schema_meta` 已更新。
+3. 執行 `Show schema status`，確認顯示 repo generated config 與 `schema_meta` 內容。
+4. 選一列資料執行 `Validate current row`。
+5. 執行 `Validate public read format`，確認它只檢查 `photos` 主表，不建立額外公開篩選表。
 
 `clasp` 是部署工具，不是資料治理來源。Apps Script 的驗證規則仍應來自 repo 中的 schema 與 taxonomy。
 
