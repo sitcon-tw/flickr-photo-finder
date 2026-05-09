@@ -1,5 +1,6 @@
 import { spawnSync } from "node:child_process";
-import { dirname } from "node:path";
+import { readFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
 import readline from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 import { writeAiLabelingPrompt } from "./ai-labeling-prompt.mjs";
@@ -410,7 +411,7 @@ async function runAlbumIntake() {
   console.log("");
   console.log(`已建立 intake run：${runDir}`);
   if (await askYesNo("直接檢查這次 intake run 並 dry-run 套用到 Google Sheets？", true)) {
-    await reviewIntakeRun(runDir);
+    await reviewIntakeRun(runDir, { albumId });
   } else {
     console.log("");
     console.log("已保留 intake run，尚未檢查或 dry-run。");
@@ -418,11 +419,21 @@ async function runAlbumIntake() {
   }
 }
 
-async function reviewIntakeRun(initialRunDir = "") {
+async function readIntakeRunAlbumId(runDir) {
+  try {
+    const summary = JSON.parse(await readFile(join(runDir, "summary.json"), "utf8"));
+    return String(summary.album_id ?? "").trim();
+  } catch {
+    return "";
+  }
+}
+
+async function reviewIntakeRun(initialRunDir = "", context = {}) {
   const runDir = initialRunDir || (await ask("intake run 目錄，例如 tmp/intake-runs/RUN_ID"));
   if (!runDir) {
     throw new Error("run directory is required");
   }
+  const albumId = context.albumId || await readIntakeRunAlbumId(runDir);
 
   if (initialRunDir) {
     console.log("");
@@ -435,27 +446,50 @@ async function reviewIntakeRun(initialRunDir = "") {
     console.log("");
     console.log("已完成 intake validation，尚未檢查或寫入 Google Sheets。");
     console.log(`稍後可執行：pnpm sheets:apply-intake -- --run-dir ${runDir}`);
+    await askContinueToAiPrepare({ albumId, wroteSheets: false });
     return;
   }
 
   runPnpm("sheets:apply-intake", pnpmArgsFromOptions(["--run-dir", runDir]));
 
+  let wroteSheets = false;
   if (await askYesNo("dry-run 結果確認無誤，要寫入 Google Sheets 嗎？", false)) {
     runPnpm("sheets:apply-intake", pnpmArgsFromOptions(["--run-dir", runDir, "--write"]));
+    wroteSheets = true;
   } else {
     console.log("");
     console.log("未寫入 Google Sheets。");
     console.log(`確認後可執行：pnpm sheets:apply-intake -- --run-dir ${runDir} --write`);
   }
+
+  await askContinueToAiPrepare({ albumId, wroteSheets });
 }
 
-async function prepareAiRun() {
+async function askContinueToAiPrepare({ albumId, wroteSheets }) {
+  console.log("");
+  if (!wroteSheets) {
+    console.log("提醒：尚未寫入 Sheets 時，AI 初標工作包不會包含這次 intake run 的新增照片。");
+  }
+  if (await askYesNo("要接著準備 AI 初標工作包嗎？", wroteSheets)) {
+    await prepareAiRun({ albumId });
+    return;
+  }
+
+  console.log("");
+  console.log("已停止在 intake 流程。");
+  console.log("稍後可執行：pnpm workflow -- --task ai-prepare");
+}
+
+async function prepareAiRun(context = {}) {
   if (await askYesNo("先從正式 Google Sheets 匯出最新工作快取？", true)) {
     runPnpm("sheets:export");
   }
 
-  let albumId = "";
-  if (await askYesNo("要以相簿為單位準備 AI 初標工作包？", true)) {
+  let albumId = context.albumId ?? "";
+  if (albumId) {
+    console.log("");
+    console.log(`沿用剛才的相簿：${albumId}`);
+  } else if (await askYesNo("要以相簿為單位準備 AI 初標工作包？", true)) {
     const query = await ask("搜尋相簿關鍵字，可留空");
     const albumLimit = await ask("顯示幾筆候選相簿", "20");
     const selectOptions = ["--format", "id", "--limit", albumLimit];
