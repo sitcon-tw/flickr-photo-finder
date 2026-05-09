@@ -172,9 +172,13 @@ function saveReviewPhoto(rowNumber, values) {
     return currentRow[index];
   });
 
-  sheet.getRange(normalizedRowNumber, 1, 1, nextRow.length).setValues([nextRow]);
   const errors = validateRow_(nextRow, normalizedRowNumber);
   writeValidationReport_(`第 ${normalizedRowNumber} 列`, errors);
+  if (errors.length > 0) {
+    return buildReviewPanelStateFromRow_(nextRow, normalizedRowNumber, errors);
+  }
+
+  sheet.getRange(normalizedRowNumber, 1, 1, nextRow.length).setValues([nextRow]);
   return buildReviewPanelState_(sheet, normalizedRowNumber, errors);
 }
 
@@ -196,6 +200,10 @@ function getActivePhotoRowNumber_(sheet) {
 function buildReviewPanelState_(sheet, rowNumber, providedErrors) {
   const config = getConfig_();
   const row = sheet.getRange(rowNumber, 1, 1, config.headers.length).getValues()[0];
+  return buildReviewPanelStateFromRow_(row, rowNumber, providedErrors);
+}
+
+function buildReviewPanelStateFromRow_(row, rowNumber, providedErrors) {
   const record = rowToRecord_(row);
   const errors = providedErrors || validateRow_(row, rowNumber);
   return {
