@@ -24,17 +24,10 @@ const PHOTO_FINDER_VALIDATION_REPORT_HEADERS = [
   "field",
   "message",
 ];
-const PHOTO_FINDER_OAUTH_SCOPES = [
-  "https://www.googleapis.com/auth/script.scriptapp",
-  "https://www.googleapis.com/auth/script.container.ui",
-  "https://www.googleapis.com/auth/spreadsheets.currentonly",
-];
 
 function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu(PHOTO_FINDER_MENU_NAME)
-    .addItem("Authorize / check access", "authorizeAndCheckAccess")
-    .addSeparator()
     .addItem("Refresh schema and taxonomy", "refreshSchemaAndTaxonomy")
     .addItem("Open review panel", "openPhotoReviewPanel")
     .addSeparator()
@@ -46,31 +39,7 @@ function onOpen() {
     .addToUi();
 }
 
-function authorizeAndCheckAccess() {
-  const authorizationUrl = getAuthorizationUrl_();
-  if (authorizationUrl) {
-    showAuthorizationRequired_(authorizationUrl);
-    return;
-  }
-
-  const sheet = checkAppsScriptAccess_();
-  SpreadsheetApp.getUi().alert(
-    [
-      "Apps Script access check passed.",
-      `photos rows: ${Math.max(sheet.getLastRow() - 1, 0)}`,
-      "",
-      "若剛完成授權，請重新開啟 Open review panel。",
-    ].join("\n"),
-  );
-}
-
 function openPhotoReviewPanel() {
-  const authorizationUrl = getAuthorizationUrl_();
-  if (authorizationUrl) {
-    showAuthorizationRequired_(authorizationUrl);
-    return;
-  }
-
   checkAppsScriptAccess_();
   const template = HtmlService.createTemplateFromFile("ReviewPanel");
   template.bootstrapState = JSON.stringify(getReviewPanelState()).replace(/</g, "\\u003c");
@@ -84,27 +53,6 @@ function checkAppsScriptAccess_() {
   assertPhotosHeader_(sheet);
   sheet.getRange(1, 1).getValue();
   return sheet;
-}
-
-function getAuthorizationUrl_() {
-  const authorizationInfo = ScriptApp.getAuthorizationInfo(ScriptApp.AuthMode.FULL, PHOTO_FINDER_OAUTH_SCOPES);
-  if (authorizationInfo.getAuthorizationStatus() === ScriptApp.AuthorizationStatus.REQUIRED) {
-    return authorizationInfo.getAuthorizationUrl();
-  }
-  return "";
-}
-
-function showAuthorizationRequired_(authorizationUrl) {
-  const html = HtmlService.createHtmlOutput(
-    [
-      "<p>需要先授權 SITCON Photo Finder 才能讀寫目前試算表並顯示校對 sidebar。</p>",
-      `<p><a href="${escapeHtml_(authorizationUrl)}" target="_blank">開啟 Google 授權頁面</a></p>`,
-      "<p>授權完成後，請回到 Sheet 重新執行 Authorize / check access 或 Open review panel。</p>",
-    ].join(""),
-  )
-    .setWidth(420)
-    .setHeight(180);
-  SpreadsheetApp.getUi().showModalDialog(html, "Authorize SITCON Photo Finder");
 }
 
 function refreshSchemaAndTaxonomy() {
@@ -189,24 +137,6 @@ function getReviewPanelState() {
   assertPhotosHeader_(sheet);
   const rowNumber = getActivePhotoRowNumber_(sheet);
   return buildReviewPanelState_(sheet, rowNumber);
-}
-
-function sidebarPing() {
-  return {
-    checkedAt: new Date().toISOString(),
-    ok: true,
-  };
-}
-
-function sidebarSpreadsheetCheck() {
-  const sheet = checkAppsScriptAccess_();
-  const activeRange = sheet.getActiveRange();
-  return {
-    activeRow: activeRange ? activeRange.getRow() : "",
-    checkedAt: new Date().toISOString(),
-    ok: true,
-    photosRows: Math.max(sheet.getLastRow() - 1, 0),
-  };
 }
 
 function getReviewPhotoByRow(rowNumber) {
