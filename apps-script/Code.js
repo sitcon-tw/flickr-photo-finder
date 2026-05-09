@@ -78,7 +78,7 @@ function validateCurrentRow() {
   }
 
   const rowNumber = activeRange.getRow();
-  const row = sheet.getRange(rowNumber, 1, 1, getConfig_().headers.length).getValues()[0];
+  const row = readPhotoRow_(sheet, rowNumber);
   const errors = validateRow_(row, rowNumber);
   showValidationResult_(errors, `第 ${rowNumber} 列`);
 }
@@ -164,7 +164,7 @@ function saveReviewPhoto(rowNumber, values) {
   }
 
   const config = getConfig_();
-  const currentRow = sheet.getRange(normalizedRowNumber, 1, 1, config.headers.length).getValues()[0];
+  const currentRow = readPhotoRow_(sheet, normalizedRowNumber);
   const nextRow = config.headers.map((header, index) => {
     if (Object.prototype.hasOwnProperty.call(values, header)) {
       return normalizeText_(values[header]);
@@ -178,7 +178,7 @@ function saveReviewPhoto(rowNumber, values) {
     return buildReviewPanelStateFromRow_(nextRow, normalizedRowNumber, errors);
   }
 
-  sheet.getRange(normalizedRowNumber, 1, 1, nextRow.length).setValues([nextRow]);
+  writePhotoRow_(sheet, normalizedRowNumber, nextRow);
   return buildReviewPanelState_(sheet, normalizedRowNumber, errors);
 }
 
@@ -198,8 +198,7 @@ function getActivePhotoRowNumber_(sheet) {
 }
 
 function buildReviewPanelState_(sheet, rowNumber, providedErrors) {
-  const config = getConfig_();
-  const row = sheet.getRange(rowNumber, 1, 1, config.headers.length).getValues()[0];
+  const row = readPhotoRow_(sheet, rowNumber);
   return buildReviewPanelStateFromRow_(row, rowNumber, providedErrors);
 }
 
@@ -235,6 +234,16 @@ function getReviewPanelFields_() {
     taxonomyKey: field.taxonomyKey || "",
     type: field.type || "string",
   }));
+}
+
+function readPhotoRow_(sheet, rowNumber) {
+  return sheet.getRange(rowNumber, 1, 1, getConfig_().headers.length).getDisplayValues()[0];
+}
+
+function writePhotoRow_(sheet, rowNumber, row) {
+  const range = sheet.getRange(rowNumber, 1, 1, row.length);
+  range.setNumberFormat("@");
+  range.setValues([row]);
 }
 
 function getPhotosSheet_() {
@@ -372,7 +381,7 @@ function validateAllRows_(sheet) {
     return [];
   }
 
-  const rows = sheet.getRange(2, 1, lastRow - 1, getConfig_().headers.length).getValues();
+  const rows = sheet.getRange(2, 1, lastRow - 1, getConfig_().headers.length).getDisplayValues();
   const errors = [];
   rows.forEach((row, index) => {
     errors.push(...validateRow_(row, index + 2));
