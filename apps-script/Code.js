@@ -75,8 +75,14 @@ function showSchemaStatus() {
   const spreadsheet = SpreadsheetApp.getActive();
   const metaSheet = spreadsheet.getSheetByName(config.schemaMetaSheetName);
   const meta = metaSheet ? readSchemaMeta_(metaSheet) : null;
+  const missingMetaFields = meta ? missingSchemaMetaFields_(meta) : [];
   const metaLines = meta
-    ? [
+    ? missingMetaFields.length > 0
+      ? [
+          `${config.schemaMetaSheetName} 工作表存在，但缺少同步資訊：${missingMetaFields.join(", ")}`,
+          "請執行 Refresh schema and taxonomy 重新寫入 schema_meta。",
+        ]
+      : [
         `schema_meta schema_version: ${meta.schema_version || "(空白)"}`,
         `schema_meta taxonomy_version: ${meta.taxonomy_version || "(空白)"}`,
         `schema_meta sponsorship_items_version: ${meta.sponsorship_items_version || "(空白)"}`,
@@ -180,6 +186,13 @@ function updateSchemaMeta_() {
   sheet.getRange(1, 1, 1, PHOTO_FINDER_SCHEMA_META_HEADERS.length).setValues([PHOTO_FINDER_SCHEMA_META_HEADERS]);
   sheet.getRange(2, 1, 1, values.length).setValues([values]);
   sheet.setFrozenRows(1);
+  SpreadsheetApp.flush();
+
+  const meta = readSchemaMeta_(sheet);
+  const missingFields = missingSchemaMetaFields_(meta);
+  if (missingFields.length > 0) {
+    throw new Error(`${config.schemaMetaSheetName} 寫入後仍缺少同步資訊：${missingFields.join(", ")}`);
+  }
 }
 
 function readSchemaMeta_(sheet) {
@@ -194,6 +207,12 @@ function readSchemaMeta_(sheet) {
     }
   });
   return meta;
+}
+
+function missingSchemaMetaFields_(meta) {
+  return PHOTO_FINDER_SCHEMA_META_HEADERS
+    .filter((header) => header !== "notes")
+    .filter((header) => isBlank_(meta[header]));
 }
 
 function validatePublicReadFields_() {
