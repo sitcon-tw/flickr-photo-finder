@@ -86,6 +86,7 @@ function commandCreate() {
   }
   runClasp([
     "create",
+    "--title",
     appsScriptProjectTitle,
     "--type",
     "sheets",
