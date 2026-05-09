@@ -22,6 +22,8 @@
     "apps-script:login": "node scripts/apps-script-clasp.mjs login",
     "apps-script:open": "node scripts/apps-script-clasp.mjs open",
     "apps-script:push": "node scripts/apps-script-clasp.mjs push",
+    "apps-script:deploy-webapp": "node scripts/apps-script-clasp.mjs deploy-webapp",
+    "apps-script:deployments": "node scripts/apps-script-clasp.mjs deployments",
     "apps-script:status": "node scripts/apps-script-clasp.mjs status",
     "ai:diff": "node scripts/render-ai-diff.mjs",
     "ai:plan": "node scripts/plan-ai-updates.mjs",
