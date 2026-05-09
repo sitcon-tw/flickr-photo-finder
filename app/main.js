@@ -454,6 +454,16 @@ function finderLink(photo) {
   return url.toString();
 }
 
+async function copyUrlToClipboard(url, button) {
+  if (!url || !canWriteClipboard()) {
+    return false;
+  }
+
+  await navigator.clipboard.writeText(url);
+  setTemporaryButtonText(button, "已複製");
+  return true;
+}
+
 function buildSizedImageUrl(previewUrl, suffix) {
   if (!previewUrl) {
     return "";
@@ -512,13 +522,24 @@ function trackImageSizeOpen(photo, imageSize, resultRank, resultCount) {
 }
 
 async function copyFinderLink(photo, resultRank, resultCount, button) {
-  if (!canWriteClipboard()) {
+  const copied = await copyUrlToClipboard(finderLink(photo), button);
+  if (!copied) {
     return;
   }
 
-  await navigator.clipboard.writeText(finderLink(photo));
-  setTemporaryButtonText(button, "已複製");
   trackEvent("copy_finder_link", {
+    photo_id: photo.photo_id,
+    ...photoEventParams(photo, resultRank, resultCount),
+  });
+}
+
+async function copyFlickrLink(photo, resultRank, resultCount, button) {
+  const copied = await copyUrlToClipboard(photo.photo_url, button);
+  if (!copied) {
+    return;
+  }
+
+  trackEvent("copy_flickr_link", {
     photo_id: photo.photo_id,
     ...photoEventParams(photo, resultRank, resultCount),
   });
@@ -699,9 +720,9 @@ function renderPhoto(photo, resultRank, resultCount) {
   const year = fragment.querySelector(".photo-year");
   const details = fragment.querySelector(".details");
   const notes = fragment.querySelector(".notes");
-  const flickrSourceLink = fragment.querySelector(".flickr-source-link");
   const largeImageLink = fragment.querySelector(".large-image-link");
   const originalImageLink = fragment.querySelector(".original-image-link");
+  const copyFlickrLinkButton = fragment.querySelector(".copy-flickr-link-button");
   const copyFinderLinkButton = fragment.querySelector(".copy-finder-link-button");
   const largeUrl = largeImageUrl(photo);
   const originalUrl = originalSizePageUrl(photo);
@@ -714,16 +735,6 @@ function renderPhoto(photo, resultRank, resultCount) {
       content_id: photo.photo_id,
       ...photoEventParams(photo, resultRank, resultCount),
     });
-    trackEvent("open_flickr_source", {
-      photo_id: photo.photo_id,
-      ...photoEventParams(photo, resultRank, resultCount),
-    });
-  });
-  setActionLink(flickrSourceLink, photo.photo_url);
-  flickrSourceLink.addEventListener("click", () => {
-    if (!photo.photo_url) {
-      return;
-    }
     trackEvent("open_flickr_source", {
       photo_id: photo.photo_id,
       ...photoEventParams(photo, resultRank, resultCount),
@@ -772,6 +783,15 @@ function renderPhoto(photo, resultRank, resultCount) {
   if (!notes.textContent) {
     notes.remove();
   }
+
+  copyFlickrLinkButton.disabled = !photo.photo_url || !canWriteClipboard();
+  copyFlickrLinkButton.addEventListener("click", async () => {
+    try {
+      await copyFlickrLink(photo, resultRank, resultCount, copyFlickrLinkButton);
+    } catch {
+      setTemporaryButtonText(copyFlickrLinkButton, "複製失敗");
+    }
+  });
 
   copyFinderLinkButton.disabled = !canWriteClipboard();
   copyFinderLinkButton.addEventListener("click", async () => {
