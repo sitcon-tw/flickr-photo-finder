@@ -43,7 +43,7 @@
 - `pnpm albums:select`，從正式 Sheets 匯出的 `albums.csv` 或 `--source sheets` 直接讀取正式 `albums` 工作表互動式選擇單本相簿，並輸出 album id、JSON 或可直接執行的 intake 指令。
 - `pnpm pages:build` / `pnpm pages:check`，產生並檢查 GitHub Pages artifact 到 `tmp/pages/`，部署版資料來源會讀公開 Google Sheets `photos` CSV。
 - `pnpm apps-script:build-config`，從 repo schema、taxonomy 與 sponsorship items snapshot metadata 產生 Apps Script 使用的 `apps-script/GeneratedConfig.js`。
-- `pnpm apps-script:bind`、`pnpm apps-script:create`、`pnpm apps-script:status`、`pnpm apps-script:push`，包裝常用 clasp 綁定與推送流程，重複參數由 `config/project.json` 提供。
+- `pnpm apps-script:bind`、`pnpm apps-script:status`、`pnpm apps-script:push`，包裝常用 clasp 綁定與推送流程。正式綁定應使用從目標 Sheet `擴充功能` -> `Apps Script` 開啟的專案 Script ID。
 - `pnpm albums:discover`，盤點 SITCON Flickr 公開相簿清單並輸出 CSV 預覽。
 - `pnpm albums:discover -- --write`，更新本機 `fixtures/albums.csv` fixture，供 demo、除錯或 fixture validation 使用。
 - `pnpm albums:sync -- --sheets-export <csv> --output <csv>`，合併 Sheets 匯出與盤點結果，產生可回寫 Google Sheets `albums` 的 CSV。

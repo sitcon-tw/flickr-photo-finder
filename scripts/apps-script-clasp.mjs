@@ -1,11 +1,6 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { resolve } from "node:path";
-import { tmpdir } from "node:os";
-import {
-  appsScriptProjectTitle,
-  googleSheetsSpreadsheetId,
-} from "./project-config.mjs";
 
 const repoRoot = resolve(new URL("..", import.meta.url).pathname);
 const appsScriptDir = resolve(repoRoot, "apps-script");
@@ -17,15 +12,12 @@ function printUsage() {
 
 Commands:
   apps-script:login   Sign in to clasp with the current Google account.
-  apps-script:bind    Create apps-script/.clasp.json for an existing script ID.
-  apps-script:create  Create a Sheet-bound Apps Script project for this repo.
+  apps-script:bind    Create apps-script/.clasp.json for the Sheet-bound script ID.
   apps-script:status  Show local/remote clasp file status.
   apps-script:push    Rebuild generated config, validate data, then clasp push.
   apps-script:open    Open the bound Apps Script project.
 
 Configured defaults:
-  project title: ${appsScriptProjectTitle}
-  spreadsheetId: ${googleSheetsSpreadsheetId || "(missing)"}
   rootDir: apps-script
 
 Prerequisite:
@@ -59,20 +51,14 @@ function printAppsScriptApiPrerequisite() {
 
 function requireScriptId(value) {
   if (typeof value !== "string" || value.trim() === "") {
-    throw new Error("Usage: pnpm apps-script:bind -- <script-id>");
+    throw new Error("Usage: pnpm apps-script:bind -- <script-id>. Open the Sheet, then Extensions > Apps Script > Project Settings to copy the Sheet-bound Script ID.");
   }
   return value.trim();
 }
 
-function requireSpreadsheetId() {
-  if (!googleSheetsSpreadsheetId) {
-    throw new Error("config/project.json requires googleSheets.spreadsheetId before creating a Sheet-bound Apps Script project.");
-  }
-}
-
 function requireLocalClaspConfig() {
   if (!existsSync(localClaspConfigPath)) {
-    throw new Error("apps-script/.clasp.json is missing. Run pnpm apps-script:create or create it from apps-script/.clasp.json.example.");
+    throw new Error("apps-script/.clasp.json is missing. Open the Sheet, then Extensions > Apps Script > Project Settings, copy the Script ID, and run pnpm apps-script:bind -- <script-id>.");
   }
 }
 
@@ -95,29 +81,6 @@ function writeLocalClaspConfig(scriptId) {
   const content = `${JSON.stringify({ scriptId, rootDir: "." }, null, 2)}\n`;
   writeFileSync(localClaspConfigPath, content);
   console.log("Created apps-script/.clasp.json. This local binding file is ignored by git.");
-}
-
-function commandCreate() {
-  requireSpreadsheetId();
-  if (existsSync(localClaspConfigPath)) {
-    throw new Error("apps-script/.clasp.json already exists. Refusing to create a second bound Apps Script project.");
-  }
-  printAppsScriptApiPrerequisite();
-  const tempRoot = mkdtempSync(resolve(tmpdir(), "photo-finder-clasp-"));
-  runClasp([
-    "create",
-    "--title",
-    appsScriptProjectTitle,
-    "--type",
-    "sheets",
-    "--parentId",
-    googleSheetsSpreadsheetId,
-    "--rootDir",
-    ".",
-  ], { cwd: tempRoot });
-  const createdConfig = JSON.parse(readFileSync(resolve(tempRoot, ".clasp.json"), "utf8"));
-  rmSync(tempRoot, { recursive: true, force: true });
-  writeLocalClaspConfig(createdConfig.scriptId);
 }
 
 function commandStatus() {
@@ -149,8 +112,6 @@ try {
     commandLogin();
   } else if (command === "bind") {
     commandBind(firstCommandArgument());
-  } else if (command === "create") {
-    commandCreate();
   } else if (command === "status") {
     commandStatus();
   } else if (command === "push") {

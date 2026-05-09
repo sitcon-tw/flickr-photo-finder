@@ -108,28 +108,23 @@ pnpm apps-script:build-config
 
 此 repo 不把 `@google/clasp` 加進 dependency；標準交接入口是 `pnpm apps-script:*` scripts，內部使用 `pnpm dlx @google/clasp`，避免一般資料工具使用者被迫安裝部署工具，也減少維護者手動輸入重複參數。
 
-可重複使用的參數放在 `config/project.json`：
-
-- `appsScript.projectTitle`: 建立 Apps Script 專案時使用的名稱。
-- `googleSheets.spreadsheetId`: 建立 Sheet-bound Apps Script 專案時使用的目標 spreadsheet ID。
-- `apps-script/`: 固定作為 clasp rootDir。
+`apps-script/` 固定作為 clasp rootDir。正式綁定不由 wrapper 自動建立 Apps Script 專案；維護者應先從目標 Sheet 的 `擴充功能` -> `Apps Script` 打開或建立該 Sheet 的 bound script，再把那份專案的 Script ID 交給 repo wrapper。
 
 常用入口：
 
 ```bash
 pnpm apps-script:login
 pnpm apps-script:bind -- <script-id>
-pnpm apps-script:create
 pnpm apps-script:status
 pnpm apps-script:push
 pnpm apps-script:open
 ```
 
-`clasp` create/status/push/open 需要目前登入的 Google 帳號已啟用 Apps Script API。若出現 `User has not enabled the Apps Script API`，先到 <https://script.google.com/home/usersettings> 啟用，等待幾分鐘後重試。
+`clasp` status/push/open 需要目前登入的 Google 帳號已啟用 Apps Script API。若出現 `User has not enabled the Apps Script API`，先到 <https://script.google.com/home/usersettings> 啟用，等待幾分鐘後重試。
 
 ### 綁定既有 Apps Script 專案
 
-若正式 Sheet 已經有對應的 Apps Script 專案，維護者應先取得該專案的 script ID，然後產生本機 `.clasp.json`：
+維護者應從正式 Sheet 的 `擴充功能` -> `Apps Script` 打開該 Sheet 綁定的 Apps Script 專案，再到 Apps Script 編輯器的 Project Settings 複製 Script ID，然後產生本機 `.clasp.json`：
 
 ```bash
 pnpm apps-script:bind -- <script-id>
@@ -137,15 +132,7 @@ pnpm apps-script:bind -- <script-id>
 
 綁定後可用 `pnpm apps-script:status` 檢查連線。若需要用 clasp clone 檢查既有專案，請只在暫存目錄操作，不要讓 clone 覆蓋 repo source；正式 source 以 repo 版本為準。
 
-### 建立 Sheet-bound Apps Script 專案
-
-若正式 Sheet 還沒有 Apps Script 專案，維護者可用 Sheet spreadsheet ID 建立 container-bound 專案：
-
-```bash
-pnpm apps-script:create
-```
-
-建立後檢查 `apps-script/.clasp.json` 是否只包含 script ID 與 rootDir。這是本機綁定檔，已被 `.gitignore` 排除，不應 commit。
+不要用 clasp create 作為正式綁定的主要路徑。若從 Sheet 功能列 `擴充功能` -> `Apps Script` 打開的是空白專案，仍應複製那份空白專案的 Script ID，使用 `pnpm apps-script:bind -- <script-id>` 後再 push repo source。這樣 Sheet UI 和 repo 推送目標才會是同一份 bound script。
 
 ### 推送與驗收
 
