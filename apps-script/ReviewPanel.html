@@ -1,0 +1,389 @@
+<!doctype html>
+<html>
+  <head>
+    <base target="_top" />
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: Arial, "Noto Sans TC", sans-serif;
+        font-size: 13px;
+        color: #1f2933;
+      }
+
+      body {
+        margin: 0;
+        background: #f7f8fa;
+      }
+
+      button,
+      input,
+      select,
+      textarea {
+        font: inherit;
+      }
+
+      .panel {
+        display: grid;
+        gap: 12px;
+        padding: 12px;
+      }
+
+      .toolbar,
+      .photo,
+      .form,
+      .status {
+        background: #fff;
+        border: 1px solid #d8dee8;
+        border-radius: 6px;
+        padding: 10px;
+      }
+
+      .toolbar {
+        display: grid;
+        gap: 8px;
+      }
+
+      .row-loader {
+        display: grid;
+        grid-template-columns: 1fr auto auto;
+        gap: 6px;
+      }
+
+      .row-loader input {
+        min-width: 0;
+      }
+
+      .photo {
+        display: grid;
+        gap: 8px;
+      }
+
+      .photo img {
+        width: 100%;
+        max-height: 220px;
+        object-fit: contain;
+        background: #eef1f5;
+        border-radius: 4px;
+      }
+
+      .photo-title {
+        font-weight: 700;
+        overflow-wrap: anywhere;
+      }
+
+      .photo-links {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      a {
+        color: #075985;
+      }
+
+      .form {
+        display: grid;
+        gap: 10px;
+      }
+
+      .field {
+        display: grid;
+        gap: 4px;
+      }
+
+      label {
+        font-weight: 700;
+      }
+
+      .meta {
+        color: #5b6778;
+        font-size: 12px;
+        line-height: 1.4;
+      }
+
+      input,
+      select,
+      textarea {
+        width: 100%;
+        box-sizing: border-box;
+        border: 1px solid #bdc7d5;
+        border-radius: 4px;
+        padding: 7px;
+        background: #fff;
+      }
+
+      textarea {
+        min-height: 62px;
+        resize: vertical;
+      }
+
+      input[readonly] {
+        background: #eef1f5;
+        color: #4b5563;
+      }
+
+      .actions {
+        position: sticky;
+        bottom: 0;
+        display: grid;
+        gap: 8px;
+        background: #f7f8fa;
+        padding-top: 4px;
+      }
+
+      button {
+        border: 1px solid #0f766e;
+        border-radius: 4px;
+        background: #0f766e;
+        color: #fff;
+        cursor: pointer;
+        padding: 8px 10px;
+      }
+
+      button.secondary {
+        border-color: #bdc7d5;
+        background: #fff;
+        color: #1f2933;
+      }
+
+      button:disabled {
+        cursor: progress;
+        opacity: 0.65;
+      }
+
+      .status {
+        display: none;
+        line-height: 1.5;
+      }
+
+      .status.visible {
+        display: block;
+      }
+
+      .status.error {
+        border-color: #fca5a5;
+        background: #fff5f5;
+        color: #991b1b;
+      }
+
+      .status.ok {
+        border-color: #86efac;
+        background: #f0fdf4;
+        color: #166534;
+      }
+
+      .error-list {
+        margin: 6px 0 0;
+        padding-left: 18px;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="panel">
+      <section class="toolbar">
+        <div class="row-loader">
+          <input id="rowNumberInput" type="number" min="2" placeholder="列號" />
+          <button id="loadButton" type="button" class="secondary">載入</button>
+          <button id="loadActiveButton" type="button" class="secondary">目前列</button>
+        </div>
+      </section>
+
+      <section id="status" class="status"></section>
+
+      <section id="photo" class="photo" hidden>
+        <img id="preview" alt="" />
+        <div>
+          <div id="photoTitle" class="photo-title"></div>
+          <div id="photoMeta" class="meta"></div>
+        </div>
+        <div class="photo-links">
+          <a id="photoUrl" href="#" target="_blank" rel="noreferrer">Flickr</a>
+          <a id="previewUrl" href="#" target="_blank" rel="noreferrer">縮圖</a>
+        </div>
+      </section>
+
+      <form id="form" class="form"></form>
+
+      <section class="actions">
+        <button id="saveButton" type="button">儲存並驗證</button>
+      </section>
+    </main>
+
+    <script>
+      const form = document.querySelector("#form");
+      const loadButton = document.querySelector("#loadButton");
+      const loadActiveButton = document.querySelector("#loadActiveButton");
+      const photo = document.querySelector("#photo");
+      const photoMeta = document.querySelector("#photoMeta");
+      const photoTitle = document.querySelector("#photoTitle");
+      const photoUrl = document.querySelector("#photoUrl");
+      const preview = document.querySelector("#preview");
+      const previewUrl = document.querySelector("#previewUrl");
+      const rowNumberInput = document.querySelector("#rowNumberInput");
+      const saveButton = document.querySelector("#saveButton");
+      const status = document.querySelector("#status");
+
+      let currentState = null;
+
+      function setBusy(isBusy) {
+        loadButton.disabled = isBusy;
+        loadActiveButton.disabled = isBusy;
+        saveButton.disabled = isBusy || !currentState;
+      }
+
+      function setStatus(message, type = "") {
+        status.textContent = "";
+        status.className = "status";
+        if (!message) {
+          return;
+        }
+        status.classList.add("visible");
+        if (type) {
+          status.classList.add(type);
+        }
+        if (Array.isArray(message)) {
+          const summary = document.createElement("div");
+          summary.textContent = `發現 ${message.length} 個問題`;
+          const list = document.createElement("ul");
+          list.className = "error-list";
+          message.forEach((error) => {
+            const item = document.createElement("li");
+            item.textContent = formatError(error);
+            list.append(item);
+          });
+          status.append(summary, list);
+          return;
+        }
+        status.textContent = message;
+      }
+
+      function formatError(error) {
+        if (error.rowNumber) {
+          return `第 ${error.rowNumber} 列 ${error.fieldName}: ${error.message}`;
+        }
+        if (error.fieldName) {
+          return `${error.fieldName}: ${error.message}`;
+        }
+        return error.message || String(error);
+      }
+
+      function optionElement(value, label = value) {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = label;
+        return option;
+      }
+
+      function fieldControl(field, value) {
+        if (field.options.length > 0 && !field.multiValue) {
+          const select = document.createElement("select");
+          select.name = field.name;
+          select.append(optionElement("", "未填寫"));
+          field.options.forEach((option) => select.append(optionElement(option)));
+          select.value = value;
+          return select;
+        }
+
+        if (field.multiValue || field.type === "text") {
+          const textarea = document.createElement("textarea");
+          textarea.name = field.name;
+          textarea.value = value;
+          textarea.readOnly = field.readOnly;
+          return textarea;
+        }
+
+        const input = document.createElement("input");
+        input.name = field.name;
+        input.value = value;
+        input.readOnly = field.readOnly;
+        input.type = field.type === "integer" || field.type === "year" ? "text" : "text";
+        return input;
+      }
+
+      function render(state) {
+        currentState = state;
+        rowNumberInput.value = state.rowNumber;
+        form.textContent = "";
+
+        photo.hidden = false;
+        preview.src = state.record.image_preview_url || "";
+        preview.hidden = !state.record.image_preview_url;
+        photoTitle.textContent = state.record.photo_id || "(沒有 photo_id)";
+        photoMeta.textContent = [state.record.album_title, state.record.event_year].filter(Boolean).join(" / ");
+        photoUrl.href = state.record.photo_url || "#";
+        previewUrl.href = state.record.image_preview_url || "#";
+
+        state.fields.forEach((field) => {
+          const wrapper = document.createElement("div");
+          wrapper.className = "field";
+          const label = document.createElement("label");
+          label.htmlFor = `field-${field.name}`;
+          label.textContent = field.required ? `${field.labelZh} *` : field.labelZh;
+          const control = fieldControl(field, state.record[field.name] || "");
+          control.id = `field-${field.name}`;
+          const meta = document.createElement("div");
+          meta.className = "meta";
+          const parts = [field.name, field.descriptionZh];
+          if (field.multiValue) {
+            parts.push("多值用 ; 分隔");
+          }
+          meta.textContent = parts.filter(Boolean).join(" - ");
+          wrapper.append(label, control, meta);
+          form.append(wrapper);
+        });
+
+        if (state.errors.length > 0) {
+          setStatus(state.errors, "error");
+        } else {
+          setStatus("目前列檢查通過。", "ok");
+        }
+        setBusy(false);
+      }
+
+      function handleFailure(error) {
+        setBusy(false);
+        setStatus(error.message || String(error), "error");
+      }
+
+      function loadActiveRow() {
+        setBusy(true);
+        setStatus("載入目前列...");
+        google.script.run.withSuccessHandler(render).withFailureHandler(handleFailure).getReviewPanelState();
+      }
+
+      function loadRow() {
+        setBusy(true);
+        setStatus("載入指定列...");
+        google.script.run
+          .withSuccessHandler(render)
+          .withFailureHandler(handleFailure)
+          .getReviewPhotoByRow(rowNumberInput.value);
+      }
+
+      function saveRow() {
+        if (!currentState) {
+          return;
+        }
+        const values = {};
+        currentState.fields.forEach((field) => {
+          const control = form.elements[field.name];
+          if (control && !field.readOnly) {
+            values[field.name] = control.value;
+          }
+        });
+        setBusy(true);
+        setStatus("儲存中...");
+        google.script.run
+          .withSuccessHandler(render)
+          .withFailureHandler(handleFailure)
+          .saveReviewPhoto(currentState.rowNumber, values);
+      }
+
+      loadButton.addEventListener("click", loadRow);
+      loadActiveButton.addEventListener("click", loadActiveRow);
+      saveButton.addEventListener("click", saveRow);
+      setBusy(true);
+      loadActiveRow();
+    </script>
+  </body>
+</html>

@@ -29,6 +29,7 @@ function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu(PHOTO_FINDER_MENU_NAME)
     .addItem("Refresh schema and taxonomy", "refreshSchemaAndTaxonomy")
+    .addItem("Open review panel", "openPhotoReviewPanel")
     .addSeparator()
     .addItem("Validate current row", "validateCurrentRow")
     .addItem("Validate photos sheet", "validatePhotosSheet")
@@ -36,6 +37,12 @@ function onOpen() {
     .addSeparator()
     .addItem("Show schema status", "showSchemaStatus")
     .addToUi();
+}
+
+function openPhotoReviewPanel() {
+  const html = HtmlService.createHtmlOutputFromFile("ReviewPanel")
+    .setTitle("SITCON Photo Review");
+  SpreadsheetApp.getUi().showSidebar(html);
 }
 
 function refreshSchemaAndTaxonomy() {
@@ -115,11 +122,101 @@ function showSchemaStatus() {
   );
 }
 
+function getReviewPanelState() {
+  const sheet = getPhotosSheet_();
+  assertPhotosHeader_(sheet);
+  const rowNumber = getActivePhotoRowNumber_(sheet);
+  return buildReviewPanelState_(sheet, rowNumber);
+}
+
+function getReviewPhotoByRow(rowNumber) {
+  const sheet = getPhotosSheet_();
+  assertPhotosHeader_(sheet);
+  const normalizedRowNumber = Number(rowNumber);
+  if (!Number.isInteger(normalizedRowNumber) || normalizedRowNumber <= 1) {
+    throw new Error("請輸入 photos 的資料列列號。");
+  }
+  if (normalizedRowNumber > sheet.getLastRow()) {
+    throw new Error(`第 ${normalizedRowNumber} 列超出 photos 目前資料範圍。`);
+  }
+  return buildReviewPanelState_(sheet, normalizedRowNumber);
+}
+
+function saveReviewPhoto(rowNumber, values) {
+  const sheet = getPhotosSheet_();
+  assertPhotosHeader_(sheet);
+  const normalizedRowNumber = Number(rowNumber);
+  if (!Number.isInteger(normalizedRowNumber) || normalizedRowNumber <= 1) {
+    throw new Error("請先載入 photos 的資料列。");
+  }
+  if (!values || typeof values !== "object") {
+    throw new Error("沒有收到可儲存的欄位資料。");
+  }
+
+  const config = getConfig_();
+  const currentRow = sheet.getRange(normalizedRowNumber, 1, 1, config.headers.length).getValues()[0];
+  const nextRow = config.headers.map((header, index) => {
+    if (Object.prototype.hasOwnProperty.call(values, header)) {
+      return normalizeText_(values[header]);
+    }
+    return currentRow[index];
+  });
+
+  sheet.getRange(normalizedRowNumber, 1, 1, nextRow.length).setValues([nextRow]);
+  const errors = validateRow_(nextRow, normalizedRowNumber);
+  writeValidationReport_(`第 ${normalizedRowNumber} 列`, errors);
+  return buildReviewPanelState_(sheet, normalizedRowNumber, errors);
+}
+
 function getConfig_() {
   if (typeof SITCON_PHOTO_FINDER_CONFIG === "undefined") {
     throw new Error("找不到 SITCON_PHOTO_FINDER_CONFIG，請先執行 pnpm apps-script:build-config 並重新 clasp push。");
   }
   return SITCON_PHOTO_FINDER_CONFIG;
+}
+
+function getActivePhotoRowNumber_(sheet) {
+  const activeRange = sheet.getActiveRange();
+  if (!activeRange || activeRange.getRow() <= 1) {
+    throw new Error("請先在 photos 選取一列資料，不要選 header。");
+  }
+  return activeRange.getRow();
+}
+
+function buildReviewPanelState_(sheet, rowNumber, providedErrors) {
+  const config = getConfig_();
+  const row = sheet.getRange(rowNumber, 1, 1, config.headers.length).getValues()[0];
+  const record = rowToRecord_(row);
+  const errors = providedErrors || validateRow_(row, rowNumber);
+  return {
+    errors,
+    fields: getReviewPanelFields_(),
+    record,
+    rowNumber,
+  };
+}
+
+function rowToRecord_(row) {
+  const record = {};
+  getConfig_().headers.forEach((header, index) => {
+    record[header] = normalizeText_(row[index]);
+  });
+  return record;
+}
+
+function getReviewPanelFields_() {
+  const config = getConfig_();
+  return config.fields.map((field) => ({
+    descriptionZh: field.descriptionZh || "",
+    labelZh: field.labelZh || field.name,
+    multiValue: Boolean(field.multiValue),
+    name: field.name,
+    options: field.taxonomyKey ? config.taxonomy[field.taxonomyKey] || [] : field.type === "boolean" ? ["true", "false"] : [],
+    readOnly: ["photo_id", "photo_url", "image_preview_url"].includes(field.name),
+    required: Boolean(field.required),
+    taxonomyKey: field.taxonomyKey || "",
+    type: field.type || "string",
+  }));
 }
 
 function getPhotosSheet_() {
