@@ -204,6 +204,18 @@ pnpm apps-script:push
 
 `clasp` 是部署工具，不是資料治理來源。Apps Script 的驗證規則仍應來自 repo 中的 schema 與 taxonomy。
 
+### Review panel manual QA checklist
+
+在正式 Sheet 或測試 Sheet 驗收 sidebar 時，建議至少跑以下案例：
+
+1. 以有權限的 Google 帳號作為第一個登入帳號開啟 Sheet，避免多帳號 session 讓 sidebar iframe 使用未授權帳號。
+2. 在 `photos` 選一列資料，執行 `Open review panel`，確認縮圖、Flickr 連結、列號與欄位表單正確。
+3. 使用 `目前列` 重新讀取選取列，成功後頂部暫時狀態應消失。
+4. 輸入不存在或超出範圍的列號後按 `載入`，錯誤應顯示在上方列控制區附近。
+5. 在 `recommended_uses` 輸入 `講者宣傳;社群貼文;社群貼文` 後按 `儲存並驗證`，錯誤應顯示在按鈕附近，且該值不應寫入 Sheet。
+6. 在 `safe_crop` 使用 `9:16`，重新載入與儲存後都應維持文字，不應顯示成 Date 字串。
+7. 儲存合法欄位變更，確認資料寫回同一列，且 `validation_report` 更新為最近一次結果。
+
 ## 與 repo validation 的關係
 
 Apps Script 是第一時間提醒；repo validation 是較完整、可版本控管的權威檢查。
