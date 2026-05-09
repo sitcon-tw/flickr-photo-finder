@@ -71,7 +71,9 @@ function openPhotoReviewPanel() {
   }
 
   checkAppsScriptAccess_();
-  const html = HtmlService.createHtmlOutputFromFile("ReviewPanel")
+  const template = HtmlService.createTemplateFromFile("ReviewPanel");
+  template.bootstrapState = JSON.stringify(getReviewPanelState()).replace(/</g, "\\u003c");
+  const html = template.evaluate()
     .setTitle("SITCON Photo Review");
   SpreadsheetApp.getUi().showSidebar(html);
 }
@@ -182,11 +184,6 @@ function showSchemaStatus() {
 }
 
 function getReviewPanelState() {
-  const authorizationUrl = getAuthorizationUrl_();
-  if (authorizationUrl) {
-    return { authorizationRequired: true, authorizationUrl };
-  }
-
   const sheet = getPhotosSheet_();
   assertPhotosHeader_(sheet);
   const rowNumber = getActivePhotoRowNumber_(sheet);
@@ -194,11 +191,6 @@ function getReviewPanelState() {
 }
 
 function getReviewPhotoByRow(rowNumber) {
-  const authorizationUrl = getAuthorizationUrl_();
-  if (authorizationUrl) {
-    return { authorizationRequired: true, authorizationUrl };
-  }
-
   const sheet = getPhotosSheet_();
   assertPhotosHeader_(sheet);
   const normalizedRowNumber = Number(rowNumber);
@@ -212,11 +204,6 @@ function getReviewPhotoByRow(rowNumber) {
 }
 
 function saveReviewPhoto(rowNumber, values) {
-  const authorizationUrl = getAuthorizationUrl_();
-  if (authorizationUrl) {
-    return { authorizationRequired: true, authorizationUrl };
-  }
-
   const sheet = getPhotosSheet_();
   assertPhotosHeader_(sheet);
   const normalizedRowNumber = Number(rowNumber);

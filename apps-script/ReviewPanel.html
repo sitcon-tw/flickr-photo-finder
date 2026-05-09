@@ -223,6 +223,7 @@
       const saveButton = document.querySelector("#saveButton");
       const status = document.querySelector("#status");
 
+      const bootstrapState = <?!= bootstrapState ?>;
       let currentState = null;
 
       function setBusy(isBusy) {
@@ -373,7 +374,7 @@
           setStatus(
             [
               "需要先授權 Apps Script 才能讀寫目前試算表。",
-              "請關閉 sidebar，從 SITCON Photo Finder 選單執行 Authorize / check access，完成授權後再重新開啟 Open review panel。",
+              "請關閉 sidebar，從 SITCON Photo Finder 選單執行 Authorize / check access；看到 access check passed 後，重新整理 Sheet，再重新開啟 Open review panel。",
               `原始錯誤：${message}`,
             ].join("\n\n"),
             "error",
@@ -420,8 +421,14 @@
       loadButton.addEventListener("click", loadRow);
       loadActiveButton.addEventListener("click", loadActiveRow);
       saveButton.addEventListener("click", saveRow);
-      setBusy(true);
-      loadActiveRow();
+      if (bootstrapState && !bootstrapState.authorizationRequired) {
+        render(bootstrapState);
+      } else if (bootstrapState && bootstrapState.authorizationRequired) {
+        renderAuthorizationRequired(bootstrapState.authorizationUrl);
+      } else {
+        setBusy(true);
+        loadActiveRow();
+      }
     </script>
   </body>
 </html>
