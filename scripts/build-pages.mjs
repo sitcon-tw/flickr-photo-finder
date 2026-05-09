@@ -75,6 +75,7 @@ async function writePagesConfig(outputDir, photosCsvUrl) {
 
 export const dataSources = {
   photosCsvUrl: ${JSON.stringify(photosCsvUrl)},
+  schemaJsonUrl: "./data/photo-schema.json",
   taxonomyJsonUrl: "./data/tag-taxonomy.json",
 };
 `;
@@ -96,6 +97,7 @@ async function main() {
   await copyIntoArtifact("app/main.js", options.outputDir, "main.js");
   await copyIntoArtifact("app/styles.css", options.outputDir, "styles.css");
   await copyIntoArtifact("config/project.json", options.outputDir);
+  await copyIntoArtifact("data/photo-schema.json", options.outputDir);
   await copyIntoArtifact("data/tag-taxonomy.json", options.outputDir);
   await writePagesConfig(options.outputDir, photosCsvUrl);
   await writeFile(join(options.outputDir, ".nojekyll"), "");

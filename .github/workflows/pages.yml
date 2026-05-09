@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -41,15 +42,24 @@ jobs:
       - name: Build Pages artifact
         run: pnpm pages:build -- --output-dir tmp/pages
 
+      - name: Check Pages artifact
+        run: pnpm pages:check -- --dir tmp/pages
+
       - name: Setup Pages
+        if: github.event_name != 'pull_request'
         uses: actions/configure-pages@v5
 
       - name: Upload artifact
+        if: github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v3
         with:
           path: tmp/pages
 
   deploy:
+    if: github.event_name != 'pull_request'
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

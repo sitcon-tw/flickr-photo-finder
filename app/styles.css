@@ -50,6 +50,12 @@ h1 {
   letter-spacing: 0;
 }
 
+h2,
+h3 {
+  margin: 0;
+  letter-spacing: 0;
+}
+
 .topbar p {
   margin: 4px 0 0;
   color: var(--muted);
@@ -127,6 +133,100 @@ button:hover,
 .source-link:hover {
   border-color: var(--accent);
   color: var(--accent-strong);
+}
+
+.overview {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.overview-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.overview-heading h2 {
+  font-size: 18px;
+  font-weight: 750;
+}
+
+.overview-heading p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  text-align: right;
+}
+
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.overview-item {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
+  min-height: 156px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.overview-item h3 {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.overview-item strong {
+  color: var(--text);
+  font-size: 22px;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.overview-item p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.overview-breakdown {
+  display: grid;
+  gap: 4px;
+  margin: 2px 0 0;
+}
+
+.overview-breakdown div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.overview-breakdown dt,
+.overview-breakdown dd {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.overview-breakdown dt {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.overview-breakdown dd {
+  flex: 0 0 auto;
+  color: var(--text);
+  font-weight: 700;
 }
 
 .photo-grid {
@@ -291,6 +391,10 @@ button:hover,
 }
 
 @media (max-width: 1180px) {
+  .overview-grid {
+    grid-template-columns: repeat(2, minmax(180px, 1fr));
+  }
+
   .toolbar {
     grid-template-columns: repeat(3, minmax(180px, 1fr));
   }
@@ -311,6 +415,19 @@ button:hover,
   }
 
   .toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .overview-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .overview-heading p {
+    text-align: left;
+  }
+
+  .overview-grid {
     grid-template-columns: 1fr;
   }
 

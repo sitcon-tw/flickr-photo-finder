@@ -11,7 +11,8 @@ Google Sheets 是正式照片索引資料庫，Apps Script 可以作為具有授
 - GitHub Pages 前端是公開、唯讀、無登入門檻的搜尋介面。
 - 資料來源仍是 Google Sheets，不是 repo 內 sample data。
 - GitHub Pages 前端不保存 secret，也不使用需要私人 credential 的 Google API。
-- 前端應讀取 Google Sheets `photos` 主表，或讀取由 `photos` 以同一套欄位匯出的公開 CSV/JSON。
+- MVP 階段 GitHub Pages 直接讀取 Google Sheets `photos` 工作表的公開 CSV 輸出。
+- 公開 CSV 只是 `photos` 主表的傳輸格式，不是另一張篩選表或 curated subset。
 - Apps Script 保留為授權維護介面與欄位驗證工具，不負責建立額外篩選表。
 
 ## 建議資料流
@@ -29,7 +30,7 @@ Apps Script
 
 GitHub Pages
   唯讀搜尋 UI
-  讀取 photos 或同欄位公開匯出
+  讀取 photos 公開 CSV
 
 Repo
   schema
@@ -56,6 +57,44 @@ Repo
 
 前端不應依賴 Sheets 的顏色、註解、排序或篩選檢視。所有可搜尋、可排序、可提醒的語意都應來自欄位值。
 
+## MVP 資料讀取方式
+
+MVP 採用 Google Sheets 公開 CSV URL：
+
+```text
+https://docs.google.com/spreadsheets/d/<spreadsheetId>/gviz/tq?tqx=out:csv&sheet=photos
+```
+
+`pnpm pages:build` 會依 `config/project.json` 的 `googleSheets.spreadsheetId` 產生部署版 `config.js`，並把 `photosCsvUrl` 指向上述公開 CSV URL。
+
+採用這個方式的理由：
+
+- GitHub Pages 可以直接用 browser `fetch()` 讀取，不需要 API key、OAuth 或 service account。
+- 前端 artifact 不需要保存 credential，符合公開唯讀介面的安全邊界。
+- Apps Script 仍可專注在授權後的 Sheets 維護輔助，不需要額外提供公開 API。
+- 資料治理仍回到 `photos` 主表、repo schema、taxonomy、validation 與 Apps Script 檢查，不會多出另一套公開資料規則。
+
+MVP 暫不採用以下方式：
+
+- Google Sheets API from browser：會引入 API key / OAuth / quota 等前端不需要承擔的問題。
+- Apps Script Web App API：會多一層公開 API 維護責任，也容易和 GitHub Pages 前端重複資料轉換邏輯。
+- GitHub Actions 以 service account 匯出靜態資料：可作為未來選項，但 MVP 先避免 GitHub Secrets 與部署時資料快照同步問題。
+
+## 上線前準備
+
+使用 GitHub Pages 讀取正式 Google Sheets 前，維護者需要確認：
+
+- `config/project.json` 已填入正式公開 Google Sheets 的 `googleSheets.spreadsheetId`。
+- 正式 Google Sheets 已允許知道連結的人唯讀存取，或以其他方式讓公開 CSV URL 可以匿名讀取。
+- `photos` 工作表名稱固定為 `photos`，header 順序符合 `data/photo-schema.json`。
+- `photos` 不含敏感內部資訊；`curation_notes` 也視為公開欄位。
+- Sheets 中所有可供篩選、排序、提醒的語意都寫在欄位值中，不依賴顏色、註解或篩選檢視。
+- GitHub repository Settings > Pages 的來源設定為 GitHub Actions。
+- `pnpm pages:build` 可以成功產生 `tmp/pages/`。
+- 產生出的公開 CSV URL 能以匿名 HTTP request 讀到 `photos` header。
+
+若其中任一項不成立，應先修正 Google Sheets 權限、header 或 repo 設定，不要在 GitHub Pages 前端加入 credential 或 fallback 寫入邏輯。
+
 ## 前端資料來源設定
 
 本機開發前端從 `app/config.js` 讀取資料來源：
@@ -63,6 +102,7 @@ Repo
 ```js
 export const dataSources = {
   photosCsvUrl: "../fixtures/photos.csv",
+  schemaJsonUrl: "../data/photo-schema.json",
   taxonomyJsonUrl: "../data/tag-taxonomy.json",
 };
 ```
@@ -70,6 +110,8 @@ export const dataSources = {
 本機開發預設讀 repo 內 sample/export data。部署到 GitHub Pages 時，請使用 `pnpm pages:build` 產生 artifact；它會把 `app/` 前端複製到 `tmp/pages/`，並產生部署用 `config.js`，讓 `photosCsvUrl` 指向 `config/project.json` 中 `googleSheets.spreadsheetId` 的 Google Sheets `photos` 公開 CSV 輸出。
 
 前端可以讀公開資料 URL，但不能使用任何需要保密的 token、API key 或 OAuth credential。
+
+公開前端除了照片卡片搜尋，也應提供資料庫概覽，協助維護者快速判斷目前索引整理成效。概覽應優先使用 `data/photo-schema.json` 與 `data/tag-taxonomy.json` 理解欄位與必要規則，例如整理狀態、公開使用狀態、人數標記、reviewed 必要欄位完整度與贊助欄位覆蓋率，不應在前端另外維護一份欄位規則。
 
 公開讀取規則記錄在 `docs/google-sheets-database-design.md`，外部 AI 讀取方式記錄在 `docs/ai-readable-dataset.md`。
 
@@ -81,6 +123,7 @@ GitHub Pages 應透過 GitHub Actions 發布乾淨的 Pages artifact，不應直
 
 - 公開檢索前端所需的 HTML、CSS、JavaScript。
 - 經過資料流程產生或指定的公開資料來源設定。
+- `data/photo-schema.json` 與 `data/tag-taxonomy.json`，讓前端用同一份欄位與受控字彙來源理解資料。
 - 必要的靜態資源。
 
 artifact 不應包含：
@@ -92,13 +135,14 @@ artifact 不應包含：
 
 前端檔案應使用相對路徑，避免專案頁部署在 `https://<org>.github.io/<repo>/` 時因絕對路徑失效。
 
-目前 repo 內的 `.github/workflows/pages.yml` 會在 `master` push 或手動觸發時執行：
+目前 repo 內的 `.github/workflows/pages.yml` 會在 pull request 執行 build/check，並在 `master` push 或手動觸發時部署：
 
 1. 安裝 pnpm dependencies。
 2. 執行 `pnpm validate:data`。
 3. 執行 `pnpm pages:build -- --output-dir tmp/pages`。
-4. 上傳 `tmp/pages` 作為 GitHub Pages artifact。
-5. 使用 GitHub Pages deploy action 發布。
+4. 執行 `pnpm pages:check -- --dir tmp/pages`，確認 artifact 真的包含前端與資料設定。
+5. 非 pull request 時，上傳 `tmp/pages` 作為 GitHub Pages artifact。
+6. 非 pull request 時，使用 GitHub Pages deploy action 發布。
 
 正式啟用前，repository Settings > Pages 的來源需要設定為 GitHub Actions。
 

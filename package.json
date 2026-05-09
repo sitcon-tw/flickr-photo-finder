@@ -25,6 +25,7 @@
     "intake:run": "node scripts/run-intake.mjs",
     "intake:validate": "node scripts/validate-intake-run.mjs",
     "pages:build": "node scripts/build-pages.mjs",
+    "pages:check": "node scripts/check-pages-artifact.mjs",
     "photos:import": "node scripts/import-album-photos.mjs",
     "photo:add": "node scripts/add-photo.mjs",
     "search:experimental": "node scripts/search-experimental.mjs",

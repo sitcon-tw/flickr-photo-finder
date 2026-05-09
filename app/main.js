@@ -1,15 +1,5 @@
 import { dataSources, projectConfigUrl } from "./config.js";
 
-const listFields = [
-  "scene_tags",
-  "mood_tags",
-  "recommended_uses",
-  "sponsorship_items",
-  "sponsorship_tags",
-  "safe_crop",
-  "collections",
-];
-
 const controls = {
   search: document.querySelector("#searchInput"),
   use: document.querySelector("#useFilter"),
@@ -36,11 +26,15 @@ const peopleCountFilters = [
 
 const grid = document.querySelector("#photoGrid");
 const summary = document.querySelector("#resultSummary");
+const overviewGrid = document.querySelector("#overviewGrid");
+const overviewSummary = document.querySelector("#overviewSummary");
 const template = document.querySelector("#photoCardTemplate");
 const appTitle = document.querySelector("#appTitle");
 const sourceLink = document.querySelector("#sourceLink");
 
 let photos = [];
+let photoSchema;
+let listFields = [];
 
 function applyProjectConfig(config) {
   const title = config.frontend?.appTitle ?? "Flickr Photo Finder";
@@ -109,15 +103,28 @@ function parseList(value) {
     .filter(Boolean);
 }
 
-function toObjects(rows) {
+function toObjects(rows, schema) {
   const [headers, ...dataRows] = rows;
+  const fieldSet = new Set(schema.tables.photos.fields.map((field) => field.name));
   return dataRows.map((row) => {
     const photo = Object.fromEntries(headers.map((header, index) => [header, row[index] ?? ""]));
     for (const field of listFields) {
       photo[field] = parseList(photo[field] ?? "");
     }
+    for (const field of fieldSet) {
+      if (!(field in photo)) {
+        photo[field] = "";
+      }
+    }
     return photo;
   });
+}
+
+function applySchema(schema) {
+  photoSchema = schema;
+  listFields = schema.tables.photos.fields
+    .filter((field) => field.multi_value)
+    .map((field) => field.name);
 }
 
 function uniqueSorted(values) {
@@ -258,6 +265,172 @@ function formatPeopleCount(photo) {
   return value === "" ? "" : `${value} 人`;
 }
 
+function isFilled(value) {
+  if (Array.isArray(value)) {
+    return value.length > 0;
+  }
+  return String(value ?? "").trim() !== "";
+}
+
+function countFilled(fieldName) {
+  return photos.filter((photo) => isFilled(photo[fieldName])).length;
+}
+
+function formatCountRatio(count, total = photos.length) {
+  if (total === 0) {
+    return "0 / 0";
+  }
+  const percent = Math.round((count / total) * 100);
+  return `${count} / ${total} (${percent}%)`;
+}
+
+function countByField(fieldName) {
+  const counts = new Map();
+  for (const photo of photos) {
+    const rawValue = photo[fieldName];
+    const values = Array.isArray(rawValue) ? rawValue : [rawValue];
+    const normalizedValues = values.map((value) => String(value ?? "").trim()).filter(Boolean);
+    if (normalizedValues.length === 0) {
+      counts.set("未填", (counts.get("未填") ?? 0) + 1);
+      continue;
+    }
+    for (const value of normalizedValues) {
+      counts.set(value, (counts.get(value) ?? 0) + 1);
+    }
+  }
+  return [...counts.entries()].sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0], "zh-Hant-TW"));
+}
+
+function peopleCountBuckets() {
+  const buckets = new Map([
+    ["未標記", 0],
+    ["無人", 0],
+    ["1 人", 0],
+    ["2-5 人", 0],
+    ["6-20 人", 0],
+    ["21 人以上", 0],
+  ]);
+
+  for (const photo of photos) {
+    const value = String(photo.people_count ?? "").trim();
+    if (!/^(0|[1-9]\d*)$/.test(value)) {
+      buckets.set("未標記", buckets.get("未標記") + 1);
+      continue;
+    }
+
+    const count = Number(value);
+    if (count === 0) {
+      buckets.set("無人", buckets.get("無人") + 1);
+    } else if (count === 1) {
+      buckets.set("1 人", buckets.get("1 人") + 1);
+    } else if (count <= 5) {
+      buckets.set("2-5 人", buckets.get("2-5 人") + 1);
+    } else if (count <= 20) {
+      buckets.set("6-20 人", buckets.get("6-20 人") + 1);
+    } else {
+      buckets.set("21 人以上", buckets.get("21 人以上") + 1);
+    }
+  }
+
+  return [...buckets.entries()];
+}
+
+function reviewedCompletenessCount() {
+  const requiredFields = photoSchema?.tables?.photos?.reviewed_required_fields ?? [];
+  return photos.filter((photo) => requiredFields.every((fieldName) => isFilled(photo[fieldName]))).length;
+}
+
+function missingPreviewCount() {
+  return photos.filter((photo) => !isFilled(photo.image_preview_url)).length;
+}
+
+function makeOverviewItem({ title, value, detail, values = [] }) {
+  const item = document.createElement("article");
+  item.className = "overview-item";
+
+  const heading = document.createElement("h3");
+  heading.textContent = title;
+  const valueElement = document.createElement("strong");
+  valueElement.textContent = value;
+  const detailElement = document.createElement("p");
+  detailElement.textContent = detail;
+
+  item.append(heading, valueElement, detailElement);
+
+  if (values.length > 0) {
+    const list = document.createElement("dl");
+    list.className = "overview-breakdown";
+    for (const [label, count] of values) {
+      const row = document.createElement("div");
+      const term = document.createElement("dt");
+      const description = document.createElement("dd");
+      term.textContent = label;
+      description.textContent = String(count);
+      row.append(term, description);
+      list.append(row);
+    }
+    item.append(list);
+  }
+
+  return item;
+}
+
+function renderOverview() {
+  const reviewedComplete = reviewedCompletenessCount();
+  const peopleCountFilled = countFilled("people_count");
+  const sponsorshipItemsFilled = countFilled("sponsorship_items");
+  const sponsorshipTagsFilled = countFilled("sponsorship_tags");
+  const missingPreview = missingPreviewCount();
+
+  overviewSummary.textContent = `共 ${photos.length} 張照片，${reviewedComplete} 張已具備 reviewed 必要欄位。`;
+  overviewGrid.replaceChildren(
+    makeOverviewItem({
+      title: "照片總數",
+      value: `${photos.length}`,
+      detail: `${missingPreview} 張缺少縮圖 URL。`,
+    }),
+    makeOverviewItem({
+      title: "整理狀態",
+      value: formatCountRatio(countFilled("curation_status")),
+      detail: "用來判斷 metadata 是否人工確認。",
+      values: countByField("curation_status"),
+    }),
+    makeOverviewItem({
+      title: "公開使用狀態",
+      value: formatCountRatio(countFilled("public_use_status")),
+      detail: "用來判斷推薦或使用前是否需要確認。",
+      values: countByField("public_use_status"),
+    }),
+    makeOverviewItem({
+      title: "推薦優先度",
+      value: formatCountRatio(countFilled("priority_level")),
+      detail: "排序參考，不是照片品質分數。",
+      values: countByField("priority_level"),
+    }),
+    makeOverviewItem({
+      title: "人數標記",
+      value: formatCountRatio(peopleCountFilled),
+      detail: "支援單人、群眾、無人畫面等篩選。",
+      values: peopleCountBuckets(),
+    }),
+    makeOverviewItem({
+      title: "Reviewed 欄位完整度",
+      value: formatCountRatio(reviewedComplete),
+      detail: "依 photo-schema.json 的 reviewed_required_fields 計算。",
+    }),
+    makeOverviewItem({
+      title: "贊助品項",
+      value: formatCountRatio(sponsorshipItemsFilled),
+      detail: "用來找特定 CFS 贊助品項。",
+    }),
+    makeOverviewItem({
+      title: "贊助價值",
+      value: formatCountRatio(sponsorshipTagsFilled),
+      detail: "用來找品牌露出、會眾互動、佐證素材。",
+    }),
+  );
+}
+
 function renderPhoto(photo) {
   const fragment = template.content.cloneNode(true);
   const card = fragment.querySelector(".photo-card");
@@ -342,24 +515,28 @@ function resetFilters() {
 }
 
 async function loadData() {
-  const [photosResponse, taxonomyResponse, projectConfigResponse] = await Promise.all([
+  const [photosResponse, schemaResponse, taxonomyResponse, projectConfigResponse] = await Promise.all([
     fetch(dataSources.photosCsvUrl),
+    fetch(dataSources.schemaJsonUrl),
     fetch(dataSources.taxonomyJsonUrl),
     fetch(projectConfigUrl),
   ]);
 
-  if (!photosResponse.ok || !taxonomyResponse.ok || !projectConfigResponse.ok) {
+  if (!photosResponse.ok || !schemaResponse.ok || !taxonomyResponse.ok || !projectConfigResponse.ok) {
     throw new Error("資料載入失敗");
   }
 
-  const [photosText, taxonomy, projectConfig] = await Promise.all([
+  const [photosText, schema, taxonomy, projectConfig] = await Promise.all([
     photosResponse.text(),
+    schemaResponse.json(),
     taxonomyResponse.json(),
     projectConfigResponse.json(),
   ]);
   applyProjectConfig(projectConfig);
-  photos = toObjects(parseCsv(photosText));
+  applySchema(schema);
+  photos = toObjects(parseCsv(photosText), schema);
   setupFilters(taxonomy);
+  renderOverview();
   render();
 }
 
@@ -376,6 +553,8 @@ try {
   await loadData();
 } catch (error) {
   summary.textContent = "資料載入失敗";
+  overviewSummary.textContent = "資料載入失敗";
+  overviewGrid.replaceChildren();
   grid.replaceChildren();
   const empty = document.createElement("div");
   empty.className = "empty";

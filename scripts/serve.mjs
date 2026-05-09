@@ -16,9 +16,16 @@ const mimeTypes = {
   ".json": "application/json; charset=utf-8",
 };
 
+const appRootFiles = new Set(["config.js", "main.js", "styles.css"]);
+
 function resolveRequestPath(urlPath) {
   const decodedPath = decodeURIComponent(urlPath.split("?")[0]);
-  const relativePath = decodedPath === "/" ? "app/" : decodedPath.replace(/^\/+/, "");
+  const requestPath = decodedPath.replace(/^\/+/, "");
+  const relativePath = decodedPath === "/"
+    ? "app/"
+    : appRootFiles.has(requestPath)
+      ? `app/${requestPath}`
+      : requestPath;
   const absolutePath = resolve(root, normalize(relativePath));
 
   if (!absolutePath.startsWith(root)) {
