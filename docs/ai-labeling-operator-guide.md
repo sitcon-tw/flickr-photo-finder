@@ -46,17 +46,30 @@ pnpm ai:prepare -- --photo-ids PHOTO_ID --image-size original
 
 `--limit all` 代表不設上限；若不指定，預設最多準備 50 張。`ai:prepare` 會輸出 `tmp/ai-runs/<run-id>/`，並在同一個目錄寫入 `ai-labeling-prompt.md`。後續所有 AI 初標工作都應限制在這個 run 目錄內。
 
-### 3. 交給模型前先確認工作包
+### 3. 多模型或多輪比較時建立 attempt
+
+若要把同一批輸入交給不同模型，或同一模型重跑第二輪，請從既有 run 建立 attempt，不要手動複製整個資料夾：
+
+```bash
+pnpm ai:attempt -- --from tmp/ai-runs/<run-id> --model claude --round 1
+pnpm ai:attempt -- --from tmp/ai-runs/<run-id> --model claude --round 2 --label visual-description
+pnpm ai:attempt -- --from tmp/ai-runs/<run-id> --model gpt --round 1
+```
+
+attempt 目錄仍包含 `photos.json`、`manifest.json`、`ai-labeling-prompt.md` 與 `images/`，可以直接交給模型，也可以直接執行 `pnpm ai:review -- --run-dir <attempt-dir>`。圖片預設用 symlink 或 hardlink 共用；若環境不支援連結，可加上 `--copy-images`。
+
+### 4. 交給模型前先確認工作包
 
 操作者或 agent 應確認：
 
 - `manifest.json` 存在且 `selected_photo_count` 符合預期。
 - `photos.json` 存在且每筆都有 `photo_id`。
 - `ai-labeling-prompt.md` 存在，可直接交給模型或 agent。
+- 若是 attempt，`attempt.json` 存在且 `model`、`round`、`base_run_id` 符合預期。
 - 若要讀本機圖片，`local_image_path` 有值且指向 `images/` 下的圖片。
 - 若 `local_image_path` 為空，模型需要使用 `image_download_url`，或重新執行有下載圖片的 `ai:prepare`。
 
-### 4. 將 prompt 與工作包交給模型
+### 5. 將 prompt 與工作包交給模型
 
 模型應使用 run 目錄中的 `ai-labeling-prompt.md` 作為任務提示。這份檔案會引用本次 run 目錄，並包含 `prompts/ai-labeling.md` 的通用提示內容。模型仍應讀取：
 
@@ -74,7 +87,7 @@ pnpm ai:prepare -- --photo-ids PHOTO_ID --image-size original
 tmp/ai-runs/<run-id>/metadata-proposals.json
 ```
 
-### 5. 檢查模型輸出
+### 6. 檢查模型輸出
 
 ```bash
 pnpm ai:review -- --run-dir tmp/ai-runs/<run-id>
@@ -99,7 +112,15 @@ pnpm ai:review -- --run-dir tmp/ai-runs/<run-id>
 | `AI proposals may only set ai_labeled` | AI 把 `curation_status` 設成 `reviewed`。 | 改成 `ai_labeled`，或省略此欄。 |
 | `field is not allowed in AI proposals` | AI 嘗試改 Flickr 基本欄位或人工欄位。 | 移除該欄位 proposal。 |
 
-### 6. 進階：只執行單一步驟
+### 7. 比較多模型或多輪結果
+
+```bash
+pnpm ai:report -- --runs tmp/ai-runs/<attempt-a> tmp/ai-runs/<attempt-b> tmp/ai-runs/<attempt-c>
+```
+
+這會產生 `tmp/ai-reports/<timestamp>/index.html`。報表是唯讀靜態 HTML，會以同一張照片為單位並排顯示各 run/attempt 的 value、reason、confidence、validator 狀態與差異。它不修改 proposal，也不寫入 Sheets。
+
+### 8. 進階：只執行單一步驟
 
 ```bash
 pnpm ai:validate -- --run-dir tmp/ai-runs/<run-id>
@@ -109,7 +130,7 @@ pnpm ai:plan -- --run-dir tmp/ai-runs/<run-id>
 
 日常檢視請優先使用 `pnpm ai:review`。上述低階指令保留給自動化、除錯或只想重建其中一份產物的情境。
 
-### 7. dry-run Sheets 更新
+### 9. dry-run Sheets 更新
 
 ```bash
 pnpm sheets:apply-ai-updates -- --run-dir tmp/ai-runs/<run-id>

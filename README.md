@@ -57,12 +57,14 @@ pnpm workflow
 | 檢查匯入產物是否完整一致 | `pnpm intake:validate -- --run-dir <dir>` |
 | 透過官方 SDK 套用匯入產物 | `pnpm sheets:apply-intake -- --run-dir <dir>` |
 | 準備 AI 初標工作目錄 | `pnpm ai:prepare -- --limit 50 --image-size large-1024`，整本相簿可用 `--album <album-id> --limit all` |
+| 從既有 AI run 建立模型/輪次 attempt | `pnpm ai:attempt -- --from <dir> --model claude --round 1` |
 | 檢查 AI 候選 metadata 並產生審核摘要 | `pnpm ai:review -- --run-dir <dir>` |
 | 評估 AI 初標品質與常見失準 | `docs/ai-labeling-evaluation-notes.md` |
 | 檢查 AI proposal 範例 | `pnpm ai:validate-fixtures` |
 | 只驗證 AI 候選 metadata | `pnpm ai:validate -- --run-dir <dir>` |
 | 只產生 AI 候選 metadata diff | `pnpm ai:diff -- --run-dir <dir>` |
 | 只產生 AI 候選 metadata 更新計畫 | `pnpm ai:plan -- --run-dir <dir>` |
+| 產生多模型/多輪 AI 初標比較網頁 | `pnpm ai:report -- --runs <dir> <dir>` |
 | 比較 taxonomy-only 與 `visual_description` 搜尋結果 | `pnpm search:experimental -- --run-dir <dir>` |
 | dry-run 檢查 AI metadata 將更新哪些 Sheets cells | `pnpm sheets:apply-ai-updates -- --run-dir <dir>` |
 | 了解 AI 初標操作與輸出格式 | `docs/ai-labeling-operator-guide.md`、`docs/ai-labeling-contract.md` |
@@ -272,6 +274,16 @@ pnpm ai:prepare -- --album ALBUM_ID --limit all
 
 使用互動入口時，`pnpm workflow` 的「準備 AI 初標工作包」會先從正式 Sheets 匯出的 `albums` 清單選相簿，再把選到的 album id 傳給 `ai:prepare`。工作包建立完成後，`ai:prepare` 會寫入該 run 目錄的 `ai-labeling-prompt.md`；workflow 也會把同一份 prompt 印出，方便直接複製給模型或 agent。
 
+若要把同一批輸入交給多個模型，或同一模型重跑第二輪，不要手動複製整個工作包；請從既有 run 建立 attempt：
+
+```bash
+pnpm ai:attempt -- --from tmp/ai-runs/RUN_ID --model claude --round 1
+pnpm ai:attempt -- --from tmp/ai-runs/RUN_ID --model claude --round 2 --label visual-description
+pnpm ai:attempt -- --from tmp/ai-runs/RUN_ID --model gpt --round 1
+```
+
+attempt 目錄仍是一般 AI run 形狀，可以直接交給模型並用 `pnpm ai:review -- --run-dir <attempt-dir>` 檢查；圖片預設用 symlink 或 hardlink 共用，不會重複複製。
+
 這仍會套用預設 `curation_status = unreviewed` 篩選。若要整本相簿所有整理狀態都放進工作包，請加上：
 
 ```bash
@@ -295,6 +307,14 @@ pnpm ai:plan -- --run-dir tmp/ai-runs/RUN_ID
 ```
 
 這些指令仍然只是審核資料，不會寫入 Google Sheets。
+
+若要比較多個模型或多輪結果，可產生本機靜態 HTML 報表：
+
+```bash
+pnpm ai:report -- --runs tmp/ai-runs/RUN_ID-attempt-claude-r1 tmp/ai-runs/RUN_ID-attempt-claude-r2 tmp/ai-runs/RUN_ID-attempt-gpt-r1
+```
+
+報表會輸出到 `tmp/ai-reports/<timestamp>/index.html`，以同一張照片並排顯示各 run/attempt 的 value、reason、confidence、validator 狀態與差異。這是 read-only 檢視工具，不會修改 proposal 或寫入 Sheets。
 
 若要在寫回 Sheets 前評估 `visual_description` 是否真的改善自然語言找圖，可先跑離線搜尋比較：
 
@@ -402,6 +422,8 @@ GitHub Pages 只提供唯讀搜尋，不寫入資料庫。Apps Script 是 Sheets
 | `scripts/export-sheets.mjs` | 透過官方 Google Sheets API SDK 匯出固定 tabs，供 validation 與 intake 使用。 |
 | `scripts/validate-data.mjs` | 資料驗證。 |
 | `scripts/validate-ai-fixtures.mjs` | 驗證 AI proposal valid/invalid fixtures 是否符合目前 validator 邊界。 |
+| `scripts/create-ai-attempt.mjs` | 從既有 AI run 建立可重複使用同一輸入的模型/輪次 attempt。 |
+| `scripts/build-ai-report.mjs` | 產生多模型/多輪 AI 初標比較用的唯讀靜態 HTML 報表。 |
 | `scripts/search-experimental.mjs` | 離線比較 taxonomy-only 與 `visual_description` 的搜尋排序差異。 |
 | `scripts/discover-albums.mjs` | SITCON Flickr 相簿盤點。 |
 | `scripts/list-albums.mjs` | 從正式 Sheets 匯出的 `albums.csv` 列出與篩選相簿，並可輸出 album id、JSON 或可直接執行的 intake 指令。 |

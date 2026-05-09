@@ -42,6 +42,8 @@ The main goal is not to replace Flickr. The repository should keep a practical i
 - `scripts/list-albums.mjs`: helper for listing and filtering exported Google Sheets albums before choosing an intake target.
 - `scripts/sync-albums.mjs`: helper for merging a Google Sheets albums CSV export with discovered albums and producing a Sheets-ready CSV.
 - `scripts/build-apps-script-config.mjs`: helper for generating Apps Script config from repo schema and taxonomy.
+- `scripts/create-ai-attempt.mjs`: helper for creating model/round attempts from an existing AI run while reusing the same input photos.
+- `scripts/build-ai-report.mjs`: helper for generating read-only HTML reports that compare multiple AI runs or attempts.
 - `scripts/run-intake.mjs`: helper for producing a complete intake run artifact from a selected album.
 - `scripts/validate-intake-run.mjs`: helper for checking an intake run artifact before applying it to Google Sheets.
 - `scripts/validate-ai-fixtures.mjs`: helper for checking AI proposal fixtures against the current validator boundary.
@@ -146,6 +148,8 @@ pnpm albums:select
 pnpm albums:select -- --source sheets
 pnpm albums:sync -- --sheets-export <albums-csv> --output <albums-csv>
 pnpm apps-script:build-config
+pnpm ai:attempt -- --from <dir> --model <name> --round <number>
+pnpm ai:report -- --runs <dir> <dir>
 pnpm ai:review -- --run-dir <dir>
 pnpm ai:diff -- --run-dir <dir>
 pnpm ai:plan -- --run-dir <dir>
