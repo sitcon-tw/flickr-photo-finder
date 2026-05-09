@@ -6,6 +6,8 @@
 
 Google Sheets 是正式照片索引資料庫，Apps Script 可以作為具有授權的維護輔助介面；但更多使用者只需要能夠存取、搜尋與篩選照片，不需要編輯資料。公開檢索前端應部署到 GitHub Pages，降低使用門檻。
 
+Apps Script Web App 是另一個授權後的校對入口，適合需要批量瀏覽、編輯與儲存 metadata 的整理者。它不作為 GitHub Pages 的資料 API，也不讓公開前端取得寫入能力。
+
 ## 核心決策
 
 - GitHub Pages 前端是公開、唯讀、無登入門檻的搜尋介面。
@@ -14,6 +16,7 @@ Google Sheets 是正式照片索引資料庫，Apps Script 可以作為具有授
 - MVP 階段 GitHub Pages 直接讀取 Google Sheets `photos` 工作表的公開 CSV 輸出。
 - 公開 CSV 只是 `photos` 主表的傳輸格式，不是另一張篩選表或 curated subset。
 - Apps Script 保留為授權維護介面與欄位驗證工具，不負責建立額外篩選表。
+- Apps Script Web App 可以提供可寫入的校對 UI，但 GitHub Pages 不呼叫它，也不共用其授權狀態。
 
 ## 建議資料流
 
@@ -27,6 +30,7 @@ Apps Script
   欄位驗證
   編輯輔助
   檢查 photos 公開讀取格式
+  Web App 校對介面
 
 GitHub Pages
   唯讀搜尋 UI
@@ -74,10 +78,10 @@ https://docs.google.com/spreadsheets/d/<spreadsheetId>/gviz/tq?tqx=out:csv&sheet
 - Apps Script 仍可專注在授權後的 Sheets 維護輔助，不需要額外提供公開 API。
 - 資料治理仍回到 `photos` 主表、repo schema、taxonomy、validation 與 Apps Script 檢查，不會多出另一套公開資料規則。
 
-MVP 暫不採用以下方式：
+GitHub Pages MVP 暫不採用以下方式：
 
 - Google Sheets API from browser：會引入 API key / OAuth / quota 等前端不需要承擔的問題。
-- Apps Script Web App API：會多一層公開 API 維護責任，也容易和 GitHub Pages 前端重複資料轉換邏輯。
+- Apps Script Web App API：公開前端不透過 Apps Script 讀寫資料；Web App 只作為授權校對介面存在。
 - GitHub Actions 以 service account 匯出靜態資料：可作為未來選項，但 MVP 先避免 GitHub Secrets 與部署時資料快照同步問題。
 
 ## 上線前準備
