@@ -274,6 +274,9 @@ function assertPhotosHeader_(sheet) {
 function applyColumnHelpers_(sheet) {
   const fields = getConfig_().fields;
   const rowCount = Math.max(sheet.getMaxRows() - 1, 1);
+  const bodyTableRange = sheet.getRange(2, 1, rowCount, fields.length);
+
+  bodyTableRange.setNumberFormat("@");
 
   fields.forEach((field, index) => {
     const column = index + 1;

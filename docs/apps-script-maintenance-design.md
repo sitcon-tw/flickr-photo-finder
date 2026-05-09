@@ -187,7 +187,7 @@ pnpm apps-script:push
 1. 選單出現 `SITCON Photo Finder`。
 2. 在 `photos` 選一列資料，執行 `Open review panel`。若 Google 要求授權，完成授權後回到 Sheet 重跑一次；成功時 sidebar 應顯示縮圖、Flickr 連結與欄位表單。
 3. 在 sidebar 修改一個非識別欄位並儲存，確認資料寫回同一列，且 `validation_report` 更新。
-4. 執行 `Refresh schema and taxonomy`，確認 `photos` header 有 note、單值 taxonomy 欄位與 boolean 欄位有下拉選單，且 `schema_meta` 已建立或更新。
+4. 執行 `Refresh schema and taxonomy`，確認 `photos` header 有 note、資料區是純文字格式、單值 taxonomy 欄位與 boolean 欄位有下拉選單，且 `schema_meta` 已建立或更新。
 5. 檢查 `schema_meta` 至少有 header row 與一列同步資訊。`schema_version`、`taxonomy_version`、`sponsorship_items_version`、`last_synced_at` 與 `synced_by` 不應空白；`notes` 可依 sponsorship snapshot 狀態填寫或留空。
 6. 執行 `Show schema status`，確認看得到 repo generated config 與 `schema_meta` 內容。若 `schema_meta` 空白或缺少必要欄位，應重新執行 `Refresh schema and taxonomy`，不能把空白 sheet 當成成功狀態。
 7. 在 `photos` 選一列資料執行 `Validate current row`。正常資料列應通過；可暫時把該列的 URL 欄位改成 `abc`，或把多值欄位改成 `合照;會眾;會眾`，確認會出現中文錯誤，再復原該儲存格。
