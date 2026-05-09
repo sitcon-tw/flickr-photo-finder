@@ -428,10 +428,12 @@ function canWriteClipboard() {
 }
 
 function setTemporaryButtonText(button, text) {
-  const originalText = button.textContent;
-  button.textContent = text;
+  const label = button.querySelector("span");
+  const target = label ?? button;
+  const originalText = target.textContent;
+  target.textContent = text;
   window.setTimeout(() => {
-    button.textContent = originalText;
+    target.textContent = originalText;
   }, 1800);
 }
 
