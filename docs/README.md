@@ -65,7 +65,7 @@
 ### 目標流程，尚未完整實作
 
 - Apps Script source 已進 repo；實際 `clasp` 綁定、push 與 deploy 仍需由有權限的維護者操作。
-- GitHub Pages workflow 已可產生並部署 artifact；仍需要在 GitHub repository 設定中啟用 Pages 的 GitHub Actions 部署來源。
+- GitHub Pages workflow 已可產生並部署 artifact；repository Pages 來源已設定為 GitHub Actions。
 - 更順手的多人 review 操作仍應在 Google Sheets 與後續 Apps Script 輔助中完善；AI 候選值寫入不等於 `curation_status = reviewed`。
 
 ## 依角色閱讀
