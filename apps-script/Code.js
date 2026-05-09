@@ -8,6 +8,7 @@ const PHOTO_FINDER_SCHEMA_META_HEADERS = [
   "synced_by",
   "notes",
 ];
+const PHOTO_FINDER_SCHEMA_SYNCED_BY = "Apps Script menu";
 const PHOTO_FINDER_PUBLIC_READ_FIELDS = [
   "curation_status",
   "public_use_status",
@@ -179,7 +180,7 @@ function updateSchemaMeta_() {
     config.taxonomyVersion,
     config.sponsorshipItemsVersion,
     new Date().toISOString(),
-    Session.getEffectiveUser().getEmail() || "Apps Script user",
+    PHOTO_FINDER_SCHEMA_SYNCED_BY,
     config.sponsorshipItemsSnapshotNote,
   ];
 
