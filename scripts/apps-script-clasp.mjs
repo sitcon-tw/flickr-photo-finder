@@ -6,7 +6,6 @@ const repoRoot = resolve(new URL("..", import.meta.url).pathname);
 const appsScriptDir = resolve(repoRoot, "apps-script");
 const localClaspConfigPath = resolve(appsScriptDir, ".clasp.json");
 const appsScriptApiSettingsUrl = "https://script.google.com/home/usersettings";
-const webAppDeploymentDescription = "SITCON Photo Finder review web app";
 
 function printUsage() {
   console.log(`Usage: pnpm apps-script:<command>
@@ -16,8 +15,6 @@ Commands:
   apps-script:bind    Create apps-script/.clasp.json for the Sheet-bound script ID.
   apps-script:status  Show local/remote clasp file status.
   apps-script:push    Rebuild generated config, validate data, then clasp push.
-  apps-script:deploy-webapp [deployment-id]
-                      Rebuild, validate, push, then create or update a Web App deployment.
   apps-script:deployments
                       List Apps Script deployments.
   apps-script:open    Open the bound Apps Script project.
@@ -28,8 +25,6 @@ Configured defaults:
 Prerequisite:
   Enable the Apps Script API for the clasp login account:
   ${appsScriptApiSettingsUrl}
-  Web App deployment may require the clasp login account to be the script owner
-  or in the same Google Workspace domain as the script owner.
 `);
 }
 
@@ -104,19 +99,6 @@ function commandPush() {
   runClasp(["push"], { cwd: appsScriptDir });
 }
 
-function commandDeployWebApp(deploymentId) {
-  requireLocalClaspConfig();
-  run("pnpm", ["apps-script:build-config"]);
-  run("pnpm", ["validate:data"]);
-  printAppsScriptApiPrerequisite();
-  runClasp(["push"], { cwd: appsScriptDir });
-  const args = ["deploy", "--description", webAppDeploymentDescription];
-  if (deploymentId) {
-    args.push("--deploymentId", deploymentId);
-  }
-  runClasp(args, { cwd: appsScriptDir });
-}
-
 function commandDeployments() {
   requireLocalClaspConfig();
   printAppsScriptApiPrerequisite();
@@ -142,8 +124,6 @@ try {
     commandStatus();
   } else if (command === "push") {
     commandPush();
-  } else if (command === "deploy-webapp") {
-    commandDeployWebApp(firstCommandArgument());
   } else if (command === "deployments") {
     commandDeployments();
   } else if (command === "open") {

@@ -114,7 +114,7 @@ pnpm workflow
 | 檢查 AI 初標結果 | `pnpm workflow -- --task ai-review` |
 | 維護 Google Sheets | `pnpm workflow -- --task sheets` |
 | 建立並檢查公開前端 artifact | `pnpm workflow -- --task pages-build` |
-| 維護 Apps Script | `docs/apps-script-maintenance-design.md`、`pnpm apps-script:bind -- <script-id>`、`pnpm apps-script:push`、`pnpm apps-script:deploy-webapp` |
+| 維護 Apps Script | `docs/apps-script-maintenance-design.md`、`pnpm apps-script:bind -- <script-id>`、`pnpm apps-script:push` |
 
 需要完整 command list、低階除錯工具或各流程細節時，請看 `docs/README.md`、`docs/sheets-sync-workflow.md`、`docs/ai-labeling-operator-guide.md` 與 `docs/public-frontend-architecture.md`。
 

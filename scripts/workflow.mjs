@@ -620,7 +620,6 @@ async function runSheetsTools() {
     ["apps-script:status", "檢查 Apps Script 本機綁定與遠端差異"],
     ["apps-script:push", "重建設定、驗證資料並推送 Apps Script"],
     ["apps-script:deployments", "列出 Apps Script deployments"],
-    ["apps-script:deploy-webapp", "重建、驗證、推送並建立 Web App deployment"],
   ];
 
   choices.forEach(([script, description], index) => {
