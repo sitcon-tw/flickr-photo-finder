@@ -43,6 +43,16 @@
         gap: 8px;
       }
 
+      .row-loader {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto auto;
+        gap: 6px;
+      }
+
+      .row-loader input {
+        min-width: 0;
+      }
+
       .photo {
         display: grid;
         gap: 8px;
@@ -172,6 +182,12 @@
     <main class="panel">
       <section class="toolbar">
         <div id="rowSummary" class="meta">請從 photos 選取一列後開啟 panel。</div>
+        <div class="row-loader">
+          <input id="rowNumberInput" inputmode="numeric" aria-label="photos row number" />
+          <button id="loadButton" class="secondary" type="button">載入</button>
+          <button id="activeButton" class="secondary" type="button">目前列</button>
+        </div>
+        <button id="diagnosticsButton" class="secondary" type="button">診斷 sidebar 連線</button>
       </section>
 
       <section id="status" class="status"></section>
@@ -203,6 +219,10 @@
       const photoUrl = document.querySelector("#photoUrl");
       const preview = document.querySelector("#preview");
       const previewUrl = document.querySelector("#previewUrl");
+      const activeButton = document.querySelector("#activeButton");
+      const diagnosticsButton = document.querySelector("#diagnosticsButton");
+      const loadButton = document.querySelector("#loadButton");
+      const rowNumberInput = document.querySelector("#rowNumberInput");
       const rowSummary = document.querySelector("#rowSummary");
       const saveButton = document.querySelector("#saveButton");
       const status = document.querySelector("#status");
@@ -211,6 +231,9 @@
       let currentState = null;
 
       function setBusy(isBusy) {
+        activeButton.disabled = isBusy;
+        diagnosticsButton.disabled = isBusy;
+        loadButton.disabled = isBusy;
         saveButton.disabled = isBusy || !currentState;
       }
 
@@ -290,7 +313,8 @@
         }
 
         currentState = state;
-        rowSummary.textContent = `目前載入 photos 第 ${state.rowNumber} 列。若要切換列，請在 Sheet 選取新列後重新開啟 Open review panel。`;
+        rowNumberInput.value = state.rowNumber;
+        rowSummary.textContent = `目前載入 photos 第 ${state.rowNumber} 列。`;
         form.textContent = "";
 
         photo.hidden = false;
@@ -334,6 +358,7 @@
         photo.hidden = true;
         setBusy(false);
         saveButton.disabled = true;
+        rowNumberInput.value = "";
         status.textContent = "";
         status.className = "status visible error";
         const message = document.createElement("div");
@@ -355,8 +380,9 @@
         if (/Authorization is required|授權|權限不足/i.test(message)) {
           setStatus(
             [
-              "需要先授權 Apps Script 才能讀寫目前試算表。",
-              "請關閉 sidebar，從 SITCON Photo Finder 選單執行 Authorize / check access；看到 access check passed 後，重新整理 Sheet，再重新開啟 Open review panel。",
+              "sidebar 呼叫 Apps Script 時被回報需要授權。",
+              "如果 SITCON Photo Finder -> Authorize / check access 已經通過，這代表問題不是一般選單權限，而是 sidebar 的 google.script.run 呼叫情境仍需要另外定位。",
+              "請先點「診斷 sidebar 連線」，用結果判斷是 sidebar RPC 本身失敗，還是 RPC 讀取 Sheet 時失敗。",
               `原始錯誤：${message}`,
             ].join("\n\n"),
             "error",
@@ -364,6 +390,64 @@
           return;
         }
         setStatus(message, "error");
+      }
+
+      function loadRow(rowNumber) {
+        setBusy(true);
+        setStatus("載入中...");
+        google.script.run
+          .withSuccessHandler(render)
+          .withFailureHandler(handleFailure)
+          .getReviewPhotoByRow(rowNumber);
+      }
+
+      function loadRequestedRow() {
+        loadRow(rowNumberInput.value);
+      }
+
+      function loadActiveRow() {
+        setBusy(true);
+        setStatus("讀取目前選取列...");
+        google.script.run
+          .withSuccessHandler(render)
+          .withFailureHandler(handleFailure)
+          .getReviewPanelState();
+      }
+
+      function runDiagnostics() {
+        setBusy(true);
+        setStatus("診斷 sidebar RPC...");
+        google.script.run
+          .withSuccessHandler((pingResult) => {
+            setStatus("sidebar RPC 通過，正在檢查 Spreadsheet 存取...");
+            google.script.run
+              .withSuccessHandler((sheetResult) => {
+                setBusy(false);
+                setStatus(
+                  [
+                    "sidebar 診斷通過。",
+                    `RPC checked_at: ${pingResult.checkedAt}`,
+                    `Sheet checked_at: ${sheetResult.checkedAt}`,
+                    `photos rows: ${sheetResult.photosRows}`,
+                    `active row: ${sheetResult.activeRow}`,
+                  ].join("\n"),
+                  "ok",
+                );
+              })
+              .withFailureHandler(handleFailure)
+              .sidebarSpreadsheetCheck();
+          })
+          .withFailureHandler((error) => {
+            setBusy(false);
+            setStatus(
+              [
+                "sidebar RPC 本身失敗，尚未進入 Spreadsheet 讀取。",
+                `原始錯誤：${error.message || String(error)}`,
+              ].join("\n\n"),
+              "error",
+            );
+          })
+          .sidebarPing();
       }
 
       function saveRow() {
@@ -386,6 +470,9 @@
       }
 
       saveButton.addEventListener("click", saveRow);
+      loadButton.addEventListener("click", loadRequestedRow);
+      activeButton.addEventListener("click", loadActiveRow);
+      diagnosticsButton.addEventListener("click", runDiagnostics);
       if (bootstrapState && !bootstrapState.authorizationRequired) {
         render(bootstrapState);
       } else if (bootstrapState && bootstrapState.authorizationRequired) {

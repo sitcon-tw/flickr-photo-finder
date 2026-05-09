@@ -190,6 +190,24 @@ function getReviewPanelState() {
   return buildReviewPanelState_(sheet, rowNumber);
 }
 
+function sidebarPing() {
+  return {
+    checkedAt: new Date().toISOString(),
+    ok: true,
+  };
+}
+
+function sidebarSpreadsheetCheck() {
+  const sheet = checkAppsScriptAccess_();
+  const activeRange = sheet.getActiveRange();
+  return {
+    activeRow: activeRange ? activeRange.getRow() : "",
+    checkedAt: new Date().toISOString(),
+    ok: true,
+    photosRows: Math.max(sheet.getLastRow() - 1, 0),
+  };
+}
+
 function getReviewPhotoByRow(rowNumber) {
   const sheet = getPhotosSheet_();
   assertPhotosHeader_(sheet);
