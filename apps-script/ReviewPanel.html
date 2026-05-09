@@ -24,31 +24,23 @@
 
       .panel {
         display: grid;
-        gap: 12px;
-        padding: 12px;
+        gap: 8px;
+        padding: 10px;
       }
 
       .toolbar,
-      .notice,
       .photo,
       .form,
       .status {
         background: #fff;
         border: 1px solid #d8dee8;
         border-radius: 6px;
-        padding: 10px;
+        padding: 8px;
       }
 
       .toolbar {
         display: grid;
         gap: 8px;
-      }
-
-      .notice {
-        background: #fffbeb;
-        border-color: #facc15;
-        color: #713f12;
-        line-height: 1.5;
       }
 
       .row-loader {
@@ -68,7 +60,7 @@
 
       .photo img {
         width: 100%;
-        max-height: 220px;
+        max-height: 180px;
         object-fit: contain;
         background: #eef1f5;
         border-radius: 4px;
@@ -91,7 +83,7 @@
 
       .form {
         display: grid;
-        gap: 10px;
+        gap: 8px;
       }
 
       .field {
@@ -195,10 +187,6 @@
           <button id="loadButton" class="secondary" type="button">載入</button>
           <button id="activeButton" class="secondary" type="button">目前列</button>
         </div>
-      </section>
-
-      <section class="notice">
-        若同時登入多個 Google 帳號，請確認有權限的帳號是第一個登入帳號，或改用單一帳號的瀏覽器 profile / 無痕視窗。
       </section>
 
       <section id="status" class="status"></section>
@@ -351,7 +339,7 @@
         if (state.errors.length > 0) {
           setStatus(state.errors, "error");
         } else {
-          setStatus("目前列檢查通過。", "ok");
+          setStatus("");
         }
         setBusy(false);
       }
