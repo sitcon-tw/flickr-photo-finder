@@ -104,6 +104,8 @@ pnpm ai:review -- --run-dir tmp/ai-runs/<run-id>
 
 若失敗，請根據錯誤訊息修正 `metadata-proposals.json`，不要改 `photos.json` 或正式 Sheets。
 
+若通過但輸出 review warnings，代表格式與責任邊界可接受，但仍有批次品質疑慮需要人工判斷；例如相同 `public_use_status` reason 在多張照片重複，可能是模型套模板，也可能是同一活動情境下合理的共同限制。
+
 常見錯誤：
 
 | 錯誤 | 原因 | 修正 |

@@ -374,7 +374,7 @@ function validateProposalItem(item, context, errors) {
   }
 }
 
-function validateBatchReasonQuality(proposals, errors) {
+function validateBatchReasonQuality(proposals, warnings) {
   if (!Array.isArray(proposals.items)) {
     return;
   }
@@ -423,7 +423,7 @@ function validateBatchReasonQuality(proposals, errors) {
     const [field, value, reason] = key.split("\u0000");
     const sampleIds = photoIds.slice(0, 10).join(", ");
     const suffix = photoIds.length > 10 ? ", ..." : "";
-    errors.push(
+    warnings.push(
       `${field}: identical value and reason reused for ${photoIds.length} photos (${sampleIds}${suffix}); value=${value}; reason="${reason}"`,
     );
   }
@@ -432,7 +432,7 @@ function validateBatchReasonQuality(proposals, errors) {
     const [field, reason] = key.split("\u0000");
     const sampleIds = photoIds.slice(0, 10).join(", ");
     const suffix = photoIds.length > 10 ? ", ..." : "";
-    errors.push(
+    warnings.push(
       `${field}: reason uses template or non-visual language for ${photoIds.length} photos (${sampleIds}${suffix}); reason="${reason}"`,
     );
   }
@@ -445,7 +445,7 @@ function validateBatchReasonQuality(proposals, errors) {
       if (similarity < visualDescriptionSimilarityThreshold) {
         continue;
       }
-      errors.push(
+      warnings.push(
         `visual_description: near-duplicate descriptions for ${left.photoId} and ${right.photoId} (${similarity.toFixed(2)} similarity)`,
       );
     }
@@ -461,6 +461,7 @@ export async function validateAiProposals(options) {
   ]);
 
   const errors = [];
+  const warnings = [];
   validateProposalRoot(proposals, errors);
   validateRunMatch(manifest, photos, proposals, errors);
 
@@ -478,7 +479,7 @@ export async function validateAiProposals(options) {
       }
       validateProposalItem(item, { fieldSchemas, photoIds, taxonomy }, errors);
     }
-    validateBatchReasonQuality(proposals, errors);
+    validateBatchReasonQuality(proposals, warnings);
   }
 
   if (errors.length > 0) {
@@ -488,6 +489,7 @@ export async function validateAiProposals(options) {
   return {
     itemCount: proposals.items.length,
     runId: proposals.run_id,
+    warnings,
   };
 }
 
@@ -500,6 +502,12 @@ async function main() {
 
   const result = await validateAiProposals(options);
   console.log(`AI proposals are valid for ${result.runId} (${result.itemCount} item(s)).`);
+  if (result.warnings.length > 0) {
+    console.warn(`AI proposal review warnings (${result.warnings.length}):`);
+    for (const warning of result.warnings) {
+      console.warn(`- ${warning}`);
+    }
+  }
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {

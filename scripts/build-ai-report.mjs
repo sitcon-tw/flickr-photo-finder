@@ -158,6 +158,8 @@ async function validateRun(runDir, proposalsPath) {
       errors: [],
       item_count: result.itemCount,
       status: "valid",
+      warning_count: result.warnings.length,
+      warnings: result.warnings.slice(0, 80),
     };
   } catch (error) {
     const errors = splitErrorLines(error);
@@ -166,6 +168,8 @@ async function validateRun(runDir, proposalsPath) {
       errors: errors.slice(0, 80),
       item_count: 0,
       status: "invalid",
+      warning_count: 0,
+      warnings: [],
     };
   }
 }
@@ -180,7 +184,7 @@ async function loadRun(runDir) {
   const hasReviewSummary = await pathExists(join(runDir, reviewSummaryFile));
   const validation = proposals
     ? await validateRun(runDir, proposalsPath)
-    : { error_count: 0, errors: [], item_count: 0, status: "missing" };
+    : { error_count: 0, errors: [], item_count: 0, status: "missing", warning_count: 0, warnings: [] };
 
   const itemsByPhotoId = new Map();
   const fields = new Set();
@@ -279,6 +283,9 @@ function buildWarnings(runs) {
     if (run.validation.status === "invalid") {
       warnings.push(`${run.label} has ${run.validation.error_count} validation error(s).`);
     }
+    if (run.validation.warning_count > 0) {
+      warnings.push(`${run.label} has ${run.validation.warning_count} review warning(s).`);
+    }
     if (run.validation.status === "missing") {
       warnings.push(`${run.label} has no metadata-proposals.json.`);
     }
@@ -325,6 +332,7 @@ function buildReportData(runs, options) {
       base_run_id: run.baseRunId,
       error_count: run.validation.error_count,
       errors: run.validation.errors,
+      review_warnings: run.validation.warnings,
       has_review_summary: run.hasReviewSummary,
       label: run.label,
       model: run.attempt?.model || "",
@@ -334,6 +342,7 @@ function buildReportData(runs, options) {
       run_dir: run.runDir,
       run_id: run.manifest.run_id || "",
       status: run.validation.status,
+      warning_count: run.validation.warning_count,
     })),
     fields: orderedFields,
     generated_at: new Date().toISOString(),

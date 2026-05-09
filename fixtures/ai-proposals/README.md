@@ -15,4 +15,5 @@ pnpm ai:validate-fixtures
 命名規則：
 
 - `valid-*` 必須通過 `pnpm ai:validate`。
+- `warning-*` 必須通過 `pnpm ai:validate`，但要產生人工 review warning。
 - `invalid-*` 必須被 `pnpm ai:validate` 擋下。

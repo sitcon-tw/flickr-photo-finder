@@ -15,7 +15,8 @@ Options:
 
 Each child directory is treated as a minimal AI run directory containing
 manifest.json, photos.json, and metadata-proposals.json. Directories prefixed
-with valid- must pass validation; directories prefixed with invalid- must fail.`);
+with valid- must pass validation with no warnings, warning- must pass with
+warnings, and invalid- must fail.`);
 }
 
 function parseArgs(argv) {
@@ -49,29 +50,44 @@ async function listFixtureCases(fixturesDir) {
   return entries
     .filter((entry) => entry.isDirectory())
     .map((entry) => entry.name)
-    .filter((name) => name.startsWith("valid-") || name.startsWith("invalid-"))
+    .filter((name) => name.startsWith("valid-") || name.startsWith("warning-") || name.startsWith("invalid-"))
     .sort();
 }
 
 async function validateFixture(fixturesDir, fixtureName) {
   const runDir = join(fixturesDir, fixtureName);
   const shouldPass = fixtureName.startsWith("valid-");
+  const shouldWarn = fixtureName.startsWith("warning-");
 
   try {
-    await validateAiProposals({
+    const result = await validateAiProposals({
       proposalsPath: join(runDir, "metadata-proposals.json"),
       runDir,
     });
-    if (!shouldPass) {
+    if (!shouldPass && !shouldWarn) {
       return {
         error: `${fixtureName}: expected validation to fail, but it passed`,
         name: fixtureName,
         ok: false,
       };
     }
+    if (shouldPass && result.warnings.length > 0) {
+      return {
+        error: `${fixtureName}: expected validation to pass without warnings, but got:\n${result.warnings.join("\n")}`,
+        name: fixtureName,
+        ok: false,
+      };
+    }
+    if (shouldWarn && result.warnings.length === 0) {
+      return {
+        error: `${fixtureName}: expected validation warnings, but got none`,
+        name: fixtureName,
+        ok: false,
+      };
+    }
     return { name: fixtureName, ok: true };
   } catch (error) {
-    if (shouldPass) {
+    if (shouldPass || shouldWarn) {
       return {
         error: `${fixtureName}: expected validation to pass, but it failed:\n${error.message}`,
         name: fixtureName,

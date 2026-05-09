@@ -278,9 +278,9 @@ function buildReviewNotes(items) {
   return notes;
 }
 
-function renderSummary({ manifest, plan, proposals, runDir, sample, summaryPath }) {
+function renderSummary({ manifest, plan, proposals, runDir, sample, summaryPath, validationWarnings }) {
   const items = proposals.items;
-  const notes = buildReviewNotes(items);
+  const notes = [...validationWarnings, ...buildReviewNotes(items)];
   const fieldCountRows = fieldCounts(items).map(({ field, count }) => [field, count]);
   const distributionTableRows = distributionFields.flatMap((field) => distributionRows(items, field));
   const sampleRows = plan.updates.slice(0, sample).map((update) => [
@@ -395,6 +395,7 @@ async function reviewAiRun(options) {
     runDir: options.runDir,
     sample: options.sample,
     summaryPath: options.summaryPath,
+    validationWarnings: validation.warnings,
   });
   await writeFile(options.summaryPath, summary);
 
@@ -407,6 +408,7 @@ async function reviewAiRun(options) {
     runId: validation.runId,
     summaryPath: options.summaryPath,
     updateCount: plan.update_count,
+    warningCount: validation.warnings.length,
   };
 }
 
@@ -422,6 +424,7 @@ async function main() {
   console.log(`- proposals: ${result.itemCount}`);
   console.log(`- diff rows: ${result.diffRows}`);
   console.log(`- planned updates: ${result.updateCount}`);
+  console.log(`- review warnings: ${result.warningCount}`);
   console.log(`- summary: ${result.summaryPath}`);
   console.log(`- diff: ${result.diffPath}`);
   console.log(`- update plan: ${result.planJsonPath}`);

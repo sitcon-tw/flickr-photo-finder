@@ -401,11 +401,15 @@ reason 是審核脈絡，不是正式 metadata。它應只描述可見畫面或 
 - `pnpm ai:report` 可產生唯讀 HTML，比較多個 run/attempt 在同一張照片上的 value、reason、confidence 與 validator 狀態。
 - `pnpm search:experimental` 可在 proposal 寫回前離線比較 taxonomy-only baseline 與 taxonomy + `visual_description` 的搜尋排序差異，用來驗證描述欄位是否有實際找圖增益。
 
-`pnpm ai:validate` 也會擋下明顯不符合逐張檢視要求的產物：
+`pnpm ai:validate` 會擋下格式、責任邊界與明顯不可審核的單欄位內容，例如：
+
+- `visual_description` 少於 20 個非空白字元、使用不確定或模板語言，或缺少具體視覺線索。
+
+它也會輸出人工 review warning，提示可能不符合逐張檢視要求的批次品質問題：
 
 - 同一個讀圖欄位的 `value` 與 `reason` 組合在 5 張以上不同照片重複出現。
 - 讀圖欄位 reason 使用 `推測值`、`預設為`、`照片方向預設`、`圖片尺寸為`、`一般而言` 等模板或非視覺語言。
-- `visual_description` 少於 20 個非空白字元、使用不確定或模板語言、缺少具體視覺線索，或和其他照片描述近似重複。
+- `visual_description` 和其他照片描述近似重複。
 
 ## 後續可工具化的檢查
 
@@ -417,4 +421,4 @@ reason 是審核脈絡，不是正式 metadata。它應只描述可見畫面或 
 - 找出同一相簿內高度重複的講者照片或合照，只提示少數更適合優先審核的照片。
 - 用 Claude 重新跑完整 132 張後，保留 `pnpm search:experimental` 的輸出摘要，記錄哪些真實工作查詢因 `visual_description` 讓更合適的照片進入前幾名。
 
-這些檢查應先作為 review warning，不應直接讓 validation 失敗。validation 只負責格式與責任邊界；品質判斷仍應保留給人工與後續工具迭代。
+批次品質檢查應先作為 review warning，不應直接讓 validation 失敗。validation 只負責格式與責任邊界；品質判斷仍應保留給人工與後續工具迭代。

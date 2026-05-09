@@ -245,6 +245,8 @@ pnpm ai:diff -- --run-dir tmp/ai-runs/<run-id>
 pnpm ai:plan -- --run-dir tmp/ai-runs/<run-id>
 ```
 
+`ai:validate` 若輸出 review warnings 但 exit code 為 0，代表 proposal 格式和 AI 責任邊界已通過；warning 需要在 `ai:review`、報表或人工檢查中判斷，不代表一定要退回模型重跑。
+
 若要閱讀單一 run 或比較多個 run/attempt，可以產生唯讀 HTML 報表：
 
 ```bash
