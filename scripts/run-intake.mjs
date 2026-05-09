@@ -130,6 +130,7 @@ async function readImportBatch(path) {
 }
 
 function runPhotoImport(args) {
+  console.error("Progress: running photo import helper.");
   const result = spawnSync(process.execPath, ["scripts/import-album-photos.mjs", ...args], {
     stdio: "inherit",
   });
@@ -151,7 +152,9 @@ async function main() {
   }
 
   const createdAt = options.importedAt || new Date().toISOString();
+  console.error(`Progress: resolving album ${options.album}.`);
   const { albumId, albumUrl } = await resolveAlbumInput(options.album, options.albums);
+  console.error(`Progress: reading album catalog from ${options.albums}.`);
   const albums = await readAlbumCatalog(options.albums);
   const album = albums.find((item) => item.album_id === albumId) ?? {};
   const runId = options.runId || makeRunId(albumId, createdAt);
@@ -161,6 +164,7 @@ async function main() {
   const batchOutput = join(runDir, "import-batch.csv");
   const summaryOutput = join(runDir, "summary.json");
 
+  console.error(`Progress: creating intake run directory ${runDir}.`);
   await mkdir(options.runsDir, { recursive: true });
   await mkdir(runDir);
 
@@ -195,6 +199,7 @@ async function main() {
 
   runPhotoImport(photoImportArgs);
 
+  console.error(`Progress: reading generated import batch from ${batchOutput}.`);
   const batch = await readImportBatch(batchOutput);
   const summary = {
     run_id: runId,
@@ -215,6 +220,7 @@ async function main() {
     },
   };
 
+  console.error(`Progress: writing intake run summary to ${summaryOutput}.`);
   await writeFile(summaryOutput, `${JSON.stringify(summary, null, 2)}\n`);
   console.log(`Wrote intake run summary to ${summaryOutput}.`);
   console.log(`Intake run directory: ${runDir}`);

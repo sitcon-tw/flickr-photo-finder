@@ -306,28 +306,34 @@ async function downloadImage(photo, imagesDir, imageSize) {
 }
 
 async function prepareRun(options) {
+  console.error(`Progress: reading photos CSV from ${options.photosPath}.`);
   const photos = await readPhotosCsv(options.photosPath);
+  console.error(`Progress: selecting photos from ${photos.length} row(s).`);
   const selectedPhotos = selectPhotos(photos, options);
   if (selectedPhotos.length === 0) {
     throw new Error("No photos matched the requested filters");
   }
+  console.error(`Progress: selected ${selectedPhotos.length} photo(s).`);
 
   const runId = options.runId || defaultRunId();
   const runDir = join(options.outputDir, runId);
   const imagesDir = join(runDir, "images");
 
+  console.error(`Progress: creating AI run directory ${runDir}.`);
   await mkdir(runDir, { recursive: true });
   if (options.download) {
     await mkdir(imagesDir, { recursive: true });
   }
 
+  console.error("Progress: writing input-photos.csv.");
   await writeFile(join(runDir, "input-photos.csv"), csvFromPhotos(selectedPhotos));
 
   const preparedPhotos = [];
   let downloadedCount = 0;
   const errors = [];
 
-  for (const photo of selectedPhotos) {
+  for (const [index, photo] of selectedPhotos.entries()) {
+    console.error(`Progress: preparing photo ${index + 1}/${selectedPhotos.length} (${photo.photo_id}).`);
     const item = {
       ...photo,
       image_download_url: "",
@@ -337,6 +343,7 @@ async function prepareRun(options) {
 
     if (options.download) {
       try {
+        console.error(`Progress: downloading image ${index + 1}/${selectedPhotos.length} (${photo.photo_id}).`);
         const image = await downloadImage(photo, imagesDir, options.imageSize);
         downloadedCount += 1;
         item.image_download_url = image.download_url;
@@ -351,6 +358,7 @@ async function prepareRun(options) {
       }
     } else {
       try {
+        console.error(`Progress: resolving image URL ${index + 1}/${selectedPhotos.length} (${photo.photo_id}).`);
         item.image_download_url = await resolveImageDownloadUrl(photo, options.imageSize);
       } catch (error) {
         errors.push({
@@ -385,8 +393,10 @@ async function prepareRun(options) {
     selected_photo_count: selectedPhotos.length,
   };
 
+  console.error("Progress: writing photos.json and manifest.json.");
   await writeFile(join(runDir, "photos.json"), `${JSON.stringify(preparedPhotos, null, 2)}\n`);
   await writeFile(join(runDir, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`);
+  console.error("Progress: writing ai-labeling-prompt.md.");
   const { promptPath } = writeAiLabelingPrompt(runDir);
 
   return {

@@ -105,9 +105,14 @@ export function filterNewPhotos(normalizedPhotos, existingIds) {
   return normalizedPhotos.filter(({ photoId }) => !existingIds.has(photoId));
 }
 
-export async function buildCsvRows(normalizedPhotos, defaults = {}) {
+export async function buildCsvRows(normalizedPhotos, defaults = {}, options = {}) {
   const rows = [];
-  for (const { photoId, photoUrl } of normalizedPhotos) {
+  for (const [index, { photoId, photoUrl }] of normalizedPhotos.entries()) {
+    options.onProgress?.({
+      current: index + 1,
+      photoId,
+      total: normalizedPhotos.length,
+    });
     const oembed = await fetchOEmbed(photoUrl);
     assertRequiredOEmbedData(oembed);
     const flickrTitle = oembed.title ?? "";

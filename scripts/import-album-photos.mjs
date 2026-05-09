@@ -141,6 +141,7 @@ function makeBatchId(albumId, importedAt) {
 }
 
 function validatePath(option, path) {
+  console.error(`Progress: validating ${path}.`);
   const result = spawnSync(process.execPath, ["scripts/validate-data.mjs", option, path], {
     stdio: "inherit",
   });
@@ -210,13 +211,16 @@ async function main() {
   }
 
   const importedAt = options.importedAt || new Date().toISOString();
+  console.error(`Progress: resolving album ${options.album} from ${options.albums}.`);
   const { ownerPath, albumId, albumUrl, album, albums } = await resolveAlbumWithContext(
     options.album,
     options.albums,
   );
 
+  console.error(`Progress: loading album source for ${albumId}.`);
   const html = options.input ? await readFile(options.input, "utf8") : "";
   const expectedPhotoCount = parsePhotoCount(album.photo_count);
+  console.error(`Progress: fetching photo list for album ${albumId}.`);
   const albumPhotoResult = await fetchAlbumPhotoUrls({
     albumId,
     albumUrl,
@@ -231,19 +235,28 @@ async function main() {
     throw new Error(`No photo URLs found in album ${albumId}`);
   }
 
+  console.error(`Progress: found ${albumPhotos.length} photo URL(s) from ${albumPhotoResult.source}.`);
+  console.error(`Progress: reading existing photo IDs from ${options.photosExport}.`);
   const existingIds = await getExistingPhotoIds(options.photosExport);
   const missingPhotos = filterNewPhotos(albumPhotos, existingIds);
   const existingCount = albumPhotos.length - missingPhotos.length;
+  console.error(`Progress: ${missingPhotos.length} new photo(s), ${existingCount} already indexed.`);
 
+  console.error(`Progress: fetching Flickr metadata for ${missingPhotos.length} new photo(s).`);
   const rows = await buildCsvRows(missingPhotos, {
     album_title: album.album_title ?? "",
     album_ids: albumId,
     event_name: album.event_name ?? "",
     event_year: album.event_year ?? "",
+  }, {
+    onProgress: ({ current, photoId, total }) => {
+      console.error(`Progress: photo metadata ${current}/${total} (${photoId}).`);
+    },
   });
   const csv = toPhotoCsv(rows);
 
   if (options.output) {
+    console.error(`Progress: writing photo candidate CSV to ${options.output}.`);
     await writeFile(options.output, csv);
     if (options.validate) {
       validatePath("--photos", options.output);
@@ -254,6 +267,7 @@ async function main() {
   }
 
   if (options.albumsOutput) {
+    console.error(`Progress: writing updated album CSV to ${options.albumsOutput}.`);
     const updatedAlbums = buildUpdatedAlbums({
       albums,
       albumId,
@@ -268,6 +282,7 @@ async function main() {
   }
 
   if (options.batchOutput) {
+    console.error(`Progress: writing import batch CSV to ${options.batchOutput}.`);
     const batch = buildImportBatchRecord({
       albumId,
       albumUrl,
