@@ -258,6 +258,90 @@ curated 版重新執行 `pnpm ai:review` 後通過，planned updates 從 298 筆
 
 這些值仍是 AI 初標候選，不代表人工 `reviewed`。後續人工整理應在 Google Sheets 中修正錯誤、補齊欄位，再由志工決定是否標為 `reviewed` 或 `approved`。
 
+## 大批量 132 張測試觀察
+
+以下觀察來自相簿 `72177720329615498` 的 132 張測試。三個模型都使用同一個 AI run 工作包：`ai-prepare-2026-05-08T22-58-30-741Z`，圖片尺寸為 `large-1024`。這輪的目的不是直接挑選回寫基底，而是檢查模型在較大批次下是否仍會逐張判斷，以及現有 prompt / validator 能否擋住模板化結果。
+
+這輪測試發生時，新的 anti-template validator 與 `visual_description` 欄位尚未完成；後續用新 validator 回頭檢查三個結果時，三者都會被擋下。因此以下 `planned updates` 是舊規則下的產物數量，不代表目前工具會接受這些 proposal。
+
+### `ai-prepare-2026-05-08T22-58-30-741Z-gpt`
+
+- 檔案紀錄 producer: `Codex GPT-5`。
+- 132 張都有 proposal，產生 1259 筆 planned updates。
+- 欄位覆蓋非常積極：132 張都有 `people_count`、`orientation`、`has_negative_space`、`scene_tags`、`mood_tags`、`recommended_uses`、`public_use_status` 與 `curation_status`，131 張有 `safe_crop`。
+- 主要問題：
+  - reason 大量模板化，例如 orientation 以圖片尺寸固定句式出現，`people_count`、`has_negative_space`、`safe_crop` 也有大量同句重複。
+  - 36 張提出 `sponsorship_items = 午餐旗、點心旗`，且 36 張都有 `sponsorship_tags = 品牌露出;參與者體驗;贊助成果佐證`。抽查圖片後，部分只是 SITCON 自身旗幟或一般茶點畫面，不能支持外部贊助品項推論。
+  - `recommended_uses = 活動回顧` 出現 93 次，`贊助成果報告` 36 次，`贊助提案` 34 次，贊助用途判斷偏積極且區辨度不足。
+  - `public_use_status = needs_review` 出現 131/132 張，接近預設填空。
+- 新 validator 回頭檢查時會失敗，主要原因是讀圖欄位的 `value + reason` 在多張照片重複，以及使用圖片尺寸等非視覺 reason。
+- 判斷：
+  - 這輪可視為高覆蓋率初稿，但不適合作為 Sheets 回寫基底。
+  - 速度與更新量不應直接視為品質優勢；這批結果有批次規則或模板展開的痕跡。
+
+### `ai-prepare-2026-05-08T22-58-30-741Z-claude`
+
+- 檔案紀錄 producer: `claude-opus-4-7`。
+- 132 張都有 proposal，產生 991 筆 planned updates。
+- 欄位覆蓋比 GPT 保守：132 張都有 `people_count`、`orientation`、`has_negative_space` 與 `curation_status`；128 張有 `public_use_status`；124 張有 `mood_tags`；97 張有 `scene_tags`；78 張有 `recommended_uses`；36 張有 `safe_crop`。
+- 優點：
+  - 沒有提出 `sponsorship_items` 或 `sponsorship_tags`，避免 GPT 那種把 SITCON 自身識別推成贊助露出的錯誤。
+  - `safe_crop` 較保守，只有 36/132 張提出候選值。
+  - `recommended_uses` 沒有每張都硬填，人工審核成本低於 GPT。
+- 主要問題：
+  - orientation reason 幾乎都是「圖片寬大於高」或「圖片高大於寬」，可審核資訊不足。
+  - `public_use_status = needs_review` 出現在 128/132 張，仍然接近預設填空；多組 reason 也重複，例如「可辨識個人，需人工確認」。
+  - `has_negative_space`、`mood_tags`、`scene_tags`、`recommended_uses` 仍有多張照片共用同一句 reason 的情形。
+- 新 validator 回頭檢查時會失敗，主要原因是 orientation、public use、negative space 等欄位重複 reason。
+- 判斷：
+  - 三輪中最接近可作為重新標記基底，但仍需要新版 prompt 重新跑，不能直接採用舊 proposal。
+  - 若要驗證 `visual_description`，應先用 Claude 單一模型重跑，因為它在 sponsorship 與欄位保守性上比較接近人工審核需求。
+
+### `ai-prepare-2026-05-08T22-58-30-741Z-gemini`
+
+- 檔案紀錄 producer: `gemini-3.1-pro-preview`。
+- 132 張都有 proposal，產生 660 筆 planned updates。
+- 欄位覆蓋只包含 `people_count`、`orientation`、`has_negative_space`、`scene_tags`、`curation_status`。
+- 主要問題：
+  - 132 張全部輸出 `people_count = 3`、`orientation = landscape`、`has_negative_space = false`、`scene_tags = 會眾;交流`。
+  - reason 使用「推測值」、「照片方向預設為橫向」、「推測場景包含會眾交流」等非視覺、模板化語言。
+  - 這不是品質稍差，而是沒有逐張讀圖的失敗輸出。
+- 新 validator 回頭檢查時會失敗，且錯誤集中在整批同值、同 reason 與模板語言。
+- 判斷：
+  - 這輪應作為 anti-template validator 的負面案例，不應人工修剪後採用。
+
+### 本輪促成的應對
+
+這輪大批量測試直接促成以下調整：
+
+- `prompts/ai-labeling.md` 加入逐張檢視要求，禁止只依 `photo_id`、相簿名稱、前後照片、批次規則或 archetype 批量套用。
+- reason 規則收緊：讀圖欄位必須引用本張照片的具體可見證據，不可跨照片重複套用同一句。
+- `people_count` 明確定義為畫面中可辨識的所有人，不只主體；大量人數應寫估算依據。
+- sponsorship 規則收緊：SITCON 自有 Logo、旗幟、桌旗、背板或活動識別不屬於 `sponsorship_items`，不能只因茶點或 SITCON 旗幟推論贊助成果。
+- `public_use_status` 不再鼓勵每張都填；沒有具體公開使用疑慮時應省略。
+- `safe_crop` 改成逐比例驗證，不是「能裁就標」。
+- `pnpm ai:validate` 新增 hard fail：同一讀圖欄位的 `value + reason` 在 5 張以上重複、reason 使用模板或非視覺語言。
+- `pnpm ai:review` 新增批次警訊：`has_negative_space`、`scene_tags`、`needs_review`、confidence 過度集中。
+
+### `visual_description` 設計評估
+
+這輪也顯示 reason 裡確實藏有 taxonomy 不容易涵蓋的長尾資訊，例如具體物件、桌面配置、人物動作、旗幟位置、可見文字與空間關係。這些資訊對「用自然語言找照片」有潛在價值，但不適合直接把 reason 當成搜尋語料，因為 reason 的原始職責是解釋單一欄位判斷，且容易模板化、碎片化或混入推論。
+
+因此後續新增 `visual_description` 作為正式 photo schema 欄位是合理方向：
+
+- 它把「搜尋用自然語言描述」和「欄位審核 reason」分開，避免污染 reason 的審核職責。
+- 它可補足 taxonomy 的長尾盲點，讓未來自然語言搜尋或 embedding 搜尋有更好的語料。
+- 它不列入 `reviewed_required_fields` 或 `approved_required_fields`，避免變成每張照片的人工審核負擔。
+- 它仍可進入 AI proposal / diff / update plan，讓人類在寫入前逐欄審核。
+
+但 `visual_description` 也有新風險：
+
+- 它是公開 metadata，若寫入正式 Sheets，應避免包含未確認身份、年份、單位、贊助推論或敏感特徵。
+- 若 prompt 不夠嚴格，模型可能產生「有人在交流」這類空泛描述，對搜尋沒有幫助。
+- 若沒有近似重複檢查，它也可能變成另一個批次模板欄位。
+
+目前的應對是合理但仍屬第一階段：schema、prompt、contract、operator guide、validator 與 fixtures 已支援 `visual_description`，並用最小長度、禁用語句、具體視覺線索、完全與近似重複檢查降低品質下界。下一步應使用 Claude 重新跑 132 張，並用 5 到 10 個實際工作情境查詢比較 taxonomy-only 與 taxonomy + `visual_description`，確認它是否真的提升找圖效果。
+
 ## 目前已知容易失準的欄位
 
 ### `safe_crop`
@@ -305,6 +389,7 @@ reason 是審核脈絡，不是正式 metadata。它應只描述可見畫面或 
 
 - 同一個讀圖欄位的 `value` 與 `reason` 組合在 5 張以上不同照片重複出現。
 - 讀圖欄位 reason 使用 `推測值`、`預設為`、`照片方向預設`、`圖片尺寸為`、`一般而言` 等模板或非視覺語言。
+- `visual_description` 少於 20 個非空白字元、使用不確定或模板語言、缺少具體視覺線索，或和其他照片描述近似重複。
 
 ## 後續可工具化的檢查
 
@@ -314,5 +399,6 @@ reason 是審核脈絡，不是正式 metadata。它應只描述可見畫面或 
 - 檢查 `safe_crop` 是否和 `orientation`、主體位置或圖片尺寸有高風險組合。
 - 對 `recommended_uses = 贊助成果報告` 增加更細緻的 sponsor exposure / item 檢查。
 - 找出同一相簿內高度重複的講者照片或合照，只提示少數更適合優先審核的照片。
+- 建立最小自然語言搜尋 prototype，比較 taxonomy-only 與 taxonomy + `visual_description` 在真實工作查詢上的差異。
 
 這些檢查應先作為 review warning，不應直接讓 validation 失敗。validation 只負責格式與責任邊界；品質判斷仍應保留給人工與後續工具迭代。
