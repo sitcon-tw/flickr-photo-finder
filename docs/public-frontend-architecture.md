@@ -102,6 +102,7 @@ MVP 暫不採用以下方式：
 ```js
 export const dataSources = {
   photosCsvUrl: "../fixtures/photos.csv",
+  schemaJsonUrl: "../data/photo-schema.json",
   taxonomyJsonUrl: "../data/tag-taxonomy.json",
 };
 ```
@@ -109,6 +110,8 @@ export const dataSources = {
 本機開發預設讀 repo 內 sample/export data。部署到 GitHub Pages 時，請使用 `pnpm pages:build` 產生 artifact；它會把 `app/` 前端複製到 `tmp/pages/`，並產生部署用 `config.js`，讓 `photosCsvUrl` 指向 `config/project.json` 中 `googleSheets.spreadsheetId` 的 Google Sheets `photos` 公開 CSV 輸出。
 
 前端可以讀公開資料 URL，但不能使用任何需要保密的 token、API key 或 OAuth credential。
+
+公開前端除了照片卡片搜尋，也應提供資料庫概覽，協助維護者快速判斷目前索引整理成效。概覽應優先使用 `data/photo-schema.json` 與 `data/tag-taxonomy.json` 理解欄位與必要規則，例如整理狀態、公開使用狀態、人數標記、reviewed 必要欄位完整度與贊助欄位覆蓋率，不應在前端另外維護一份欄位規則。
 
 公開讀取規則記錄在 `docs/google-sheets-database-design.md`，外部 AI 讀取方式記錄在 `docs/ai-readable-dataset.md`。
 
@@ -120,6 +123,7 @@ GitHub Pages 應透過 GitHub Actions 發布乾淨的 Pages artifact，不應直
 
 - 公開檢索前端所需的 HTML、CSS、JavaScript。
 - 經過資料流程產生或指定的公開資料來源設定。
+- `data/photo-schema.json` 與 `data/tag-taxonomy.json`，讓前端用同一份欄位與受控字彙來源理解資料。
 - 必要的靜態資源。
 
 artifact 不應包含：

@@ -102,7 +102,7 @@ pnpm dev
 pnpm pages:build
 ```
 
-這會輸出乾淨的 `tmp/pages/`，只包含公開前端、必要設定與 taxonomy。部署版 `config.js` 會把 `photosCsvUrl` 指向 `config/project.json` 中 `googleSheets.spreadsheetId` 的公開 Google Sheets `photos` CSV 輸出；它不會包含 repo scripts、fixtures、tmp 工作資料或任何 credential。
+這會輸出乾淨的 `tmp/pages/`，只包含公開前端、必要設定、schema 與 taxonomy。部署版 `config.js` 會把 `photosCsvUrl` 指向 `config/project.json` 中 `googleSheets.spreadsheetId` 的公開 Google Sheets `photos` CSV 輸出；它不會包含 repo scripts、fixtures、tmp 工作資料或任何 credential。前端會使用 schema 計算資料庫概覽，例如整理狀態、公開使用狀態、人數標記、reviewed 必要欄位完整度與贊助欄位覆蓋率。
 
 MVP 的 GitHub Pages 資料讀取方式是公開 CSV URL，不使用前端 Google API key、OAuth、service account 或 Apps Script Web App。上線前需要確認正式 Google Sheets 允許公開唯讀讀取、`photos` header 符合 `data/photo-schema.json`，且 GitHub repository Pages 來源設定為 GitHub Actions。完整準備清單見 `docs/public-frontend-architecture.md`。
 
