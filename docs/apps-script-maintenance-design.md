@@ -122,7 +122,22 @@ pnpm apps-script:open
 
 `clasp` status/push/open 需要目前登入的 Google 帳號已啟用 Apps Script API。若出現 `User has not enabled the Apps Script API`，先到 <https://script.google.com/home/usersettings> 啟用，等待幾分鐘後重試。
 
-### 綁定既有 Apps Script 專案
+### 第一次部署快速流程
+
+接手者第一次把 repo Apps Script 部署到正式 Sheet 時，請照這個順序：
+
+1. 執行 `pnpm apps-script:login`，用有目標 Sheet / Apps Script 權限的 Google 帳號登入 clasp。
+2. 到 <https://script.google.com/home/usersettings>，確認同一個 Google 帳號已啟用 Apps Script API。
+3. 打開正式 Sheet，從功能列選 `擴充功能` -> `Apps Script`。這一步打開的專案才是 Sheet UI 會使用的 bound script。
+4. 在 Apps Script 編輯器的 Project Settings 複製 Script ID。
+5. 回 repo 執行 `pnpm apps-script:bind -- <script-id>`，建立本機 `apps-script/.clasp.json`。
+6. 執行 `pnpm apps-script:status`，確認 tracked files 是 `appsscript.json`、`Code.js`、`GeneratedConfig.js`。
+7. 執行 `pnpm apps-script:push`。
+8. 回正式 Sheet 重新整理，確認出現 `SITCON Photo Finder` 選單。
+
+若第 3 步看到的是空白 Apps Script 專案，不要另外用 clasp create 建一個新的專案；直接複製那份空白專案的 Script ID，讓 `pnpm apps-script:push` 把 repo source 推到它。
+
+### 綁定 Sheet UI 的 Apps Script 專案
 
 維護者應從正式 Sheet 的 `擴充功能` -> `Apps Script` 打開該 Sheet 綁定的 Apps Script 專案，再到 Apps Script 編輯器的 Project Settings 複製 Script ID，然後產生本機 `.clasp.json`：
 
