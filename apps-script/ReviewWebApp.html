@@ -1,0 +1,948 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+  <head>
+    <base target="_top" />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      :root {
+        color: #17202a;
+        font-family:
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        background: #f5f7fa;
+        margin: 0;
+      }
+
+      button,
+      input,
+      select,
+      textarea {
+        font: inherit;
+      }
+
+      button {
+        background: #0f766e;
+        border: 1px solid #0f766e;
+        border-radius: 4px;
+        color: #fff;
+        cursor: pointer;
+        padding: 8px 10px;
+      }
+
+      button:disabled {
+        cursor: progress;
+        opacity: 0.65;
+      }
+
+      a {
+        color: #075985;
+      }
+
+      .shell {
+        display: grid;
+        gap: 14px;
+        min-height: 100vh;
+        padding: 14px;
+      }
+
+      .topbar {
+        align-items: center;
+        display: flex;
+        gap: 12px;
+        justify-content: space-between;
+      }
+
+      h1 {
+        font-size: 22px;
+        margin: 0;
+      }
+
+      .summary {
+        color: #5b6778;
+        margin: 4px 0 0;
+      }
+
+      .layout {
+        align-items: start;
+        display: grid;
+        gap: 14px;
+        grid-template-columns: minmax(320px, 440px) minmax(0, 1fr);
+      }
+
+      .panel {
+        background: #fff;
+        border: 1px solid #d5dce5;
+        border-radius: 6px;
+      }
+
+      .list-panel,
+      .editor-panel {
+        min-height: 0;
+      }
+
+      .toolbar {
+        border-bottom: 1px solid #d5dce5;
+        display: grid;
+        gap: 8px;
+        padding: 10px;
+      }
+
+      .toolbar-grid {
+        display: grid;
+        gap: 8px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .toolbar label,
+      .field {
+        display: grid;
+        gap: 4px;
+      }
+
+      .toolbar span,
+      label {
+        font-weight: 700;
+      }
+
+      input,
+      select,
+      textarea {
+        background: #fff;
+        border: 1px solid #bdc7d5;
+        border-radius: 4px;
+        padding: 7px;
+        width: 100%;
+      }
+
+      input[readonly] {
+        background: #eef1f5;
+        color: #4b5563;
+      }
+
+      textarea {
+        min-height: 76px;
+        resize: vertical;
+      }
+
+      .photo-list {
+        display: grid;
+        gap: 8px;
+        max-height: calc(100vh - 190px);
+        overflow: auto;
+        padding: 10px;
+      }
+
+      .photo-card {
+        background: #fff;
+        border: 1px solid #d5dce5;
+        border-radius: 6px;
+        color: #17202a;
+        cursor: pointer;
+        display: grid;
+        gap: 8px;
+        grid-template-columns: 104px minmax(0, 1fr);
+        padding: 8px;
+        text-align: left;
+        width: 100%;
+      }
+
+      .photo-card:hover,
+      .photo-card.selected {
+        border-color: #0f766e;
+        box-shadow: 0 0 0 2px rgba(15, 118, 110, 0.1);
+      }
+
+      .photo-card img {
+        aspect-ratio: 4 / 3;
+        background: #e5e7eb;
+        border-radius: 4px;
+        object-fit: cover;
+        width: 100%;
+      }
+
+      .photo-card strong,
+      .editor-title strong {
+        display: block;
+        overflow-wrap: anywhere;
+      }
+
+      .photo-meta {
+        color: #5b6778;
+        font-size: 12px;
+        line-height: 1.4;
+      }
+
+      .tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        margin-top: 6px;
+      }
+
+      .tag {
+        background: #eef2f7;
+        border-radius: 4px;
+        color: #334155;
+        font-size: 12px;
+        padding: 2px 5px;
+      }
+
+      .tag.status {
+        background: #e6f3f1;
+        color: #134e4a;
+      }
+
+      .editor-heading {
+        align-items: center;
+        border-bottom: 1px solid #d5dce5;
+        display: grid;
+        gap: 8px;
+        grid-template-columns: minmax(0, 1fr) auto;
+        padding: 12px;
+      }
+
+      .editor-title {
+        display: grid;
+        gap: 4px;
+      }
+
+      .editor-body {
+        display: grid;
+        gap: 12px;
+        padding: 12px;
+      }
+
+      .hero {
+        display: grid;
+        gap: 10px;
+        grid-template-columns: 180px minmax(0, 1fr);
+      }
+
+      .hero img {
+        aspect-ratio: 4 / 3;
+        background: #e5e7eb;
+        border-radius: 4px;
+        object-fit: cover;
+        width: 100%;
+      }
+
+      .form {
+        display: grid;
+        gap: 9px;
+      }
+
+      .meta {
+        color: #5b6778;
+        font-size: 12px;
+        line-height: 1.4;
+      }
+
+      .multi-select {
+        position: relative;
+      }
+
+      .selected-list {
+        align-items: center;
+        background: #fff;
+        border: 1px solid #bdc7d5;
+        border-radius: 4px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+        min-height: 38px;
+        padding: 4px;
+      }
+
+      .selected-list:focus-within {
+        border-color: #0f766e;
+        box-shadow: 0 0 0 2px rgba(15, 118, 110, 0.12);
+      }
+
+      .selected-token {
+        align-items: center;
+        background: #e6f3f1;
+        border: 1px solid #99c8c1;
+        border-radius: 4px;
+        color: #134e4a;
+        display: inline-flex;
+        font-size: 12px;
+        gap: 4px;
+        line-height: 1.2;
+        max-width: 100%;
+        min-height: 24px;
+        padding: 2px 4px 2px 7px;
+      }
+
+      .selected-token.unknown {
+        background: #fffbeb;
+        border-color: #f59e0b;
+        color: #7c2d12;
+      }
+
+      .selected-token span {
+        overflow-wrap: anywhere;
+      }
+
+      .selected-token button {
+        align-items: center;
+        background: transparent;
+        border: 0;
+        border-radius: 3px;
+        color: inherit;
+        display: inline-flex;
+        font-size: 16px;
+        font-weight: 700;
+        height: 20px;
+        justify-content: center;
+        line-height: 1;
+        min-height: 20px;
+        padding: 0;
+        width: 20px;
+      }
+
+      .selected-token button:hover {
+        background: rgba(15, 23, 42, 0.12);
+      }
+
+      .combo-input {
+        border: 0;
+        flex: 1 1 140px;
+        min-width: 110px;
+        padding: 5px 3px;
+        width: auto;
+      }
+
+      .combo-input:focus {
+        outline: 0;
+      }
+
+      .option-list {
+        background: #fff;
+        border: 1px solid #bdc7d5;
+        border-radius: 4px;
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.18);
+        display: none;
+        left: 0;
+        margin-top: 4px;
+        max-height: 220px;
+        overflow-y: auto;
+        position: absolute;
+        right: 0;
+        top: 100%;
+        z-index: 10;
+      }
+
+      .option-list.visible {
+        display: block;
+      }
+
+      .option {
+        cursor: pointer;
+        padding: 8px;
+      }
+
+      .option:hover,
+      .option.active {
+        background: #e6f3f1;
+      }
+
+      .option.empty {
+        color: #64748b;
+        cursor: default;
+      }
+
+      .actions {
+        align-items: start;
+        background: #fff;
+        bottom: 0;
+        border-top: 1px solid #d5dce5;
+        display: grid;
+        gap: 8px;
+        padding: 10px 12px;
+        position: sticky;
+      }
+
+      .status {
+        display: none;
+        line-height: 1.5;
+        white-space: pre-wrap;
+      }
+
+      .status.visible {
+        display: block;
+      }
+
+      .status.error {
+        color: #b42318;
+      }
+
+      .status.success {
+        color: #047857;
+      }
+
+      .empty {
+        color: #64748b;
+        padding: 16px;
+      }
+
+      @media (max-width: 880px) {
+        .layout,
+        .hero {
+          grid-template-columns: 1fr;
+        }
+
+        .photo-list {
+          max-height: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div>
+          <h1>SITCON Photo Finder Review</h1>
+          <p id="summary" class="summary">載入中</p>
+        </div>
+      </header>
+
+      <section class="layout">
+        <div class="panel list-panel">
+          <form id="filters" class="toolbar">
+            <label>
+              <span>搜尋</span>
+              <input id="queryFilter" type="search" autocomplete="off" placeholder="photo id、相簿、用途、描述" />
+            </label>
+            <div class="toolbar-grid">
+              <label>
+                <span>整理狀態</span>
+                <select id="curationFilter" name="curation_status"></select>
+              </label>
+              <label>
+                <span>公開狀態</span>
+                <select id="publicFilter" name="public_use_status"></select>
+              </label>
+              <label>
+                <span>用途</span>
+                <select id="useFilter" name="recommended_uses"></select>
+              </label>
+              <label>
+                <span>場景</span>
+                <select id="sceneFilter" name="scene_tags"></select>
+              </label>
+              <label>
+                <span>贊助品項</span>
+                <select id="sponsorshipFilter" name="sponsorship_items"></select>
+              </label>
+            </div>
+          </form>
+          <section id="listStatus" class="status"></section>
+          <section id="photoList" class="photo-list" aria-live="polite"></section>
+        </div>
+
+        <div class="panel editor-panel">
+          <section class="editor-heading">
+            <div class="editor-title">
+              <strong id="editorTitle">尚未選取照片</strong>
+              <span id="editorMeta" class="photo-meta">請從左側列表選擇一張照片。</span>
+            </div>
+            <a id="flickrLink" href="#" target="_blank" rel="noreferrer" hidden>Flickr</a>
+          </section>
+          <section id="editorBody" class="editor-body">
+            <p class="empty">選取照片後可在這裡編輯欄位。</p>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const bootstrapState = <?!= bootstrapState ?>;
+      const state = {
+        busy: false,
+        current: null,
+        list: null,
+        selectedPhotoId: "",
+        searchTimer: 0,
+      };
+
+      const controls = {
+        filters: document.querySelector("#filters"),
+        query: document.querySelector("#queryFilter"),
+        curation: document.querySelector("#curationFilter"),
+        publicStatus: document.querySelector("#publicFilter"),
+        use: document.querySelector("#useFilter"),
+        scene: document.querySelector("#sceneFilter"),
+        sponsorship: document.querySelector("#sponsorshipFilter"),
+        list: document.querySelector("#photoList"),
+        listStatus: document.querySelector("#listStatus"),
+        summary: document.querySelector("#summary"),
+        editorTitle: document.querySelector("#editorTitle"),
+        editorMeta: document.querySelector("#editorMeta"),
+        editorBody: document.querySelector("#editorBody"),
+        flickrLink: document.querySelector("#flickrLink"),
+      };
+
+      function setStatus(element, message, type) {
+        if (!message) {
+          element.textContent = "";
+          element.className = "status";
+          return;
+        }
+        element.textContent = Array.isArray(message) ? message.map(formatError).join("\n") : message;
+        element.className = `status visible ${type || ""}`.trim();
+      }
+
+      function setBusy(isBusy) {
+        state.busy = isBusy;
+        document.querySelectorAll("button, input, select, textarea").forEach((control) => {
+          control.disabled = isBusy;
+        });
+      }
+
+      function formatError(error) {
+        if (error.rowNumber) {
+          return `第 ${error.rowNumber} 列 ${error.fieldName}: ${error.message}`;
+        }
+        if (error.fieldName) {
+          return `${error.fieldName}: ${error.message}`;
+        }
+        return error.message || String(error);
+      }
+
+      function failureMessage(error) {
+        const message = error.message || String(error);
+        if (/Authorization is required|授權|權限不足/i.test(message)) {
+          return [
+            "Web App 呼叫 Apps Script 時被回報需要授權。",
+            "請確認目前瀏覽器使用的是有 Sheet 權限且已授權的 Google 帳號。若同時登入多個 Google 帳號，請改用單一帳號的瀏覽器 profile / 無痕視窗重開 Web App。",
+            `原始錯誤：${message}`,
+          ].join("\n\n");
+        }
+        return message;
+      }
+
+      function optionElement(value, label = value) {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = label;
+        return option;
+      }
+
+      function fillSelect(select, emptyLabel, values) {
+        select.textContent = "";
+        select.append(optionElement("", emptyLabel));
+        values.forEach((value) => select.append(optionElement(value)));
+      }
+
+      function splitList(value) {
+        return String(value || "")
+          .split(";")
+          .map((item) => item.trim())
+          .filter(Boolean);
+      }
+
+      function currentFilters() {
+        return {
+          curation_status: controls.curation.value,
+          public_use_status: controls.publicStatus.value,
+          recommended_uses: controls.use.value,
+          scene_tags: controls.scene.value,
+          sponsorship_items: controls.sponsorship.value,
+          query: controls.query.value.trim(),
+        };
+      }
+
+      function renderState(nextState) {
+        const filters = currentFilters();
+        state.list = nextState;
+        fillSelect(controls.curation, "全部整理", nextState.filters.curation_status || []);
+        fillSelect(controls.publicStatus, "全部公開狀態", nextState.filters.public_use_status || []);
+        fillSelect(controls.use, "全部用途", nextState.filters.recommended_uses || []);
+        fillSelect(controls.scene, "全部場景", nextState.filters.scene_tags || []);
+        fillSelect(controls.sponsorship, "全部品項", nextState.filters.sponsorship_items || []);
+        applyFilterValues(filters);
+        renderList(nextState.photos || []);
+        controls.summary.textContent = `顯示 ${nextState.filteredCount} / ${nextState.totalCount} 張照片。Schema ${nextState.schemaVersion}`;
+        setStatus(controls.listStatus, "");
+        setBusy(false);
+      }
+
+      function applyFilterValues(filters) {
+        controls.curation.value = filters.curation_status;
+        controls.publicStatus.value = filters.public_use_status;
+        controls.use.value = filters.recommended_uses;
+        controls.scene.value = filters.scene_tags;
+        controls.sponsorship.value = filters.sponsorship_items;
+      }
+
+      function renderList(photos) {
+        controls.list.textContent = "";
+        if (photos.length === 0) {
+          const empty = document.createElement("p");
+          empty.className = "empty";
+          empty.textContent = "沒有符合條件的照片。";
+          controls.list.append(empty);
+          return;
+        }
+
+        photos.forEach((photo) => {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = photo.photo_id === state.selectedPhotoId ? "photo-card selected" : "photo-card";
+          button.addEventListener("click", () => loadPhoto(photo.photo_id));
+
+          const image = document.createElement("img");
+          image.src = photo.image_preview_url || "";
+          image.alt = "";
+
+          const body = document.createElement("div");
+          const title = document.createElement("strong");
+          title.textContent = photo.photo_id || "(沒有 photo_id)";
+          const meta = document.createElement("div");
+          meta.className = "photo-meta";
+          meta.textContent = [photo.album_title, photo.event_year].filter(Boolean).join(" / ");
+
+          const tags = document.createElement("div");
+          tags.className = "tags";
+          [
+            photo.curation_status,
+            photo.public_use_status,
+            photo.priority_level,
+            ...splitList(photo.recommended_uses).slice(0, 2),
+            ...splitList(photo.sponsorship_items).slice(0, 2),
+          ]
+            .filter(Boolean)
+            .forEach((value) => {
+              const tag = document.createElement("span");
+              tag.className = ["unreviewed", "ai_labeled", "reviewed", "approved", "needs_review", "avoid"].includes(value)
+                ? "tag status"
+                : "tag";
+              tag.textContent = value;
+              tags.append(tag);
+            });
+
+          body.append(title, meta, tags);
+          button.append(image, body);
+          controls.list.append(button);
+        });
+      }
+
+      function fieldControl(field, value) {
+        if (field.options.length > 0 && !field.multiValue) {
+          const select = document.createElement("select");
+          select.name = field.name;
+          select.append(optionElement("", "未填寫"));
+          field.options.forEach((option) => select.append(optionElement(option)));
+          select.value = value;
+          return select;
+        }
+
+        if (field.options.length > 0 && field.multiValue) {
+          return multiChoiceControl(field, value);
+        }
+
+        if (field.multiValue || field.type === "text") {
+          const textarea = document.createElement("textarea");
+          textarea.name = field.name;
+          textarea.value = value;
+          textarea.readOnly = field.readOnly;
+          return textarea;
+        }
+
+        const input = document.createElement("input");
+        input.name = field.name;
+        input.value = value;
+        input.readOnly = field.readOnly;
+        input.type = "text";
+        return input;
+      }
+
+      function multiChoiceControl(field, value) {
+        const selectedValues = [];
+        splitList(value).forEach((item) => {
+          if (!selectedValues.includes(item)) {
+            selectedValues.push(item);
+          }
+        });
+
+        const wrapper = document.createElement("div");
+        wrapper.className = "multi-select";
+        const hidden = document.createElement("input");
+        hidden.type = "hidden";
+        hidden.name = field.name;
+        hidden.value = selectedValues.join(";");
+
+        const selectedList = document.createElement("div");
+        selectedList.className = "selected-list";
+        const input = document.createElement("input");
+        input.className = "combo-input";
+        input.type = "text";
+        input.autocomplete = "off";
+        input.placeholder = "搜尋或選擇";
+        const optionList = document.createElement("div");
+        optionList.className = "option-list";
+
+        function updateHidden() {
+          hidden.value = selectedValues.join(";");
+        }
+
+        function addValue(item) {
+          if (!item || selectedValues.includes(item)) {
+            return;
+          }
+          selectedValues.push(item);
+          input.value = "";
+          updateHidden();
+          renderSelected();
+          renderOptions();
+        }
+
+        function removeValue(item) {
+          const index = selectedValues.indexOf(item);
+          if (index === -1) {
+            return;
+          }
+          selectedValues.splice(index, 1);
+          updateHidden();
+          renderSelected();
+          renderOptions();
+        }
+
+        function matchingOptions() {
+          const query = input.value.trim().toLowerCase();
+          return field.options
+            .filter((option) => !selectedValues.includes(option))
+            .filter((option) => !query || option.toLowerCase().includes(query));
+        }
+
+        function renderSelected() {
+          selectedList.textContent = "";
+          selectedValues.forEach((item) => {
+            const token = document.createElement("span");
+            token.className = field.options.includes(item) ? "selected-token" : "selected-token unknown";
+            const text = document.createElement("span");
+            text.textContent = item;
+            const remove = document.createElement("button");
+            remove.type = "button";
+            remove.setAttribute("aria-label", `移除 ${item}`);
+            remove.textContent = "×";
+            remove.addEventListener("click", () => {
+              removeValue(item);
+              input.focus();
+            });
+            token.append(text, remove);
+            selectedList.append(token);
+          });
+          selectedList.append(input);
+        }
+
+        function renderOptions() {
+          optionList.textContent = "";
+          const options = matchingOptions();
+          if (options.length === 0) {
+            const empty = document.createElement("div");
+            empty.className = "option empty";
+            empty.textContent = input.value.trim() ? "沒有符合的選項" : "沒有可選項目";
+            optionList.append(empty);
+            return;
+          }
+          options.forEach((option, index) => {
+            const item = document.createElement("div");
+            item.className = index === 0 ? "option active" : "option";
+            item.textContent = option;
+            item.addEventListener("mousedown", (event) => {
+              event.preventDefault();
+              addValue(option);
+            });
+            optionList.append(item);
+          });
+        }
+
+        function openOptions() {
+          renderOptions();
+          optionList.classList.add("visible");
+        }
+
+        function closeOptions() {
+          optionList.classList.remove("visible");
+        }
+
+        input.addEventListener("focus", openOptions);
+        input.addEventListener("input", openOptions);
+        input.addEventListener("keydown", (event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            const first = matchingOptions()[0];
+            if (first) {
+              addValue(first);
+              openOptions();
+            }
+          } else if (event.key === "Escape") {
+            closeOptions();
+          } else if (event.key === "Backspace" && input.value === "" && selectedValues.length > 0) {
+            removeValue(selectedValues[selectedValues.length - 1]);
+          }
+        });
+        wrapper.addEventListener("focusout", () => {
+          setTimeout(() => {
+            if (!wrapper.contains(document.activeElement)) {
+              closeOptions();
+            }
+          }, 0);
+        });
+        selectedList.addEventListener("click", () => input.focus());
+
+        renderSelected();
+        renderOptions();
+        wrapper.append(hidden, selectedList, optionList);
+        return wrapper;
+      }
+
+      function renderEditor(photoState, saveMessage, saveMessageType) {
+        state.current = photoState;
+        state.selectedPhotoId = photoState.record.photo_id;
+        controls.editorTitle.textContent = photoState.record.photo_id || "(沒有 photo_id)";
+        controls.editorMeta.textContent = [photoState.record.album_title, photoState.record.event_year, `第 ${photoState.rowNumber} 列`]
+          .filter(Boolean)
+          .join(" / ");
+        controls.flickrLink.href = photoState.record.photo_url || "#";
+        controls.flickrLink.hidden = !photoState.record.photo_url;
+
+        controls.editorBody.textContent = "";
+        const hero = document.createElement("section");
+        hero.className = "hero";
+        const image = document.createElement("img");
+        image.src = photoState.record.image_preview_url || "";
+        image.alt = "";
+        const heroText = document.createElement("div");
+        const description = document.createElement("p");
+        description.textContent = photoState.record.visual_description || photoState.record.curation_notes || "尚未填寫視覺描述或整理備註。";
+        heroText.append(description);
+        hero.append(image, heroText);
+
+        const form = document.createElement("form");
+        form.className = "form";
+        photoState.fields.forEach((field) => {
+          const wrapper = document.createElement("div");
+          wrapper.className = "field";
+          const label = document.createElement("label");
+          label.textContent = field.required ? `${field.labelZh} *` : field.labelZh;
+          const control = fieldControl(field, photoState.record[field.name] || "");
+          control.id = `field-${field.name}`;
+          label.htmlFor = control.id;
+          const meta = document.createElement("div");
+          meta.className = "meta";
+          const parts = [field.name, field.descriptionZh];
+          if (field.multiValue && field.options.length > 0) {
+            parts.push("可搜尋多選");
+          } else if (field.multiValue) {
+            parts.push("多值用 ; 分隔");
+          }
+          meta.textContent = parts.filter(Boolean).join(" - ");
+          wrapper.append(label, control, meta);
+          form.append(wrapper);
+        });
+
+        const actions = document.createElement("section");
+        actions.className = "actions";
+        const saveButton = document.createElement("button");
+        saveButton.type = "button";
+        saveButton.textContent = "儲存並驗證";
+        const saveStatus = document.createElement("section");
+        saveStatus.className = "status";
+        saveButton.addEventListener("click", () => saveCurrentPhoto(form, saveStatus));
+        actions.append(saveButton, saveStatus);
+
+        controls.editorBody.append(hero, form, actions);
+        if (saveMessage) {
+          setStatus(saveStatus, saveMessage, saveMessageType);
+        } else if (photoState.errors.length > 0) {
+          setStatus(saveStatus, photoState.errors, "error");
+        }
+        if (state.list) {
+          renderList(state.list.photos || []);
+        }
+        setBusy(false);
+      }
+
+      function loadList() {
+        setBusy(true);
+        setStatus(controls.listStatus, "載入照片列表...");
+        google.script.run
+          .withSuccessHandler(renderState)
+          .withFailureHandler((error) => {
+            setBusy(false);
+            setStatus(controls.listStatus, failureMessage(error), "error");
+          })
+          .getReviewWebAppState(currentFilters());
+      }
+
+      function loadPhoto(photoId) {
+        setBusy(true);
+        setStatus(controls.listStatus, "");
+        google.script.run
+          .withSuccessHandler(renderEditor)
+          .withFailureHandler((error) => {
+            setBusy(false);
+            setStatus(controls.listStatus, failureMessage(error), "error");
+          })
+          .getReviewWebAppPhoto(photoId);
+      }
+
+      function saveCurrentPhoto(form, saveStatus) {
+        if (!state.current) {
+          return;
+        }
+        const values = {};
+        state.current.fields.forEach((field) => {
+          const control = form.elements[field.name];
+          if (control && !field.readOnly) {
+            values[field.name] = control.value;
+          }
+        });
+
+        setBusy(true);
+        setStatus(saveStatus, "儲存中...");
+        google.script.run
+          .withSuccessHandler((nextPhotoState) => {
+            if (nextPhotoState.errors.length > 0) {
+              renderEditor(nextPhotoState);
+              return;
+            }
+            renderEditor(nextPhotoState, "已儲存。", "success");
+            loadList();
+          })
+          .withFailureHandler((error) => {
+            setBusy(false);
+            setStatus(saveStatus, failureMessage(error), "error");
+          })
+          .saveReviewWebAppPhoto(state.current.record.photo_id, values);
+      }
+
+      function scheduleListReload() {
+        clearTimeout(state.searchTimer);
+        state.searchTimer = setTimeout(loadList, 250);
+      }
+
+      controls.filters.addEventListener("change", loadList);
+      controls.query.addEventListener("input", scheduleListReload);
+
+      if (bootstrapState) {
+        renderState(bootstrapState);
+      } else {
+        loadList();
+      }
+    </script>
+  </body>
+</html>
