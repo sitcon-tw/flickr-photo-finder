@@ -22,10 +22,10 @@ Apps Script 的定位是授權後的 Sheets 維護輔助，不是另一套資料
 依照 `data/photo-schema.json` 與 `data/tag-taxonomy.json`：
 
 - 確認 `photos` header 是否符合 schema。
-- 對受控字彙欄位套用下拉選單。
-- 對單值欄位限制只能選一個值。
+- 對單值受控字彙欄位套用下拉選單，並限制只能選一個值。
+- 對單值 boolean 欄位套用 `true` / `false` 下拉選單。
 - 對多值欄位提供格式提示，說明使用分號分隔。
-- 對 URL、年份、整數、boolean 欄位提供基本格式提醒。
+- 對 URL、年份、整數、boolean 欄位在選單驗證時提供基本格式檢查。
 
 ### 驗證目前列或整張表
 
@@ -63,6 +63,7 @@ Apps Script 應能顯示目前 Sheets 使用的：
 - taxonomy version 或 repo commit。
 - sponsorship items version。
 - 最近同步時間。
+- 同步工具來源。
 
 這些資訊應寫入 `schema_meta`。
 
@@ -199,8 +200,7 @@ Apps Script 遇到以下狀況時應停止並提醒：
 
 - `photos` header 與 schema 不一致。
 - 缺少必要工作表。
-- taxonomy 中找不到欄位需要的受控字彙。
-- `schema_meta` 顯示版本過舊，或同步資訊空白。
+- `schema_meta` 同步資訊空白。
 - `photos` 公開讀取格式缺少必要欄位。
 
 不要在欄位不明確時自動猜測或重排資料。
