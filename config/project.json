@@ -10,7 +10,8 @@
   },
   "frontend": {
     "appTitle": "SITCON Flickr Photo Finder",
-    "sourceLinkLabel": "Flickr"
+    "sourceLinkLabel": "Flickr",
+    "ga4MeasurementId": "G-ZQ49HXBJ2P"
   },
   "googleSheets": {
     "spreadsheetId": "1JM2QzJo5kpeILZPyTSE6gUK3z-FyRcaGhPJlYE-FMbs"

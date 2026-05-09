@@ -35,6 +35,159 @@ const sourceLink = document.querySelector("#sourceLink");
 let photos = [];
 let photoSchema;
 let listFields = [];
+let currentResults = [];
+
+const analytics = {
+  enabled: false,
+  lastTrackedResultsState: "",
+  pendingResultsSource: "",
+  resultsTimer: 0,
+};
+
+const resultTrackingDelayMs = 600;
+
+function cleanParams(params) {
+  return Object.fromEntries(
+    Object.entries(params).filter(([, value]) => value !== "" && value !== null && value !== undefined),
+  );
+}
+
+function normalizeMeasurementId(value) {
+  const measurementId = String(value ?? "").trim();
+  return /^G-[A-Z0-9]+$/.test(measurementId) ? measurementId : "";
+}
+
+function setupAnalytics(config) {
+  const measurementId = normalizeMeasurementId(config.frontend?.ga4MeasurementId);
+  if (!measurementId) {
+    return;
+  }
+
+  window.dataLayer = window.dataLayer || [];
+  window.gtag =
+    window.gtag ||
+    function gtag() {
+      window.dataLayer.push(arguments);
+    };
+
+  const script = document.createElement("script");
+  script.async = true;
+  script.src = `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(measurementId)}`;
+  document.head.append(script);
+
+  window.gtag("js", new Date());
+  window.gtag("config", measurementId);
+  analytics.enabled = true;
+}
+
+function trackEvent(name, params = {}) {
+  if (!analytics.enabled || typeof window.gtag !== "function") {
+    return;
+  }
+  window.gtag("event", name, cleanParams(params));
+}
+
+function resultCountBucket(count) {
+  if (count === 0) {
+    return "0";
+  }
+  if (count <= 5) {
+    return "1_5";
+  }
+  if (count <= 20) {
+    return "6_20";
+  }
+  return "21_plus";
+}
+
+function sanitizeSearchTerm(value) {
+  return String(value ?? "")
+    .trim()
+    .replace(/[^\s@]+@[^\s@]+\.[^\s@]+/g, "")
+    .replace(/\+?\d[\d\s().-]{6,}\d/g, "")
+    .replace(/\s+/g, " ")
+    .slice(0, 100);
+}
+
+function currentFilterSnapshot() {
+  return {
+    searchTerm: sanitizeSearchTerm(controls.search.value),
+    recommendedUse: controls.use.value,
+    mood: controls.mood.value,
+    scene: controls.scene.value,
+    peopleCount: controls.peopleCount.value,
+    sponsorshipItem: controls.sponsorshipItem.value,
+    publicUseStatus: controls.publicStatus.value,
+    priorityLevel: controls.priority.value,
+    curationStatus: controls.curationStatus.value,
+    collection: controls.collection.value,
+    resultCount: currentResults.length,
+  };
+}
+
+function hasActiveFilters(snapshot) {
+  return Boolean(
+    snapshot.recommendedUse ||
+      snapshot.mood ||
+      snapshot.scene ||
+      snapshot.peopleCount ||
+      snapshot.sponsorshipItem ||
+      snapshot.publicUseStatus ||
+      snapshot.priorityLevel ||
+      snapshot.curationStatus ||
+      snapshot.collection,
+  );
+}
+
+function resultsEventParams(snapshot) {
+  return {
+    result_count: snapshot.resultCount,
+    result_count_bucket: resultCountBucket(snapshot.resultCount),
+    search_surface: "main",
+    recommended_use: snapshot.recommendedUse,
+    public_use_status: snapshot.publicUseStatus,
+    priority_level: snapshot.priorityLevel,
+    curation_status: snapshot.curationStatus,
+    sponsorship_filter_used: Boolean(snapshot.sponsorshipItem),
+    collection_filter_used: Boolean(snapshot.collection),
+  };
+}
+
+function trackVisibleResults(source) {
+  const snapshot = currentFilterSnapshot();
+  const state = JSON.stringify({ source, ...snapshot });
+  if (state === analytics.lastTrackedResultsState) {
+    return;
+  }
+  analytics.lastTrackedResultsState = state;
+
+  if (source === "search" && snapshot.searchTerm) {
+    trackEvent("search", {
+      search_term: snapshot.searchTerm,
+      has_filters: hasActiveFilters(snapshot),
+      ...resultsEventParams(snapshot),
+    });
+    return;
+  }
+
+  if (hasActiveFilters(snapshot) || snapshot.searchTerm) {
+    trackEvent("filter_results", {
+      has_search_term: Boolean(snapshot.searchTerm),
+      mood_filter_used: Boolean(snapshot.mood),
+      scene_filter_used: Boolean(snapshot.scene),
+      people_count_filter: snapshot.peopleCount,
+      ...resultsEventParams(snapshot),
+    });
+  }
+}
+
+function scheduleResultsTracking(source) {
+  analytics.pendingResultsSource = source;
+  clearTimeout(analytics.resultsTimer);
+  analytics.resultsTimer = window.setTimeout(() => {
+    trackVisibleResults(analytics.pendingResultsSource);
+  }, resultTrackingDelayMs);
+}
 
 function applyProjectConfig(config) {
   const title = config.frontend?.appTitle ?? "Flickr Photo Finder";
@@ -42,6 +195,7 @@ function applyProjectConfig(config) {
   appTitle.textContent = title;
   sourceLink.href = config.flickr?.profileUrl ?? "https://www.flickr.com/";
   sourceLink.textContent = config.frontend?.sourceLinkLabel ?? "Flickr";
+  setupAnalytics(config);
 }
 
 function parseCsv(text) {
@@ -265,6 +419,111 @@ function formatPeopleCount(photo) {
   return value === "" ? "" : `${value} 人`;
 }
 
+function photoTitle(photo) {
+  return photo.event_name || photo.album_title || `Flickr ${photo.photo_id}`;
+}
+
+function canWriteClipboard() {
+  return Boolean(navigator.clipboard?.writeText);
+}
+
+function setTemporaryButtonText(button, text) {
+  const originalText = button.textContent;
+  button.textContent = text;
+  window.setTimeout(() => {
+    button.textContent = originalText;
+  }, 1800);
+}
+
+function photoEventParams(photo, resultRank, resultCount) {
+  return {
+    result_rank: resultRank,
+    result_count_bucket: resultCountBucket(resultCount),
+    public_use_status: photo.public_use_status,
+    curation_status: photo.curation_status,
+  };
+}
+
+function photoAnchorId(photoId) {
+  return `photo-${photoId}`;
+}
+
+function finderLink(photo) {
+  const url = new URL(window.location.href);
+  url.hash = photoAnchorId(photo.photo_id);
+  return url.toString();
+}
+
+function buildSizedImageUrl(previewUrl, suffix) {
+  if (!previewUrl) {
+    return "";
+  }
+
+  try {
+    const url = new URL(previewUrl);
+    const match = url.pathname.match(/^(.*\/\d+_[^/_]+)(?:_(?:s|q|t|m|n|w|z|c|b))?(\.[A-Za-z0-9]+)$/);
+    if (!match) {
+      return "";
+    }
+    url.pathname = `${match[1]}_${suffix}${match[2]}`;
+    return url.toString();
+  } catch {
+    return "";
+  }
+}
+
+function largeImageUrl(photo) {
+  return buildSizedImageUrl(photo.image_preview_url, "b");
+}
+
+function originalSizePageUrl(photo) {
+  if (!photo.photo_url) {
+    return "";
+  }
+
+  try {
+    const url = new URL(photo.photo_url);
+    url.hash = "";
+    url.search = "";
+    url.pathname = `${url.pathname.replace(/\/$/, "")}/sizes/o/`;
+    return url.toString();
+  } catch {
+    return "";
+  }
+}
+
+function setActionLink(link, href) {
+  if (!href) {
+    link.removeAttribute("href");
+    link.setAttribute("aria-disabled", "true");
+    return;
+  }
+
+  link.href = href;
+  link.removeAttribute("aria-disabled");
+}
+
+function trackImageSizeOpen(photo, imageSize, resultRank, resultCount) {
+  trackEvent("open_image_size", {
+    photo_id: photo.photo_id,
+    image_size: imageSize,
+    ...photoEventParams(photo, resultRank, resultCount),
+  });
+}
+
+async function copyFinderLink(photo, resultRank, resultCount, button) {
+  if (!canWriteClipboard()) {
+    return;
+  }
+
+  await navigator.clipboard.writeText(finderLink(photo));
+  setTemporaryButtonText(button, "已複製");
+  trackEvent("copy_finder_link", {
+    photo_id: photo.photo_id,
+    ...photoEventParams(photo, resultRank, resultCount),
+  });
+}
+
 function isFilled(value) {
   if (Array.isArray(value)) {
     return value.length > 0;
@@ -431,7 +690,7 @@ function renderOverview() {
   );
 }
 
-function renderPhoto(photo) {
+function renderPhoto(photo, resultRank, resultCount) {
   const fragment = template.content.cloneNode(true);
   const card = fragment.querySelector(".photo-card");
   const link = fragment.querySelector(".photo-link");
@@ -440,13 +699,58 @@ function renderPhoto(photo) {
   const year = fragment.querySelector(".photo-year");
   const details = fragment.querySelector(".details");
   const notes = fragment.querySelector(".notes");
+  const flickrSourceLink = fragment.querySelector(".flickr-source-link");
+  const largeImageLink = fragment.querySelector(".large-image-link");
+  const originalImageLink = fragment.querySelector(".original-image-link");
+  const copyFinderLinkButton = fragment.querySelector(".copy-finder-link-button");
+  const largeUrl = largeImageUrl(photo);
+  const originalUrl = originalSizePageUrl(photo);
 
+  card.id = photoAnchorId(photo.photo_id);
   link.href = photo.photo_url;
+  link.addEventListener("click", () => {
+    trackEvent("select_content", {
+      content_type: "photo",
+      content_id: photo.photo_id,
+      ...photoEventParams(photo, resultRank, resultCount),
+    });
+    trackEvent("open_flickr_source", {
+      photo_id: photo.photo_id,
+      ...photoEventParams(photo, resultRank, resultCount),
+    });
+  });
+  setActionLink(flickrSourceLink, photo.photo_url);
+  flickrSourceLink.addEventListener("click", () => {
+    if (!photo.photo_url) {
+      return;
+    }
+    trackEvent("open_flickr_source", {
+      photo_id: photo.photo_id,
+      ...photoEventParams(photo, resultRank, resultCount),
+    });
+  });
+  setActionLink(largeImageLink, largeUrl);
+  largeImageLink.addEventListener("click", (event) => {
+    if (!largeUrl) {
+      event.preventDefault();
+      return;
+    }
+    trackImageSizeOpen(photo, "large_1024", resultRank, resultCount);
+  });
+  setActionLink(originalImageLink, originalUrl);
+  originalImageLink.addEventListener("click", (event) => {
+    if (!originalUrl) {
+      event.preventDefault();
+      return;
+    }
+    trackImageSizeOpen(photo, "original", resultRank, resultCount);
+  });
+
   image.src = photo.image_preview_url;
   image.alt = [photo.event_name, photo.event_year, photo.photographer]
     .filter(Boolean)
     .join(" ");
-  title.textContent = photo.event_name || photo.album_title || `Flickr ${photo.photo_id}`;
+  title.textContent = photoTitle(photo);
   year.textContent = photo.event_year || "";
 
   appendDetail(details, "用途", photo.recommended_uses);
@@ -469,11 +773,35 @@ function renderPhoto(photo) {
     notes.remove();
   }
 
+  copyFinderLinkButton.disabled = !canWriteClipboard();
+  copyFinderLinkButton.addEventListener("click", async () => {
+    try {
+      await copyFinderLink(photo, resultRank, resultCount, copyFinderLinkButton);
+    } catch {
+      setTemporaryButtonText(copyFinderLinkButton, "複製失敗");
+    }
+  });
+
   return card;
+}
+
+function revealPhotoFromHash() {
+  const match = window.location.hash.match(/^#photo-(\d+)$/);
+  if (!match) {
+    return;
+  }
+
+  const card = document.getElementById(photoAnchorId(match[1]));
+  if (!card) {
+    return;
+  }
+
+  card.scrollIntoView({ block: "center" });
 }
 
 function render() {
   const filtered = photos.filter(matchesFilters);
+  currentResults = filtered;
   grid.replaceChildren();
   summary.textContent = `${filtered.length} / ${photos.length} 張照片`;
 
@@ -494,8 +822,8 @@ function render() {
   }
 
   const fragment = document.createDocumentFragment();
-  for (const photo of filtered) {
-    fragment.append(renderPhoto(photo));
+  for (const [index, photo] of filtered.entries()) {
+    fragment.append(renderPhoto(photo, index + 1, filtered.length));
   }
   grid.append(fragment);
 }
@@ -512,6 +840,7 @@ function resetFilters() {
   controls.curationStatus.value = "";
   controls.collection.value = "";
   render();
+  scheduleResultsTracking("filter");
 }
 
 async function loadData() {
@@ -538,16 +867,21 @@ async function loadData() {
   setupFilters(taxonomy);
   renderOverview();
   render();
+  revealPhotoFromHash();
 }
 
 for (const control of Object.values(controls)) {
   if (control === controls.reset) {
     continue;
   }
-  control.addEventListener("input", render);
+  control.addEventListener("input", () => {
+    render();
+    scheduleResultsTracking(control === controls.search ? "search" : "filter");
+  });
 }
 
 controls.reset.addEventListener("click", resetFilters);
+window.addEventListener("hashchange", revealPhotoFromHash);
 
 try {
   await loadData();

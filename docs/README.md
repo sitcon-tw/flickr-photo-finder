@@ -11,6 +11,7 @@
 | SITCON 2026 CFS 贊助品項 | `data/sponsorship-items.json` | 這是固定版本資料，不自動追遠端更新。 |
 | 組織名稱、Flickr 帳號與前端標題 | `config/project.json` | SITCON 是此 repo 的預設實例；其他組織 fork 時應先改這份設定。 |
 | 公開 Google Sheets ID | `config/project.json` 的 `googleSheets.spreadsheetId` | 這份 Sheets 預期可公開讀取；寫入權限由 Google Drive/Sheets 管理。 |
+| 前端使用行為分析設計 | `docs/frontend-analytics-design.md` | 導入 GA4 或分析前，先確認目前前端狀態、事件邊界、隱私限制與後續分析流程。 |
 | Sheets 表格讀寫技術選擇 | `docs/sheets-sync-workflow.md` | repo CLI 應以官方 Google Sheets API SDK 為主要方向；Google Drive 檔案搬運不是 Sheets 寫入主流程。 |
 | Sheets 正式寫入身份 | `docs/sheets-sync-workflow.md` | 建議使用 SITCON 管理的 service account，並將 service account email 加入正式 Sheets 編輯者。 |
 | AI 初標輸入與輸出格式 | `docs/ai-labeling-contract.md` | 定義 `tmp/ai-runs/<run-id>/` 的輸入檔、圖片來源、`metadata-proposals.json` 格式與驗證流程。 |
@@ -66,6 +67,7 @@
 
 - Apps Script source 已進 repo；實際 `clasp` 綁定、push 與 deploy 仍需由有權限的維護者操作。
 - GitHub Pages workflow 已可產生並部署 artifact；repository Pages 來源已設定為 GitHub Actions。後續前端變更應用 `pnpm workflow -- --task pages-build` 與 GitHub Actions 部署紀錄驗證。
+- 前端已加入 GA4 基礎追蹤與照片卡片操作事件；後續調整事件或分析流程前，先依 `docs/frontend-analytics-design.md` 重新確認程式碼現況與事件設計。
 - 更順手的多人 review 操作仍應在 Google Sheets 與後續 Apps Script 輔助中完善；AI 候選值寫入不等於 `curation_status = reviewed`。
 
 ## 依角色閱讀
@@ -76,7 +78,7 @@
 | 整理照片的志工 | `docs/data-entry-guide.md`、`docs/photo-fields-reference.md` |
 | 技術志工 | `pnpm workflow`、`docs/project-architecture.md`、`docs/sheets-sync-workflow.md`、`docs/google-sheets-database-design.md` |
 | 維護 Apps Script 的人 | `docs/apps-script-maintenance-design.md`、`data/photo-schema.json`、`data/tag-taxonomy.json` |
-| 維護 GitHub Pages 前端的人 | `docs/public-frontend-architecture.md`、`app/config.js` |
+| 維護 GitHub Pages 前端的人 | `docs/public-frontend-architecture.md`、`docs/frontend-analytics-design.md`、`app/config.js` |
 | AI / agent | `AGENTS.md`、`docs/agent-maintenance-guide.md`、`docs/ai-labeling-operator-guide.md`、`docs/ai-labeling-contract.md`、`docs/ai-labeling-evaluation-notes.md`、`docs/ai-readable-dataset.md` |
 
 ## 文件分工
@@ -88,6 +90,7 @@
 - `sheets-sync-workflow.md`: Sheets 與 repo 工具同步流程。
 - `apps-script-maintenance-design.md`: Apps Script 維護輔助與 `clasp` 部署原則。
 - `public-frontend-architecture.md`: GitHub Pages 唯讀前端資料流。
+- `frontend-analytics-design.md`: 前端使用行為分析目的、GA4 事件設計、實作前檢查與後續分析流程。
 - `ai-readable-dataset.md`: AI 如何讀取照片索引資料。
 - `ai-labeling-operator-guide.md`: AI 初標操作者與 agent 的 prepare-to-review、報表檢視與回寫前檢查指南。
 - `ai-labeling-contract.md`: AI 初標工作包的輸入、輸出、限制與驗證合約。

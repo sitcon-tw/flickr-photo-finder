@@ -63,6 +63,7 @@ h3 {
 }
 
 .source-link,
+.photo-actions a,
 button {
   min-height: 40px;
   border: 1px solid var(--line);
@@ -130,7 +131,8 @@ button {
 }
 
 button:hover,
-.source-link:hover {
+.source-link:hover,
+.photo-actions a:hover {
   border-color: var(--accent);
   color: var(--accent-strong);
 }
@@ -376,6 +378,35 @@ button:hover,
   color: var(--muted);
   font-size: 13px;
   overflow-wrap: anywhere;
+}
+
+.photo-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.photo-actions a,
+.photo-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 10px;
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.photo-actions button[disabled],
+.photo-actions a[aria-disabled="true"] {
+  cursor: not-allowed;
+  color: #98a2b3;
+  background: #f8fafc;
+}
+
+.photo-card:target {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgb(15 118 110 / 18%);
 }
 
 .empty {
