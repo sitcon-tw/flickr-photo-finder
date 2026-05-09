@@ -87,6 +87,10 @@ function commandBind(scriptId) {
   writeLocalClaspConfig(requireScriptId(scriptId));
 }
 
+function firstCommandArgument() {
+  return process.argv.slice(3).find((value) => value !== "--");
+}
+
 function writeLocalClaspConfig(scriptId) {
   const content = `${JSON.stringify({ scriptId, rootDir: "." }, null, 2)}\n`;
   writeFileSync(localClaspConfigPath, content);
@@ -144,7 +148,7 @@ try {
   } else if (command === "login") {
     commandLogin();
   } else if (command === "bind") {
-    commandBind(process.argv[3]);
+    commandBind(firstCommandArgument());
   } else if (command === "create") {
     commandCreate();
   } else if (command === "status") {
