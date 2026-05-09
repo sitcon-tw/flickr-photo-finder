@@ -43,16 +43,6 @@
         gap: 8px;
       }
 
-      .row-loader {
-        display: grid;
-        grid-template-columns: 1fr auto auto;
-        gap: 6px;
-      }
-
-      .row-loader input {
-        min-width: 0;
-      }
-
       .photo {
         display: grid;
         gap: 8px;
@@ -181,11 +171,7 @@
   <body>
     <main class="panel">
       <section class="toolbar">
-        <div class="row-loader">
-          <input id="rowNumberInput" type="number" min="2" placeholder="列號" />
-          <button id="loadButton" type="button" class="secondary">載入</button>
-          <button id="loadActiveButton" type="button" class="secondary">目前列</button>
-        </div>
+        <div id="rowSummary" class="meta">請從 photos 選取一列後開啟 panel。</div>
       </section>
 
       <section id="status" class="status"></section>
@@ -211,15 +197,13 @@
 
     <script>
       const form = document.querySelector("#form");
-      const loadButton = document.querySelector("#loadButton");
-      const loadActiveButton = document.querySelector("#loadActiveButton");
       const photo = document.querySelector("#photo");
       const photoMeta = document.querySelector("#photoMeta");
       const photoTitle = document.querySelector("#photoTitle");
       const photoUrl = document.querySelector("#photoUrl");
       const preview = document.querySelector("#preview");
       const previewUrl = document.querySelector("#previewUrl");
-      const rowNumberInput = document.querySelector("#rowNumberInput");
+      const rowSummary = document.querySelector("#rowSummary");
       const saveButton = document.querySelector("#saveButton");
       const status = document.querySelector("#status");
 
@@ -227,8 +211,6 @@
       let currentState = null;
 
       function setBusy(isBusy) {
-        loadButton.disabled = isBusy;
-        loadActiveButton.disabled = isBusy;
         saveButton.disabled = isBusy || !currentState;
       }
 
@@ -308,7 +290,7 @@
         }
 
         currentState = state;
-        rowNumberInput.value = state.rowNumber;
+        rowSummary.textContent = `目前載入 photos 第 ${state.rowNumber} 列。若要切換列，請在 Sheet 選取新列後重新開啟 Open review panel。`;
         form.textContent = "";
 
         photo.hidden = false;
@@ -384,21 +366,6 @@
         setStatus(message, "error");
       }
 
-      function loadActiveRow() {
-        setBusy(true);
-        setStatus("載入目前列...");
-        google.script.run.withSuccessHandler(render).withFailureHandler(handleFailure).getReviewPanelState();
-      }
-
-      function loadRow() {
-        setBusy(true);
-        setStatus("載入指定列...");
-        google.script.run
-          .withSuccessHandler(render)
-          .withFailureHandler(handleFailure)
-          .getReviewPhotoByRow(rowNumberInput.value);
-      }
-
       function saveRow() {
         if (!currentState) {
           return;
@@ -418,16 +385,14 @@
           .saveReviewPhoto(currentState.rowNumber, values);
       }
 
-      loadButton.addEventListener("click", loadRow);
-      loadActiveButton.addEventListener("click", loadActiveRow);
       saveButton.addEventListener("click", saveRow);
       if (bootstrapState && !bootstrapState.authorizationRequired) {
         render(bootstrapState);
       } else if (bootstrapState && bootstrapState.authorizationRequired) {
         renderAuthorizationRequired(bootstrapState.authorizationUrl);
       } else {
-        setBusy(true);
-        loadActiveRow();
+        setBusy(false);
+        setStatus("請關閉 panel，在 photos 選取一列後重新開啟 Open review panel。", "error");
       }
     </script>
   </body>

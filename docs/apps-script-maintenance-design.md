@@ -30,6 +30,8 @@ Apps Script 提供 Sheet-bound sidebar，讓整理者可以用較易讀的畫面
 
 這個 sidebar 使用使用者既有的 Sheet / Apps Script 權限寫回資料，不需要 GitHub Pages 保存 credential，也不提供公開寫入 API。
 
+sidebar 初始資料由 `Open review panel` 選單函式讀取目前選取列後注入。若要切換列，請在 Sheet 選取新列後重新開啟 panel；不要在 sidebar 內另做切換列操作。
+
 ### 套用欄位驗證
 
 依照 `data/photo-schema.json` 與 `data/tag-taxonomy.json`：
