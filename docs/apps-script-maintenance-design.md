@@ -120,6 +120,7 @@ pnpm apps-script:bind -- <script-id>
 pnpm apps-script:status
 pnpm apps-script:push
 pnpm apps-script:open
+pnpm apps-script:smoke-test -- --check
 ```
 
 `clasp` status/push/open 需要目前登入的 Google 帳號已啟用 Apps Script API。若出現 `User has not enabled the Apps Script API`，先到 <https://script.google.com/home/usersettings> 啟用，等待幾分鐘後重試。
@@ -197,6 +198,28 @@ Google Sheets 中可提供以下選單：
 選單文字可以在實作時調整，但功能責任應維持清楚。
 
 驗證選單會覆寫 `validation_report`，只保留最近一次檢查結果。它是維護輔助報表，不是正式資料表，也不應被公開前端或 AI 流程當成資料來源。
+
+### 驗證邊界 smoke test
+
+若需要驗證 Sheet-bound Apps Script 和 repo validation 的基本 parity，可用 repo 指令追加一組明確標記的錯誤列。預設為 dry-run，必須加上 `--write` 才會修改正式 Sheet：
+
+```bash
+pnpm apps-script:smoke-test -- --append
+pnpm apps-script:smoke-test -- --append --write
+pnpm apps-script:smoke-test -- --check
+```
+
+這組測試列會使用 `__apps_script_validation_test_manual_` 開頭的 `photo_id`，並在 `curation_notes` 標記 `APP_SCRIPT_VALIDATION_SMOKE_TEST_DELETE_ME`。追加後在 Sheet 執行 `Validate photos sheet`，`validation_report` 應看到多值重複、未知 taxonomy、單值 taxonomy 錯誤、boolean 錯誤、URL 錯誤、`reviewed` 缺欄位與 `approved` 缺欄位。
+
+測完後刪除測試列：
+
+```bash
+pnpm apps-script:smoke-test -- --delete
+pnpm apps-script:smoke-test -- --delete --write
+pnpm apps-script:smoke-test -- --check
+```
+
+若曾用不同 `--run-id` 產生測試列，可用同一個 `--run-id` 清理；若要列出或刪除所有 smoke-test 列，可搭配 `--all`。刪除前仍會先列出將處理的列，且一樣需要 `--write` 才會修改 Sheet。
 
 ## 失敗處理
 

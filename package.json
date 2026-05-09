@@ -15,6 +15,7 @@
     "albums:sync": "node scripts/sync-albums.mjs",
     "apps-script:bind": "node scripts/apps-script-clasp.mjs bind",
     "apps-script:build-config": "node scripts/build-apps-script-config.mjs",
+    "apps-script:smoke-test": "node scripts/apps-script-smoke-test-rows.mjs",
     "ga4:dimensions:check": "node scripts/sync-ga4-custom-dimensions.mjs",
     "ga4:dimensions:sync": "node scripts/sync-ga4-custom-dimensions.mjs",
     "ai:attempt": "node scripts/create-ai-attempt.mjs",

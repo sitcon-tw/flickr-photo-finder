@@ -44,6 +44,7 @@
 - `pnpm pages:build` / `pnpm pages:check`，產生並檢查 GitHub Pages artifact 到 `tmp/pages/`，部署版資料來源會讀公開 Google Sheets `photos` CSV。
 - `pnpm apps-script:build-config`，從 repo schema、taxonomy 與 sponsorship items snapshot metadata 產生 Apps Script 使用的 `apps-script/GeneratedConfig.js`。
 - `pnpm apps-script:bind`、`pnpm apps-script:status`、`pnpm apps-script:push`，包裝常用 clasp 綁定與推送流程。正式綁定應使用從目標 Sheet `擴充功能` -> `Apps Script` 開啟的專案 Script ID；第一次部署順序見 `docs/apps-script-maintenance-design.md`。
+- `pnpm apps-script:smoke-test`，dry-run / write / delete 一組明確標記的 Apps Script 驗證邊界測試列，供維護者確認 Sheet-bound validation 和 repo validation 的基本 parity。
 - `pnpm albums:discover`，盤點 SITCON Flickr 公開相簿清單並輸出 CSV 預覽。
 - `pnpm albums:discover -- --write`，更新本機 `fixtures/albums.csv` fixture，供 demo、除錯或 fixture validation 使用。
 - `pnpm albums:sync -- --sheets-export <csv> --output <csv>`，合併 Sheets 匯出與盤點結果，產生可回寫 Google Sheets `albums` 的 CSV。
