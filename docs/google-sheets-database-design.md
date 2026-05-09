@@ -140,7 +140,15 @@ AI 可以協助產生候選值，但不應靜默覆蓋人類已整理的值。AI
 
 ## 公開讀取方式
 
-MVP 階段不建立額外的公開篩選表。GitHub Pages、外部 AI 與其他唯讀工具應讀取 `photos` 主表，或讀取由 `photos` 以同一套欄位匯出的 CSV/JSON。
+MVP 階段不建立額外的公開篩選表。GitHub Pages 使用 Google Sheets `photos` 工作表的公開 CSV URL，外部 AI 與其他唯讀工具也應讀取 `photos` 主表，或讀取由 `photos` 以同一套欄位匯出的公開 CSV/JSON。
+
+GitHub Pages 使用的公開 CSV URL 形式為：
+
+```text
+https://docs.google.com/spreadsheets/d/<spreadsheetId>/gviz/tq?tqx=out:csv&sheet=photos
+```
+
+這個 URL 由 `pnpm pages:build` 根據 `config/project.json` 的 `googleSheets.spreadsheetId` 產生。它不需要 API key、OAuth、service account 或 Apps Script Web App。
 
 公開匯出只是技術傳輸格式，不是另一份資料表，也不應做資料篩選。它應：
 

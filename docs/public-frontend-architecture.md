@@ -11,7 +11,8 @@ Google Sheets 是正式照片索引資料庫，Apps Script 可以作為具有授
 - GitHub Pages 前端是公開、唯讀、無登入門檻的搜尋介面。
 - 資料來源仍是 Google Sheets，不是 repo 內 sample data。
 - GitHub Pages 前端不保存 secret，也不使用需要私人 credential 的 Google API。
-- 前端應讀取 Google Sheets `photos` 主表，或讀取由 `photos` 以同一套欄位匯出的公開 CSV/JSON。
+- MVP 階段 GitHub Pages 直接讀取 Google Sheets `photos` 工作表的公開 CSV 輸出。
+- 公開 CSV 只是 `photos` 主表的傳輸格式，不是另一張篩選表或 curated subset。
 - Apps Script 保留為授權維護介面與欄位驗證工具，不負責建立額外篩選表。
 
 ## 建議資料流
@@ -29,7 +30,7 @@ Apps Script
 
 GitHub Pages
   唯讀搜尋 UI
-  讀取 photos 或同欄位公開匯出
+  讀取 photos 公開 CSV
 
 Repo
   schema
@@ -55,6 +56,44 @@ Repo
 - 若未來真的需要隱藏欄位或拆分公開/非公開資料，再重新設計資料邊界。
 
 前端不應依賴 Sheets 的顏色、註解、排序或篩選檢視。所有可搜尋、可排序、可提醒的語意都應來自欄位值。
+
+## MVP 資料讀取方式
+
+MVP 採用 Google Sheets 公開 CSV URL：
+
+```text
+https://docs.google.com/spreadsheets/d/<spreadsheetId>/gviz/tq?tqx=out:csv&sheet=photos
+```
+
+`pnpm pages:build` 會依 `config/project.json` 的 `googleSheets.spreadsheetId` 產生部署版 `config.js`，並把 `photosCsvUrl` 指向上述公開 CSV URL。
+
+採用這個方式的理由：
+
+- GitHub Pages 可以直接用 browser `fetch()` 讀取，不需要 API key、OAuth 或 service account。
+- 前端 artifact 不需要保存 credential，符合公開唯讀介面的安全邊界。
+- Apps Script 仍可專注在授權後的 Sheets 維護輔助，不需要額外提供公開 API。
+- 資料治理仍回到 `photos` 主表、repo schema、taxonomy、validation 與 Apps Script 檢查，不會多出另一套公開資料規則。
+
+MVP 暫不採用以下方式：
+
+- Google Sheets API from browser：會引入 API key / OAuth / quota 等前端不需要承擔的問題。
+- Apps Script Web App API：會多一層公開 API 維護責任，也容易和 GitHub Pages 前端重複資料轉換邏輯。
+- GitHub Actions 以 service account 匯出靜態資料：可作為未來選項，但 MVP 先避免 GitHub Secrets 與部署時資料快照同步問題。
+
+## 上線前準備
+
+使用 GitHub Pages 讀取正式 Google Sheets 前，維護者需要確認：
+
+- `config/project.json` 已填入正式公開 Google Sheets 的 `googleSheets.spreadsheetId`。
+- 正式 Google Sheets 已允許知道連結的人唯讀存取，或以其他方式讓公開 CSV URL 可以匿名讀取。
+- `photos` 工作表名稱固定為 `photos`，header 順序符合 `data/photo-schema.json`。
+- `photos` 不含敏感內部資訊；`curation_notes` 也視為公開欄位。
+- Sheets 中所有可供篩選、排序、提醒的語意都寫在欄位值中，不依賴顏色、註解或篩選檢視。
+- GitHub repository Settings > Pages 的來源設定為 GitHub Actions。
+- `pnpm pages:build` 可以成功產生 `tmp/pages/`。
+- 產生出的公開 CSV URL 能以匿名 HTTP request 讀到 `photos` header。
+
+若其中任一項不成立，應先修正 Google Sheets 權限、header 或 repo 設定，不要在 GitHub Pages 前端加入 credential 或 fallback 寫入邏輯。
 
 ## 前端資料來源設定
 
