@@ -308,6 +308,12 @@ function validateFieldValue_(field, value, rowNumber) {
   if (field.type === "boolean" && !["true", "false"].includes(value)) {
     errors.push(formatError_(rowNumber, field.name, "必須是 true 或 false"));
   }
+  if (field.multiValue) {
+    const duplicateValues = findDuplicateValues_(splitList_(value));
+    if (duplicateValues.length > 0) {
+      errors.push(formatError_(rowNumber, field.name, `不可重複填寫：${duplicateValues.join("、")}`));
+    }
+  }
   if (field.taxonomyKey) {
     errors.push(...validateTaxonomyValue_(field, value, rowNumber));
   }
@@ -338,6 +344,18 @@ function splitList_(value) {
     .split(";")
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+function findDuplicateValues_(values) {
+  const seen = {};
+  const duplicates = [];
+  values.forEach((value) => {
+    if (seen[value] && !duplicates.includes(value)) {
+      duplicates.push(value);
+    }
+    seen[value] = true;
+  });
+  return duplicates;
 }
 
 function normalizeText_(value) {

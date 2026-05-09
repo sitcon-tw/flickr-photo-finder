@@ -25,6 +25,7 @@ Apps Script 的定位是授權後的 Sheets 維護輔助，不是另一套資料
 - 對單值受控字彙欄位套用下拉選單，並限制只能選一個值。
 - 對單值 boolean 欄位套用 `true` / `false` 下拉選單。
 - 對多值欄位提供格式提示，說明使用分號分隔。
+- 對多值欄位檢查同一儲存格內不可重複填寫相同值。
 - 對 URL、年份、整數、boolean 欄位在選單驗證時提供基本格式檢查。
 
 ### 驗證目前列或整張表
@@ -166,7 +167,7 @@ pnpm apps-script:push
 2. 執行 `Refresh schema and taxonomy`，確認 `photos` header 有 note、單值 taxonomy 欄位與 boolean 欄位有下拉選單，且 `schema_meta` 已建立或更新。
 3. 檢查 `schema_meta` 至少有 header row 與一列同步資訊。`schema_version`、`taxonomy_version`、`sponsorship_items_version`、`last_synced_at` 與 `synced_by` 不應空白；`notes` 可依 sponsorship snapshot 狀態填寫或留空。
 4. 執行 `Show schema status`，確認看得到 repo generated config 與 `schema_meta` 內容。若 `schema_meta` 空白或缺少必要欄位，應重新執行 `Refresh schema and taxonomy`，不能把空白 sheet 當成成功狀態。
-5. 在 `photos` 選一列資料執行 `Validate current row`。正常資料列應通過；可暫時把該列的 URL 欄位改成 `abc`，確認會出現中文錯誤，再復原該儲存格。
+5. 在 `photos` 選一列資料執行 `Validate current row`。正常資料列應通過；可暫時把該列的 URL 欄位改成 `abc`，或把多值欄位改成 `合照;會眾;會眾`，確認會出現中文錯誤，再復原該儲存格。
 6. 檢查 `validation_report` 已更新，內容包含 `checked_at`、`target`、`status`、`row`、`field` 與 `message`。驗證通過時會寫入一列 `passed`；驗證失敗時會逐列列出錯誤。
 7. 執行 `Validate photos sheet` 與 `Validate public read format`，確認沒有非預期錯誤。`Validate public read format` 只檢查 `photos` 主表，不建立額外公開篩選表。
 
