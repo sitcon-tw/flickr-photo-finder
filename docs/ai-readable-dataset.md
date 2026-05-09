@@ -36,10 +36,17 @@ AI 若需要理解欄位與可用值，應同時讀取：
 | `recommended_uses` | 用來對應工作情境，例如社群貼文、贊助提案、新聞稿。 |
 | `sponsorship_items` | 用來找特定 CFS 贊助品項的照片。 |
 | `sponsorship_tags` | 用來找贊助價值或佐證用途。 |
+| `visual_description` | 用來補足 taxonomy 沒有覆蓋的可見細節，例如具體物件、人物動作、文字、位置與空間關係。 |
 | `public_use_status` | 用來判斷推薦風險。 |
 | `priority_level` | 用來排序推薦優先度，不是客觀品質分數。 |
 | `collections` | 用來優先回應素材包或任務型需求。 |
 | `curation_status` | 用來判斷資料是否人工確認。 |
+
+### visual_description
+
+`visual_description` 是自然語言找圖的輔助描述，不是審核 reason 的替代品。它應只描述照片中可見的事物，不能自行補活動名稱、年份、身份、單位、贊助商或照片外脈絡。
+
+AI 搜尋時可以把 `visual_description` 當成長尾語料，用來處理 taxonomy 無法精準表達的需求，例如「桌上有整排披薩」、「人物站在背板右側」、「畫面左側有大片牆面可放字」。但它應搭配 `scene_tags`、`recommended_uses`、`public_use_status` 與 `curation_status` 使用，不應取代結構化欄位，也不應把其中的描述推論成未記錄的事實。
 
 ## 狀態解讀
 

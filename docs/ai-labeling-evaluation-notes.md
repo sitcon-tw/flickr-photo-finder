@@ -340,7 +340,7 @@ curated 版重新執行 `pnpm ai:review` 後通過，planned updates 從 298 筆
 - 若 prompt 不夠嚴格，模型可能產生「有人在交流」這類空泛描述，對搜尋沒有幫助。
 - 若沒有近似重複檢查，它也可能變成另一個批次模板欄位。
 
-目前的應對是合理但仍屬第一階段：schema、prompt、contract、operator guide、validator 與 fixtures 已支援 `visual_description`，並用最小長度、禁用語句、具體視覺線索、完全與近似重複檢查降低品質下界。下一步應使用 Claude 重新跑 132 張，並用 5 到 10 個實際工作情境查詢比較 taxonomy-only 與 taxonomy + `visual_description`，確認它是否真的提升找圖效果。
+目前的應對是合理但仍屬第一階段：schema、prompt、contract、operator guide、validator 與 fixtures 已支援 `visual_description`，並用最小長度、禁用語句、具體視覺線索、完全與近似重複檢查降低品質下界。後續應使用 Claude 重新跑 132 張，再用 `pnpm search:experimental -- --run-dir <dir>` 的工作情境查詢比較 taxonomy-only 與 taxonomy + `visual_description`，確認它是否真的提升找圖效果。
 
 ## 目前已知容易失準的欄位
 
@@ -384,6 +384,7 @@ reason 是審核脈絡，不是正式 metadata。它應只描述可見畫面或 
 - 若同一個 confidence 值出現在 90% 以上候選欄位，提示信心分數可能沒有逐欄反映不確定性。
 - 若 `贊助成果報告` 出現但沒有 `sponsorship_items` 或 `sponsorship_tags`，提示需要人工確認贊助脈絡。
 - 若 `people_count = 0` 但 reason 或 scene_tags 提到會眾、講者、合照等人物相關線索，提示可能矛盾。
+- `pnpm search:experimental` 可在 proposal 寫回前離線比較 taxonomy-only baseline 與 taxonomy + `visual_description` 的搜尋排序差異，用來驗證描述欄位是否有實際找圖增益。
 
 `pnpm ai:validate` 也會擋下明顯不符合逐張檢視要求的產物：
 
@@ -399,6 +400,6 @@ reason 是審核脈絡，不是正式 metadata。它應只描述可見畫面或 
 - 檢查 `safe_crop` 是否和 `orientation`、主體位置或圖片尺寸有高風險組合。
 - 對 `recommended_uses = 贊助成果報告` 增加更細緻的 sponsor exposure / item 檢查。
 - 找出同一相簿內高度重複的講者照片或合照，只提示少數更適合優先審核的照片。
-- 建立最小自然語言搜尋 prototype，比較 taxonomy-only 與 taxonomy + `visual_description` 在真實工作查詢上的差異。
+- 用 Claude 重新跑完整 132 張後，保留 `pnpm search:experimental` 的輸出摘要，記錄哪些真實工作查詢因 `visual_description` 讓更合適的照片進入前幾名。
 
 這些檢查應先作為 review warning，不應直接讓 validation 失敗。validation 只負責格式與責任邊界；品質判斷仍應保留給人工與後續工具迭代。

@@ -45,6 +45,7 @@ The main goal is not to replace Flickr. The repository should keep a practical i
 - `scripts/run-intake.mjs`: helper for producing a complete intake run artifact from a selected album.
 - `scripts/validate-intake-run.mjs`: helper for checking an intake run artifact before applying it to Google Sheets.
 - `scripts/validate-ai-fixtures.mjs`: helper for checking AI proposal fixtures against the current validator boundary.
+- `scripts/search-experimental.mjs`: helper for comparing taxonomy-only search results with taxonomy plus `visual_description` before writing AI proposals to Sheets.
 - `scripts/apply-intake-run.mjs`: SDK-based helper for applying a reviewed intake run artifact to Google Sheets.
 - `scripts/prepare-ai-run.mjs`: helper for creating a local AI labeling input run from exported Google Sheets photos.
 - `scripts/import-album-photos.mjs`: helper for generating Sheets-ready candidate photo rows, updated album rows, and import batch rows from a selected album.
@@ -151,6 +152,7 @@ pnpm ai:plan -- --run-dir <dir>
 pnpm ai:prepare -- --image-size large-1024
 pnpm ai:validate -- --run-dir <dir>
 pnpm ai:validate-fixtures
+pnpm search:experimental -- --run-dir <dir>
 pnpm intake:run -- --album <album-id>
 pnpm intake:validate -- --run-dir <dir>
 pnpm pages:build

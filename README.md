@@ -63,6 +63,7 @@ pnpm workflow
 | 只驗證 AI 候選 metadata | `pnpm ai:validate -- --run-dir <dir>` |
 | 只產生 AI 候選 metadata diff | `pnpm ai:diff -- --run-dir <dir>` |
 | 只產生 AI 候選 metadata 更新計畫 | `pnpm ai:plan -- --run-dir <dir>` |
+| 比較 taxonomy-only 與 `visual_description` 搜尋結果 | `pnpm search:experimental -- --run-dir <dir>` |
 | dry-run 檢查 AI metadata 將更新哪些 Sheets cells | `pnpm sheets:apply-ai-updates -- --run-dir <dir>` |
 | 了解 AI 初標操作與輸出格式 | `docs/ai-labeling-operator-guide.md`、`docs/ai-labeling-contract.md` |
 | 從已選相簿產生可追加到 `photos` 的候選 CSV | `pnpm photos:import -- --album <album-id> --output <csv>` |
@@ -295,6 +296,15 @@ pnpm ai:plan -- --run-dir tmp/ai-runs/RUN_ID
 
 這些指令仍然只是審核資料，不會寫入 Google Sheets。
 
+若要在寫回 Sheets 前評估 `visual_description` 是否真的改善自然語言找圖，可先跑離線搜尋比較：
+
+```bash
+pnpm search:experimental -- --run-dir tmp/ai-runs/RUN_ID
+pnpm search:experimental -- --run-dir tmp/ai-runs/RUN_ID --query "有留白的橫式講者照片" --top 10
+```
+
+這個 prototype 會把 `metadata-proposals.json` overlay 到該 run 的 `photos.json`，同時輸出 taxonomy-only baseline 與 taxonomy + `visual_description` 的排序差異。它不呼叫 LLM、不抓圖片，也不寫入 Google Sheets；用途是驗證描述欄位是否帶來搜尋增益。
+
 產生機器可讀更新計畫：
 
 ```bash
@@ -392,6 +402,7 @@ GitHub Pages 只提供唯讀搜尋，不寫入資料庫。Apps Script 是 Sheets
 | `scripts/export-sheets.mjs` | 透過官方 Google Sheets API SDK 匯出固定 tabs，供 validation 與 intake 使用。 |
 | `scripts/validate-data.mjs` | 資料驗證。 |
 | `scripts/validate-ai-fixtures.mjs` | 驗證 AI proposal valid/invalid fixtures 是否符合目前 validator 邊界。 |
+| `scripts/search-experimental.mjs` | 離線比較 taxonomy-only 與 `visual_description` 的搜尋排序差異。 |
 | `scripts/discover-albums.mjs` | SITCON Flickr 相簿盤點。 |
 | `scripts/list-albums.mjs` | 從正式 Sheets 匯出的 `albums.csv` 列出與篩選相簿，並可輸出 album id、JSON 或可直接執行的 intake 指令。 |
 | `scripts/select-album.mjs` | 從正式 Sheets 匯出的 `albums.csv` 互動式選擇單本相簿，輸出 album id、JSON 或可直接執行的 intake 指令。 |
