@@ -14,6 +14,9 @@
     "ga4MeasurementId": "G-ZQ49HXBJ2P",
     "ga4PropertyId": ""
   },
+  "appsScript": {
+    "projectTitle": "SITCON Flickr Photo Finder"
+  },
   "googleSheets": {
     "spreadsheetId": "1JM2QzJo5kpeILZPyTSE6gUK3z-FyRcaGhPJlYE-FMbs"
   }

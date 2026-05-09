@@ -106,45 +106,54 @@ pnpm apps-script:build-config
 
 實際部署應由有 Google Apps Script 權限的維護者使用 `clasp` 操作。若是既有 Apps Script 專案，維護者可以在 `apps-script/` 目錄建立本機 `.clasp.json`，內容可參考 `.clasp.json.example`；這個檔案不應 commit。
 
-此 repo 不把 `@google/clasp` 加進 dependency；標準交接指令使用 `pnpm dlx @google/clasp`，避免一般資料工具使用者被迫安裝部署工具。
+此 repo 不把 `@google/clasp` 加進 dependency；標準交接入口是 `pnpm apps-script:*` scripts，內部使用 `pnpm dlx @google/clasp`，避免一般資料工具使用者被迫安裝部署工具，也減少維護者手動輸入重複參數。
+
+可重複使用的參數放在 `config/project.json`：
+
+- `appsScript.projectTitle`: 建立 Apps Script 專案時使用的名稱。
+- `googleSheets.spreadsheetId`: 建立 Sheet-bound Apps Script 專案時使用的目標 spreadsheet ID。
+- `apps-script/`: 固定作為 clasp rootDir。
+
+常用入口：
+
+```bash
+pnpm apps-script:login
+pnpm apps-script:bind -- <script-id>
+pnpm apps-script:create
+pnpm apps-script:status
+pnpm apps-script:push
+pnpm apps-script:open
+```
 
 ### 綁定既有 Apps Script 專案
 
-若正式 Sheet 已經有對應的 Apps Script 專案，維護者應先取得該專案的 script ID，然後在 repo 的 `apps-script/` 目錄建立本機 `.clasp.json`：
+若正式 Sheet 已經有對應的 Apps Script 專案，維護者應先取得該專案的 script ID，然後產生本機 `.clasp.json`：
 
-```json
-{
-  "scriptId": "PASTE_SCRIPT_ID_HERE",
-  "rootDir": "."
-}
+```bash
+pnpm apps-script:bind -- <script-id>
 ```
 
-也可以用 `pnpm dlx @google/clasp clone <script-id> --rootDir apps-script` 檢查連線，但不要讓 clone 覆蓋 repo source；正式 source 以 repo 版本為準。
+綁定後可用 `pnpm apps-script:status` 檢查連線。若需要用 clasp clone 檢查既有專案，請只在暫存目錄操作，不要讓 clone 覆蓋 repo source；正式 source 以 repo 版本為準。
 
 ### 建立 Sheet-bound Apps Script 專案
 
 若正式 Sheet 還沒有 Apps Script 專案，維護者可用 Sheet spreadsheet ID 建立 container-bound 專案：
 
 ```bash
-pnpm dlx @google/clasp create "SITCON Flickr Photo Finder" --type sheets --parentId <spreadsheet-id> --rootDir apps-script
+pnpm apps-script:create
 ```
 
 建立後檢查 `apps-script/.clasp.json` 是否只包含 script ID 與 rootDir。這是本機綁定檔，已被 `.gitignore` 排除，不應 commit。
 
 ### 推送與驗收
 
-部署前先確認 repo schema、taxonomy 與 Apps Script 產生設定一致：
+推送入口會先確認 repo schema、taxonomy 與 Apps Script 產生設定一致：
 
 ```bash
-pnpm apps-script:build-config
-pnpm validate:data
+pnpm apps-script:push
 ```
 
-確認後由有權限維護者推送：
-
-```bash
-pnpm dlx @google/clasp push
-```
+`apps-script:push` 會依序執行 `pnpm apps-script:build-config`、`pnpm validate:data` 與 clasp push。如果只想檢查本機與遠端差異，使用 `pnpm apps-script:status`。
 
 推送後到正式或測試 Sheet 重新整理頁面，依序檢查：
 

@@ -617,6 +617,8 @@ async function runSheetsTools() {
     ["sheets:migrate-headers", "dry-run 安全 header 遷移"],
     ["sheets:export", "匯出正式 Sheets 工作快取"],
     ["apps-script:build-config", "從 schema 與 taxonomy 產生 Apps Script 設定"],
+    ["apps-script:status", "檢查 Apps Script 本機綁定與遠端差異"],
+    ["apps-script:push", "重建設定、驗證資料並推送 Apps Script"],
   ];
 
   choices.forEach(([script, description], index) => {
