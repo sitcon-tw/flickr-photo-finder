@@ -24,6 +24,10 @@ const PHOTO_FINDER_VALIDATION_REPORT_HEADERS = [
   "field",
   "message",
 ];
+const PHOTO_FINDER_OAUTH_SCOPES = [
+  "https://www.googleapis.com/auth/script.container.ui",
+  "https://www.googleapis.com/auth/spreadsheets.currentonly",
+];
 
 function onOpen() {
   SpreadsheetApp.getUi()
@@ -42,8 +46,13 @@ function onOpen() {
 }
 
 function authorizeAndCheckAccess() {
-  const sheet = getPhotosSheet_();
-  assertPhotosHeader_(sheet);
+  const authorizationUrl = getAuthorizationUrl_();
+  if (authorizationUrl) {
+    showAuthorizationRequired_(authorizationUrl);
+    return;
+  }
+
+  const sheet = checkAppsScriptAccess_();
   SpreadsheetApp.getUi().alert(
     [
       "Apps Script access check passed.",
@@ -55,9 +64,44 @@ function authorizeAndCheckAccess() {
 }
 
 function openPhotoReviewPanel() {
+  const authorizationUrl = getAuthorizationUrl_();
+  if (authorizationUrl) {
+    showAuthorizationRequired_(authorizationUrl);
+    return;
+  }
+
+  checkAppsScriptAccess_();
   const html = HtmlService.createHtmlOutputFromFile("ReviewPanel")
     .setTitle("SITCON Photo Review");
   SpreadsheetApp.getUi().showSidebar(html);
+}
+
+function checkAppsScriptAccess_() {
+  const sheet = getPhotosSheet_();
+  assertPhotosHeader_(sheet);
+  sheet.getRange(1, 1).getValue();
+  return sheet;
+}
+
+function getAuthorizationUrl_() {
+  const authorizationInfo = ScriptApp.getAuthorizationInfo(ScriptApp.AuthMode.FULL, PHOTO_FINDER_OAUTH_SCOPES);
+  if (authorizationInfo.getAuthorizationStatus() === ScriptApp.AuthorizationStatus.REQUIRED) {
+    return authorizationInfo.getAuthorizationUrl();
+  }
+  return "";
+}
+
+function showAuthorizationRequired_(authorizationUrl) {
+  const html = HtmlService.createHtmlOutput(
+    [
+      "<p>需要先授權 SITCON Photo Finder 才能讀寫目前試算表並顯示校對 sidebar。</p>",
+      `<p><a href="${escapeHtml_(authorizationUrl)}" target="_blank">開啟 Google 授權頁面</a></p>`,
+      "<p>授權完成後，請回到 Sheet 重新執行 Authorize / check access 或 Open review panel。</p>",
+    ].join(""),
+  )
+    .setWidth(420)
+    .setHeight(180);
+  SpreadsheetApp.getUi().showModalDialog(html, "Authorize SITCON Photo Finder");
 }
 
 function refreshSchemaAndTaxonomy() {
@@ -138,6 +182,11 @@ function showSchemaStatus() {
 }
 
 function getReviewPanelState() {
+  const authorizationUrl = getAuthorizationUrl_();
+  if (authorizationUrl) {
+    return { authorizationRequired: true, authorizationUrl };
+  }
+
   const sheet = getPhotosSheet_();
   assertPhotosHeader_(sheet);
   const rowNumber = getActivePhotoRowNumber_(sheet);
@@ -145,6 +194,11 @@ function getReviewPanelState() {
 }
 
 function getReviewPhotoByRow(rowNumber) {
+  const authorizationUrl = getAuthorizationUrl_();
+  if (authorizationUrl) {
+    return { authorizationRequired: true, authorizationUrl };
+  }
+
   const sheet = getPhotosSheet_();
   assertPhotosHeader_(sheet);
   const normalizedRowNumber = Number(rowNumber);
@@ -158,6 +212,11 @@ function getReviewPhotoByRow(rowNumber) {
 }
 
 function saveReviewPhoto(rowNumber, values) {
+  const authorizationUrl = getAuthorizationUrl_();
+  if (authorizationUrl) {
+    return { authorizationRequired: true, authorizationUrl };
+  }
+
   const sheet = getPhotosSheet_();
   assertPhotosHeader_(sheet);
   const normalizedRowNumber = Number(rowNumber);
@@ -468,6 +527,14 @@ function findDuplicateValues_(values) {
     seen[value] = true;
   });
   return duplicates;
+}
+
+function escapeHtml_(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
 function normalizeText_(value) {

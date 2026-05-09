@@ -183,7 +183,7 @@ pnpm apps-script:push
 推送後到正式或測試 Sheet 重新整理頁面，依序檢查：
 
 1. 選單出現 `SITCON Photo Finder`。
-2. 執行 `Authorize / check access`，必要時完成 Google 授權，確認 access check passed。
+2. 執行 `Authorize / check access`。若出現授權視窗或授權連結，完成 Google 授權後回到 Sheet 重跑一次，確認 access check passed。
 3. 在 `photos` 選一列資料，執行 `Open review panel`，確認 sidebar 顯示縮圖、Flickr 連結與欄位表單。
 4. 在 sidebar 修改一個非識別欄位並儲存，確認資料寫回同一列，且 `validation_report` 更新。
 5. 執行 `Refresh schema and taxonomy`，確認 `photos` header 有 note、單值 taxonomy 欄位與 boolean 欄位有下拉選單，且 `schema_meta` 已建立或更新。
@@ -259,7 +259,7 @@ Apps Script 遇到以下狀況時應停止並提醒：
 
 若 `Refresh schema and taxonomy` 執行後 `schema_meta` 是整張空白，這不是成功狀態。重新推送最新版 Apps Script 後再執行 refresh；目前 source 會在寫入後讀回檢查，若必要欄位仍空白應直接報錯。
 
-若 sidebar 顯示 `Authorization is required to perform that action`，代表目前使用者尚未完成這份 Apps Script 所需授權。請先從 `SITCON Photo Finder` 選單執行 `Authorize / check access`，完成 Google 授權後再重新開啟 sidebar。
+若 sidebar 顯示 `Authorization is required to perform that action`，或顯示需要授權但沒有自動跳出 prompt，代表目前使用者尚未完成這份 Apps Script 所需授權。請先從 `SITCON Photo Finder` 選單執行 `Authorize / check access`，點開授權連結並完成 Google 授權後，再重新開啟 sidebar。
 
 若出現 `User has not enabled the Apps Script API`，代表 clasp 登入帳號尚未啟用 Apps Script API。到 <https://script.google.com/home/usersettings> 啟用後，等待幾分鐘再重試 `pnpm apps-script:push`。
 

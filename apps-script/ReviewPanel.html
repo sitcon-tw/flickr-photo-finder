@@ -301,6 +301,11 @@
       }
 
       function render(state) {
+        if (state.authorizationRequired) {
+          renderAuthorizationRequired(state.authorizationUrl);
+          return;
+        }
+
         currentState = state;
         rowNumberInput.value = state.rowNumber;
         form.textContent = "";
@@ -338,6 +343,27 @@
           setStatus("目前列檢查通過。", "ok");
         }
         setBusy(false);
+      }
+
+      function renderAuthorizationRequired(authorizationUrl) {
+        currentState = null;
+        form.textContent = "";
+        photo.hidden = true;
+        setBusy(false);
+        saveButton.disabled = true;
+        status.textContent = "";
+        status.className = "status visible error";
+        const message = document.createElement("div");
+        message.textContent = "需要先授權 Apps Script 才能讀寫目前試算表。";
+        const link = document.createElement("a");
+        link.href = authorizationUrl;
+        link.target = "_blank";
+        link.rel = "noreferrer";
+        link.textContent = "開啟 Google 授權頁面";
+        const hint = document.createElement("div");
+        hint.className = "meta";
+        hint.textContent = "授權完成後，請關閉並重新開啟 Open review panel。";
+        status.append(message, link, hint);
       }
 
       function handleFailure(error) {
