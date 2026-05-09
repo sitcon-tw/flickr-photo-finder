@@ -206,6 +206,7 @@
       <form id="form" class="form"></form>
 
       <section class="actions">
+        <section id="saveStatus" class="status"></section>
         <button id="saveButton" type="button">儲存並驗證</button>
       </section>
     </main>
@@ -223,6 +224,7 @@
       const rowNumberInput = document.querySelector("#rowNumberInput");
       const rowSummary = document.querySelector("#rowSummary");
       const saveButton = document.querySelector("#saveButton");
+      const saveStatus = document.querySelector("#saveStatus");
       const status = document.querySelector("#status");
 
       const bootstrapState = <?!= bootstrapState ?>;
@@ -234,15 +236,15 @@
         saveButton.disabled = isBusy || !currentState;
       }
 
-      function setStatus(message, type = "") {
-        status.textContent = "";
-        status.className = "status";
+      function setStatus(target, message, type = "") {
+        target.textContent = "";
+        target.className = "status";
         if (!message) {
           return;
         }
-        status.classList.add("visible");
+        target.classList.add("visible");
         if (type) {
-          status.classList.add(type);
+          target.classList.add(type);
         }
         if (Array.isArray(message)) {
           const summary = document.createElement("div");
@@ -254,10 +256,18 @@
             item.textContent = formatError(error);
             list.append(item);
           });
-          status.append(summary, list);
+          target.append(summary, list);
           return;
         }
-        status.textContent = message;
+        target.textContent = message;
+      }
+
+      function setTopStatus(message, type = "") {
+        setStatus(status, message, type);
+      }
+
+      function setSaveStatus(message, type = "") {
+        setStatus(saveStatus, message, type);
       }
 
       function formatError(error) {
@@ -337,9 +347,9 @@
         });
 
         if (state.errors.length > 0) {
-          setStatus(state.errors, "error");
+          setSaveStatus(state.errors, "error");
         } else {
-          setStatus("");
+          setSaveStatus("");
         }
         setBusy(false);
       }
@@ -348,7 +358,7 @@
         setBusy(false);
         const message = error.message || String(error);
         if (/Authorization is required|授權|權限不足/i.test(message)) {
-          setStatus(
+          setSaveStatus(
             [
               "sidebar 呼叫 Apps Script 時被回報需要授權。",
               "如果已完成授權，通常是 Google 多帳號 session 讓 sidebar iframe 使用未授權帳號。請改用已授權帳號作為第一個登入帳號，或用單一帳號的瀏覽器 profile / 無痕視窗重開 Sheet。",
@@ -358,12 +368,13 @@
           );
           return;
         }
-        setStatus(message, "error");
+        setSaveStatus(message, "error");
       }
 
       function loadRow(rowNumber) {
         setBusy(true);
-        setStatus("載入中...");
+        setTopStatus("載入中...");
+        setSaveStatus("");
         google.script.run
           .withSuccessHandler(render)
           .withFailureHandler(handleFailure)
@@ -376,7 +387,8 @@
 
       function loadActiveRow() {
         setBusy(true);
-        setStatus("讀取目前選取列...");
+        setTopStatus("讀取目前選取列...");
+        setSaveStatus("");
         google.script.run
           .withSuccessHandler(render)
           .withFailureHandler(handleFailure)
@@ -395,7 +407,7 @@
           }
         });
         setBusy(true);
-        setStatus("儲存中...");
+        setSaveStatus("儲存中...");
         google.script.run
           .withSuccessHandler(render)
           .withFailureHandler(handleFailure)
@@ -409,7 +421,7 @@
         render(bootstrapState);
       } else {
         setBusy(false);
-        setStatus("請關閉 panel，在 photos 選取一列後重新開啟 Open review panel。", "error");
+        setTopStatus("請關閉 panel，在 photos 選取一列後重新開啟 Open review panel。", "error");
       }
     </script>
   </body>
