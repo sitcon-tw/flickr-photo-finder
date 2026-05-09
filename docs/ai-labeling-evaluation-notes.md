@@ -355,6 +355,112 @@ curated 版重新執行 `pnpm ai:review` 後通過，planned updates 從 298 筆
 
 目前的應對是合理但仍屬第一階段：schema、prompt、contract、operator guide、validator 與 fixtures 已支援 `visual_description`，並用最小長度、禁用語句、具體視覺線索、完全與近似重複檢查降低品質下界。後續應使用 Claude 重新跑 132 張，再用 `pnpm search:experimental -- --run-dir <dir>` 的工作情境查詢比較 taxonomy-only 與 taxonomy + `visual_description`，確認它是否真的提升找圖效果。
 
+## 2026-05-09 新版 prompt 後的 122 張三模型 attempt
+
+本輪以同一個 base run `ai-prepare-2026-05-09T12-15-05-642Z` 建立三個 attempt：
+
+- `ai-prepare-2026-05-09T12-15-05-642Z-attempt-claude-r1`
+- `ai-prepare-2026-05-09T12-15-05-642Z-attempt-gemini-r1`
+- `ai-prepare-2026-05-09T12-15-05-642Z-attempt-gpt-r1`
+
+base run 來源為 `2025 SITCON Hour of Code 桃園場` 相簿 `72177720330876634`，選出 122 張 `unreviewed` 照片，圖片尺寸為 `large-1024`。三個 attempt 都使用同一份 `prompts/ai-labeling.md`，並已由 `pnpm ai:review` 重新產生 review summary、diff 與 update plan。
+
+三者都通過目前 validator，代表新版 prompt、`visual_description` 欄位與 anti-template 檢查已擋下前一輪那種整批完全偷懶輸出。這不代表三者都適合直接寫回；本輪更適合拿來觀察模型在「通過格式與責任邊界後」仍存在的品質差異。
+
+比較報表已產生於：
+
+```bash
+tmp/ai-reports/ai-report-2026-05-09T18-00-38-219Z/index.html
+```
+
+### 彙整數字
+
+| attempt | proposals | planned updates | review warnings | 主要覆蓋欄位 |
+| --- | ---: | ---: | ---: | --- |
+| Claude | 122 | 1108 | 10 | people_count、orientation、has_negative_space、visual_description、scene_tags、mood_tags、recommended_uses、public_use_status、safe_crop |
+| Gemini | 122 | 786 | 1 | people_count、orientation、has_negative_space、safe_crop、visual_description，少量 scene_tags / mood_tags |
+| GPT | 122 | 852 | 0 | people_count、orientation、has_negative_space、visual_description、scene_tags、recommended_uses |
+
+### Claude attempt 評估
+
+Claude 這輪最完整，也最接近「可交給人類挑選後寫回」的候選基底：
+
+- 122 張都有 `visual_description`，且描述平均約 92 個非空白字元，內容通常包含服裝、姿勢、物件、可見文字與空間關係。
+- 有提供 confidence，分布從 0.5 到 0.95，對人工抽查有幫助。
+- 欄位覆蓋最完整，包含 `mood_tags`、`public_use_status`、`safe_crop` 與少量 `priority_level`。
+- `safe_crop` 相對保守，只出現在 32/122 張，不像前一輪常見的「能裁就標」。
+
+但 Claude 也暴露出新的保守性問題：
+
+- `public_use_status = needs_review` 出現在 107/122 張，原因主要是這批 Hour of Code 照片包含大量兒童與助教清晰臉部。這個判斷方向合理，但 reason 重複度偏高，例如「兒童臉部清晰可辨，須先確認家長公開授權」重複 22 張、「助教臉部清晰可辨，須先確認公開授權」重複 13 張。
+- `recommended_uses` 的 `活動回顧` 出現在 110/122 張，仍有用途區辨度不足問題。
+- 部分 `orientation` reason 還是接近模板，例如「圖像寬大於高，講者與白板水平排列」重複 10 張。
+- 有 7 張被標 `people_count = 0`，但 reason 或 scene tags 仍出現人物相關線索，需要抽查。
+
+判斷：Claude 是三者中最適合進一步人工抽查與可能寫回的版本，但寫回前應特別修剪 `public_use_status`、`recommended_uses` 與重複 reason。這輪不應直接整包套用。
+
+### Gemini attempt 評估
+
+Gemini 比 2026-05-08 那輪有明顯進步：這次 122 張都有獨特 `visual_description`，不再是整批 `{3 人, landscape, false}` 的退化輸出。它有讀到許多具體物件、服裝、文字與場景，例如 SITCON 旗幟、木質告示牌、馬鈴薯、人造草皮、合照手勢等。
+
+但它仍有嚴重的批次偏誤：
+
+- `orientation = landscape` 搭配 reason「橫向取景。」重複 121 張，雖然多數照片可能確實為 landscape，但 reason 仍不可審核。
+- `has_negative_space = true` 出現在 121/122 張，明顯過度樂觀，尤其桌面靜物、多人工作坊與群體合照不應大多被視為可放字。
+- `safe_crop` 出現在所有 122 張，且 `1:1` 出現 76 次、`16:9` 出現 53 次，仍像是預設填值，而不是逐比例驗證。
+- 完全沒有 confidence，不利於人工排序與抽查。
+- 沒有 `public_use_status`。若模型不主動判斷公開使用風險可以接受，但在這批大量兒童臉部清晰的照片中，至少應有部分 `needs_review` 候選。
+- 欄位覆蓋較窄，沒有 `recommended_uses`，`scene_tags` 只出現在 43/122 張、`mood_tags` 只出現在 11/122 張。
+
+判斷：Gemini 的 `visual_description` 可作為自然語言搜尋素材參考，但 `has_negative_space`、`safe_crop`、`orientation reason` 不應採用。若要讓 Gemini 進入正式候選，prompt 或 validator 仍需加強「safe_crop / negative_space 過度覆蓋」的批次檢查。
+
+### GPT attempt 評估
+
+GPT 這輪沒有 review warning，代表它避開了目前 validator 可偵測的重複與模板問題。但人工閱讀後可見另一種風險：它把一段短 visual summary 重複灌進多個欄位 reason，語句形式穩定但資訊密度偏低。
+
+優點：
+
+- 122 張都有 `visual_description`，且全部唯一。
+- `has_negative_space` 分布比 Gemini 合理，`false` 81 張、`true` 41 張。
+- `recommended_uses` 覆蓋 122 張，且沒有像 Claude 那樣幾乎全部塞 `活動回顧`：`活動回顧` 76 張、`社群貼文` 52 張、`簡報` 21 張、`講者宣傳` 16 張。
+- `scene_tags` 覆蓋 120/122 張。
+
+主要問題：
+
+- 沒有 confidence。
+- 沒有 `public_use_status`，對大量兒童照片的公開使用風險沒有提供候選提醒。
+- 沒有 `safe_crop` 與 `mood_tags`，可用欄位比 Claude 少。
+- `visual_description` 平均約 31 個非空白字元，比 Claude 和 Gemini 短很多，雖然能過最小長度，但對搜尋長尾細節的幫助有限。
+- reason 常把同一段描述套到 `orientation`、`has_negative_space`、`scene_tags`、`recommended_uses`，再接上「構圖主要以左右方向展開」「這些可見元素適合對應到建議用途」等泛用句。這不一定觸發重複檢查，卻降低人工審核價值。
+- 有 10 張 `people_count = 0` 但 reason 或 scene tags 提到人物相關線索，需要人工確認。
+
+判斷：GPT 是三者中最「乾淨通過 validator」的一輪，但不是最有審核資訊的一輪。它適合作為較保守的 baseline，尤其可參考 `scene_tags` 與部分 `recommended_uses`；但 `visual_description` 對搜尋的長尾價值不如 Claude。
+
+### 跨模型觀察
+
+1. 新 prompt 與 validator 有效改善下界
+   三個模型都不再產生前一輪 Gemini 式的整批通用值；`visual_description` 也都能逐張產出不同內容。這表示「逐張可見證據」與 anti-template 規則有效。
+
+2. 但通過 validator 不等於可寫回
+   Gemini 的 `has_negative_space = true` 121/122、safe crop 全覆蓋；GPT 的短描述與 reason 套句；Claude 的 `needs_review` 與 `活動回顧` 過度集中，都沒有直接變成 hard fail。這些應繼續留在 review/report 層判斷，而不是全部塞進 validator。
+
+3. `visual_description` 確實有搜尋價值，但模型差異很大
+   Claude 描述最完整，適合搜尋「木質招牌」「馬鈴薯」「藍色椅子」「投影幕文字」「雙馬尾口罩女童」這類 taxonomy 覆蓋不到的長尾細節。Gemini 描述也有物件細節，但常伴隨版型欄位過度樂觀。GPT 描述較短，能支援基本搜尋，但較少保留可區分照片的細節。
+
+4. 兒童照片讓 `public_use_status` 規則變得重要
+   Claude 幾乎全部標 `needs_review` 的做法很保守，但這批 Hour of Code 確實大量包含兒童清晰面部。GPT / Gemini 完全不填 `public_use_status` 會讓後續寫回少一層風險提醒。提示可以進一步要求：若清晰可辨兒童臉部是畫面主體，應提出 `needs_review`，但 reason 仍需逐張說明具體畫面而不是套一句。
+
+5. `has_negative_space` 與 `safe_crop` 仍是最不穩定欄位
+   Gemini 幾乎把 `has_negative_space` 與 `safe_crop` 當預設欄位；Claude 較保守；GPT 中等但缺少 safe crop。這兩個欄位仍應人工抽查，且不宜只因模型通過 validator 就回寫。
+
+### 本輪採用建議
+
+- 不建議直接整包寫回任何一個 attempt。
+- 若要挑一個作為人工修剪基底，優先選 Claude，因為它的 `visual_description`、confidence、mood、public-use 風險與 safe crop 資訊最完整。
+- 若目標是快速補基本搜尋欄位，可以參考 GPT 的 `scene_tags` 與 `recommended_uses`，但需接受描述較短與缺少 confidence 的限制。
+- Gemini 的 `visual_description` 可以用來比較自然語言搜尋效果，但不應採用它的 `has_negative_space`、`safe_crop` 與 orientation reason。
+- 下一步應使用 `pnpm ai:report -- --runs ...` 的比較報表，人工抽查 10 到 20 張代表照片，特別看：兒童公開風險、人數估算、negative space、safe crop、以及 `visual_description` 是否真的讓搜尋更容易。
+
 ## 目前已知容易失準的欄位
 
 ### `safe_crop`
