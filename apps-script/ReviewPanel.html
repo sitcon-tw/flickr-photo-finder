@@ -317,6 +317,7 @@
         currentState = state;
         rowNumberInput.value = state.rowNumber;
         rowSummary.textContent = `目前載入 photos 第 ${state.rowNumber} 列。`;
+        setTopStatus("");
         form.textContent = "";
 
         photo.hidden = false;
