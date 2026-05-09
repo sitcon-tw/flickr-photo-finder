@@ -62,10 +62,10 @@
 - `pnpm album:add -- <album-id-or-flickr-album-url>`，檢查或匯入單本相簿到本機 sample。
 - schema、taxonomy、sponsorship items 與欄位文件。
 
-### 目標流程，尚未完整實作
+### 仍待交接與改善
 
 - Apps Script source 已進 repo；實際 `clasp` 綁定、push 與 deploy 仍需由有權限的維護者操作。
-- GitHub Pages workflow 已可產生並部署 artifact；repository Pages 來源已設定為 GitHub Actions。
+- GitHub Pages workflow 已可產生並部署 artifact；repository Pages 來源已設定為 GitHub Actions。後續前端變更應用 `pnpm workflow -- --task pages-build` 與 GitHub Actions 部署紀錄驗證。
 - 更順手的多人 review 操作仍應在 Google Sheets 與後續 Apps Script 輔助中完善；AI 候選值寫入不等於 `curation_status = reviewed`。
 
 ## 依角色閱讀
