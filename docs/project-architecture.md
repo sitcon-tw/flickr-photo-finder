@@ -16,7 +16,7 @@ SITCON Flickr Photo Finder 是 Flickr 之上的照片索引層，不是相簿替
 | 宣傳、設計、網站、公關、行銷組 | 找適合當下工作情境的照片。 | GitHub Pages、Google Sheets、AI |
 | 行銷組 | 找特定贊助品項與贊助價值佐證照片。 | `sponsorship_items`、`sponsorship_tags` |
 | 技術志工 | 掃描相簿、匯入資料、跑驗證、部署工具。 | repo CLI、GitHub Actions、clasp |
-| AI / agent | 讀 schema、taxonomy 與照片索引，協助找圖或產生候選 metadata。 | repo 文件、公開 CSV/JSON、Google Sheets |
+| AI / agent | 讀 schema、taxonomy 與照片索引，協助找圖或產生候選 metadata。 | repo 文件、AI run artifacts、公開 CSV/JSON、Google Sheets |
 
 ## 架構總覽
 
@@ -67,7 +67,7 @@ flowchart LR
 3. 技術志工或 agent 掃描選定相簿，比對 Google Sheets `photos` 既有 `photo_id`。
 4. 工具產生一次 intake run artifact，包含缺少照片的最低必要欄位、更新後的 `albums.last_processed_at`、`import_batches` 與摘要。
 5. 人類檢查 run artifact 後，透過官方 Google Sheets API SDK 寫入工具套用到 Google Sheets；新照片可以直接由志工在 Google Sheets 補資料，也可以先由 AI 產生候選 metadata。
-6. AI 候選值必須以 diff 形式給人類確認，確認後才回寫。
+6. AI 候選值必須先經過 `ai:review`、`ai:report` 或必要的搜尋實驗檢視，以 diff / report 形式給人類確認，確認後才回寫。
 7. Apps Script 在 Sheets 內提供即時提示；必要時匯出資料並執行 repo validation。
 
 匯入階段最低必要欄位、`reviewed` 完整度與 `approved` 使用要求由 `data/photo-schema.json` 定義，並由 `pnpm validate:data` 檢查。文件只說明流程與判斷，不另外維護欄位清單。
@@ -81,6 +81,7 @@ flowchart LR
 - 工作用途或素材包：`recommended_uses`、`collections`。
 - 贊助品項與贊助價值：`sponsorship_items`、`sponsorship_tags`。
 - 畫面條件：`people_count`、`orientation`、`safe_crop`、`has_negative_space`。
+- taxonomy 難以涵蓋的長尾細節：`visual_description`。
 
 搜尋後再依 `public_use_status`、`curation_status`、`priority_level` 排序與提醒。使用者採用前仍應回到 Flickr 確認原圖、credit 與授權。
 
@@ -125,6 +126,6 @@ Repo 不保存：
 6. GitHub Pages 和外部 AI 能讀同一份公開照片索引。
 7. 真實使用者能用工作需求找到照片，並回饋標籤或欄位是否足夠。
 
-目前 repo 已有本機相簿盤點 CLI、`fixtures/albums.csv` fixture 格式、可回寫 Google Sheets `albums` 的 CSV 產生流程、從正式 Sheets 匯出工作 CSV 的 SDK 工具、從匯出 `albums.csv` 或直接從 Sheets API 列出與篩選相簿的 CLI、互動式選擇單本相簿的 CLI、從選定相簿產生 intake run artifact 的流程、以官方 Google Sheets API SDK 套用初始化 CSV 與 intake run artifact 的 dry-run/write 工具、AI 初標候選 metadata 的 prepare/review/diff/plan/apply 流程、GitHub Pages artifact build/deploy workflow，以及 Apps Script 維護輔助 source。尚未完成的是由有權限的維護者完成 Apps Script `clasp` 綁定與部署；GitHub Pages 正式啟用還需要在 GitHub repository 設定 Pages 的 GitHub Actions 部署來源。
+目前 repo 已有本機相簿盤點 CLI、`fixtures/albums.csv` fixture 格式、可回寫 Google Sheets `albums` 的 CSV 產生流程、從正式 Sheets 匯出工作 CSV 的 SDK 工具、從匯出 `albums.csv` 或直接從 Sheets API 列出與篩選相簿的 CLI、互動式選擇單本相簿的 CLI、從選定相簿產生 intake run artifact 的流程、以官方 Google Sheets API SDK 套用初始化 CSV 與 intake run artifact 的 dry-run/write 工具、AI 初標候選 metadata 的 prepare/attempt/review/diff/plan/report/apply 流程、用 `search:experimental` 比較 taxonomy-only 與 `visual_description` 搜尋效果的離線工具、GitHub Pages artifact build/deploy workflow，以及 Apps Script 維護輔助 source。尚未完成的是由有權限的維護者完成 Apps Script `clasp` 綁定與部署；GitHub Pages 正式啟用還需要在 GitHub repository 設定 Pages 的 GitHub Actions 部署來源。`pnpm workflow` 目前已包裝常見準備與 review 流程；attempt、report 與 search prototype 仍保留為低階指令，待實際驗收後再決定是否整合進互動 workflow。
 
 若未來真的出現權限分層、非公開欄位、審核歷程、多人衝突或查詢效能問題，再評估正式資料庫或後台。

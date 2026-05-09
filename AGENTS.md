@@ -21,7 +21,7 @@ The main goal is not to replace Flickr. The repository should keep a practical i
 - `docs/README.md`: documentation index, implementation status, and source-of-truth map.
 - `docs/photo-fields-reference.md`: field reference for the Google Sheets photo table and CSV export format.
 - `docs/public-frontend-architecture.md`: GitHub Pages public read-only frontend architecture.
-- `docs/ai-labeling-operator-guide.md`: AI labeling prepare-to-validate handoff and operator workflow.
+- `docs/ai-labeling-operator-guide.md`: AI labeling prepare-to-review handoff, report, and operator workflow.
 - `docs/ai-labeling-contract.md`: AI labeling run input, output, boundary, and validation contract.
 - `docs/ai-labeling-evaluation-notes.md`: AI labeling quality evaluation notes and known failure patterns.
 - `README.md`: human-facing project overview and quick start.

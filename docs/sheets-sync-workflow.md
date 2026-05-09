@@ -312,13 +312,15 @@ AI 可以協助初標，但不能取代人工確認。
 
 1. 先用 `pnpm sheets:export` 匯出正式 Sheets 工作快取。
 2. 用 `pnpm ai:prepare` 從 `tmp/sheets-export/photos.csv` 選出待整理照片，例如 `curation_status = unreviewed`。
-3. 工具建立 `tmp/ai-runs/<run-id>/`，輸出 `input-photos.csv`、`photos.json`、`manifest.json`，並下載 AI 判讀用圖片到 `images/`。
-4. AI 讀取 `photos.json`、`images/`、相簿脈絡、既有欄位、taxonomy 與 sponsorship items。
-5. AI 產生 `metadata-proposals.json` 候選欄位值。
-6. 用 `pnpm ai:review -- --run-dir tmp/ai-runs/<run-id>` 檢查候選欄位格式、受控字彙與責任邊界，並產生審核摘要、diff 與更新計畫。
-7. 用 `pnpm sheets:apply-ai-updates -- --run-dir tmp/ai-runs/<run-id>` 對正式 Sheets 做 dry-run，確認會更新哪些 cells。
-8. 人類確認後才加上 `--write` 寫入正式欄位。
-9. AI 協助後但尚未人工完整確認的列標成 `curation_status = ai_labeled`。
+3. 工具建立 `tmp/ai-runs/<run-id>/`，輸出 `input-photos.csv`、`photos.json`、`manifest.json`、`ai-labeling-prompt.md`，並下載 AI 判讀用圖片到 `images/`。
+4. 若要讓不同模型或同一模型不同輪次使用同一批輸入，先用 `pnpm ai:attempt` 從既有 run 建立 attempt，不要手動複製整個工作包。
+5. AI 讀取 `ai-labeling-prompt.md`、`photos.json`、`images/`、相簿脈絡、既有欄位、taxonomy 與 sponsorship items，產生 `metadata-proposals.json` 候選欄位值。
+6. 用 `pnpm ai:review -- --run-dir tmp/ai-runs/<run-id-or-attempt>` 檢查候選欄位格式、受控字彙與責任邊界，並產生審核摘要、diff 與更新計畫。
+7. 用 `pnpm ai:report` 產生唯讀 HTML 報表；單一 run 用逐張檢視，多個 run/attempt 用並排比較。
+8. 若本次要評估 `visual_description` 對自然語言找圖是否有幫助，先用 `pnpm search:experimental` 做 taxonomy-only baseline 與 taxonomy + description 的離線比較。
+9. 用 `pnpm sheets:apply-ai-updates -- --run-dir tmp/ai-runs/<run-id-or-attempt>` 對正式 Sheets 做 dry-run，確認會更新哪些 cells。
+10. 人類確認後才加上 `--write` 寫入正式欄位。
+11. AI 協助後但尚未人工完整確認的列標成 `curation_status = ai_labeled`。
 
 AI 初標流程到 `ai_labeled` 就應停止。`curation_status = reviewed` 不應是本機 AI run 的收尾步驟，而是照片資料回到 Google Sheets 後，由具有 Sheets 編輯權限的志工們在同一份正式資料表中協作檢核、修正並補齊必要欄位後才更新。
 
@@ -335,6 +337,16 @@ pnpm ai:prepare -- --album ALBUM_ID --limit all
 ```
 
 日常操作可直接使用 `pnpm workflow` 的「準備 AI 初標工作包」。它會先從正式 Sheets 匯出的 `albums` 清單選相簿，再把選到的 album id 傳給 `ai:prepare`。工作包建立完成後，`ai:prepare` 會寫入該 run 目錄的 `ai-labeling-prompt.md`；workflow 也會印出同一份可直接複製給模型或 agent 的 prompt。
+
+若要把同一批輸入交給多個模型，或同一模型重跑第二輪，請建立 attempt：
+
+```bash
+pnpm ai:attempt -- --from tmp/ai-runs/<run-id> --model claude --round 1
+pnpm ai:attempt -- --from tmp/ai-runs/<run-id> --model claude --round 2 --label visual-description
+pnpm ai:attempt -- --from tmp/ai-runs/<run-id> --model gpt --round 1
+```
+
+attempt 目錄仍是一般 AI run 形狀，可以交給模型，也可以直接用 `pnpm ai:review -- --run-dir <attempt-dir>` 檢查；圖片預設以 symlink 或 hardlink 共用，不會重複複製。
 
 這仍會套用預設 `curation_status = unreviewed`。若要整本相簿所有整理狀態都放進工作包，請使用：
 
@@ -401,6 +413,31 @@ pnpm ai:review -- --run-dir tmp/ai-runs/<run-id>
 - `metadata-review-summary.md`: 給人類快速檢查批次成果、欄位分布與可能警訊。
 - `metadata-diff.md`: 逐欄列出原值、AI 建議值、是否變更、信心與理由。
 - `metadata-update-plan.json` / `metadata-update-plan.csv`: 只列出實際會改變的欄位，供後續 dry-run Sheets 更新工具使用。
+
+`ai:review` 的 CLI `Next:` 與 `metadata-review-summary.md` 的 `## Next Commands` 是 AI 初標流程的主要交接介面。新增或調整後續檢視工具時，應同步更新這兩個地方，避免操作者跑完 review 後仍看不到最新建議流程。
+
+檢視單次 AI 初標結果：
+
+```bash
+pnpm ai:report -- --run tmp/ai-runs/<run-id-or-attempt>
+```
+
+比較多個模型或多輪結果：
+
+```bash
+pnpm ai:report -- --runs tmp/ai-runs/<attempt-a> tmp/ai-runs/<attempt-b>
+```
+
+報表只讀取本機 artifact，不修改 proposal，也不寫入 Sheets。
+
+若要在寫回 Sheets 前評估 `visual_description` 是否真的改善自然語言找圖，可先跑離線搜尋比較：
+
+```bash
+pnpm search:experimental -- --run-dir tmp/ai-runs/<run-id-or-attempt>
+pnpm search:experimental -- --run-dir tmp/ai-runs/<run-id-or-attempt> --query "有留白的橫式講者照片" --top 10
+```
+
+這個 prototype 不呼叫 LLM、不抓圖片，也不寫入 Google Sheets；它只比較 taxonomy-only baseline 與 taxonomy + `visual_description` 的排序差異。
 
 AI 候選值只允許讀圖初標合理處理的欄位，例如 `people_count`、`scene_tags`、`mood_tags`、`recommended_uses`、`sponsorship_items`、`sponsorship_tags`、`orientation`、`has_negative_space`、`safe_crop`、`visual_description`、`public_use_status`、`priority_level`、`collections` 與 `curation_status`。AI 候選值不能修改 Flickr 基本欄位、攝影師或授權；若建議 `curation_status`，只能是 `ai_labeled`；若建議 `public_use_status`，不能直接給 `approved`。
 

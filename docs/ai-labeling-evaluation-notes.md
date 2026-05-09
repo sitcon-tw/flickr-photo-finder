@@ -33,6 +33,19 @@ pnpm ai:review -- --run-dir tmp/ai-runs/<run-id>
 - Review Notes: 是否出現批次層級警訊。
 - Planned Update Sample: reason 是否能讓人快速判斷建議值是否可信。
 
+接著產生本機唯讀報表，方便逐張閱讀或比較多模型/多輪結果：
+
+```bash
+pnpm ai:report -- --run tmp/ai-runs/<run-id-or-attempt>
+pnpm ai:report -- --runs tmp/ai-runs/<attempt-a> tmp/ai-runs/<attempt-b>
+```
+
+報表不取代 `metadata-diff.md`，而是讓人更快看到縮圖、proposal 狀態、欄位覆蓋率與不同 attempt 的差異。若本次重點是 `visual_description`，再用搜尋實驗檢查它是否真的改善工作情境找圖：
+
+```bash
+pnpm search:experimental -- --run-dir tmp/ai-runs/<run-id-or-attempt>
+```
+
 接著抽查 `metadata-diff.md` 與圖片本身。若要確認正式 Sheets 將被更新哪些 cells，再執行 dry-run：
 
 ```bash

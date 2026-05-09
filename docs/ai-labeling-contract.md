@@ -254,6 +254,14 @@ pnpm ai:report -- --runs tmp/ai-runs/<run-or-attempt-a> tmp/ai-runs/<run-or-atte
 
 單一 run 會使用逐張閱讀介面，多個 run 會使用並排比較介面。報表只讀取本機 artifact，不修改 proposal，也不寫入 Google Sheets。
 
+若要驗證 `visual_description` 對自然語言找圖是否有幫助，可在寫回 Sheets 前執行：
+
+```bash
+pnpm search:experimental -- --run-dir tmp/ai-runs/<run-or-attempt>
+```
+
+這只比較 taxonomy-only baseline 與 taxonomy + `visual_description` 的離線排序差異，不呼叫 LLM、不抓圖片，也不寫入 Sheets。
+
 檢查這份計畫會更新正式 Google Sheets 哪些 cells：
 
 ```bash
