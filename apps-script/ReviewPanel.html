@@ -354,21 +354,26 @@
         setBusy(false);
       }
 
-      function handleFailure(error) {
-        setBusy(false);
+      function failureMessage(error) {
         const message = error.message || String(error);
         if (/Authorization is required|授權|權限不足/i.test(message)) {
-          setSaveStatus(
-            [
-              "sidebar 呼叫 Apps Script 時被回報需要授權。",
-              "如果已完成授權，通常是 Google 多帳號 session 讓 sidebar iframe 使用未授權帳號。請改用已授權帳號作為第一個登入帳號，或用單一帳號的瀏覽器 profile / 無痕視窗重開 Sheet。",
-              `原始錯誤：${message}`,
-            ].join("\n\n"),
-            "error",
-          );
-          return;
+          return [
+            "sidebar 呼叫 Apps Script 時被回報需要授權。",
+            "如果已完成授權，通常是 Google 多帳號 session 讓 sidebar iframe 使用未授權帳號。請改用已授權帳號作為第一個登入帳號，或用單一帳號的瀏覽器 profile / 無痕視窗重開 Sheet。",
+            `原始錯誤：${message}`,
+          ].join("\n\n");
         }
-        setSaveStatus(message, "error");
+        return message;
+      }
+
+      function handleLoadFailure(error) {
+        setBusy(false);
+        setTopStatus(failureMessage(error), "error");
+      }
+
+      function handleSaveFailure(error) {
+        setBusy(false);
+        setSaveStatus(failureMessage(error), "error");
       }
 
       function loadRow(rowNumber) {
@@ -377,7 +382,7 @@
         setSaveStatus("");
         google.script.run
           .withSuccessHandler(render)
-          .withFailureHandler(handleFailure)
+          .withFailureHandler(handleLoadFailure)
           .getReviewPhotoByRow(rowNumber);
       }
 
@@ -391,7 +396,7 @@
         setSaveStatus("");
         google.script.run
           .withSuccessHandler(render)
-          .withFailureHandler(handleFailure)
+          .withFailureHandler(handleLoadFailure)
           .getReviewPanelState();
       }
 
@@ -410,7 +415,7 @@
         setSaveStatus("儲存中...");
         google.script.run
           .withSuccessHandler(render)
-          .withFailureHandler(handleFailure)
+          .withFailureHandler(handleSaveFailure)
           .saveReviewPhoto(currentState.rowNumber, values);
       }
 
