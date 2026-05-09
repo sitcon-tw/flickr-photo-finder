@@ -208,6 +208,8 @@ pnpm albums:select -- --source sheets --unprocessed
 pnpm intake:run -- --album ALBUM_ID
 ```
 
+日常操作建議從 `pnpm workflow -- --task album-intake` 進入。workflow 會完成 Sheets 匯出、相簿選擇與 `intake:run`，並在產生 artifact 後記住本次 run 目錄，預設可直接接續 `intake:validate` 與 `sheets:apply-intake` dry-run，不需要再複製貼上 `tmp/intake-runs/<run-id>/`。
+
 `intake:run` 會建立 `tmp/intake-runs/<run-id>/`，並產生：
 
 ```text

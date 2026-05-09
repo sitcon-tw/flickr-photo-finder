@@ -217,6 +217,7 @@ async function main() {
 
   await writeFile(summaryOutput, `${JSON.stringify(summary, null, 2)}\n`);
   console.log(`Wrote intake run summary to ${summaryOutput}.`);
+  console.log(`Intake run directory: ${runDir}`);
   console.log(`Intake run ${runId} is ready for review before applying to Google Sheets.`);
 }
 

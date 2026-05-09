@@ -28,7 +28,7 @@
 
 ### 目前可用
 
-- `pnpm workflow`，先說明完整資料流，再依階段引導常見工作流程，包含相簿匯入、AI prepare/attempt/review/report/search、Sheets 維護與 Pages artifact build/check，作為新接觸者與日常操作的主要入口。
+- `pnpm workflow`，先說明完整資料流，再依階段引導常見工作流程，包含相簿匯入、AI prepare/attempt/review/report/search、Sheets 維護與 Pages artifact build/check，作為新接觸者與日常操作的主要入口。相簿匯入會在產生 intake run 後記住 run 目錄，並可直接接續 validation 與 Sheets dry-run。
 - 本機 static search UI，預設讀 `fixtures/photos.csv`。
 - `pnpm validate:data`，檢查 sample/export data、schema 與 taxonomy。
 - `pnpm sheets:init`，產生建立 Google Sheets MVP 所需的初始 CSV。
@@ -43,7 +43,7 @@
 - `pnpm albums:discover`，盤點 SITCON Flickr 公開相簿清單並輸出 CSV 預覽。
 - `pnpm albums:discover -- --write`，更新本機 `fixtures/albums.csv` fixture，供 demo、除錯或 fixture validation 使用。
 - `pnpm albums:sync -- --sheets-export <csv> --output <csv>`，合併 Sheets 匯出與盤點結果，產生可回寫 Google Sheets `albums` 的 CSV。
-- `pnpm intake:run -- --album <album-id>`，從選定相簿產生一次可審核的 intake run artifact，包含候選 `photos`、更新後 `albums`、`import_batches` 與 `summary.json`。預設讀 `tmp/sheets-export/albums.csv` 與 `tmp/sheets-export/photos.csv`。
+- `pnpm intake:run -- --album <album-id>`，從選定相簿產生一次可審核的 intake run artifact，包含候選 `photos`、更新後 `albums`、`import_batches` 與 `summary.json`，並輸出 `Intake run directory:` 供 workflow 或人工接續使用。預設讀 `tmp/sheets-export/albums.csv` 與 `tmp/sheets-export/photos.csv`。
 - `pnpm intake:validate -- --run-dir <dir>`，套用到 Google Sheets 前檢查 intake run artifact 是否完整一致。
 - `pnpm sheets:apply-intake -- --run-dir <dir>`，透過官方 Google Sheets API SDK dry-run 已審核 intake run artifact；加上 `--write` 才會追加照片、更新該相簿 `last_processed_at` 並追加批次紀錄。
 - `pnpm ai:prepare`，從正式 Sheets 匯出的 `photos.csv` 選出待初標照片，建立本機 `tmp/ai-runs/` 工作目錄與可供 AI 讀圖的輸入檔；預設下載 1024px 圖片，也可指定 `preview`、640、800 或 `original`。

@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { dirname } from "node:path";
 import readline from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 import { writeAiLabelingPrompt } from "./ai-labeling-prompt.mjs";
@@ -27,12 +28,12 @@ const tasks = [
     title: "檢查專案資料與 AI fixtures",
   },
   {
-    description: "匯出正式 Sheets 工作快取、選擇相簿，並產生 intake run artifact。",
+    description: "匯出正式 Sheets 工作快取、選擇相簿，產生 intake run artifact，並可直接接續檢查與 dry-run。",
     handler: runAlbumIntake,
     id: "album-intake",
     inputs: ["正式 Google Sheets", "匯出正式資料時需要 GOOGLE_APPLICATION_CREDENTIALS 與讀取權限", "Flickr 相簿清單"],
-    next: ["檢查 intake run，確認後 dry-run 或寫回 Google Sheets。"],
-    outputs: ["tmp/intake-runs/<run-id>/"],
+    next: ["通常可直接接著檢查 intake run 並 dry-run；若要人工細看，也可保留 run artifact 稍後再套用。"],
+    outputs: ["tmp/intake-runs/<run-id>/", "可選的 intake validation 與 Sheets dry-run 結果"],
     phase: "相簿匯入",
     title: "處理一本 Flickr 相簿",
   },
@@ -225,7 +226,7 @@ function printWorkflowSummary() {
   console.log("主流程：");
   console.log("1. Google Sheets 是正式資料庫；多數寫入前流程會先把正式資料匯出成 tmp/sheets-export/ 工作快取。");
   console.log("2. 從 Flickr 相簿清單選一本相簿，產生 tmp/intake-runs/ 可審核匯入產物。");
-  console.log("3. 人類確認 intake run 後，才 dry-run 或寫回 Google Sheets。");
+  console.log("3. workflow 會記住剛產生的 intake run，通常可直接接續驗證與 Sheets dry-run。");
   console.log("4. 從 Sheets photos 建立 tmp/ai-runs/，把圖片與 photos.json 交給模型初標。");
   console.log("5. 模型只輸出 metadata-proposals.json，工具驗證後產生 diff / update plan。");
   console.log("6. AI 候選值經人類確認後才寫回 Sheets；正式 reviewed 在 Sheets 中由志工協作完成。");
@@ -319,6 +320,20 @@ function pnpmArgsFromOptions(options) {
   return options.length > 0 ? ["--", ...options] : [];
 }
 
+function parseIntakeRunDir(stdout) {
+  const directMatch = stdout.match(/Intake run directory:\s*(.+)/);
+  if (directMatch?.[1]) {
+    return directMatch[1].trim();
+  }
+
+  const summaryMatch = stdout.match(/Wrote intake run summary to\s+(.+?summary\.json)\./);
+  if (summaryMatch?.[1]) {
+    return dirname(summaryMatch[1].trim());
+  }
+
+  return "";
+}
+
 async function runDevServer() {
   console.log("啟動本機搜尋 UI。停止伺服器請按 Ctrl+C。");
   runPnpm("dev");
@@ -378,13 +393,40 @@ async function runAlbumIntake() {
     throw new Error("No album id was selected.");
   }
 
-  runPnpm("intake:run", pnpmArgsFromOptions(["--album", albumId]));
+  const stdout = runPnpm("intake:run", pnpmArgsFromOptions(["--album", albumId]), {
+    captureStdout: true,
+    printCapturedStdout: true,
+  });
+  const runDir = parseIntakeRunDir(stdout);
+
+  if (!runDir) {
+    console.log("");
+    console.log("下一步：");
+    console.log("無法從輸出判斷 intake run 目錄，請看上方 `Intake run directory:` 或 `summary.json` 路徑後手動執行：");
+    console.log("pnpm workflow -- --task review-intake");
+    return;
+  }
+
+  console.log("");
+  console.log(`已建立 intake run：${runDir}`);
+  if (await askYesNo("直接檢查這次 intake run 並 dry-run 套用到 Google Sheets？", true)) {
+    await reviewIntakeRun(runDir);
+  } else {
+    console.log("");
+    console.log("已保留 intake run，尚未檢查或 dry-run。");
+    console.log(`稍後可執行：pnpm workflow -- --task review-intake，並填入 ${runDir}`);
+  }
 }
 
-async function reviewIntakeRun() {
-  const runDir = await ask("intake run 目錄，例如 tmp/intake-runs/RUN_ID");
+async function reviewIntakeRun(initialRunDir = "") {
+  const runDir = initialRunDir || (await ask("intake run 目錄，例如 tmp/intake-runs/RUN_ID"));
   if (!runDir) {
     throw new Error("run directory is required");
+  }
+
+  if (initialRunDir) {
+    console.log("");
+    console.log(`檢查 intake run：${runDir}`);
   }
 
   runPnpm("intake:validate", pnpmArgsFromOptions(["--run-dir", runDir]));
