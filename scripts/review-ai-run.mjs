@@ -23,7 +23,7 @@ const peopleSceneValues = new Set(["講者", "會眾", "工作人員", "合照",
 const peopleReasonPattern = /人|會眾|講者|合照|志工|參與者|工作人員/;
 const concentrationThreshold = 0.9;
 const genericUseThresholds = new Map([
-  ["活動回顧", 0.6],
+  ["活動回顧", 0.45],
   ["社群貼文", 0.5],
 ]);
 const broadMoodThresholds = new Map([
