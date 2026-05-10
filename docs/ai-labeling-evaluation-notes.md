@@ -4,6 +4,8 @@
 
 本文件中的單次 run 觀察只代表當時的 prompt、資料、圖片尺寸、操作方式與模型 session。未來不應把這些結論當成某個模型的永久能力評價；若 prompt、taxonomy、圖片尺寸或模型版本改變，應重新評估。
 
+新的 AI run/attempt 會在 `manifest.json` 記錄 `prompt_template_sha256`。比較多模型或多輪結果時，應先確認 prompt hash 一致；若缺少紀錄或與目前 repo prompt 不同，該結果只能作為歷史觀察或調校線索，不應直接當作公平模型比較。
+
 ## 評估目標
 
 AI 初標結果要能協助志工更快整理照片，但不能取代人工 review。評估時優先看：
