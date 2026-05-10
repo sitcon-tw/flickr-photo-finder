@@ -244,7 +244,7 @@ pnpm apps-script:push
 在正式 Sheet 或測試 Sheet 驗收 sidebar 時，建議至少跑以下案例：
 
 1. 以有權限的 Google 帳號作為第一個登入帳號開啟 Sheet，避免多帳號 session 讓 sidebar iframe 使用未授權帳號。
-2. 在 `photos` 選一列資料，執行 `Open review panel`，確認縮圖、Flickr 連結、列號與欄位表單正確。
+2. 在 `photos` 選一列資料，執行 `Open review panel`，確認縮圖、Flickr 連結、列號與欄位表單正確；若目前選在 header 或沒有明確選取資料列，sidebar 應自動載入第一筆照片資料。
 3. 使用 `上一張` / `下一張` 切換相鄰資料列，確認不需要回到 Sheet 手動改選列；連續切換已 buffer 的相鄰列時應立即更新畫面，不應每張都顯示載入等待。
 4. 使用 `目前列` 重新讀取選取列，成功後頂部暫時狀態應消失。
 5. 輸入不存在或超出範圍的列號後按 `載入`，錯誤應顯示在上方列控制區附近。

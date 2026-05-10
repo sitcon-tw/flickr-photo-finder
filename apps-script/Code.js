@@ -279,7 +279,10 @@ function getConfig_() {
 function getActivePhotoRowNumber_(sheet) {
   const activeRange = sheet.getActiveRange();
   if (!activeRange || activeRange.getRow() <= 1) {
-    throw new Error("請先在 photos 選取一列資料，不要選 header。");
+    if (sheet.getLastRow() >= 2) {
+      return 2;
+    }
+    throw new Error("photos 目前沒有可校對的資料列。");
   }
   return activeRange.getRow();
 }
