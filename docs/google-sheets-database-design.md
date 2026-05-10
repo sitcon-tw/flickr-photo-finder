@@ -94,7 +94,7 @@ SITCON Flickr 相簿清單與處理紀錄。這張表應由工具盤點 SITCON F
 
 schema 與同步狀態紀錄。這張表讓人類、Apps Script 與 agent 能確認目前 Sheets 使用哪個 repo 規格。
 
-目前由 `SITCON Photo Finder` 選單中的 `Refresh schema and taxonomy` 建立或更新。`schema_meta` 不應是空白工作表；至少應有 header row 與一列同步資訊。若 `schema_version`、`taxonomy_version`、`sponsorship_items_version`、`last_synced_at` 或 `synced_by` 空白，表示 Apps Script refresh 沒有成功完成。
+目前由 `SITCON Photo Finder` 選單中的 `更新欄位選項` 建立或更新。`schema_meta` 不應是空白工作表；至少應有 header row 與一列同步資訊。若 `schema_version`、`taxonomy_version`、`sponsorship_items_version`、`last_synced_at` 或 `synced_by` 空白，表示 Apps Script refresh 沒有成功完成。
 
 欄位：
 
@@ -109,7 +109,7 @@ schema 與同步狀態紀錄。這張表讓人類、Apps Script 與 agent 能確
 
 ### validation_report
 
-最近一次 Apps Script 驗證結果。這張表由 `Validate current row`、`Validate photos sheet` 或 `Validate public read format` 覆寫，方便維護者處理 alert 放不下的大量錯誤。
+最近一次 Apps Script 驗證結果。這張表由 `檢查這張照片`、`檢查全部照片` 或 `檢查公開資料格式` 覆寫，方便維護者處理 alert 放不下的大量錯誤。
 
 `validation_report` 是維護輔助報表，不是正式資料表；公開前端、AI 初標與 repo 匯入流程不應把它當成資料來源。
 

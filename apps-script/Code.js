@@ -46,14 +46,13 @@ const PHOTO_FINDER_REVIEW_WEB_APP_LIST_FIELDS = [
 function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu(PHOTO_FINDER_MENU_NAME)
-    .addItem("Refresh schema and taxonomy", "refreshSchemaAndTaxonomy")
-    .addItem("Open review panel", "openPhotoReviewPanel")
+    .addItem("開始整理照片", "openPhotoReviewPanel")
+    .addItem("檢查這張照片", "validateCurrentRow")
     .addSeparator()
-    .addItem("Validate current row", "validateCurrentRow")
-    .addItem("Validate photos sheet", "validatePhotosSheet")
-    .addItem("Validate public read format", "validatePublicReadFormat")
-    .addSeparator()
-    .addItem("Show schema status", "showSchemaStatus")
+    .addItem("更新欄位選項", "refreshSchemaAndTaxonomy")
+    .addItem("檢查全部照片", "validatePhotosSheet")
+    .addItem("檢查公開資料格式", "validatePublicReadFormat")
+    .addItem("查看資料表版本", "showSchemaStatus")
     .addToUi();
 }
 
@@ -133,7 +132,7 @@ function showSchemaStatus() {
     ? missingMetaFields.length > 0
       ? [
           `${config.schemaMetaSheetName} 工作表存在，但缺少同步資訊：${missingMetaFields.join(", ")}`,
-          "請執行 Refresh schema and taxonomy 重新寫入 schema_meta。",
+          "請執行更新欄位選項重新寫入 schema_meta。",
         ]
       : [
         `schema_meta schema_version: ${meta.schema_version || "(空白)"}`,
@@ -142,7 +141,7 @@ function showSchemaStatus() {
         `schema_meta last_synced_at: ${meta.last_synced_at || "(空白)"}`,
         `schema_meta synced_by: ${meta.synced_by || "(空白)"}`,
       ]
-    : [`尚未找到 ${config.schemaMetaSheetName} 工作表；請執行 Refresh schema and taxonomy 建立同步狀態。`];
+    : [`尚未找到 ${config.schemaMetaSheetName} 工作表；請執行更新欄位選項建立同步狀態。`];
 
   SpreadsheetApp.getUi().alert(
     [
