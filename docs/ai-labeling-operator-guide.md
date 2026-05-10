@@ -108,13 +108,13 @@ pnpm ai:review -- --run-dir tmp/ai-runs/<run-id>
 - 驗證 `metadata-proposals.json`。
 - 產生 `metadata-diff.md`，供人類逐欄看原值、建議值、信心與 reason。
 - 產生 `metadata-update-plan.json` 與 `metadata-update-plan.csv`，列出後續可能回寫的欄位值。
-- 產生 `metadata-review-summary.md`，整理欄位覆蓋率、常見值分布、批次層級警訊與下一步指令。
+- 產生 `metadata-review-summary.md`，整理欄位覆蓋率、常見值分布、批次層級警訊、優先抽查照片與下一步指令。
 
 `ai:review` 終端輸出的 `Next:` 與 `metadata-review-summary.md` 的 `## Next Commands` 是這段流程的主要交接提示。若新增報表、比較、搜尋實驗或回寫前檢查工具，應同步更新這兩個地方。
 
 若失敗，請根據錯誤訊息修正 `metadata-proposals.json`，不要改 `photos.json` 或正式 Sheets。
 
-若通過但輸出 review warnings，代表格式與責任邊界可接受，但仍有批次品質疑慮需要人工判斷；例如相同 `public_use_status` reason 在多張照片重複，可能是模型套模板，也可能是同一活動情境下合理的共同限制。
+若通過但輸出 review warnings，代表格式與責任邊界可接受，但仍有批次品質疑慮需要人工判斷；例如相同 `public_use_status` reason 在多張照片重複，可能是模型套模板，也可能是同一活動情境下合理的共同限制。`metadata-review-summary.md` 的 `Review Focus` 會依 warning 挑出第一批建議抽查的照片，操作者應先看這段，再決定是否需要打開完整 diff、HTML report 或 update CSV。
 
 常見錯誤：
 

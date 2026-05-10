@@ -21,6 +21,7 @@ const distributionFields = [
 
 const peopleSceneValues = new Set(["講者", "會眾", "工作人員", "合照", "交流", "攝影"]);
 const peopleReasonPattern = /人|會眾|講者|合照|志工|參與者|工作人員/;
+const noPeopleReasonPattern = /沒有人|無人|沒有可辨識人物|沒有可見人物|沒有可辨識的人|沒有人物|無可辨識人物|沒有.*人物/;
 const concentrationThreshold = 0.9;
 const genericUseThresholds = new Map([
   ["活動回顧", 0.45],
@@ -33,6 +34,7 @@ const broadMoodThresholds = new Map([
 ]);
 const lowMoodCoverageMinimumItems = 20;
 const lowMoodCoverageThreshold = 0.2;
+const reviewFocusMaxRows = 25;
 const asciiWordPattern = /[A-Za-z][A-Za-z0-9'_-]{2,}(?:\s+[A-Za-z][A-Za-z0-9'_-]{2,}){4,}/;
 
 function printUsage() {
@@ -216,8 +218,125 @@ function allHumanText(item) {
     .join(" ");
 }
 
+function proposalHumanText(proposal) {
+  const values = [proposal.reason];
+  if (typeof proposal.value === "string") {
+    values.push(proposal.value);
+  }
+  return values.filter((value) => typeof value === "string").join(" ");
+}
+
 function photoIdList(items) {
   return items.map((item) => item.photo_id).join(", ");
+}
+
+function isZeroPeopleContradiction(item) {
+  if (item.fields.people_count?.value !== 0) {
+    return false;
+  }
+  const sceneValues = valuesForField(item, "scene_tags");
+  const hasPeopleScene = sceneValues.some((value) => peopleSceneValues.has(value));
+  const reasonText = allReasonText(item);
+  return hasPeopleScene || (peopleReasonPattern.test(reasonText) && !noPeopleReasonPattern.test(reasonText));
+}
+
+function proposalReason(item, field) {
+  return item.fields[field]?.reason ?? "";
+}
+
+function proposalValue(item, field) {
+  return item.fields[field]?.value ?? "";
+}
+
+function pushFocusRows(rows, seen, issue, items, field, maxRows = 8) {
+  for (const item of items.slice(0, maxRows)) {
+    const key = `${issue}\0${item.photo_id}\0${field}`;
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    rows.push([
+      issue,
+      item.photo_id,
+      field,
+      proposalValue(item, field),
+      proposalReason(item, field),
+    ]);
+    if (rows.length >= reviewFocusMaxRows) {
+      return;
+    }
+  }
+}
+
+function buildReviewFocusRows(items) {
+  const rows = [];
+  const seen = new Set();
+  const itemCount = items.length;
+  const safeCrop = mostCommonValue(items, "safe_crop");
+  const mood = mostCommonValue(items, "mood_tags");
+
+  if (itemCount > 0 && safeCrop.count / itemCount >= concentrationThreshold) {
+    pushFocusRows(
+      rows,
+      seen,
+      `抽查 safe_crop = ${safeCrop.value}`,
+      items.filter((item) => valuesForField(item, "safe_crop").includes(safeCrop.value)),
+      "safe_crop",
+    );
+  }
+
+  for (const [genericUse, threshold] of genericUseThresholds) {
+    const useItems = items.filter((item) => valuesForField(item, "recommended_uses").includes(genericUse));
+    if (itemCount > 0 && useItems.length / itemCount >= threshold) {
+      pushFocusRows(rows, seen, `抽查 recommended_uses = ${genericUse}`, useItems, "recommended_uses");
+    }
+  }
+
+  for (const [broadMood, threshold] of broadMoodThresholds) {
+    const moodItems = items.filter((item) => valuesForField(item, "mood_tags").includes(broadMood));
+    if (itemCount > 0 && moodItems.length / itemCount >= threshold) {
+      pushFocusRows(rows, seen, `抽查 mood_tags = ${broadMood}`, moodItems, "mood_tags");
+    }
+  }
+
+  if (itemCount > 0 && mood.count / itemCount >= concentrationThreshold) {
+    pushFocusRows(
+      rows,
+      seen,
+      `抽查 mood_tags = ${mood.value}`,
+      items.filter((item) => valuesForField(item, "mood_tags").includes(mood.value)),
+      "mood_tags",
+    );
+  }
+
+  const sponsorReportItems = items.filter((item) =>
+    valuesForField(item, "recommended_uses").includes("贊助成果報告")
+    && valuesForField(item, "sponsorship_items").length === 0
+    && valuesForField(item, "sponsorship_tags").length === 0,
+  );
+  pushFocusRows(rows, seen, "缺少贊助欄位但建議贊助成果報告", sponsorReportItems, "recommended_uses");
+
+  const sponsorProposalItems = items.filter((item) =>
+    valuesForField(item, "recommended_uses").includes("贊助提案")
+    && valuesForField(item, "sponsorship_items").length === 0
+    && valuesForField(item, "sponsorship_tags").length === 0,
+  );
+  pushFocusRows(rows, seen, "缺少贊助欄位但建議贊助提案", sponsorProposalItems, "recommended_uses");
+
+  const zeroPeopleContradictions = items.filter(isZeroPeopleContradiction);
+  pushFocusRows(rows, seen, "people_count = 0 但有人物線索", zeroPeopleContradictions, "people_count");
+
+  const longEnglishTextItems = items.filter((item) => asciiWordPattern.test(allHumanText(item)));
+  for (const item of longEnglishTextItems.slice(0, 8)) {
+    const field = Object.entries(item.fields).find(([, proposal]) => asciiWordPattern.test(proposalHumanText(proposal)))?.[0]
+      ?? "visual_description";
+    pushFocusRows(rows, seen, "較長英文內容", [item], field, 1);
+    if (rows.length >= reviewFocusMaxRows) {
+      break;
+    }
+  }
+
+  return rows.slice(0, reviewFocusMaxRows);
 }
 
 function buildReviewNotes(items) {
@@ -238,14 +357,7 @@ function buildReviewNotes(items) {
     && valuesForField(item, "sponsorship_items").length === 0
     && valuesForField(item, "sponsorship_tags").length === 0,
   );
-  const zeroPeopleContradictions = items.filter((item) => {
-    if (item.fields.people_count?.value !== 0) {
-      return false;
-    }
-    const sceneValues = valuesForField(item, "scene_tags");
-    const hasPeopleScene = sceneValues.some((value) => peopleSceneValues.has(value));
-    return hasPeopleScene || peopleReasonPattern.test(allReasonText(item));
-  });
+  const zeroPeopleContradictions = items.filter(isZeroPeopleContradiction);
   const longEnglishTextItems = items.filter((item) => asciiWordPattern.test(allHumanText(item)));
   const { confidenceCounts, perfectCount, total } = confidenceStats(items);
 
@@ -364,6 +476,7 @@ function renderSummary({ manifest, notes, plan, proposals, runDir, sample, summa
   const items = proposals.items;
   const fieldCountRows = fieldCounts(items).map(({ field, count }) => [field, count]);
   const distributionTableRows = distributionFields.flatMap((field) => distributionRows(items, field));
+  const focusRows = buildReviewFocusRows(items);
   const sampleRows = plan.updates.slice(0, sample).map((update) => [
     update.photo_id,
     update.field,
@@ -392,6 +505,12 @@ function renderSummary({ manifest, notes, plan, proposals, runDir, sample, summa
     "## Review Notes",
     "",
     ...(notes.length > 0 ? notes.map((note) => `- ${note}`) : ["- 未偵測到明顯的批次層級警訊；仍請抽查照片與 reason。"]),
+    "",
+    "## Review Focus",
+    "",
+    focusRows.length > 0
+      ? table(["issue", "photo_id", "field", "proposed", "reason"], focusRows)
+      : "No specific focus rows were generated from review warnings.",
     "",
     "## Field Coverage",
     "",

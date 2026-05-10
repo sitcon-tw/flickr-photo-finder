@@ -737,6 +737,7 @@ reason 是審核脈絡，不是正式 metadata。它應只描述可見畫面或 
 - `pnpm eval:attempt` 可從同一個 input run 建立不同模型或不同輪次的 attempt，避免手動複製圖片與 prompt。
 - `pnpm ai:report` 可產生唯讀 HTML，比較多個 run/attempt 在同一張照片上的 value、reason、confidence 與 validator 狀態。
 - `pnpm eval:search` 可在 proposal 寫回前離線比較 taxonomy-only baseline 與 taxonomy + `visual_description` 的搜尋排序差異，用來驗證描述欄位是否有實際找圖增益。
+- `metadata-review-summary.md` 會輸出 `Review Focus`，從現有 warning 中挑出第一批優先抽查照片，例如 `safe_crop` 過度套用、`活動回顧` 過度集中、贊助用途缺少贊助欄位、`people_count = 0` 但有人物線索等情況。
 
 `pnpm ai:validate` 會擋下格式、責任邊界與明顯不可審核的單欄位內容，例如：
 
