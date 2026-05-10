@@ -5,7 +5,8 @@ import { parseCsv, toCsvLine } from "../lib/core/csv-utils.mjs";
 import { albumsPath } from "../lib/flickr/album-catalog.mjs";
 import { projectConfig } from "../lib/core/project-config.mjs";
 import { albumHeaders, importBatchHeaders, photoHeaders, photoSchema } from "../lib/core/photo-schema.mjs";
-import { sponsorshipItemHeaders, taxonomyHeaders } from "../lib/sheets/sheets-format.mjs";
+import { sponsorshipItemHeaders } from "../lib/sheets/sheets-format.mjs";
+import { taxonomyToCsv } from "../lib/sheets/taxonomy-sheet.mjs";
 
 const defaultOutputDir = "tmp/sheets-init";
 const taxonomyPath = "data/tag-taxonomy.json";
@@ -84,28 +85,6 @@ async function readAlbumsCsv(path) {
   }
 
   return text.endsWith("\n") ? text : `${text}\n`;
-}
-
-function taxonomyToCsv(taxonomy) {
-  const rows = [];
-  const optionLabels = taxonomy.option_labels ?? {};
-
-  for (const [key, values] of Object.entries(taxonomy)) {
-    if (!Array.isArray(values)) {
-      continue;
-    }
-
-    values.forEach((value, index) => {
-      rows.push({
-        taxonomy_key: key,
-        value,
-        label_zh: optionLabels[key]?.[value] ?? "",
-        order: String(index + 1),
-      });
-    });
-  }
-
-  return `${[taxonomyHeaders.join(","), ...rows.map((row) => toCsvLine(taxonomyHeaders, row))].join("\n")}\n`;
 }
 
 function sponsorshipItemsToCsv(snapshot) {

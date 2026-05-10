@@ -61,6 +61,7 @@
     "sheets:export": "node scripts/commands/export-sheets.mjs",
     "sheets:init": "node scripts/commands/init-sheets.mjs",
     "sheets:migrate-headers": "node scripts/commands/migrate-sheets-headers.mjs",
+    "sheets:sync-taxonomy": "node scripts/commands/sync-taxonomy.mjs",
     "analytics:dimensions:check": "node scripts/commands/sync-ga4-custom-dimensions.mjs",
     "analytics:dimensions:sync": "node scripts/commands/sync-ga4-custom-dimensions.mjs",
     "ga4:dimensions:check": "pnpm analytics:dimensions:check",
