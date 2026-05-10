@@ -53,7 +53,7 @@ const tasks = [
     handler: prepareAiRun,
     id: "ai-prepare",
     inputs: ["正式 Google Sheets albums / photos", "匯出正式資料時需要 GOOGLE_APPLICATION_CREDENTIALS 與讀取權限", "Flickr 圖片 URL"],
-    next: ["把 tmp/ai-runs/<run-id>/ 交給模型；若要做多模型或多輪品質比較，直接使用 eval:attempt。"],
+    next: ["把 run 目錄中的 ai-labeling-prompt.md 與工作包交給模型；模型只輸出 metadata-proposals.json。若要做多模型或多輪品質比較，直接使用 eval:attempt。"],
     outputs: ["tmp/ai-runs/<run-id>/photos.json", "tmp/ai-runs/<run-id>/images/"],
     phase: "AI 初標",
     title: "準備 AI 初標工作包",
@@ -508,8 +508,8 @@ async function prepareAiRun(context = {}) {
 
   console.log("");
   console.log("下一步：");
-  console.log(`1. 複製下方 prompt 給模型或 agent，請它處理 ${runDir}/。`);
-  console.log(`2. 模型輸出完成後執行：pnpm workflow -- --task ai-review，並填入 ${runDir}`);
+  console.log(`1. 複製下方 prompt 給模型或 agent，請它只在 ${runDir}/ 輸出 metadata-proposals.json。`);
+  console.log(`2. 模型輸出完成後，由操作者執行：pnpm workflow -- --task ai-review，並填入 ${runDir}`);
 
   const { prompt, promptPath } = writeAiLabelingPrompt(runDir);
 
