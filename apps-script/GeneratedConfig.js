@@ -2,7 +2,7 @@
 var SITCON_PHOTO_FINDER_CONFIG = {
   "generatedAt": "not recorded in committed source",
   "schemaVersion": "2026-mvp-1",
-  "taxonomyVersion": "sha256:8ce7cfc3217d",
+  "taxonomyVersion": "sha256:d95fcfc7a65a",
   "sponsorshipItemsVersion": "sha256:e33bfe6034e1",
   "sponsorshipItemsSnapshotNote": "SITCON 2026 CFS has ended. Treat this file as a fixed snapshot; future CFS versions should replace or extend it explicitly instead of being automatically synced.",
   "photosSheetName": "photos",
@@ -290,7 +290,12 @@ var SITCON_PHOTO_FINDER_CONFIG = {
       "排隊",
       "休息區",
       "直播",
-      "攝影"
+      "攝影",
+      "指標",
+      "場地",
+      "螢幕",
+      "頒獎",
+      "兒童"
     ],
     "subject_type": [
       "people",

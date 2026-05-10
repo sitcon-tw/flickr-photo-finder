@@ -27,7 +27,7 @@
 | `subject_type` | 否 | 否 | 是 | AI 或整理者 | 照片海初篩用的主要視覺主體，例如 `people`、`object`、`food`、`text_signage`、`screen`、`space`。 |
 | `photographer` | 否 | 否 | 否 | 匯入工具或整理者 | 攝影師署名。SITCON 是 Flickr 帳號擁有者，不等於攝影師。 |
 | `license` | 否 | 否 | 否 | 整理者 | Flickr 顯示的授權資訊。不確定時留空並使用 `needs_review`。 |
-| `scene_tags` | 否 | 是 | 是 | 整理者 | 照片中看見的事實，例如 `攤位`、`會眾`、`舞台`。 |
+| `scene_tags` | 否 | 是 | 是 | 整理者 | 活動情境或可見場景元素，例如 `攤位`、`會眾`、`舞台`、`指標`、`場地`、`螢幕`、`頒獎`。 |
 | `mood_tags` | 否 | 是 | 是 | 宣傳、設計、整理者 | 照片帶來的感受，例如 `熱鬧`、`專注`、`青春感`。 |
 | `recommended_uses` | 否 | 是 | 是 | 各組整理者 | 適合的工作用途，例如 `社群貼文`、`贊助提案`。 |
 | `sponsorship_items` | 否 | 是 | 是 | 行銷組或熟悉贊助者 | 對應 CFS 贊助品項，必須對齊 `data/sponsorship-items.json`。 |

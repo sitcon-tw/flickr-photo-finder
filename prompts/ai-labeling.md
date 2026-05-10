@@ -126,7 +126,7 @@ metadata-proposals.json
 
 ## 判斷原則
 
-- `scene_tags` 是畫面事實，例如 `合照`、`舞台`、`背板`。
+- `scene_tags` 是活動情境或可見場景元素，例如 `合照`、`舞台`、`背板`、`指標`、`場地`、`螢幕`、`頒獎`、`兒童`。它可以多選，描述照片裡還有哪些重要場景線索；不要拿它取代 `subject_type`。
 - `subject_type` 是主要視覺主體，例如人物、物件、餐食茶點、文字標示、螢幕或空間。它只回答「這張照片第一眼主要在看什麼」，不取代 `scene_tags`。
 - 若主體是人，不論是一人、多人、合照或群眾，`subject_type` 都是 `people`；人數規模只用 `people_count` 表達。
 - 若主體是桌旗、貼紙、手冊、獎座、紀念品或其他可拿取物，`subject_type` 是 `object`；是否為手作、攤位等活動情境再交給 `scene_tags`。
@@ -134,6 +134,11 @@ metadata-proposals.json
 - 若主體是活動標誌、看板、指標、白板、A 字牌、布條或可讀文字，`subject_type` 是 `text_signage`。
 - 若主體是投影幕、簡報、電視、監看畫面或電子螢幕，`subject_type` 是 `screen`。
 - 若主體是場地、空景、入口、走廊、座位區或空間配置，`subject_type` 是 `space`。
+- 若照片中可見入口導引、方向牌、A 字板、路標或報到導引牌，可使用 `scene_tags = 指標`；若這些標示是畫面主體，`subject_type` 通常是 `text_signage`。
+- 若照片主要記錄場館、入口、走廊、座位區、空景或空間配置，可使用 `scene_tags = 場地`；若空間本身是主體，`subject_type` 通常是 `space`。
+- 若照片中可見投影幕、簡報、會場電視、監看畫面或電子螢幕，可使用 `scene_tags = 螢幕`；若螢幕內容是主體，`subject_type` 通常是 `screen`。
+- 若照片呈現頒獎、受獎、獎座、獎牌、表揚或典禮授獎情境，可使用 `scene_tags = 頒獎`。
+- 若照片中清楚可見兒童或小朋友，可使用 `scene_tags = 兒童`，並視情況提出 `public_use_status = needs_review`；不要只因活動名稱推論兒童在場。
 - `mood_tags` 是照片帶來的感受，例如 `儀式感`、`成就感`、`青春感`。它用來輔助社群、網站、招募與宣傳找圖，不是品質分數，也不是每張照片都要有的分類。
 - `recommended_uses` 是工作用途，例如 `社群貼文`、`活動回顧`。
 - `recommended_uses` 的目的不是把每張照片分類，而是提示照片特別適合的使用情境。若照片只是普通可用，但沒有明確用途優勢，請省略。

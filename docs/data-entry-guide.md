@@ -46,7 +46,7 @@ SITCON Flickr 上的照片擁有者是 SITCON，但攝影師 credit 會放在 Fl
 | --- | --- |
 | `people_count` | 照片中可辨識的人數估計值。無人可填 `0`，人數很多但無法精確計算時可估算或先留空。 |
 | `subject_type` | 照片第一眼主要視覺主體，只能單選 `people`、`object`、`food`、`text_signage`、`screen` 或 `space`。不要拿來描述人數規模或活動場景。 |
-| `scene_tags` | 照片裡看見的事實，例如攤位、會眾、舞台、工作人員、合照。 |
+| `scene_tags` | 活動情境或可見場景元素，例如攤位、會眾、舞台、工作人員、合照、指標、場地、螢幕、頒獎、兒童。 |
 | `mood_tags` | 照片帶來的感受，例如熱鬧、專注、友善、青春感、幕後感。 |
 | `recommended_uses` | 適合的工作用途，例如社群貼文、網站 hero、志工招募、贊助提案。 |
 | `public_use_status` | 不確定就用 `needs_review`。不要為了讓資料漂亮而標成 `approved`。 |
