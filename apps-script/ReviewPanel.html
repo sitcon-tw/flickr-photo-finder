@@ -43,6 +43,25 @@
         gap: 8px;
       }
 
+      .review-context {
+        display: grid;
+        gap: 8px;
+        position: sticky;
+        top: 0;
+        z-index: 20;
+      }
+
+      .review-toolbar {
+        display: grid;
+        gap: 8px;
+      }
+
+      .nav-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 6px;
+      }
+
       .row-loader {
         display: grid;
         grid-template-columns: minmax(0, 1fr) auto auto;
@@ -59,16 +78,41 @@
       }
 
       .photo img {
-        width: 100%;
-        max-height: 180px;
         object-fit: contain;
         background: #eef1f5;
         border-radius: 4px;
+        max-height: 180px;
+        width: 100%;
       }
 
-      .photo-title {
+      .preview-link {
+        background: #eef1f5;
+        border-radius: 4px;
+        display: block;
+      }
+
+      .photo-id-row {
+        align-items: baseline;
+        display: flex;
+        gap: 8px;
+        justify-content: space-between;
+      }
+
+      .photo-title,
+      .photo-album {
         font-weight: 700;
         overflow-wrap: anywhere;
+      }
+
+      .photo-album {
+        color: #1f2933;
+        font-size: 12px;
+        line-height: 1.35;
+      }
+
+      .photo-context {
+        display: grid;
+        gap: 4px;
       }
 
       .photo-links {
@@ -91,14 +135,74 @@
         gap: 4px;
       }
 
+      .field-heading {
+        align-items: center;
+        display: flex;
+        gap: 6px;
+        justify-content: space-between;
+        position: relative;
+      }
+
+      .field.hidden {
+        display: none;
+      }
+
+      .field.invalid input,
+      .field.invalid select,
+      .field.invalid textarea,
+      .field.invalid .selected-list {
+        border-color: #ef4444;
+        box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.08);
+      }
+
       label {
         font-weight: 700;
       }
 
+      .help-button {
+        align-items: center;
+        background: #fff;
+        border: 1px solid #bdc7d5;
+        border-radius: 50%;
+        color: #475569;
+        display: inline-flex;
+        flex: 0 0 auto;
+        font-size: 12px;
+        font-weight: 700;
+        height: 22px;
+        justify-content: center;
+        line-height: 1;
+        padding: 0;
+        width: 22px;
+      }
+
+      .help-button:hover,
+      .help-button:focus {
+        background: #e6f3f1;
+        border-color: #99c8c1;
+        color: #134e4a;
+      }
+
       .meta {
+        background: #111827;
+        border-radius: 4px;
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.22);
         color: #5b6778;
+        color: #fff;
+        display: none;
         font-size: 12px;
         line-height: 1.4;
+        max-width: min(260px, calc(100vw - 40px));
+        padding: 8px;
+        position: absolute;
+        right: 0;
+        top: calc(100% + 4px);
+        z-index: 30;
+      }
+
+      .field-heading:hover .meta,
+      .field-heading:focus-within .meta {
+        display: block;
       }
 
       input,
@@ -293,6 +397,23 @@
         margin: 6px 0 0;
         padding-left: 18px;
       }
+
+      .field-error {
+        color: #991b1b;
+        display: none;
+        font-size: 12px;
+        line-height: 1.4;
+      }
+
+      .field.invalid .field-error {
+        display: block;
+      }
+
+      .save-line {
+        color: #5b6778;
+        font-size: 12px;
+        line-height: 1.4;
+      }
     </style>
   </head>
   <body>
@@ -308,49 +429,126 @@
 
       <section id="status" class="status"></section>
 
-      <section id="photo" class="photo" hidden>
-        <img id="preview" alt="" />
-        <div>
-          <div id="photoTitle" class="photo-title"></div>
-          <div id="photoMeta" class="meta"></div>
-        </div>
-        <div class="photo-links">
-          <a id="photoUrl" href="#" target="_blank" rel="noreferrer">Flickr</a>
-          <a id="previewUrl" href="#" target="_blank" rel="noreferrer">縮圖</a>
-        </div>
-      </section>
+      <div class="review-context">
+        <section class="toolbar review-toolbar">
+          <div class="nav-row">
+            <button id="prevButton" class="secondary" type="button">上一張</button>
+            <button id="nextButton" class="secondary" type="button">下一張</button>
+          </div>
+        </section>
+
+        <section id="photo" class="photo" hidden>
+          <a id="previewUrl" class="preview-link" href="#" target="_blank" rel="noreferrer">
+            <img id="preview" alt="" />
+          </a>
+          <div class="photo-id-row">
+            <div id="photoTitle" class="photo-title"></div>
+            <a id="photoUrl" href="#" target="_blank" rel="noreferrer">Flickr</a>
+          </div>
+          <div id="photoAlbum" class="photo-album"></div>
+          <div id="photoContext" class="photo-context meta"></div>
+        </section>
+      </div>
 
       <form id="form" class="form"></form>
 
       <section class="actions">
         <section id="saveStatus" class="status"></section>
-        <button id="saveButton" type="button">儲存並驗證</button>
+        <button id="saveButton" type="button">儲存</button>
+        <div id="saveLine" class="save-line"></div>
       </section>
     </main>
 
     <script>
       const form = document.querySelector("#form");
       const photo = document.querySelector("#photo");
-      const photoMeta = document.querySelector("#photoMeta");
+      const photoAlbum = document.querySelector("#photoAlbum");
+      const photoContext = document.querySelector("#photoContext");
       const photoTitle = document.querySelector("#photoTitle");
       const photoUrl = document.querySelector("#photoUrl");
       const preview = document.querySelector("#preview");
       const previewUrl = document.querySelector("#previewUrl");
       const activeButton = document.querySelector("#activeButton");
       const loadButton = document.querySelector("#loadButton");
+      const nextButton = document.querySelector("#nextButton");
+      const prevButton = document.querySelector("#prevButton");
       const rowNumberInput = document.querySelector("#rowNumberInput");
       const rowSummary = document.querySelector("#rowSummary");
       const saveButton = document.querySelector("#saveButton");
+      const saveLine = document.querySelector("#saveLine");
       const saveStatus = document.querySelector("#saveStatus");
       const status = document.querySelector("#status");
 
       const bootstrapState = <?!= bootstrapState ?>;
+      const rowBufferBefore = 10;
+      const rowBufferAfter = 10;
+      const sidebarFieldNames = [
+        "people_count",
+        "subject_type",
+        "scene_tags",
+        "mood_tags",
+        "recommended_uses",
+        "sponsorship_items",
+        "sponsorship_tags",
+        "orientation",
+        "has_negative_space",
+        "safe_crop",
+        "visual_description",
+        "public_use_status",
+        "priority_level",
+        "collections",
+        "curation_notes",
+        "curation_status",
+      ];
+      const sidebarFieldSet = new Set(sidebarFieldNames);
+      const rowCache = new Map();
       let currentState = null;
+      let saveToken = 0;
+      let pendingSaveCount = 0;
+      let prefetchToken = 0;
 
-      function setBusy(isBusy) {
-        activeButton.disabled = isBusy;
-        loadButton.disabled = isBusy;
-        saveButton.disabled = isBusy || !currentState;
+      function setBusy(isBusy, mode = "load") {
+        const loading = isBusy && mode === "load";
+        activeButton.disabled = loading;
+        loadButton.disabled = loading;
+        nextButton.disabled = loading || !currentState;
+        prevButton.disabled = loading || !currentState;
+        saveButton.disabled = loading || !currentState || hasCurrentErrors();
+      }
+
+      function cacheState(state) {
+        if (!state?.rowNumber) {
+          return;
+        }
+        rowCache.set(Number(state.rowNumber), state);
+      }
+
+      function cacheBuffer(buffer) {
+        (buffer?.photos || []).forEach(cacheState);
+      }
+
+      function bootstrapCurrentState(state) {
+        return state?.current || state;
+      }
+
+      function bootstrapBuffer(state) {
+        return state?.buffer || null;
+      }
+
+      function cachedRow(rowNumber) {
+        return rowCache.get(Number(rowNumber)) || null;
+      }
+
+      function updateSaveLine(message = "") {
+        if (message) {
+          saveLine.textContent = message;
+          return;
+        }
+        if (pendingSaveCount > 0) {
+          saveLine.textContent = `背景儲存中（${pendingSaveCount}）`;
+          return;
+        }
+        saveLine.textContent = "";
       }
 
       function setStatus(target, message, type = "") {
@@ -411,6 +609,18 @@
           .filter(Boolean);
       }
 
+      function findDuplicateValues(values) {
+        const seen = new Set();
+        const duplicates = [];
+        values.forEach((value) => {
+          if (seen.has(value) && !duplicates.includes(value)) {
+            duplicates.push(value);
+          }
+          seen.add(value);
+        });
+        return duplicates;
+      }
+
       function multiChoiceControl(field, value) {
         const selectedValues = [];
         splitList(value).forEach((item) => {
@@ -440,6 +650,7 @@
 
         function updateHidden() {
           hidden.value = selectedValues.join(";");
+          hidden.dispatchEvent(new Event("input", { bubbles: true }));
         }
 
         function addValue(item) {
@@ -588,7 +799,151 @@
         return input;
       }
 
+      function visibleFields() {
+        return currentState.fields.filter((field) => sidebarFieldSet.has(field.name) && !field.readOnly);
+      }
+
+      function valuesFromForm() {
+        const values = {};
+        visibleFields().forEach((field) => {
+          const control = form.elements[field.name];
+          if (control) {
+            values[field.name] = control.value;
+          }
+        });
+        return values;
+      }
+
+      function currentRecordWithEdits() {
+        return { ...(currentState?.record || {}), ...valuesFromForm() };
+      }
+
+      function normalizeFormValue(value) {
+        return String(value == null ? "" : value).trim();
+      }
+
+      function hasUnsavedChanges() {
+        if (!currentState) {
+          return false;
+        }
+        const values = valuesFromForm();
+        return visibleFields().some(
+          (field) => normalizeFormValue(values[field.name]) !== normalizeFormValue(currentState.record[field.name]),
+        );
+      }
+
+      function confirmDiscardChanges() {
+        if (!hasUnsavedChanges()) {
+          return true;
+        }
+        return window.confirm("目前這張照片有尚未儲存的編輯。切換照片會放棄這些變更，要繼續嗎？");
+      }
+
+      function markCurrentRowSavedLocally(values) {
+        if (!currentState) {
+          return;
+        }
+        const nextState = {
+          ...currentState,
+          record: { ...currentState.record, ...values },
+        };
+        currentState = nextState;
+        cacheState(nextState);
+      }
+
+      function validateField(field, value, values) {
+        const errors = [];
+        const trimmed = String(value || "").trim();
+        if (field.required && !trimmed) {
+          errors.push("必填欄位不可空白");
+        }
+        if (!trimmed) {
+          return errors;
+        }
+        if (field.type === "url" && !/^https?:\/\/\S+$/i.test(trimmed)) {
+          errors.push("必須是 http 或 https URL");
+        }
+        if (field.type === "year" && !/^\d{4}$/.test(trimmed)) {
+          errors.push("必須是四位數年份");
+        }
+        if (field.type === "integer" && !/^(0|[1-9]\d*)$/.test(trimmed)) {
+          errors.push("必須是非負整數");
+        }
+        if (field.type === "boolean" && !["true", "false"].includes(trimmed)) {
+          errors.push("必須是 true 或 false");
+        }
+        const listValues = field.multiValue ? splitList(trimmed) : [trimmed];
+        if (field.multiValue) {
+          const duplicates = findDuplicateValues(listValues);
+          if (duplicates.length > 0) {
+            errors.push(`不可重複填寫：${duplicates.join("、")}`);
+          }
+        }
+        if (field.taxonomyKey) {
+          listValues.forEach((item) => {
+            if (!field.options.includes(item)) {
+              errors.push(`未知受控字彙：${item}`);
+            }
+          });
+        }
+        if (values.curation_status === "reviewed" && currentState.reviewedRequiredFields?.includes(field.name) && !trimmed) {
+          errors.push("reviewed 需要填寫此欄位");
+        }
+        if (values.public_use_status === "approved" && currentState.approvedRequiredFields?.includes(field.name) && !trimmed) {
+          errors.push("approved 需要填寫此欄位");
+        }
+        return errors;
+      }
+
+      function validateForm() {
+        if (!currentState) {
+          return [];
+        }
+        const values = currentRecordWithEdits();
+        const errors = [];
+        const errorMap = new Map();
+        visibleFields().forEach((field) => {
+          const fieldErrors = validateField(field, values[field.name] || "", values);
+          if (fieldErrors.length > 0) {
+            errorMap.set(field.name, fieldErrors);
+            fieldErrors.forEach((message) => {
+              errors.push({ rowNumber: currentState.rowNumber, fieldName: field.name, message });
+            });
+          }
+        });
+
+        form.querySelectorAll(".field").forEach((wrapper) => {
+          const fieldName = wrapper.dataset.fieldName;
+          const messages = errorMap.get(fieldName) || [];
+          wrapper.classList.toggle("invalid", messages.length > 0);
+          const errorNode = wrapper.querySelector(".field-error");
+          if (errorNode) {
+            errorNode.textContent = messages.join("；");
+          }
+        });
+        saveButton.disabled = !currentState || errors.length > 0;
+        if (errors.length > 0) {
+          setSaveStatus(errors, "error");
+        } else if (saveStatus.classList.contains("error")) {
+          setSaveStatus("");
+        }
+        return errors;
+      }
+
+      function hasCurrentErrors() {
+        return Boolean(form.querySelector(".field.invalid"));
+      }
+
+      function displayImageUrl(url) {
+        const text = String(url || "");
+        if (!/\/\/live\.staticflickr\.com\//.test(text)) {
+          return text;
+        }
+        return text.replace(/_([sqtm])(\.[a-z0-9]+)$/i, "_n$2");
+      }
+
       function render(state) {
+        cacheState(state);
         currentState = state;
         rowNumberInput.value = state.rowNumber;
         rowSummary.textContent = `目前載入 photos 第 ${state.rowNumber} 列。`;
@@ -596,21 +951,41 @@
         form.textContent = "";
 
         photo.hidden = false;
-        preview.src = state.record.image_preview_url || "";
-        preview.hidden = !state.record.image_preview_url;
+        const imageUrl = displayImageUrl(state.record.image_preview_url);
+        preview.src = imageUrl || "";
+        previewUrl.hidden = !state.record.image_preview_url;
         photoTitle.textContent = state.record.photo_id || "(沒有 photo_id)";
-        photoMeta.textContent = [state.record.album_title, state.record.event_year].filter(Boolean).join(" / ");
+        photoAlbum.textContent = state.record.album_title || "(沒有 album_title)";
+        photoContext.textContent = [
+          state.record.event_name,
+          state.record.event_year,
+          state.record.public_use_status ? `公開狀態：${state.record.public_use_status}` : "",
+          state.record.curation_status ? `整理狀態：${state.record.curation_status}` : "",
+        ].filter(Boolean).join(" / ");
         photoUrl.href = state.record.photo_url || "#";
-        previewUrl.href = state.record.image_preview_url || "#";
+        previewUrl.href = imageUrl || state.record.image_preview_url || "#";
 
         state.fields.forEach((field) => {
+          if (!sidebarFieldSet.has(field.name) || field.readOnly) {
+            return;
+          }
           const wrapper = document.createElement("div");
           wrapper.className = "field";
+          wrapper.dataset.fieldName = field.name;
+          const heading = document.createElement("div");
+          heading.className = "field-heading";
           const label = document.createElement("label");
           label.htmlFor = `field-${field.name}`;
           label.textContent = field.required ? `${field.labelZh} *` : field.labelZh;
+          const helpButton = document.createElement("button");
+          helpButton.type = "button";
+          helpButton.className = "help-button";
+          helpButton.textContent = "?";
+          helpButton.setAttribute("aria-label", `${field.labelZh} 欄位說明`);
           const control = fieldControl(field, state.record[field.name] || "");
           control.id = `field-${field.name}`;
+          control.addEventListener("input", validateForm);
+          control.addEventListener("change", validateForm);
           const meta = document.createElement("div");
           meta.className = "meta";
           const parts = [field.name, field.descriptionZh];
@@ -620,14 +995,16 @@
             parts.push("多值用 ; 分隔");
           }
           meta.textContent = parts.filter(Boolean).join(" - ");
-          wrapper.append(label, control, meta);
+          const fieldError = document.createElement("div");
+          fieldError.className = "field-error";
+          heading.append(label, helpButton, meta);
+          wrapper.append(heading, control, fieldError);
           form.append(wrapper);
         });
 
+        validateForm();
         if (state.errors.length > 0) {
           setSaveStatus(state.errors, "error");
-        } else {
-          setSaveStatus("");
         }
         setBusy(false);
       }
@@ -649,59 +1026,135 @@
         setTopStatus(failureMessage(error), "error");
       }
 
+      function handlePrefetchFailure() {}
+
       function handleSaveFailure(error) {
-        setBusy(false);
+        pendingSaveCount = Math.max(0, pendingSaveCount - 1);
+        updateSaveLine();
+        setBusy(false, "save");
         setSaveStatus(failureMessage(error), "error");
       }
 
-      function loadRow(rowNumber) {
+      function prefetchRowsAround(rowNumber) {
+        const normalizedRowNumber = Number(rowNumber);
+        if (!Number.isInteger(normalizedRowNumber) || normalizedRowNumber <= 1) {
+          return;
+        }
+        const token = ++prefetchToken;
+        google.script.run
+          .withSuccessHandler((buffer) => {
+            if (token < prefetchToken) {
+              return;
+            }
+            cacheBuffer(buffer);
+          })
+          .withFailureHandler(handlePrefetchFailure)
+          .getReviewPhotoBufferByRow(normalizedRowNumber, rowBufferBefore, rowBufferAfter);
+      }
+
+      function loadRow(rowNumber, options = {}) {
+        if (!options.skipDirtyCheck && !confirmDiscardChanges()) {
+          return;
+        }
+        const normalizedRowNumber = Number(rowNumber);
+        const cachedState = options.useCache !== false ? cachedRow(normalizedRowNumber) : null;
+        if (cachedState) {
+          render(cachedState);
+          prefetchRowsAround(normalizedRowNumber);
+          return;
+        }
         setBusy(true);
         setTopStatus("載入中...");
         setSaveStatus("");
         google.script.run
-          .withSuccessHandler(render)
+          .withSuccessHandler((state) => {
+            render(state);
+            prefetchRowsAround(state.rowNumber);
+          })
           .withFailureHandler(handleLoadFailure)
           .getReviewPhotoByRow(rowNumber);
       }
 
       function loadRequestedRow() {
-        loadRow(rowNumberInput.value);
+        loadRow(rowNumberInput.value, { useCache: false });
       }
 
       function loadActiveRow() {
+        if (!confirmDiscardChanges()) {
+          return;
+        }
         setBusy(true);
         setTopStatus("讀取目前選取列...");
         setSaveStatus("");
         google.script.run
-          .withSuccessHandler(render)
+          .withSuccessHandler((state) => {
+            const current = bootstrapCurrentState(state);
+            cacheBuffer(bootstrapBuffer(state));
+            render(current);
+            prefetchRowsAround(current.rowNumber);
+          })
           .withFailureHandler(handleLoadFailure)
-          .getReviewPanelState();
+          .getReviewPanelBootstrapState();
       }
 
       function saveRow() {
         if (!currentState) {
           return;
         }
-        const values = {};
-        currentState.fields.forEach((field) => {
-          const control = form.elements[field.name];
-          if (control && !field.readOnly) {
-            values[field.name] = control.value;
-          }
-        });
-        setBusy(true);
-        setSaveStatus("儲存中...");
+        const errors = validateForm();
+        if (errors.length > 0) {
+          return;
+        }
+        const values = valuesFromForm();
+        const rowNumber = currentState.rowNumber;
+        const previousState = currentState;
+        const token = ++saveToken;
+        pendingSaveCount += 1;
+        markCurrentRowSavedLocally(values);
+        updateSaveLine();
+        setSaveStatus("已送出背景儲存。");
         google.script.run
-          .withSuccessHandler(render)
-          .withFailureHandler(handleSaveFailure)
-          .saveReviewPhoto(currentState.rowNumber, values);
+          .withSuccessHandler((state) => {
+            pendingSaveCount = Math.max(0, pendingSaveCount - 1);
+            cacheState(state);
+            if (pendingSaveCount > 0) {
+              updateSaveLine();
+            } else {
+              updateSaveLine("儲存完成。");
+            }
+            if (token === saveToken && currentState?.rowNumber === state.rowNumber) {
+              render(state);
+            }
+          })
+          .withFailureHandler((error) => {
+            rowCache.delete(Number(rowNumber));
+            if (currentState?.rowNumber === rowNumber) {
+              currentState = previousState;
+              cacheState(previousState);
+              validateForm();
+            }
+            handleSaveFailure(error);
+          })
+          .saveReviewPhoto(rowNumber, values);
+      }
+
+      function loadRelativeRow(offset) {
+        if (!currentState) {
+          return;
+        }
+        loadRow(Number(currentState.rowNumber) + offset);
       }
 
       saveButton.addEventListener("click", saveRow);
       loadButton.addEventListener("click", loadRequestedRow);
       activeButton.addEventListener("click", loadActiveRow);
+      prevButton.addEventListener("click", () => loadRelativeRow(-1));
+      nextButton.addEventListener("click", () => loadRelativeRow(1));
       if (bootstrapState) {
-        render(bootstrapState);
+        const current = bootstrapCurrentState(bootstrapState);
+        cacheBuffer(bootstrapBuffer(bootstrapState));
+        render(current);
+        prefetchRowsAround(current.rowNumber);
       } else {
         setBusy(false);
         setTopStatus("請關閉 panel，在 photos 選取一列後重新開啟 Open review panel。", "error");

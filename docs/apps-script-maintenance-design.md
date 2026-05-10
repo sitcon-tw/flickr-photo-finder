@@ -22,12 +22,14 @@ Apps Script 的定位是授權後的 Sheets 維護輔助，不是另一套資料
 Apps Script 提供 Sheet-bound sidebar，讓整理者可以用較易讀的畫面校對目前選取的 `photos` 列：
 
 - 顯示縮圖、`photo_id`、相簿脈絡與 Flickr 連結。
-- 依 repo schema 產生欄位表單。
+- sidebar 第一屏以資料編修工作為主，只呈現主要可編修 metadata；`photo_id`、Flickr URL、縮圖 URL、相簿脈絡等不可編修或低頻欄位留在照片摘要與連結，不塞進主要表單。
 - 單值 taxonomy 與 boolean 欄位使用選單。
 - 多值 taxonomy 欄位使用可搜尋的多選選單；已選項目會顯示為可移除的標籤，降低手打分號與重複值錯誤；自由多值與文字欄位使用可編輯文字區。
 - `photo_id`、`photo_url` 與 `image_preview_url` 在 sidebar 中只讀，避免校對時誤改識別與來源欄位。
-- 可用列號載入指定 `photos` 列，也可重新讀取 Sheet 目前選取列。
-- 儲存前先驗證目前列；驗證失敗時不寫入 Sheet，錯誤會顯示在 `儲存並驗證` 按鈕附近，並更新 `validation_report`。
+- 可用列號載入指定 `photos` 列、上一張 / 下一張切換，也可重新讀取 Sheet 目前選取列。開啟 sidebar 與載入列後都應預先讀取前後數列並在 sidebar 內暫存，讓連續切換照片時優先使用本機 buffer，不必每次都等待 Apps Script 單列回應。
+- 欄位內容有錯時應在輸入當下於欄位附近與儲存區顯示回饋，避免整理者等到儲存才知道資料不合法。
+- 儲存仍會在後端再次驗證目前列；驗證失敗時不寫入 Sheet，錯誤會顯示在儲存區附近，並更新 `validation_report`。
+- 儲存應以背景作業送出。整理者送出儲存後可以繼續切換列或檢查資料，不應被迫等待 Apps Script 寫入回應才繼續工作。
 - 載入或切換列失敗時，錯誤會顯示在 sidebar 上方列控制區附近；成功載入後不保留暫時狀態訊息。
 
 這個 sidebar 使用使用者既有的 Sheet / Apps Script 權限寫回資料，不需要 GitHub Pages 保存 credential，也不提供公開寫入 API。
@@ -171,6 +173,14 @@ pnpm apps-script:open
 pnpm apps-script:smoke-test -- --check
 ```
 
+校對 sidebar 的 UI/UX 調整可以先用本機 mock preview 加速迭代，不需要每次都 push 到 Apps Script：
+
+```bash
+pnpm review-panel:preview
+```
+
+此指令會從 `fixtures/photos.csv`、`data/photo-schema.json` 與 `data/tag-taxonomy.json` 產生 `tmp/review-panel-preview/index.html`，並注入 mock `google.script.run`。preview 預設以 Apps Script sidebar 固定寬度 `300px` 顯示；若要測試更窄或其他環境，可用 `SIDEBAR_WIDTH=<px> pnpm review-panel:preview` 覆蓋。它適合檢查 sidebar 排版、sticky header、上一張 / 下一張 buffer、hover 說明、未儲存警告與背景儲存狀態；不驗證 Google 帳號授權、Apps Script deployment、真實 Sheets 寫入或 `SpreadsheetApp` 行為。正式部署前仍應執行 `pnpm apps-script:push` 並在 Sheet 上做一次手動驗收。
+
 `clasp` status/push/open 需要目前登入的 Google 帳號已啟用 Apps Script API。若出現 `User has not enabled the Apps Script API`，先到 <https://script.google.com/home/usersettings> 啟用，等待幾分鐘後重試。
 
 Apps Script manifest 目前需要以下 scopes：
@@ -242,12 +252,15 @@ pnpm apps-script:push
 在正式 Sheet 或測試 Sheet 驗收 sidebar 時，建議至少跑以下案例：
 
 1. 以有權限的 Google 帳號作為第一個登入帳號開啟 Sheet，避免多帳號 session 讓 sidebar iframe 使用未授權帳號。
-2. 在 `photos` 選一列資料，執行 `Open review panel`，確認縮圖、Flickr 連結、列號與欄位表單正確。
-3. 使用 `目前列` 重新讀取選取列，成功後頂部暫時狀態應消失。
-4. 輸入不存在或超出範圍的列號後按 `載入`，錯誤應顯示在上方列控制區附近。
-5. 在 `recommended_uses` 輸入 `講者宣傳;社群貼文;社群貼文` 後按 `儲存並驗證`，錯誤應顯示在按鈕附近，且該值不應寫入 Sheet。
-6. 在 `safe_crop` 使用 `9:16`，重新載入與儲存後都應維持文字，不應顯示成 Date 字串。
-7. 儲存合法欄位變更，確認資料寫回同一列，且 `validation_report` 更新為最近一次結果。
+2. 在 `photos` 選一列資料，執行 `Open review panel`，確認縮圖、Flickr 連結、列號與欄位表單正確；若目前選在 header 或沒有明確選取資料列，sidebar 應自動載入第一筆照片資料。
+3. 使用 `上一張` / `下一張` 切換相鄰資料列，確認不需要回到 Sheet 手動改選列；連續切換已 buffer 的相鄰列時應立即更新畫面，不應每張都顯示載入等待。
+4. 修改任一欄位但不儲存，按 `上一張`、`下一張`、`載入` 或 `目前列` 時應先警告會放棄未儲存內容；取消後應留在原照片與原本編輯內容。
+5. 使用 `目前列` 重新讀取選取列，成功後頂部暫時狀態應消失。
+6. 輸入不存在或超出範圍的列號後按 `載入`，錯誤應顯示在上方列控制區附近。
+7. 在可編修欄位製造錯誤，例如重複選取多值 taxonomy、輸入未知受控字彙或把 `people_count` 改成非整數，錯誤應在輸入當下顯示，不需等到儲存。
+8. 儲存合法欄位變更後立刻切換上一張或下一張，確認背景儲存狀態可見，且不阻斷繼續校對。
+9. 在 `safe_crop` 使用 `9:16`，重新載入與儲存後都應維持文字，不應顯示成 Date 字串。
+10. 儲存合法欄位變更，確認資料寫回同一列，且 `validation_report` 更新為最近一次結果。
 
 ### Review Web App manual QA checklist
 

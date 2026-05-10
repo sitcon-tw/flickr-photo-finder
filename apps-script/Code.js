@@ -24,6 +24,8 @@ const PHOTO_FINDER_VALIDATION_REPORT_HEADERS = [
   "field",
   "message",
 ];
+const PHOTO_FINDER_REVIEW_PANEL_BUFFER_BEFORE = 10;
+const PHOTO_FINDER_REVIEW_PANEL_BUFFER_AFTER = 10;
 const PHOTO_FINDER_REVIEW_WEB_APP_LIST_FIELDS = [
   "photo_id",
   "photo_url",
@@ -58,7 +60,7 @@ function onOpen() {
 function openPhotoReviewPanel() {
   checkAppsScriptAccess_();
   const template = HtmlService.createTemplateFromFile("ReviewPanel");
-  template.bootstrapState = JSON.stringify(getReviewPanelState()).replace(/</g, "\\u003c");
+  template.bootstrapState = JSON.stringify(getReviewPanelBootstrapState()).replace(/</g, "\\u003c");
   const html = template.evaluate()
     .setTitle("SITCON Photo Review");
   SpreadsheetApp.getUi().showSidebar(html);
@@ -163,6 +165,16 @@ function getReviewPanelState() {
   return buildReviewPanelState_(sheet, rowNumber);
 }
 
+function getReviewPanelBootstrapState() {
+  const sheet = getPhotosSheet_();
+  assertPhotosHeader_(sheet);
+  const rowNumber = getActivePhotoRowNumber_(sheet);
+  return {
+    current: buildReviewPanelState_(sheet, rowNumber),
+    buffer: buildReviewPhotoBuffer_(sheet, rowNumber, PHOTO_FINDER_REVIEW_PANEL_BUFFER_BEFORE, PHOTO_FINDER_REVIEW_PANEL_BUFFER_AFTER),
+  };
+}
+
 function getReviewPhotoByRow(rowNumber) {
   const sheet = getPhotosSheet_();
   assertPhotosHeader_(sheet);
@@ -174,6 +186,35 @@ function getReviewPhotoByRow(rowNumber) {
     throw new Error(`第 ${normalizedRowNumber} 列超出 photos 目前資料範圍。`);
   }
   return buildReviewPanelState_(sheet, normalizedRowNumber);
+}
+
+function getReviewPhotoBufferByRow(rowNumber, beforeCount, afterCount) {
+  const sheet = getPhotosSheet_();
+  assertPhotosHeader_(sheet);
+  return buildReviewPhotoBuffer_(sheet, rowNumber, beforeCount, afterCount);
+}
+
+function buildReviewPhotoBuffer_(sheet, rowNumber, beforeCount, afterCount) {
+  const normalizedRowNumber = Number(rowNumber);
+  if (!Number.isInteger(normalizedRowNumber) || normalizedRowNumber <= 1) {
+    throw new Error("請輸入 photos 的資料列列號。");
+  }
+
+  const lastRow = sheet.getLastRow();
+  if (normalizedRowNumber > lastRow) {
+    throw new Error(`第 ${normalizedRowNumber} 列超出 photos 目前資料範圍。`);
+  }
+
+  const safeBeforeCount = Math.max(0, Math.min(Number(beforeCount) || 0, 10));
+  const safeAfterCount = Math.max(0, Math.min(Number(afterCount) || 0, 10));
+  const startRow = Math.max(2, normalizedRowNumber - safeBeforeCount);
+  const endRow = Math.min(lastRow, normalizedRowNumber + safeAfterCount);
+  const rows = sheet.getRange(startRow, 1, endRow - startRow + 1, getConfig_().headers.length).getDisplayValues();
+
+  return {
+    centerRowNumber: normalizedRowNumber,
+    photos: rows.map((row, index) => buildReviewPanelStateFromRow_(row, startRow + index)),
+  };
 }
 
 function saveReviewPhoto(rowNumber, values) {
@@ -254,7 +295,10 @@ function getConfig_() {
 function getActivePhotoRowNumber_(sheet) {
   const activeRange = sheet.getActiveRange();
   if (!activeRange || activeRange.getRow() <= 1) {
-    throw new Error("請先在 photos 選取一列資料，不要選 header。");
+    if (sheet.getLastRow() >= 2) {
+      return 2;
+    }
+    throw new Error("photos 目前沒有可校對的資料列。");
   }
   return activeRange.getRow();
 }
@@ -265,12 +309,15 @@ function buildReviewPanelState_(sheet, rowNumber, providedErrors) {
 }
 
 function buildReviewPanelStateFromRow_(row, rowNumber, providedErrors) {
+  const config = getConfig_();
   const record = rowToRecord_(row);
   const errors = providedErrors || validateRow_(row, rowNumber);
   return {
+    approvedRequiredFields: config.approvedRequiredFields || [],
     errors,
     fields: getReviewPanelFields_(),
     record,
+    reviewedRequiredFields: config.reviewedRequiredFields || [],
     rowNumber,
   };
 }

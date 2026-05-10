@@ -24,6 +24,7 @@
     "apps-script:push": "node scripts/apps-script-clasp.mjs push",
     "apps-script:deployments": "node scripts/apps-script-clasp.mjs deployments",
     "apps-script:status": "node scripts/apps-script-clasp.mjs status",
+    "review-panel:preview": "node scripts/preview-review-panel.mjs",
     "ai:diff": "node scripts/render-ai-diff.mjs",
     "ai:plan": "node scripts/plan-ai-updates.mjs",
     "ai:prepare": "node scripts/prepare-ai-run.mjs",
