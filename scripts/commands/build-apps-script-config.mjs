@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
+import { taxonomyHeaders } from "../lib/sheets/sheets-format.mjs";
+import { taxonomyRows } from "../lib/sheets/taxonomy-sheet.mjs";
 
 const outputPath = "apps-script/GeneratedConfig.js";
 
@@ -38,11 +40,16 @@ async function main() {
     sponsorshipItemsVersion: `sha256:${shortHash(sponsorshipItems.items ?? sponsorshipItems)}`,
     sponsorshipItemsSnapshotNote: sponsorshipItems.snapshot_note ?? "",
     photosSheetName: "photos",
+    taxonomySheetName: "taxonomy",
     schemaMetaSheetName: "schema_meta",
     headers: photosTable.fields.map((field) => field.name),
     fields: photosTable.fields.map(fieldForAppsScript),
     reviewedRequiredFields: photosTable.reviewed_required_fields ?? [],
     taxonomy,
+    taxonomySheet: {
+      headers: taxonomyHeaders,
+      rows: taxonomyRows(taxonomy),
+    },
     validationMessages,
   };
 

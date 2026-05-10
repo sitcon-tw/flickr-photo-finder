@@ -39,12 +39,14 @@ function refreshSchemaAndTaxonomy() {
   const sheet = getPhotosSheet_();
   assertPhotosHeader_(sheet);
   applyColumnHelpers_(sheet);
+  const taxonomyRowCount = syncTaxonomySheet_();
   updateSchemaMeta_();
   SpreadsheetApp.getUi().alert(
     [
-      "已更新 photos 欄位提示、下拉選單與 schema_meta。",
+      "已更新 photos 欄位提示、下拉選單、taxonomy 與 schema_meta。",
       `Schema version: ${getConfig_().schemaVersion}`,
       `Taxonomy version: ${getConfig_().taxonomyVersion}`,
+      `Taxonomy rows: ${taxonomyRowCount}`,
     ].join("\n"),
   );
 }

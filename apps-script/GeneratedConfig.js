@@ -6,6 +6,7 @@ var SITCON_PHOTO_FINDER_CONFIG = {
   "sponsorshipItemsVersion": "sha256:e33bfe6034e1",
   "sponsorshipItemsSnapshotNote": "SITCON 2026 CFS has ended. Treat this file as a fixed snapshot; future CFS versions should replace or extend it explicitly instead of being automatically synced.",
   "photosSheetName": "photos",
+  "taxonomySheetName": "taxonomy",
   "schemaMetaSheetName": "schema_meta",
   "headers": [
     "photo_id",
@@ -447,6 +448,760 @@ var SITCON_PHOTO_FINDER_CONFIG = {
       "獨家議程",
       "現場實體曝光",
       "紀念品配件曝光"
+    ]
+  },
+  "taxonomySheet": {
+    "headers": [
+      "taxonomy_key",
+      "value",
+      "label_zh",
+      "order"
+    ],
+    "rows": [
+      {
+        "taxonomy_key": "scene_tags",
+        "value": "講者",
+        "label_zh": "講者",
+        "order": "1"
+      },
+      {
+        "taxonomy_key": "scene_tags",
+        "value": "會眾",
+        "label_zh": "會眾",
+        "order": "2"
+      },
+      {
+        "taxonomy_key": "scene_tags",
+        "value": "報到",
+        "label_zh": "報到",
+        "order": "3"
+      },
+      {
+        "taxonomy_key": "scene_tags",
+        "value": "攤位",
+        "label_zh": "攤位",
+        "order": "4"
+      },
+      {
+        "taxonomy_key": "scene_tags",
+        "value": "工作人員",
+        "label_zh": "工作人員",
+        "order": "5"
+      },
+      {
+        "taxonomy_key": "scene_tags",
+        "value": "合照",
+        "label_zh": "合照",
+        "order": "6"
+      },
+      {
+        "taxonomy_key": "scene_tags",
+        "value": "交流",
+        "label_zh": "交流",
+        "order": "7"
+      },
+      {
+        "taxonomy_key": "scene_tags",
+        "value": "舞台",
+        "label_zh": "舞台",
+        "order": "8"
+      },
+      {
+        "taxonomy_key": "scene_tags",
+        "value": "背板",
+        "label_zh": "背板",
+        "order": "9"
+      },
+      {
+        "taxonomy_key": "scene_tags",
+        "value": "茶點",
+        "label_zh": "茶點",
+        "order": "10"
+      },
+      {
+        "taxonomy_key": "scene_tags",
+        "value": "手作",
+        "label_zh": "手作",
+        "order": "11"
+      },
+      {
+        "taxonomy_key": "scene_tags",
+        "value": "工作坊",
+        "label_zh": "工作坊",
+        "order": "12"
+      },
+      {
+        "taxonomy_key": "scene_tags",
+        "value": "排隊",
+        "label_zh": "排隊",
+        "order": "13"
+      },
+      {
+        "taxonomy_key": "scene_tags",
+        "value": "休息區",
+        "label_zh": "休息區",
+        "order": "14"
+      },
+      {
+        "taxonomy_key": "scene_tags",
+        "value": "直播",
+        "label_zh": "直播",
+        "order": "15"
+      },
+      {
+        "taxonomy_key": "scene_tags",
+        "value": "攝影",
+        "label_zh": "攝影",
+        "order": "16"
+      },
+      {
+        "taxonomy_key": "scene_tags",
+        "value": "指標",
+        "label_zh": "指標",
+        "order": "17"
+      },
+      {
+        "taxonomy_key": "scene_tags",
+        "value": "場地",
+        "label_zh": "場地",
+        "order": "18"
+      },
+      {
+        "taxonomy_key": "scene_tags",
+        "value": "螢幕",
+        "label_zh": "螢幕",
+        "order": "19"
+      },
+      {
+        "taxonomy_key": "scene_tags",
+        "value": "頒獎",
+        "label_zh": "頒獎",
+        "order": "20"
+      },
+      {
+        "taxonomy_key": "scene_tags",
+        "value": "兒童",
+        "label_zh": "兒童",
+        "order": "21"
+      },
+      {
+        "taxonomy_key": "subject_type",
+        "value": "people",
+        "label_zh": "人物",
+        "order": "1"
+      },
+      {
+        "taxonomy_key": "subject_type",
+        "value": "object",
+        "label_zh": "物件",
+        "order": "2"
+      },
+      {
+        "taxonomy_key": "subject_type",
+        "value": "food",
+        "label_zh": "餐食茶點",
+        "order": "3"
+      },
+      {
+        "taxonomy_key": "subject_type",
+        "value": "text_signage",
+        "label_zh": "文字標示",
+        "order": "4"
+      },
+      {
+        "taxonomy_key": "subject_type",
+        "value": "screen",
+        "label_zh": "螢幕",
+        "order": "5"
+      },
+      {
+        "taxonomy_key": "subject_type",
+        "value": "space",
+        "label_zh": "空間",
+        "order": "6"
+      },
+      {
+        "taxonomy_key": "mood_tags",
+        "value": "熱鬧",
+        "label_zh": "熱鬧",
+        "order": "1"
+      },
+      {
+        "taxonomy_key": "mood_tags",
+        "value": "專注",
+        "label_zh": "專注",
+        "order": "2"
+      },
+      {
+        "taxonomy_key": "mood_tags",
+        "value": "溫暖",
+        "label_zh": "溫暖",
+        "order": "3"
+      },
+      {
+        "taxonomy_key": "mood_tags",
+        "value": "青春感",
+        "label_zh": "青春感",
+        "order": "4"
+      },
+      {
+        "taxonomy_key": "mood_tags",
+        "value": "專業",
+        "label_zh": "專業",
+        "order": "5"
+      },
+      {
+        "taxonomy_key": "mood_tags",
+        "value": "幕後感",
+        "label_zh": "幕後感",
+        "order": "6"
+      },
+      {
+        "taxonomy_key": "mood_tags",
+        "value": "友善",
+        "label_zh": "友善",
+        "order": "7"
+      },
+      {
+        "taxonomy_key": "mood_tags",
+        "value": "交流感",
+        "label_zh": "交流感",
+        "order": "8"
+      },
+      {
+        "taxonomy_key": "mood_tags",
+        "value": "成就感",
+        "label_zh": "成就感",
+        "order": "9"
+      },
+      {
+        "taxonomy_key": "mood_tags",
+        "value": "儀式感",
+        "label_zh": "儀式感",
+        "order": "10"
+      },
+      {
+        "taxonomy_key": "mood_tags",
+        "value": "活力",
+        "label_zh": "活力",
+        "order": "11"
+      },
+      {
+        "taxonomy_key": "mood_tags",
+        "value": "安靜",
+        "label_zh": "安靜",
+        "order": "12"
+      },
+      {
+        "taxonomy_key": "recommended_uses",
+        "value": "社群貼文",
+        "label_zh": "社群貼文",
+        "order": "1"
+      },
+      {
+        "taxonomy_key": "recommended_uses",
+        "value": "網站 hero",
+        "label_zh": "網站 hero",
+        "order": "2"
+      },
+      {
+        "taxonomy_key": "recommended_uses",
+        "value": "志工招募",
+        "label_zh": "志工招募",
+        "order": "3"
+      },
+      {
+        "taxonomy_key": "recommended_uses",
+        "value": "投稿宣傳",
+        "label_zh": "投稿宣傳",
+        "order": "4"
+      },
+      {
+        "taxonomy_key": "recommended_uses",
+        "value": "報名宣傳",
+        "label_zh": "報名宣傳",
+        "order": "5"
+      },
+      {
+        "taxonomy_key": "recommended_uses",
+        "value": "贊助提案",
+        "label_zh": "贊助提案",
+        "order": "6"
+      },
+      {
+        "taxonomy_key": "recommended_uses",
+        "value": "贊助成果報告",
+        "label_zh": "贊助成果報告",
+        "order": "7"
+      },
+      {
+        "taxonomy_key": "recommended_uses",
+        "value": "新聞稿",
+        "label_zh": "新聞稿",
+        "order": "8"
+      },
+      {
+        "taxonomy_key": "recommended_uses",
+        "value": "活動回顧",
+        "label_zh": "活動回顧",
+        "order": "9"
+      },
+      {
+        "taxonomy_key": "recommended_uses",
+        "value": "社群介紹",
+        "label_zh": "社群介紹",
+        "order": "10"
+      },
+      {
+        "taxonomy_key": "recommended_uses",
+        "value": "講者宣傳",
+        "label_zh": "講者宣傳",
+        "order": "11"
+      },
+      {
+        "taxonomy_key": "recommended_uses",
+        "value": "簡報",
+        "label_zh": "簡報",
+        "order": "12"
+      },
+      {
+        "taxonomy_key": "sponsorship_items",
+        "value": "Badge 繩廠商 Logo 曝光",
+        "label_zh": "Badge 繩廠商 Logo 曝光",
+        "order": "1"
+      },
+      {
+        "taxonomy_key": "sponsorship_items",
+        "value": "年會 T-shirt Logo 曝光",
+        "label_zh": "年會 T-shirt Logo 曝光",
+        "order": "2"
+      },
+      {
+        "taxonomy_key": "sponsorship_items",
+        "value": "獨家帆布袋",
+        "label_zh": "獨家帆布袋",
+        "order": "3"
+      },
+      {
+        "taxonomy_key": "sponsorship_items",
+        "value": "獨家導遊團行程",
+        "label_zh": "獨家導遊團行程",
+        "order": "4"
+      },
+      {
+        "taxonomy_key": "sponsorship_items",
+        "value": "會議室椅套曝光",
+        "label_zh": "會議室椅套曝光",
+        "order": "5"
+      },
+      {
+        "taxonomy_key": "sponsorship_items",
+        "value": "午餐旗、點心旗",
+        "label_zh": "午餐旗、點心旗",
+        "order": "6"
+      },
+      {
+        "taxonomy_key": "sponsorship_items",
+        "value": "獨家議程",
+        "label_zh": "獨家議程",
+        "order": "7"
+      },
+      {
+        "taxonomy_key": "sponsorship_items",
+        "value": "遠距會議室議程",
+        "label_zh": "遠距會議室議程",
+        "order": "8"
+      },
+      {
+        "taxonomy_key": "sponsorship_items",
+        "value": "SITCON 貼紙置入",
+        "label_zh": "SITCON 貼紙置入",
+        "order": "9"
+      },
+      {
+        "taxonomy_key": "sponsorship_items",
+        "value": "年會開閉幕口播",
+        "label_zh": "年會開閉幕口播",
+        "order": "10"
+      },
+      {
+        "taxonomy_key": "sponsorship_items",
+        "value": "一次性紙餐墊",
+        "label_zh": "一次性紙餐墊",
+        "order": "11"
+      },
+      {
+        "taxonomy_key": "sponsorship_items",
+        "value": "拍貼機贊助商方案",
+        "label_zh": "拍貼機贊助商方案",
+        "order": "12"
+      },
+      {
+        "taxonomy_key": "sponsorship_items",
+        "value": "SITCON 會場指標置入",
+        "label_zh": "SITCON 會場指標置入",
+        "order": "13"
+      },
+      {
+        "taxonomy_key": "sponsorship_items",
+        "value": "會場攤位加大",
+        "label_zh": "會場攤位加大",
+        "order": "14"
+      },
+      {
+        "taxonomy_key": "sponsorship_items",
+        "value": "樓梯打卡牆",
+        "label_zh": "樓梯打卡牆",
+        "order": "15"
+      },
+      {
+        "taxonomy_key": "sponsorship_items",
+        "value": "洗手間標語曝光",
+        "label_zh": "洗手間標語曝光",
+        "order": "16"
+      },
+      {
+        "taxonomy_key": "sponsorship_items",
+        "value": "接駁車車內廣播",
+        "label_zh": "接駁車車內廣播",
+        "order": "17"
+      },
+      {
+        "taxonomy_key": "sponsorship_items",
+        "value": "入口落地窗背板 Logo 曝光",
+        "label_zh": "入口落地窗背板 Logo 曝光",
+        "order": "18"
+      },
+      {
+        "taxonomy_key": "sponsorship_items",
+        "value": "會場電視輪播",
+        "label_zh": "會場電視輪播",
+        "order": "19"
+      },
+      {
+        "taxonomy_key": "sponsorship_items",
+        "value": "會場攤位",
+        "label_zh": "會場攤位",
+        "order": "20"
+      },
+      {
+        "taxonomy_key": "sponsorship_items",
+        "value": "SITCON 網站議程表置入",
+        "label_zh": "SITCON 網站議程表置入",
+        "order": "21"
+      },
+      {
+        "taxonomy_key": "sponsorship_items",
+        "value": "SITCON 與會者 Email 推播置入",
+        "label_zh": "SITCON 與會者 Email 推播置入",
+        "order": "22"
+      },
+      {
+        "taxonomy_key": "sponsorship_items",
+        "value": "工作人員徽章曝光",
+        "label_zh": "工作人員徽章曝光",
+        "order": "23"
+      },
+      {
+        "taxonomy_key": "sponsorship_items",
+        "value": "明信片",
+        "label_zh": "明信片",
+        "order": "24"
+      },
+      {
+        "taxonomy_key": "sponsorship_items",
+        "value": "面紙包",
+        "label_zh": "面紙包",
+        "order": "25"
+      },
+      {
+        "taxonomy_key": "sponsorship_items",
+        "value": "年會意象背板",
+        "label_zh": "年會意象背板",
+        "order": "26"
+      },
+      {
+        "taxonomy_key": "sponsorship_items",
+        "value": "網路宣傳",
+        "label_zh": "網路宣傳",
+        "order": "27"
+      },
+      {
+        "taxonomy_key": "sponsorship_items",
+        "value": "「遠道而來票」獨家冠名",
+        "label_zh": "「遠道而來票」獨家冠名",
+        "order": "28"
+      },
+      {
+        "taxonomy_key": "sponsorship_items",
+        "value": "OPass App 推播公告",
+        "label_zh": "OPass App 推播公告",
+        "order": "29"
+      },
+      {
+        "taxonomy_key": "sponsorship_items",
+        "value": "樓梯欄杆垂掛布條展出",
+        "label_zh": "樓梯欄杆垂掛布條展出",
+        "order": "30"
+      },
+      {
+        "taxonomy_key": "sponsorship_items",
+        "value": "R0 影片輪播",
+        "label_zh": "R0 影片輪播",
+        "order": "31"
+      },
+      {
+        "taxonomy_key": "sponsorship_items",
+        "value": "R0 影片輪播加時",
+        "label_zh": "R0 影片輪播加時",
+        "order": "32"
+      },
+      {
+        "taxonomy_key": "sponsorship_items",
+        "value": "議程廳講者背板",
+        "label_zh": "議程廳講者背板",
+        "order": "33"
+      },
+      {
+        "taxonomy_key": "sponsorship_items",
+        "value": "R0 議程前夥伴宣讀",
+        "label_zh": "R0 議程前夥伴宣讀",
+        "order": "34"
+      },
+      {
+        "taxonomy_key": "sponsorship_items",
+        "value": "錄影模板  Logo 曝光",
+        "label_zh": "錄影模板  Logo 曝光",
+        "order": "35"
+      },
+      {
+        "taxonomy_key": "sponsorship_items",
+        "value": "迎賓袋文宣",
+        "label_zh": "迎賓袋文宣",
+        "order": "36"
+      },
+      {
+        "taxonomy_key": "sponsorship_items",
+        "value": "網頁 Logo 曝光",
+        "label_zh": "網頁 Logo 曝光",
+        "order": "37"
+      },
+      {
+        "taxonomy_key": "sponsorship_items",
+        "value": "年會共筆 Logo 曝光",
+        "label_zh": "年會共筆 Logo 曝光",
+        "order": "38"
+      },
+      {
+        "taxonomy_key": "sponsorship_items",
+        "value": "門口議程表 Logo 曝光",
+        "label_zh": "門口議程表 Logo 曝光",
+        "order": "39"
+      },
+      {
+        "taxonomy_key": "sponsorship_items",
+        "value": "贈票",
+        "label_zh": "贈票",
+        "order": "40"
+      },
+      {
+        "taxonomy_key": "sponsorship_tags",
+        "value": "攤位曝光",
+        "label_zh": "攤位曝光",
+        "order": "1"
+      },
+      {
+        "taxonomy_key": "sponsorship_tags",
+        "value": "品牌露出",
+        "label_zh": "品牌露出",
+        "order": "2"
+      },
+      {
+        "taxonomy_key": "sponsorship_tags",
+        "value": "會眾互動",
+        "label_zh": "會眾互動",
+        "order": "3"
+      },
+      {
+        "taxonomy_key": "sponsorship_tags",
+        "value": "實體導流",
+        "label_zh": "實體導流",
+        "order": "4"
+      },
+      {
+        "taxonomy_key": "sponsorship_tags",
+        "value": "主舞台曝光",
+        "label_zh": "主舞台曝光",
+        "order": "5"
+      },
+      {
+        "taxonomy_key": "sponsorship_tags",
+        "value": "議程曝光",
+        "label_zh": "議程曝光",
+        "order": "6"
+      },
+      {
+        "taxonomy_key": "sponsorship_tags",
+        "value": "線上曝光",
+        "label_zh": "線上曝光",
+        "order": "7"
+      },
+      {
+        "taxonomy_key": "sponsorship_tags",
+        "value": "參與者體驗",
+        "label_zh": "參與者體驗",
+        "order": "8"
+      },
+      {
+        "taxonomy_key": "sponsorship_tags",
+        "value": "贊助成果佐證",
+        "label_zh": "贊助成果佐證",
+        "order": "9"
+      },
+      {
+        "taxonomy_key": "sponsorship_tags",
+        "value": "觸及學生族群",
+        "label_zh": "觸及學生族群",
+        "order": "10"
+      },
+      {
+        "taxonomy_key": "sponsorship_tags",
+        "value": "社群信任感",
+        "label_zh": "社群信任感",
+        "order": "11"
+      },
+      {
+        "taxonomy_key": "sponsorship_tags",
+        "value": "合作夥伴形象",
+        "label_zh": "合作夥伴形象",
+        "order": "12"
+      },
+      {
+        "taxonomy_key": "orientation",
+        "value": "landscape",
+        "label_zh": "橫式",
+        "order": "1"
+      },
+      {
+        "taxonomy_key": "orientation",
+        "value": "portrait",
+        "label_zh": "直式",
+        "order": "2"
+      },
+      {
+        "taxonomy_key": "orientation",
+        "value": "square",
+        "label_zh": "方形",
+        "order": "3"
+      },
+      {
+        "taxonomy_key": "safe_crop",
+        "value": "1:1",
+        "label_zh": "1:1",
+        "order": "1"
+      },
+      {
+        "taxonomy_key": "safe_crop",
+        "value": "16:9",
+        "label_zh": "16:9",
+        "order": "2"
+      },
+      {
+        "taxonomy_key": "safe_crop",
+        "value": "9:16",
+        "label_zh": "9:16",
+        "order": "3"
+      },
+      {
+        "taxonomy_key": "public_use_status",
+        "value": "approved",
+        "label_zh": "已確認",
+        "order": "1"
+      },
+      {
+        "taxonomy_key": "public_use_status",
+        "value": "needs_review",
+        "label_zh": "待整理確認",
+        "order": "2"
+      },
+      {
+        "taxonomy_key": "public_use_status",
+        "value": "avoid",
+        "label_zh": "不建議",
+        "order": "3"
+      },
+      {
+        "taxonomy_key": "priority_level",
+        "value": "high",
+        "label_zh": "優先推薦",
+        "order": "1"
+      },
+      {
+        "taxonomy_key": "priority_level",
+        "value": "normal",
+        "label_zh": "一般候選",
+        "order": "2"
+      },
+      {
+        "taxonomy_key": "priority_level",
+        "value": "low",
+        "label_zh": "低優先",
+        "order": "3"
+      },
+      {
+        "taxonomy_key": "curation_status",
+        "value": "unreviewed",
+        "label_zh": "未整理",
+        "order": "1"
+      },
+      {
+        "taxonomy_key": "curation_status",
+        "value": "ai_labeled",
+        "label_zh": "AI 初標",
+        "order": "2"
+      },
+      {
+        "taxonomy_key": "curation_status",
+        "value": "reviewed",
+        "label_zh": "已整理",
+        "order": "3"
+      },
+      {
+        "taxonomy_key": "sponsorship_item_categories",
+        "value": "打包專屬",
+        "label_zh": "打包專屬",
+        "order": "1"
+      },
+      {
+        "taxonomy_key": "sponsorship_item_categories",
+        "value": "數位媒體曝光",
+        "label_zh": "數位媒體曝光",
+        "order": "2"
+      },
+      {
+        "taxonomy_key": "sponsorship_item_categories",
+        "value": "更多曝光方式",
+        "label_zh": "更多曝光方式",
+        "order": "3"
+      },
+      {
+        "taxonomy_key": "sponsorship_item_categories",
+        "value": "獨家議程",
+        "label_zh": "獨家議程",
+        "order": "4"
+      },
+      {
+        "taxonomy_key": "sponsorship_item_categories",
+        "value": "現場實體曝光",
+        "label_zh": "現場實體曝光",
+        "order": "5"
+      },
+      {
+        "taxonomy_key": "sponsorship_item_categories",
+        "value": "紀念品配件曝光",
+        "label_zh": "紀念品配件曝光",
+        "order": "6"
+      }
     ]
   },
   "validationMessages": {

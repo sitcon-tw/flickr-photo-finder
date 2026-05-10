@@ -106,6 +106,70 @@ function applyColumnHelpers_(sheet) {
   });
 }
 
+function syncTaxonomySheet_() {
+  const config = getConfig_();
+  const taxonomySheet = config.taxonomySheet || {};
+  const headers = taxonomySheet.headers || [];
+  const rows = taxonomySheet.rows || [];
+  if (headers.length === 0) {
+    throw new Error("GeneratedConfig 缺少 taxonomySheet.headers。請重新執行 pnpm apps-script:build-config。");
+  }
+
+  const spreadsheet = SpreadsheetApp.getActive();
+  let sheet = spreadsheet.getSheetByName(config.taxonomySheetName);
+  if (!sheet) {
+    sheet = spreadsheet.insertSheet(config.taxonomySheetName);
+  } else {
+    assertWritableTaxonomyHeader_(sheet, headers);
+  }
+
+  const values = [
+    headers,
+    ...rows.map((row) => headers.map((header) => normalizeText_(row[header]))),
+  ];
+
+  sheet.clearContents();
+  sheet.getRange(1, 1, values.length, headers.length).setValues(values);
+  sheet.setFrozenRows(1);
+  sheet.autoResizeColumns(1, headers.length);
+  SpreadsheetApp.flush();
+
+  const blankLabelCount = countBlankTaxonomyLabels_(sheet, headers);
+  if (blankLabelCount > 0) {
+    throw new Error(`${config.taxonomySheetName} 同步後仍有 ${blankLabelCount} 個 label_zh 空白。`);
+  }
+
+  return rows.length;
+}
+
+function assertWritableTaxonomyHeader_(sheet, expectedHeaders) {
+  const width = Math.max(sheet.getLastColumn(), expectedHeaders.length);
+  if (width === 0 || sheet.getLastRow() === 0) {
+    return;
+  }
+
+  const actualHeaders = sheet.getRange(1, 1, 1, width).getValues()[0].map(normalizeText_).filter((value) => value !== "");
+  if (arrayEquals_(actualHeaders, expectedHeaders) || arrayEquals_(actualHeaders, PHOTO_FINDER_LEGACY_TAXONOMY_HEADERS)) {
+    return;
+  }
+
+  throw new Error(`${getConfig_().taxonomySheetName} header 不符合 repo schema，拒絕覆寫：${actualHeaders.join(",") || "(空白)"}`);
+}
+
+function countBlankTaxonomyLabels_(sheet, headers) {
+  const labelColumnIndex = headers.indexOf("label_zh") + 1;
+  if (labelColumnIndex <= 0 || sheet.getLastRow() <= 1) {
+    return 0;
+  }
+
+  const labels = sheet.getRange(2, labelColumnIndex, sheet.getLastRow() - 1, 1).getDisplayValues();
+  return labels.filter((row) => isBlank_(row[0])).length;
+}
+
+function arrayEquals_(left, right) {
+  return left.length === right.length && right.every((value, index) => left[index] === value);
+}
+
 function updateSchemaMeta_() {
   const config = getConfig_();
   const spreadsheet = SpreadsheetApp.getActive();
@@ -170,4 +234,3 @@ function buildFieldNote_(field, taxonomyValues) {
   }
   return lines.filter(Boolean).join("\n");
 }
-
