@@ -43,6 +43,12 @@
         gap: 8px;
       }
 
+      .nav-row {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        gap: 6px;
+      }
+
       .row-loader {
         display: grid;
         grid-template-columns: minmax(0, 1fr) auto auto;
@@ -71,6 +77,11 @@
         overflow-wrap: anywhere;
       }
 
+      .photo-context {
+        display: grid;
+        gap: 4px;
+      }
+
       .photo-links {
         display: flex;
         gap: 8px;
@@ -89,6 +100,18 @@
       .field {
         display: grid;
         gap: 4px;
+      }
+
+      .field.hidden {
+        display: none;
+      }
+
+      .field.invalid input,
+      .field.invalid select,
+      .field.invalid textarea,
+      .field.invalid .selected-list {
+        border-color: #ef4444;
+        box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.08);
       }
 
       label {
@@ -293,16 +316,37 @@
         margin: 6px 0 0;
         padding-left: 18px;
       }
+
+      .field-error {
+        color: #991b1b;
+        display: none;
+        font-size: 12px;
+        line-height: 1.4;
+      }
+
+      .field.invalid .field-error {
+        display: block;
+      }
+
+      .save-line {
+        color: #5b6778;
+        font-size: 12px;
+        line-height: 1.4;
+      }
     </style>
   </head>
   <body>
     <main class="panel">
       <section class="toolbar">
         <div id="rowSummary" class="meta">請從 photos 選取一列後開啟 panel。</div>
+        <div class="nav-row">
+          <button id="prevButton" class="secondary" type="button">上一張</button>
+          <button id="nextButton" class="secondary" type="button">下一張</button>
+          <button id="activeButton" class="secondary" type="button">目前列</button>
+        </div>
         <div class="row-loader">
           <input id="rowNumberInput" inputmode="numeric" aria-label="photos row number" />
           <button id="loadButton" class="secondary" type="button">載入</button>
-          <button id="activeButton" class="secondary" type="button">目前列</button>
         </div>
       </section>
 
@@ -314,6 +358,7 @@
           <div id="photoTitle" class="photo-title"></div>
           <div id="photoMeta" class="meta"></div>
         </div>
+        <div id="photoContext" class="photo-context meta"></div>
         <div class="photo-links">
           <a id="photoUrl" href="#" target="_blank" rel="noreferrer">Flickr</a>
           <a id="previewUrl" href="#" target="_blank" rel="noreferrer">縮圖</a>
@@ -324,13 +369,15 @@
 
       <section class="actions">
         <section id="saveStatus" class="status"></section>
-        <button id="saveButton" type="button">儲存並驗證</button>
+        <button id="saveButton" type="button">儲存</button>
+        <div id="saveLine" class="save-line"></div>
       </section>
     </main>
 
     <script>
       const form = document.querySelector("#form");
       const photo = document.querySelector("#photo");
+      const photoContext = document.querySelector("#photoContext");
       const photoMeta = document.querySelector("#photoMeta");
       const photoTitle = document.querySelector("#photoTitle");
       const photoUrl = document.querySelector("#photoUrl");
@@ -338,19 +385,58 @@
       const previewUrl = document.querySelector("#previewUrl");
       const activeButton = document.querySelector("#activeButton");
       const loadButton = document.querySelector("#loadButton");
+      const nextButton = document.querySelector("#nextButton");
+      const prevButton = document.querySelector("#prevButton");
       const rowNumberInput = document.querySelector("#rowNumberInput");
       const rowSummary = document.querySelector("#rowSummary");
       const saveButton = document.querySelector("#saveButton");
+      const saveLine = document.querySelector("#saveLine");
       const saveStatus = document.querySelector("#saveStatus");
       const status = document.querySelector("#status");
 
       const bootstrapState = <?!= bootstrapState ?>;
+      const sidebarFieldNames = [
+        "people_count",
+        "subject_type",
+        "scene_tags",
+        "mood_tags",
+        "recommended_uses",
+        "sponsorship_items",
+        "sponsorship_tags",
+        "orientation",
+        "has_negative_space",
+        "safe_crop",
+        "visual_description",
+        "public_use_status",
+        "priority_level",
+        "collections",
+        "curation_notes",
+        "curation_status",
+      ];
+      const sidebarFieldSet = new Set(sidebarFieldNames);
       let currentState = null;
+      let saveToken = 0;
+      let pendingSaveCount = 0;
 
-      function setBusy(isBusy) {
-        activeButton.disabled = isBusy;
-        loadButton.disabled = isBusy;
-        saveButton.disabled = isBusy || !currentState;
+      function setBusy(isBusy, mode = "load") {
+        const loading = isBusy && mode === "load";
+        activeButton.disabled = loading;
+        loadButton.disabled = loading;
+        nextButton.disabled = loading || !currentState;
+        prevButton.disabled = loading || !currentState;
+        saveButton.disabled = loading || !currentState || hasCurrentErrors();
+      }
+
+      function updateSaveLine(message = "") {
+        if (message) {
+          saveLine.textContent = message;
+          return;
+        }
+        if (pendingSaveCount > 0) {
+          saveLine.textContent = `背景儲存中（${pendingSaveCount}）`;
+          return;
+        }
+        saveLine.textContent = "";
       }
 
       function setStatus(target, message, type = "") {
@@ -411,6 +497,18 @@
           .filter(Boolean);
       }
 
+      function findDuplicateValues(values) {
+        const seen = new Set();
+        const duplicates = [];
+        values.forEach((value) => {
+          if (seen.has(value) && !duplicates.includes(value)) {
+            duplicates.push(value);
+          }
+          seen.add(value);
+        });
+        return duplicates;
+      }
+
       function multiChoiceControl(field, value) {
         const selectedValues = [];
         splitList(value).forEach((item) => {
@@ -440,6 +538,7 @@
 
         function updateHidden() {
           hidden.value = selectedValues.join(";");
+          hidden.dispatchEvent(new Event("input", { bubbles: true }));
         }
 
         function addValue(item) {
@@ -588,6 +687,108 @@
         return input;
       }
 
+      function visibleFields() {
+        return currentState.fields.filter((field) => sidebarFieldSet.has(field.name) && !field.readOnly);
+      }
+
+      function valuesFromForm() {
+        const values = {};
+        visibleFields().forEach((field) => {
+          const control = form.elements[field.name];
+          if (control) {
+            values[field.name] = control.value;
+          }
+        });
+        return values;
+      }
+
+      function currentRecordWithEdits() {
+        return { ...(currentState?.record || {}), ...valuesFromForm() };
+      }
+
+      function validateField(field, value, values) {
+        const errors = [];
+        const trimmed = String(value || "").trim();
+        if (field.required && !trimmed) {
+          errors.push("必填欄位不可空白");
+        }
+        if (!trimmed) {
+          return errors;
+        }
+        if (field.type === "url" && !/^https?:\/\/\S+$/i.test(trimmed)) {
+          errors.push("必須是 http 或 https URL");
+        }
+        if (field.type === "year" && !/^\d{4}$/.test(trimmed)) {
+          errors.push("必須是四位數年份");
+        }
+        if (field.type === "integer" && !/^(0|[1-9]\d*)$/.test(trimmed)) {
+          errors.push("必須是非負整數");
+        }
+        if (field.type === "boolean" && !["true", "false"].includes(trimmed)) {
+          errors.push("必須是 true 或 false");
+        }
+        const listValues = field.multiValue ? splitList(trimmed) : [trimmed];
+        if (field.multiValue) {
+          const duplicates = findDuplicateValues(listValues);
+          if (duplicates.length > 0) {
+            errors.push(`不可重複填寫：${duplicates.join("、")}`);
+          }
+        }
+        if (field.taxonomyKey) {
+          listValues.forEach((item) => {
+            if (!field.options.includes(item)) {
+              errors.push(`未知受控字彙：${item}`);
+            }
+          });
+        }
+        if (values.curation_status === "reviewed" && currentState.reviewedRequiredFields?.includes(field.name) && !trimmed) {
+          errors.push("reviewed 需要填寫此欄位");
+        }
+        if (values.public_use_status === "approved" && currentState.approvedRequiredFields?.includes(field.name) && !trimmed) {
+          errors.push("approved 需要填寫此欄位");
+        }
+        return errors;
+      }
+
+      function validateForm() {
+        if (!currentState) {
+          return [];
+        }
+        const values = currentRecordWithEdits();
+        const errors = [];
+        const errorMap = new Map();
+        visibleFields().forEach((field) => {
+          const fieldErrors = validateField(field, values[field.name] || "", values);
+          if (fieldErrors.length > 0) {
+            errorMap.set(field.name, fieldErrors);
+            fieldErrors.forEach((message) => {
+              errors.push({ rowNumber: currentState.rowNumber, fieldName: field.name, message });
+            });
+          }
+        });
+
+        form.querySelectorAll(".field").forEach((wrapper) => {
+          const fieldName = wrapper.dataset.fieldName;
+          const messages = errorMap.get(fieldName) || [];
+          wrapper.classList.toggle("invalid", messages.length > 0);
+          const errorNode = wrapper.querySelector(".field-error");
+          if (errorNode) {
+            errorNode.textContent = messages.join("；");
+          }
+        });
+        saveButton.disabled = !currentState || errors.length > 0;
+        if (errors.length > 0) {
+          setSaveStatus(errors, "error");
+        } else if (saveStatus.classList.contains("error")) {
+          setSaveStatus("");
+        }
+        return errors;
+      }
+
+      function hasCurrentErrors() {
+        return Boolean(form.querySelector(".field.invalid"));
+      }
+
       function render(state) {
         currentState = state;
         rowNumberInput.value = state.rowNumber;
@@ -600,17 +801,28 @@
         preview.hidden = !state.record.image_preview_url;
         photoTitle.textContent = state.record.photo_id || "(沒有 photo_id)";
         photoMeta.textContent = [state.record.album_title, state.record.event_year].filter(Boolean).join(" / ");
+        photoContext.textContent = [
+          state.record.event_name,
+          state.record.public_use_status ? `公開狀態：${state.record.public_use_status}` : "",
+          state.record.curation_status ? `整理狀態：${state.record.curation_status}` : "",
+        ].filter(Boolean).join(" / ");
         photoUrl.href = state.record.photo_url || "#";
         previewUrl.href = state.record.image_preview_url || "#";
 
         state.fields.forEach((field) => {
+          if (!sidebarFieldSet.has(field.name) || field.readOnly) {
+            return;
+          }
           const wrapper = document.createElement("div");
           wrapper.className = "field";
+          wrapper.dataset.fieldName = field.name;
           const label = document.createElement("label");
           label.htmlFor = `field-${field.name}`;
           label.textContent = field.required ? `${field.labelZh} *` : field.labelZh;
           const control = fieldControl(field, state.record[field.name] || "");
           control.id = `field-${field.name}`;
+          control.addEventListener("input", validateForm);
+          control.addEventListener("change", validateForm);
           const meta = document.createElement("div");
           meta.className = "meta";
           const parts = [field.name, field.descriptionZh];
@@ -620,14 +832,15 @@
             parts.push("多值用 ; 分隔");
           }
           meta.textContent = parts.filter(Boolean).join(" - ");
-          wrapper.append(label, control, meta);
+          const fieldError = document.createElement("div");
+          fieldError.className = "field-error";
+          wrapper.append(label, control, fieldError, meta);
           form.append(wrapper);
         });
 
+        validateForm();
         if (state.errors.length > 0) {
           setSaveStatus(state.errors, "error");
-        } else {
-          setSaveStatus("");
         }
         setBusy(false);
       }
@@ -650,7 +863,9 @@
       }
 
       function handleSaveFailure(error) {
-        setBusy(false);
+        pendingSaveCount = Math.max(0, pendingSaveCount - 1);
+        updateSaveLine();
+        setBusy(false, "save");
         setSaveStatus(failureMessage(error), "error");
       }
 
@@ -682,24 +897,44 @@
         if (!currentState) {
           return;
         }
-        const values = {};
-        currentState.fields.forEach((field) => {
-          const control = form.elements[field.name];
-          if (control && !field.readOnly) {
-            values[field.name] = control.value;
-          }
-        });
-        setBusy(true);
-        setSaveStatus("儲存中...");
+        const errors = validateForm();
+        if (errors.length > 0) {
+          return;
+        }
+        const values = valuesFromForm();
+        const rowNumber = currentState.rowNumber;
+        const token = ++saveToken;
+        pendingSaveCount += 1;
+        updateSaveLine();
+        setSaveStatus("已送出背景儲存。");
         google.script.run
-          .withSuccessHandler(render)
+          .withSuccessHandler((state) => {
+            pendingSaveCount = Math.max(0, pendingSaveCount - 1);
+            if (pendingSaveCount > 0) {
+              updateSaveLine();
+            } else {
+              updateSaveLine("儲存完成。");
+            }
+            if (token === saveToken && currentState?.rowNumber === state.rowNumber) {
+              render(state);
+            }
+          })
           .withFailureHandler(handleSaveFailure)
-          .saveReviewPhoto(currentState.rowNumber, values);
+          .saveReviewPhoto(rowNumber, values);
+      }
+
+      function loadRelativeRow(offset) {
+        if (!currentState) {
+          return;
+        }
+        loadRow(Number(currentState.rowNumber) + offset);
       }
 
       saveButton.addEventListener("click", saveRow);
       loadButton.addEventListener("click", loadRequestedRow);
       activeButton.addEventListener("click", loadActiveRow);
+      prevButton.addEventListener("click", () => loadRelativeRow(-1));
+      nextButton.addEventListener("click", () => loadRelativeRow(1));
       if (bootstrapState) {
         render(bootstrapState);
       } else {

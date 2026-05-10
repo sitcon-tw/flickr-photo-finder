@@ -265,12 +265,15 @@ function buildReviewPanelState_(sheet, rowNumber, providedErrors) {
 }
 
 function buildReviewPanelStateFromRow_(row, rowNumber, providedErrors) {
+  const config = getConfig_();
   const record = rowToRecord_(row);
   const errors = providedErrors || validateRow_(row, rowNumber);
   return {
+    approvedRequiredFields: config.approvedRequiredFields || [],
     errors,
     fields: getReviewPanelFields_(),
     record,
+    reviewedRequiredFields: config.reviewedRequiredFields || [],
     rowNumber,
   };
 }
