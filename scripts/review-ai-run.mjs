@@ -4,6 +4,7 @@ import { pathToFileURL } from "node:url";
 import { getAiLabelingPromptMetadata } from "./ai-labeling-prompt.mjs";
 import { buildPlan } from "./plan-ai-updates.mjs";
 import { renderDiff } from "./render-ai-diff.mjs";
+import { fieldLabel, formatDisplayValue, formatStoredValue } from "./metadata-display.mjs";
 import { validateAiProposals } from "./validate-ai-proposals.mjs";
 
 const defaultProposalFile = "metadata-proposals.json";
@@ -111,21 +112,8 @@ async function readJson(path) {
   }
 }
 
-function formatValue(value) {
-  if (Array.isArray(value)) {
-    return value.join(";");
-  }
-  if (typeof value === "boolean") {
-    return value ? "true" : "false";
-  }
-  if (value === undefined || value === null || value === "") {
-    return "";
-  }
-  return String(value);
-}
-
 function markdownCell(value) {
-  return formatValue(value)
+  return formatStoredValue(value)
     .replaceAll("\\", "\\\\")
     .replaceAll("|", "\\|")
     .replaceAll("\r", " ")
@@ -259,8 +247,8 @@ function pushFocusRows(rows, seen, issue, items, field, maxRows = 8) {
     rows.push([
       issue,
       item.photo_id,
-      field,
-      proposalValue(item, field),
+      fieldLabel(field, { includeRaw: true }),
+      formatDisplayValue(field, proposalValue(item, field), { includeRaw: true }),
       proposalReason(item, field),
     ]);
     if (rows.length >= reviewFocusMaxRows) {
@@ -488,16 +476,25 @@ function buildPromptVersionNotes(manifest) {
 
 function renderSummary({ manifest, notes, plan, proposals, runDir, sample, summaryPath }) {
   const items = proposals.items;
-  const fieldCountRows = fieldCounts(items).map(({ field, count }) => [field, count]);
-  const distributionTableRows = distributionFields.flatMap((field) => distributionRows(items, field));
+  const fieldCountRows = fieldCounts(items).map(({ field, count }) => [
+    fieldLabel(field, { includeRaw: true }),
+    count,
+  ]);
+  const distributionTableRows = distributionFields.flatMap((field) =>
+    distributionRows(items, field).map(([rowField, value, count]) => [
+      fieldLabel(rowField, { includeRaw: true }),
+      formatDisplayValue(rowField, value, { includeRaw: true }),
+      count,
+    ]),
+  );
   const focusRows = buildReviewFocusRows(items);
   const promptTemplate = manifest.prompt_template_path || "unknown";
   const promptHash = manifest.prompt_template_sha256 ? manifest.prompt_template_sha256.slice(0, 12) : "unknown";
   const sampleRows = plan.updates.slice(0, sample).map((update) => [
     update.photo_id,
-    update.field,
-    update.current_value,
-    update.proposed_value,
+    fieldLabel(update.field, { includeRaw: true }),
+    formatDisplayValue(update.field, update.current_value, { includeRaw: true }),
+    formatDisplayValue(update.field, update.proposed_value, { includeRaw: true }),
     update.confidence ?? "",
     update.reason,
   ]);

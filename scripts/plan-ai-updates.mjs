@@ -2,6 +2,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { csvEscape } from "./csv-utils.mjs";
+import { fieldLabel, formatDisplayValue, formatStoredValue } from "./metadata-display.mjs";
 import { validateAiProposals } from "./validate-ai-proposals.mjs";
 
 const defaultProposalFile = "metadata-proposals.json";
@@ -84,19 +85,6 @@ async function readJson(path) {
   }
 }
 
-function formatValue(value) {
-  if (Array.isArray(value)) {
-    return value.join(";");
-  }
-  if (typeof value === "boolean") {
-    return value ? "true" : "false";
-  }
-  if (value === undefined || value === null || value === "") {
-    return "";
-  }
-  return String(value);
-}
-
 function buildUpdates(photos, proposals, { includeUnchanged }) {
   const photosById = new Map(photos.map((photo) => [photo.photo_id, photo]));
   const updates = [];
@@ -104,8 +92,8 @@ function buildUpdates(photos, proposals, { includeUnchanged }) {
   for (const item of proposals.items) {
     const photo = photosById.get(item.photo_id) ?? {};
     for (const [field, proposal] of Object.entries(item.fields)) {
-      const currentValue = formatValue(photo[field] ?? "");
-      const proposedValue = formatValue(proposal.value);
+      const currentValue = formatStoredValue(photo[field] ?? "");
+      const proposedValue = formatStoredValue(proposal.value);
       const changed = currentValue !== proposedValue;
       if (!changed && !includeUnchanged) {
         continue;
@@ -132,17 +120,27 @@ function updatesToCsv(updates) {
     "photo_id",
     "photo_url",
     "field",
+    "field_label",
     "current_value",
+    "current_display",
     "proposed_value",
+    "proposed_display",
     "changed",
     "confidence",
     "reason",
   ];
+  const rowForCsv = (update) => ({
+    ...update,
+    current_display: formatDisplayValue(update.field, update.current_value, { includeRaw: true }),
+    field_label: fieldLabel(update.field, { includeRaw: true }),
+    proposed_display: formatDisplayValue(update.field, update.proposed_value, { includeRaw: true }),
+  });
   const lines = [
     headers.join(","),
-    ...updates.map((update) =>
-      headers.map((header) => csvEscape(update[header] ?? "")).join(","),
-    ),
+    ...updates.map((update) => {
+      const row = rowForCsv(update);
+      return headers.map((header) => csvEscape(row[header] ?? "")).join(",");
+    }),
   ];
   return `${lines.join("\n")}\n`;
 }

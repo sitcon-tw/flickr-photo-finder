@@ -1,6 +1,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
+import { fieldLabel, formatDisplayValue, formatStoredValue } from "./metadata-display.mjs";
 import { validateAiProposals } from "./validate-ai-proposals.mjs";
 
 const defaultProposalFile = "metadata-proposals.json";
@@ -70,21 +71,8 @@ async function readJson(path) {
   }
 }
 
-function formatValue(value) {
-  if (Array.isArray(value)) {
-    return value.join(";");
-  }
-  if (typeof value === "boolean") {
-    return value ? "true" : "false";
-  }
-  if (value === undefined || value === null || value === "") {
-    return "";
-  }
-  return String(value);
-}
-
 function escapeMarkdownTable(value) {
-  return formatValue(value)
+  return formatStoredValue(value)
     .replaceAll("\\", "\\\\")
     .replaceAll("|", "\\|")
     .replaceAll("\r", " ")
@@ -110,16 +98,17 @@ function buildDiffRows(photos, proposals) {
   for (const item of proposals.items) {
     const photo = photosById.get(item.photo_id) ?? {};
     for (const [field, proposal] of Object.entries(item.fields)) {
-      const currentValue = photo[field] ?? "";
-      const proposedValue = formatValue(proposal.value);
+      const currentStoredValue = formatStoredValue(photo[field] ?? "");
+      const proposedStoredValue = formatStoredValue(proposal.value);
       rows.push({
         confidence: formatConfidence(proposal.confidence),
-        currentValue,
+        currentValue: formatDisplayValue(field, currentStoredValue, { includeRaw: true }),
         field,
-        changed: formatValue(currentValue) === proposedValue ? "no" : "yes",
+        fieldLabel: fieldLabel(field, { includeRaw: true }),
+        changed: currentStoredValue === proposedStoredValue ? "no" : "yes",
         photoId: item.photo_id,
         photoUrl: photo.photo_url ?? "",
-        proposedValue,
+        proposedValue: formatDisplayValue(field, proposedStoredValue, { includeRaw: true }),
         reason: proposal.reason,
       });
     }
@@ -146,7 +135,7 @@ function renderMarkdown({ manifest, proposals, rows }) {
   for (const row of rows) {
     lines.push(renderTableRow([
       row.photoId,
-      row.field,
+      row.fieldLabel,
       row.currentValue,
       row.proposedValue,
       row.changed,

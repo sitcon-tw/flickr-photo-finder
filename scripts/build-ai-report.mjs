@@ -1,6 +1,7 @@
 import { access, mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { basename, join, relative, sep } from "node:path";
 import { getAiLabelingPromptMetadata } from "./ai-labeling-prompt.mjs";
+import { defaultMetadataDisplayContext, fieldLabel } from "./metadata-display.mjs";
 import { validateAiProposals } from "./validate-ai-proposals.mjs";
 
 const defaultOutputRoot = "tmp/ai-reports";
@@ -191,8 +192,12 @@ async function readReviewFocus(summaryPath) {
     if (!issue || !photoId) {
       continue;
     }
+    const rawFieldMatch = field.match(/\(([^()]+)\)$/);
+    const normalizedField = rawFieldMatch && defaultMetadataDisplayContext.fieldByName.has(rawFieldMatch[1])
+      ? rawFieldMatch[1]
+      : field;
     rows.push({
-      field,
+      field: normalizedField,
       issue,
       photo_id: photoId,
       proposed,
@@ -438,9 +443,11 @@ function buildReportData(runs, options) {
       status: run.validation.status,
       warning_count: run.validation.warning_count,
     })),
+    field_labels: Object.fromEntries(orderedFields.map((field) => [field, fieldLabel(field, { includeRaw: true })])),
     fields: orderedFields,
     generated_at: new Date().toISOString(),
     mode,
+    option_labels: defaultMetadataDisplayContext.taxonomy.option_labels ?? {},
     photos,
     title: options.title || (mode === "single" ? "AI 初標單次檢視報表" : "AI 初標比較報表"),
     warnings: buildWarnings(runs),
@@ -788,11 +795,26 @@ function renderHtml(reportData) {
       return node;
     }
 
-    function valueText(value) {
-      if (Array.isArray(value)) return value.join("; ");
+    function rawValue(value) {
       if (typeof value === "boolean") return value ? "true" : "false";
-      if (value === undefined || value === null || value === "") return "";
-      return String(value);
+      if (value === undefined || value === null) return "";
+      return String(value).trim();
+    }
+
+    function fieldLabel(field) {
+      return data.field_labels?.[field] || field;
+    }
+
+    function valueLabel(field, raw) {
+      return data.option_labels?.[field]?.[raw] || raw;
+    }
+
+    function valueText(field, value) {
+      const values = Array.isArray(value) ? value.map(rawValue).filter(Boolean) : [rawValue(value)].filter(Boolean);
+      return values.map((raw) => {
+        const label = valueLabel(field, raw);
+        return label === raw ? raw : label + " (" + raw + ")";
+      }).join("; ");
     }
 
     function stableValue(value) {
@@ -836,8 +858,8 @@ function renderHtml(reportData) {
         photo.photo_url,
       ];
       for (const attempt of photo.attempts) {
-        for (const proposal of Object.values(attempt.fields || {})) {
-          parts.push(valueText(proposal.value), proposal.reason || "", String(proposal.confidence ?? ""));
+        for (const [field, proposal] of Object.entries(attempt.fields || {})) {
+          parts.push(fieldLabel(field), valueText(field, proposal.value), proposal.reason || "", String(proposal.confidence ?? ""));
         }
       }
       return parts.join(" ").toLowerCase();
@@ -899,7 +921,7 @@ function renderHtml(reportData) {
       for (const field of data.fields) {
         const count = data.photos.filter((photo) => Boolean(currentAttempt(photo).fields[field])).length;
         const className = count === total ? "pill good" : count === 0 ? "pill warn" : "pill";
-        coverage.append(el("span", className, field + " " + count + "/" + total));
+        coverage.append(el("span", className, fieldLabel(field) + " " + count + "/" + total));
       }
     }
 
@@ -916,7 +938,7 @@ function renderHtml(reportData) {
     }
 
     function renderFilters() {
-      const options = [["all", "所有欄位"], ...data.fields.map((field) => [field, field])];
+      const options = [["all", "所有欄位"], ...data.fields.map((field) => [field, fieldLabel(field)])];
       fieldFilter.replaceChildren();
       for (const [value, label] of options) {
         const option = el("option", "", label);
@@ -982,7 +1004,7 @@ function renderHtml(reportData) {
       head.append(el("span", attempt.has_proposal ? "pill good" : "pill warn", attempt.has_proposal ? "有 proposal" : "缺 proposal"));
       head.append(el("span", "pill", fieldCount + " 個欄位"));
       for (const focus of attempt.focus || []) {
-        head.append(el("span", "pill warn", focus.issue + (focus.field ? " / " + focus.field : "")));
+        head.append(el("span", "pill warn", focus.issue + (focus.field ? " / " + fieldLabel(focus.field) : "")));
       }
       if (!attempt.has_photo) {
         head.append(el("span", "pill warn", "此 run 缺照片"));
@@ -1001,7 +1023,7 @@ function renderHtml(reportData) {
           const proposal = attempt.fields[field];
           const block = el("section", "proposal-block" + (watchFields.has(field) ? " watch" : ""));
           const fieldLine = el("div", "proposal-field");
-          fieldLine.append(el("span", "", field));
+          fieldLine.append(el("span", "", fieldLabel(field)));
           for (const focus of (attempt.focus || []).filter((item) => item.field === field)) {
             fieldLine.append(el("span", "pill warn", focus.issue));
           }
@@ -1009,7 +1031,7 @@ function renderHtml(reportData) {
             fieldLine.append(el("span", "pill", "重點檢查"));
           }
           block.append(fieldLine);
-          block.append(el("div", "proposal-value", valueText(proposal.value) || "(空值)"));
+          block.append(el("div", "proposal-value", valueText(field, proposal.value) || "(空值)"));
           if (proposal.confidence !== undefined) {
             block.append(el("div", "proposal-meta", "confidence " + proposal.confidence));
           }
@@ -1038,7 +1060,7 @@ function renderHtml(reportData) {
         const focusBox = el("div", "focus-row");
         focusBox.textContent = focusItems
           .slice(0, 4)
-          .map((focus) => focus.attempt + ": " + focus.issue + (focus.field ? " / " + focus.field : ""))
+          .map((focus) => focus.attempt + ": " + focus.issue + (focus.field ? " / " + fieldLabel(focus.field) : ""))
           .join("；");
         comparison.append(focusBox);
       }
@@ -1059,7 +1081,7 @@ function renderHtml(reportData) {
         const hasDiff = fieldHasDiff(photo, field);
         if (state.onlyDiffFields && !hasDiff) continue;
         const row = el("tr", hasDiff ? "diff-row" : "");
-        row.append(el("td", "field-name", field));
+        row.append(el("td", "field-name", fieldLabel(field)));
         for (const attempt of photo.attempts) {
           const cell = el("td");
           const proposal = attempt.fields[field];
@@ -1072,7 +1094,7 @@ function renderHtml(reportData) {
             for (const focus of focusForField) {
               cell.append(el("div", "focus-row", focus.issue));
             }
-            cell.append(el("div", "value", valueText(proposal.value)));
+            cell.append(el("div", "value", valueText(field, proposal.value)));
             if (proposal.confidence !== undefined) {
               cell.append(el("div", "confidence", "confidence " + proposal.confidence));
             }
