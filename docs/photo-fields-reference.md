@@ -9,6 +9,7 @@
 - 每列代表一張 Flickr 照片。
 - 多值欄位使用分號分隔，例如 `攤位;會眾;交流`。
 - 受控字彙欄位必須使用 `data/tag-taxonomy.json` 中已存在的值。
+- 英文或布林 raw value 的人類顯示文字由 `data/tag-taxonomy.json` 的 `option_labels` 統一維護；資料儲存值仍以 raw value 為準。
 - 不確定的欄位可以先留空，但不要硬猜。
 - `reviewed` 會有更高的完整度要求，請先補齊必要判斷再調整狀態。
 

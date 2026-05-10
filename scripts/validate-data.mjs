@@ -8,6 +8,7 @@ import {
   controlledScalarFields,
   importBatchHeaders,
   listFields,
+  photoFields,
   photoHeaders,
   requiredFields,
   reviewedRequiredFields,
@@ -170,6 +171,73 @@ function validateTaxonomy(taxonomy, sponsorshipItems) {
     addError(
       `${paths.taxonomy}: sponsorship_items not found in snapshot: ${missingFromSnapshot.join(", ")}`,
     );
+  }
+
+  validateOptionLabels(taxonomy);
+}
+
+function validateOptionLabels(taxonomy) {
+  const optionLabels = taxonomy.option_labels;
+  if (!optionLabels || typeof optionLabels !== "object" || Array.isArray(optionLabels)) {
+    addError(`${paths.taxonomy}: "option_labels" must be an object`);
+    return;
+  }
+
+  const selectableFields = new Map();
+  for (const field of photoFields) {
+    if (field.taxonomy_key) {
+      selectableFields.set(field.name, {
+        required: controlledScalarFields.includes(field.name),
+        values: taxonomy[field.taxonomy_key] ?? [],
+      });
+    } else if (field.type === "boolean") {
+      selectableFields.set(field.name, {
+        required: true,
+        values: ["true", "false"],
+      });
+    }
+  }
+
+  for (const fieldName of Object.keys(optionLabels)) {
+    if (!selectableFields.has(fieldName)) {
+      addError(`${paths.taxonomy}: option_labels.${fieldName} does not match a selectable photo field`);
+      continue;
+    }
+    const labels = optionLabels[fieldName];
+    if (!labels || typeof labels !== "object" || Array.isArray(labels)) {
+      addError(`${paths.taxonomy}: option_labels.${fieldName} must be an object`);
+      continue;
+    }
+
+    const allowedValues = new Set(selectableFields.get(fieldName).values);
+    const seenLabels = new Map();
+    for (const [value, label] of Object.entries(labels)) {
+      if (!allowedValues.has(value)) {
+        addError(`${paths.taxonomy}: option_labels.${fieldName}.${value} does not match a valid option`);
+      }
+      const normalizedLabel = String(label || "").trim();
+      if (!normalizedLabel) {
+        addError(`${paths.taxonomy}: option_labels.${fieldName}.${value} must not be blank`);
+        continue;
+      }
+      if (seenLabels.has(normalizedLabel)) {
+        addError(
+          `${paths.taxonomy}: option_labels.${fieldName} has duplicate label "${normalizedLabel}" for "${seenLabels.get(normalizedLabel)}" and "${value}"`,
+        );
+      }
+      seenLabels.set(normalizedLabel, value);
+    }
+  }
+
+  for (const [fieldName, definition] of selectableFields.entries()) {
+    if (!definition.required) {
+      continue;
+    }
+    const labels = optionLabels[fieldName] ?? {};
+    const missing = definition.values.filter((value) => !String(labels[value] || "").trim());
+    if (missing.length > 0) {
+      addError(`${paths.taxonomy}: option_labels.${fieldName} missing labels for ${missing.join(", ")}`);
+    }
   }
 }
 

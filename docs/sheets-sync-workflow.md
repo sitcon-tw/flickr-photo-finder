@@ -48,6 +48,8 @@ sponsorship_items.csv
 manifest.json
 ```
 
+`taxonomy.csv` 會包含 `taxonomy_key`、`value`、`label_zh` 與 `order`。`value` 是正式資料寫入、驗證與 AI proposal 使用的 raw value；`label_zh` 只供人類檢視，來源是 `data/tag-taxonomy.json` 的 `option_labels`。
+
 建立 Google Sheets 後，請建立同名 tabs：
 
 - `photos`

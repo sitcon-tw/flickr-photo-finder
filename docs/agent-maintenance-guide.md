@@ -13,7 +13,7 @@ Repo 的角色是：
 - 保存文件，讓未來 agent 能理解專案目標與資料維護方式。
 - 保存 sample / fixture / export format，方便本機開發與測試。
 
-`data/photo-schema.json` 是照片、相簿與匯入批次欄位順序、欄位 metadata、reviewed 完整度規則與 approved 使用要求的機器可讀來源。
+`data/photo-schema.json` 是照片、相簿與匯入批次欄位順序、欄位 metadata 與 reviewed 完整度規則的機器可讀來源。
 
 ## Agent 可以協助的工作
 

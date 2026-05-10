@@ -111,7 +111,7 @@ GitHub Pages MVP 暫不採用以下方式：
 
 前端可以讀公開資料 URL，但不能使用任何需要保密的 token、API key 或 OAuth credential。
 
-公開前端除了照片卡片搜尋，也應提供資料庫概覽，協助維護者快速判斷目前索引整理成效。概覽應優先使用 `data/photo-schema.json` 與 `data/tag-taxonomy.json` 理解欄位與必要規則，例如整理狀態、使用提醒、人數標記、reviewed 必要欄位完整度與贊助欄位覆蓋率，不應在前端另外維護一份欄位規則。
+公開前端除了照片卡片搜尋，也應提供資料庫概覽，協助維護者快速判斷目前索引整理成效。概覽應優先使用 `data/photo-schema.json` 與 `data/tag-taxonomy.json` 理解欄位與必要規則，例如整理狀態、使用提醒、人數標記、reviewed 必要欄位完整度與贊助欄位覆蓋率，不應在前端另外維護一份欄位規則或 raw value 翻譯表。前端顯示文字應使用 `data/tag-taxonomy.json` 的 `option_labels`，但篩選值、URL 參數與資料比對仍使用 raw value。
 
 面對上千或上萬張照片時，公開前端應以「工作任務」作為初始心智模型，而不是只提供欄位表單。任務模式可以調整推薦排序權重，但不應隱藏資料；使用者仍可透過活動/相簿、使用提醒、整理狀態、構圖、留白、裁切、贊助品項與素材包等欄位自行收斂結果。結果狀態列應清楚說明任務模式是排序情境，不是硬篩選。
 
@@ -137,7 +137,7 @@ GitHub Pages 應透過 GitHub Actions 發布乾淨的 Pages artifact，不應直
 
 - 公開檢索前端所需的 HTML、CSS、JavaScript。
 - 經過資料流程產生或指定的公開資料來源設定。
-- `data/photo-schema.json` 與 `data/tag-taxonomy.json`，讓前端用同一份欄位與受控字彙來源理解資料。
+- `data/photo-schema.json` 與 `data/tag-taxonomy.json`，讓前端用同一份欄位、受控字彙與顯示文字來源理解資料。
 - 必要的靜態資源。
 
 artifact 不應包含：

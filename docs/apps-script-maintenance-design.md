@@ -73,6 +73,8 @@ Web App deployment 應設定為：
 - 對 URL、年份、整數、boolean 欄位在選單驗證時提供基本格式檢查。
 - 將 `photos` 資料區設為純文字格式，避免 Google Sheets 將 `9:16`、ID、比例或看似日期/時間的值自動轉型。
 
+Apps Script UI 顯示文字應使用 `data/tag-taxonomy.json` 的 `option_labels`，避免 sidebar、Web App 與 GitHub Pages 各自維護 raw value 翻譯。sidebar / Web App 寫回 Sheets 時仍寫入 raw value；Sheets 原生 data validation 只能顯示實際儲存值，因此 header note 應提供 `raw = 顯示文字` 對照。
+
 Apps Script 讀取 `photos` 列時應使用 Sheets 顯示值，而不是原始 typed value。這可避免 `safe_crop` 的 `9:16` 等比例字串被 Sheets / Apps Script 當成時間或日期處理。
 
 ### 驗證目前列或整張表

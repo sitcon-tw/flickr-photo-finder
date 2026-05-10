@@ -88,6 +88,7 @@ async function readAlbumsCsv(path) {
 
 function taxonomyToCsv(taxonomy) {
   const rows = [];
+  const optionLabels = taxonomy.option_labels ?? {};
 
   for (const [key, values] of Object.entries(taxonomy)) {
     if (!Array.isArray(values)) {
@@ -98,6 +99,7 @@ function taxonomyToCsv(taxonomy) {
       rows.push({
         taxonomy_key: key,
         value,
+        label_zh: optionLabels[key]?.[value] ?? "",
         order: String(index + 1),
       });
     });

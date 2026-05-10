@@ -85,6 +85,8 @@ scene_tags
 - `priority_level`
 - `curation_status`
 
+Google Sheets、CSV、AI proposal 與 repo 工具儲存的是 taxonomy raw value。人類介面顯示文字由 `data/tag-taxonomy.json` 的 `option_labels` 統一維護；不要在 GitHub Pages、Apps Script、文件或報表另外手寫一份翻譯表。若需要調整顯示文字，先改 `option_labels`，再跑 `pnpm validate:data`。
+
 如果想填的詞不存在於標籤字典，先不要直接塞進 CSV。請先記在 `curation_notes` 或提出標籤字典調整，避免同義詞越長越散。
 
 ## 贊助相關欄位

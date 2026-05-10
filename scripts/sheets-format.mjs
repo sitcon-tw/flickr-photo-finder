@@ -8,7 +8,7 @@ export const fixedSheetNames = [
   "sponsorship_items",
 ];
 
-export const taxonomyHeaders = ["taxonomy_key", "value", "order"];
+export const taxonomyHeaders = ["taxonomy_key", "value", "label_zh", "order"];
 
 export const sponsorshipItemHeaders = [
   "item_id",
