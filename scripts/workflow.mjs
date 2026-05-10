@@ -208,7 +208,7 @@ function printWorkflowSummary() {
   console.log("1. Google Sheets 是正式資料庫；多數寫入前流程會先把正式資料匯出成 tmp/sheets-export/ 工作快取。");
   console.log("2. 從 Flickr 相簿清單選一本相簿，產生 tmp/intake-runs/ 可審核匯入產物。");
   console.log("3. workflow 會記住剛產生的 intake run，通常可直接接續驗證與 Sheets dry-run。");
-  console.log("4. 從 Sheets photos 建立 tmp/ai-runs/，把圖片與 photos.json 交給模型初標。");
+  console.log("4. 從 Sheets photos 建立 tmp/ai-runs/，把 ai-labeling-prompt.md 與工作包交給模型初標。");
   console.log("5. 模型只輸出 metadata-proposals.json，工具驗證後產生 diff / update plan。");
   console.log("6. AI 候選值經人類確認後才寫回 Sheets；正式 reviewed 在 Sheets 中由志工協作完成。");
 }

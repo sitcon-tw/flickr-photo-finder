@@ -68,7 +68,7 @@ pnpm eval:attempt -- --from tmp/ai-runs/<run-id> --model claude --round 2 --labe
 pnpm eval:attempt -- --from tmp/ai-runs/<run-id> --model gpt --round 1
 ```
 
-attempt 目錄仍包含 `photos.json`、`manifest.json`、`ai-labeling-prompt.md` 與 `images/`，可以直接交給模型，也可以直接執行 `pnpm ai:review -- --run-dir <attempt-dir>`。圖片預設用 symlink 或 hardlink 共用；若環境不支援連結，可加上 `--copy-images`。
+attempt 目錄仍包含 `photos.json`、`manifest.json`、`ai-labeling-prompt.md` 與 `images/`。請先把 `ai-labeling-prompt.md` 與工作包交給模型產生 `metadata-proposals.json`；模型完成後，再由操作者執行 `pnpm ai:review -- --run-dir <attempt-dir>`。圖片預設用 symlink 或 hardlink 共用；若環境不支援連結，可加上 `--copy-images`。
 
 ### 4. 交給模型前先確認工作包
 

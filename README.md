@@ -155,8 +155,8 @@ SITCON Flickr 相簿
 | `docs/google-sheets-database-design.md` | 要理解正式 Sheets 表格設計。 |
 | `docs/sheets-sync-workflow.md` | 要操作 Sheets 匯出、匯入、dry-run 或寫入。 |
 | `docs/public-frontend-architecture.md` | 要維護 GitHub Pages 唯讀前端。 |
-| `docs/ai-labeling-operator-guide.md` | 要準備、檢查或回寫 AI 初標結果。 |
-| `docs/ai-labeling-contract.md` | 要知道 AI run 的輸入、輸出與驗證合約。 |
+| `docs/ai-labeling-operator-guide.md` | 操作者或 repo agent 要準備、檢查或安排 AI 初標結果 dry-run / 回寫。 |
+| `docs/ai-labeling-contract.md` | 模型或 agent 要知道 AI run 的輸入、輸出與驗證合約。 |
 | `docs/ai-labeling-evaluation-notes.md` | 要評估模型輸出品質與常見失準。 |
 | `docs/ai-readable-dataset.md` | 要讓外部 AI 或唯讀工具理解照片索引。 |
 | `docs/agent-maintenance-guide.md` | agent 或技術志工接手維護時閱讀。 |

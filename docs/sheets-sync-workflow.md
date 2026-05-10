@@ -316,8 +316,8 @@ AI 可以協助初標，但不能取代人工確認。
 2. 用 `pnpm ai:prepare` 從 `tmp/sheets-export/photos.csv` 選出待整理照片，例如 `curation_status = unreviewed`。
 3. 工具建立 `tmp/ai-runs/<run-id>/`，輸出 `input-photos.csv`、`photos.json`、`manifest.json`、`ai-labeling-prompt.md`，並下載 AI 判讀用圖片到 `images/`。
 4. 若要讓不同模型或同一模型不同輪次使用同一批輸入，先用 `pnpm eval:attempt` 從既有 run 建立 attempt，不要手動複製整個工作包。
-5. AI 讀取 `ai-labeling-prompt.md`、`photos.json`、`images/`、相簿脈絡、既有欄位、taxonomy 與 sponsorship items，產生 `metadata-proposals.json` 候選欄位值。
-6. 用 `pnpm ai:review -- --run-dir tmp/ai-runs/<run-id-or-attempt>` 檢查候選欄位格式、受控字彙與責任邊界，並產生審核摘要、diff 與更新計畫。
+5. 把 run 目錄中的 `ai-labeling-prompt.md` 與工作包交給模型。模型只應讀取 prompt 指定的必要輸入，例如 `photos.json`、`images/`、schema、taxonomy 與 sponsorship items，並只產生 `metadata-proposals.json` 候選欄位值。
+6. 操作者用 `pnpm ai:review -- --run-dir tmp/ai-runs/<run-id-or-attempt>` 檢查候選欄位格式、受控字彙與責任邊界，並產生審核摘要、diff 與更新計畫。
 7. 用 `pnpm ai:report` 產生唯讀 HTML 報表；單一 run 用逐張檢視，多個 run/attempt 用並排比較。
 8. 若本次要評估 `visual_description` 對自然語言找圖是否有幫助，先用 `pnpm eval:search` 做 taxonomy-only baseline 與 taxonomy + description 的離線比較。
 9. 用 `pnpm sheets:apply-ai-updates -- --run-dir tmp/ai-runs/<run-id-or-attempt>` 對正式 Sheets 做 dry-run，確認會更新哪些 cells。
@@ -338,7 +338,7 @@ pnpm ai:prepare -- --limit 50
 pnpm ai:prepare -- --album ALBUM_ID --limit all
 ```
 
-日常操作可直接使用 `pnpm workflow` 的「準備 AI 初標工作包」。它會先從正式 Sheets 匯出的 `albums` 清單選相簿，再把選到的 album id 傳給 `ai:prepare`。工作包建立完成後，`ai:prepare` 會寫入該 run 目錄的 `ai-labeling-prompt.md`；workflow 也會印出同一份可直接複製給模型或 agent 的 prompt。
+日常操作可直接使用 `pnpm workflow` 的「準備 AI 初標工作包」。它會先從正式 Sheets 匯出的 `albums` 清單選相簿，再把選到的 album id 傳給 `ai:prepare`。工作包建立完成後，`ai:prepare` 會寫入該 run 目錄的 `ai-labeling-prompt.md`；workflow 也會印出同一份可直接複製給模型或 agent 的 prompt。這份 prompt 是模型任務入口；不要另外把 operator guide、評估筆記或 Sheets 回寫文件整份交給模型。
 
 若要把同一批輸入交給多個模型，或同一模型重跑第二輪，請建立 attempt：
 
@@ -348,7 +348,7 @@ pnpm eval:attempt -- --from tmp/ai-runs/<run-id> --model claude --round 2 --labe
 pnpm eval:attempt -- --from tmp/ai-runs/<run-id> --model gpt --round 1
 ```
 
-attempt 目錄仍是一般 AI run 形狀，可以交給模型，也可以直接用 `pnpm ai:review -- --run-dir <attempt-dir>` 檢查；圖片預設以 symlink 或 hardlink 共用，不會重複複製。
+attempt 目錄仍是一般 AI run 形狀。請把 attempt 目錄中的 `ai-labeling-prompt.md` 與工作包交給模型，模型只輸出 `metadata-proposals.json`；模型完成後，再由操作者用 `pnpm ai:review -- --run-dir <attempt-dir>` 檢查。圖片預設以 symlink 或 hardlink 共用，不會重複複製。
 
 這仍會套用預設 `curation_status = unreviewed`。若要整本相簿所有整理狀態都放進工作包，請使用：
 
