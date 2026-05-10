@@ -4,15 +4,16 @@
 
 ## 你要讀取的資料
 
-請先閱讀：
+本 prompt 已包含模型執行初標所需的任務邊界與輸出格式摘要。請優先讀取下列本次標記必要輸入：
 
-- `docs/ai-labeling-contract.md`
 - `data/photo-schema.json`
 - `data/tag-taxonomy.json`
 - `data/sponsorship-items.json`
 - 指定 AI run 目錄中的 `manifest.json`
 - 指定 AI run 目錄中的 `photos.json`
 - 指定 AI run 目錄中的 `images/`
+
+若你需要確認完整輸入/輸出合約，可再讀 `docs/ai-labeling-contract.md`。不要讀取 `docs/ai-labeling-operator-guide.md`、`docs/ai-labeling-evaluation-notes.md` 或 Sheets 回寫文件來推論照片內容；那些文件是給操作者與維護者使用。
 
 `photos.json` 裡的 `local_image_path` 是相對於 AI run 目錄的圖片路徑。若 `local_image_path` 為空，使用 `image_download_url`，或回報需要操作者重新建立有下載圖片的 run。
 

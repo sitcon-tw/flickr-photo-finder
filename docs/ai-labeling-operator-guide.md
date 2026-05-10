@@ -83,15 +83,16 @@ attempt 目錄仍包含 `photos.json`、`manifest.json`、`ai-labeling-prompt.md
 
 ### 5. 將 prompt 與工作包交給模型
 
-模型應使用 run 目錄中的 `ai-labeling-prompt.md` 作為任務提示。這份檔案會引用本次 run 目錄，並包含 `prompts/ai-labeling.md` 的通用提示內容。模型仍應讀取：
+模型應使用 run 目錄中的 `ai-labeling-prompt.md` 作為任務提示。這份檔案會引用本次 run 目錄，並包含 `prompts/ai-labeling.md` 的通用提示內容。交給模型的最小必要輸入是：
 
-- `docs/ai-labeling-contract.md`
 - `data/photo-schema.json`
 - `data/tag-taxonomy.json`
 - `data/sponsorship-items.json`
 - `tmp/ai-runs/<run-id>/manifest.json`
 - `tmp/ai-runs/<run-id>/photos.json`
 - `tmp/ai-runs/<run-id>/images/`
+
+若模型或 agent 需要確認完整輸入/輸出格式，再補讀 `docs/ai-labeling-contract.md`。不需要把本文件、評估筆記或 Sheets 回寫文件整份交給只負責初標的模型。
 
 模型只能輸出：
 
