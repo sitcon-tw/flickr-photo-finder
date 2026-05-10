@@ -4,6 +4,7 @@ import { dirname, join } from "node:path";
 import readline from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 import { writeAiLabelingPrompt } from "./ai-labeling-prompt.mjs";
+import { selectMultipleAiRuns, selectSingleAiRun } from "./ai-run-selector.mjs";
 
 const imageSizeOptions = ["large-1024", "medium-800", "medium-640", "preview", "original"];
 
@@ -555,12 +556,14 @@ async function reviewAiRun() {
 }
 
 async function buildAiReport() {
+  if (!input.isTTY) {
+    throw new Error("stdin is not interactive. Use pnpm ai:report -- --run <dir> or --runs <dir> <dir> in non-interactive environments.");
+  }
+
   const compare = await askYesNo("要比較多個 run / attempt？", false);
   if (compare) {
-    const runDirs = (await ask("輸入要比較的 run / attempt 目錄，以空白分隔"))
-      .split(/\s+/)
-      .map((value) => value.trim())
-      .filter(Boolean);
+    closeReadline();
+    const runDirs = await selectMultipleAiRuns();
     if (runDirs.length < 2) {
       throw new Error("comparison report requires at least two run directories");
     }
@@ -568,7 +571,8 @@ async function buildAiReport() {
     return;
   }
 
-  const runDir = await ask("AI run / attempt 目錄，例如 tmp/ai-runs/RUN_ID");
+  closeReadline();
+  const runDir = await selectSingleAiRun();
   if (!runDir) {
     throw new Error("run directory is required");
   }

@@ -420,6 +420,8 @@ pnpm ai:review -- --run-dir tmp/ai-runs/<run-id>
 
 `ai:review` 的 CLI `Next:` 與 `metadata-review-summary.md` 的 `## Next Commands` 是 AI 初標流程的主要交接介面。新增或調整後續檢視工具時，應同步更新這兩個地方，避免操作者跑完 review 後仍看不到最新建議流程。
 
+日常操作建議從 `pnpm workflow -- --task ai-report` 或 `pnpm eval -- --task report` 進入報表流程。互動入口會掃描 `tmp/ai-runs/`，讓操作者直接選擇單一 run / attempt，或多選產生比較報表；下方低階指令仍保留給自動化、文件交接與精確重跑。
+
 檢視單次 AI 初標結果：
 
 ```bash
