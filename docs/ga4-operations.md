@@ -235,7 +235,7 @@ pnpm ga4:dimensions:sync -- --property <GA4_PROPERTY_ID> --write
 - GA4 measurement ID 已設定在 `config/project.json` 的 `frontend.ga4MeasurementId`。
 - service account 已依 API Explorer workaround 加入 GA4 property。
 - `config/ga4-custom-dimensions.json` 已定義低基數 event-scoped custom dimensions。
-- `pnpm ga4:dimensions:sync -- --write` 已可將缺少的 custom dimensions 同步到 GA4。
+- 提供 GA4 property ID 後，`pnpm ga4:dimensions:sync -- --property <GA4_PROPERTY_ID> --write` 已可將缺少的 custom dimensions 同步到 GA4。也可以改用 `GA4_PROPERTY_ID` 環境變數，或在 `config/project.json` 的 `frontend.ga4PropertyId` 填入預設值；目前 repo 不把 property ID 當成 secret。
 
 日後維護者應先用 dry-run 檢查 GA4 後台是否仍和 repo 設定一致：
 

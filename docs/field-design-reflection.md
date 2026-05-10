@@ -160,13 +160,13 @@ space
 | `child` / `student` | 不放 | 這是人物身份或公開使用風險脈絡，不是主體類型；應由 `scene_tags`、`visual_description` 或未來風險欄位處理。 |
 | `brand_logo` | 不放 | 容易和贊助語意混淆；用 `text_signage`、`visual_description` 與 sponsorship 欄位分別處理。 |
 
-## 需要調整的設計
+## 已採納並工具化的調整
 
 ### 擴充 `scene_tags`
 
 `subject_type` 進入 schema 後，`scene_tags` 的責任應收斂為「活動情境或可見場景元素」，而不是照片主體分類。真實資料顯示，原本的 `scene_tags` 太偏年會：講者、會眾、舞台、攤位、背板在年會很好用，但在 Hour of Code、BoF / 負一籌、青志獎等活動中，入口導引、場地空景、投影螢幕、頒獎與兒童互動會被迫靠 `visual_description` 承接。
 
-已新增的初版補充值：
+以下初版補充值已加入 `data/tag-taxonomy.json`，並同步進入 prompt、AI contract、field reference、Apps Script config 與前端篩選脈絡：
 
 | 新增值 | 使用時機 | 不該承擔的事 |
 | --- | --- | --- |
@@ -188,7 +188,7 @@ space
 
 這表示 `recommended_uses` 不應被 prompt 當作「每張都要填」的欄位。它應代表「這張照片明顯適合的工作用途」，而不是所有可能用途。
 
-建議規則：
+以下規則已寫入 prompt，並由 `ai:review` 以 review warning 協助抽查：
 
 - 沒有明確用途就省略。
 - `活動回顧` 只用在能代表活動流程、成果、場面或情緒的照片，不是所有照片預設值。
@@ -201,7 +201,7 @@ space
 - `recommended_uses`：具體工作用途。
 - `content_roles` 或 `communication_intent`：這張照片能傳達的訊息，例如現場規模、志工投入、學員互動、講者專業、品牌識別、幕後準備。
 
-但 MVP 下一步不一定要立刻拆欄；先收斂 prompt 與 review warning 會更務實。
+目前先不拆欄；收斂 prompt 與 review warning 是已採納的 MVP 作法。若真實使用者仍覺得 `recommended_uses` 太粗，再評估 `content_roles` 或 `communication_intent`。
 
 ### 贊助欄位需要更嚴格的交互規則
 
@@ -209,11 +209,11 @@ space
 
 目前觀察到的問題是：模型會因為茶點、桌旗、SITCON 旗幟、背板或一般現場互動，推論適合 `贊助成果報告`，但沒有填任何 sponsorship 欄位。這會讓行銷組得到看似有用但實際需要大量人工確認的結果。
 
-建議規則：
+以下規則已寫入 prompt，並由 review summary / Review Focus 提醒操作者優先抽查：
 
 - `sponsorship_items`：只有能對齊 CFS 贊助品項時填。
 - `sponsorship_tags`：只有能說明贊助價值或佐證用途時填。
-- `recommended_uses = 贊助成果報告`：至少應有 `sponsorship_items` 或 `sponsorship_tags`，否則 review warning 應明顯標出。
+- `recommended_uses = 贊助成果報告`：至少應有 `sponsorship_items` 或 `sponsorship_tags`，否則 review warning 會明顯標出。
 - SITCON 自有 Logo、旗幟、背板或活動識別不是 sponsorship。
 - 茶點、食物或物件照如果無法對齊贊助品項，只能描述畫面內容，不自動推論贊助成果。
 
@@ -234,7 +234,7 @@ space
 1. **schema / taxonomy 調整**：當欄位無法承接真實需求，例如缺少 `subject_type`。
 2. **prompt / validator / report 調整**：當欄位方向正確，但模型使用方式不穩，例如 `活動回顧` 過度泛用、英文 reason 混入、贊助成果過度推論。
 
-這次觀察後，較適合先改 prompt 與 review warning 的項目：
+這次觀察後，以下項目已先落在 prompt 與 review warning：
 
 - `recommended_uses` 不是必填，沒有明確用途可省略。
 - `活動回顧`、`社群貼文` 不可作為預設值。
@@ -247,7 +247,7 @@ space
 
 - 新增 `subject_type`。
 
-較適合進入後續設計討論的項目：
+仍適合進入後續設計討論的項目：
 
 - 在前端、AI 查詢或報表層用 `people_count` 衍生人數篩選區間，不新增正式資料欄位。
 - 評估是否新增 `communication_intent` / `content_roles` 來取代過度泛用的 `recommended_uses` 部分責任。
@@ -255,14 +255,15 @@ space
 ## 建議下一步
 
 1. 先不刪現有欄位。
-2. 在 prompt 與 review 工具中收斂 `recommended_uses`、sponsorship、繁體中文 reason 與 `safe_crop` 規則。
-3. 以小批跨活動樣本測試 `subject_type` 的 enum 是否足夠，並同步檢查前端以 `people_count` 衍生人數篩選是否足夠，至少涵蓋：
+2. 繼續用 `pnpm eval:sample`、`pnpm ai:report -- --runs ...` 與 `pnpm eval:search` 檢查已採納規則是否真的改善人工審核與自然語言找圖。
+3. 對小批跨活動樣本抽查 `subject_type` 的 enum 是否足夠，並同步檢查前端以 `people_count` 衍生人數篩選是否足夠，至少涵蓋：
    - 年會講者與舞台。
    - 年會攤位與贊助相關畫面。
    - BoF / 負一籌茶點與交流。
    - Hour of Code 兒童工作坊、手作物件與報到。
    - 青志獎頒獎、合照與合作活動舞台。
-4. 已將這個需求具體化為 `data/ai-cross-activity-sample-plan.json` 與 `pnpm eval:sample`。這份抽樣刻意混合已評估與未評估相簿，未評估類型包含 Podcast、Camp、Hackathon、合作攤位、紀念品、咖啡廳、導遊團與廣播錄音，避免欄位只被年會照片校準。
+4. `data/ai-cross-activity-sample-plan.json` 與 `pnpm eval:sample` 已具體化這個需求。這份抽樣刻意混合已評估與未評估相簿，未評估類型包含 Podcast、Camp、Hackathon、合作攤位、紀念品、咖啡廳、導遊團與廣播錄音，避免欄位只被年會照片校準。
 5. 若 `subject_type` 的 enum 或定義需要調整，應同步更新 `data/photo-schema.json`、`data/tag-taxonomy.json`、prompt、AI contract、field reference、Apps Script config 與前端篩選。
+6. 尚未工具化的圖片幾何檢查仍可評估，例如 `orientation` 和實際圖片尺寸是否矛盾、`safe_crop` 是否會切掉主體臉部、文字或重要物件。
 
 這樣可以避免因單一模型或單一活動場景過度修正 schema，也能讓 SITCON 多元活動照片都被納入設計範疇。
