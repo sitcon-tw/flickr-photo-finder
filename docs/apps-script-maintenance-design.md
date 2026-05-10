@@ -179,7 +179,7 @@ pnpm apps-script:smoke-test -- --check
 pnpm review-panel:preview
 ```
 
-此指令會從 `fixtures/photos.csv`、`data/photo-schema.json` 與 `data/tag-taxonomy.json` 產生 `tmp/review-panel-preview/index.html`，並注入 mock `google.script.run`。它適合檢查 sidebar 排版、sticky header、上一張 / 下一張 buffer、hover 說明、未儲存警告與背景儲存狀態；不驗證 Google 帳號授權、Apps Script deployment、真實 Sheets 寫入或 `SpreadsheetApp` 行為。正式部署前仍應執行 `pnpm apps-script:push` 並在 Sheet 上做一次手動驗收。
+此指令會從 `fixtures/photos.csv`、`data/photo-schema.json` 與 `data/tag-taxonomy.json` 產生 `tmp/review-panel-preview/index.html`，並注入 mock `google.script.run`。preview 預設以 Apps Script sidebar 固定寬度 `300px` 顯示；若要測試更窄或其他環境，可用 `SIDEBAR_WIDTH=<px> pnpm review-panel:preview` 覆蓋。它適合檢查 sidebar 排版、sticky header、上一張 / 下一張 buffer、hover 說明、未儲存警告與背景儲存狀態；不驗證 Google 帳號授權、Apps Script deployment、真實 Sheets 寫入或 `SpreadsheetApp` 行為。正式部署前仍應執行 `pnpm apps-script:push` 並在 Sheet 上做一次手動驗收。
 
 `clasp` status/push/open 需要目前登入的 Google 帳號已啟用 Apps Script API。若出現 `User has not enabled the Apps Script API`，先到 <https://script.google.com/home/usersettings> 啟用，等待幾分鐘後重試。
 

@@ -9,6 +9,7 @@ const outputDir = "tmp/review-panel-preview";
 const outputPath = `${outputDir}/index.html`;
 const port = Number(process.env.PORT ?? 4174);
 const host = process.env.HOST ?? "127.0.0.1";
+const sidebarWidth = Number(process.env.SIDEBAR_WIDTH ?? 300);
 
 const mimeTypes = {
   ".html": "text/html; charset=utf-8",
@@ -25,6 +26,7 @@ function printUsage() {
 Options:
   PORT=<port>  Preview server port. Default: ${port}.
   HOST=<host>  Preview server host. Default: ${host}.
+  SIDEBAR_WIDTH=<px>  Mock Apps Script sidebar width. Default: ${sidebarWidth}.
 
 This command generates ${outputPath} and serves a local mock of the Apps Script review sidebar.`);
 }
@@ -178,6 +180,23 @@ window.google = {
 </script>`;
 }
 
+function buildPreviewFrameCss() {
+  return `<style>
+html {
+  background: #e5e7eb;
+}
+
+body {
+  box-sizing: border-box;
+  width: ${sidebarWidth}px;
+  min-height: 100vh;
+  margin: 0;
+  border-right: 1px solid #cbd5e1;
+  box-shadow: 4px 0 18px rgba(15, 23, 42, 0.12);
+}
+</style>`;
+}
+
 async function writePreviewHtml() {
   const [panelHtml, records, taxonomy] = await Promise.all([
     readFile("apps-script/ReviewPanel.html", "utf8"),
@@ -188,6 +207,7 @@ async function writePreviewHtml() {
   const model = buildPreviewModel(records, fields);
   const html = panelHtml
     .replace("<?!= bootstrapState ?>", JSON.stringify(model.bootstrapState).replace(/</g, "\\u003c"))
+    .replace("</head>", `${buildPreviewFrameCss()}\n  </head>`)
     .replace("<script>", `${buildGoogleScriptMock(model)}\n    <script>`);
 
   await mkdir(outputDir, { recursive: true });
@@ -234,6 +254,7 @@ function startServer() {
 
   server.listen(port, host, () => {
     console.log(`Review panel preview written to ${outputPath}`);
+    console.log(`Mock sidebar width: ${sidebarWidth}px`);
     console.log(`Review panel preview is running at http://${host}:${port}/`);
   });
 }
