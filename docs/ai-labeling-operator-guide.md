@@ -228,7 +228,7 @@ pnpm sheets:apply-ai-updates -- --run-dir tmp/ai-runs/<run-id>
 
 ### 場景、氛圍、用途
 
-- `subject_type` 是照片海初篩用的主要視覺主體粗分類，只能單選 `people`、`object`、`food`、`text_signage`、`screen` 或 `space`；不要拿它描述人數規模、活動場景或用途。
+- `subject_type` 是大量照片初篩用的主要視覺主體粗分類，只能單選 `people`、`object`、`food`、`text_signage`、`screen` 或 `space`；不要拿它描述人數規模、活動場景或用途。
 - `scene_tags` 寫畫面事實，例如 `合照`、`舞台`、`背板`。
 - `mood_tags` 寫照片帶來的感受，例如 `儀式感`、`成就感`、`青春感`。
 - `recommended_uses` 寫可能工作用途，例如 `社群貼文`、`活動回顧`、`新聞稿`。

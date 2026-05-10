@@ -15,32 +15,40 @@ SITCON Flickr Photo Finder 是 Flickr 之上的照片索引層，不是相簿替
 | 非技術志工 | 補標籤、檢查授權、整理用途、建立素材包。 | Google Sheets |
 | 宣傳、設計、網站、公關、行銷組 | 找適合當下工作情境的照片。 | GitHub Pages、Google Sheets、AI |
 | 行銷組 | 找特定贊助品項與贊助價值佐證照片。 | `sponsorship_items`、`sponsorship_tags` |
-| 技術志工 | 掃描相簿、匯入資料、跑驗證、部署工具。 | repo CLI、GitHub Actions、clasp |
-| AI / agent | 讀 schema、taxonomy 與照片索引，協助找圖或產生候選 metadata。 | repo 文件、AI run artifacts、公開 CSV/JSON、Google Sheets |
+| 技術志工 | 掃描相簿、匯入資料、跑驗證、部署工具。 | 專案 CLI、GitHub Actions、clasp |
+| AI / agent | 讀 schema、taxonomy 與照片索引，協助找圖或產生候選 metadata。 | 專案文件、AI run artifacts、公開 CSV/JSON、Google Sheets |
 
 ## 架構總覽
 
 ```mermaid
 flowchart LR
-  Flickr[Flickr SITCON albums/photos]
-  Repo[GitHub repo<br/>schema / taxonomy / docs / CLI / UI / Apps Script source]
-  Sheets[Google Sheets<br/>photos / taxonomy / sponsorship_items / albums / import_batches]
-  AppsScript[Google Apps Script<br/>validation / editing helpers]
-  Pages[GitHub Pages<br/>public read-only search UI]
-  AI[External AI / agents<br/>photo search and metadata assist]
-  Users[Organizers and public users]
+  Flickr[Flickr<br/>照片與相簿來源]
+  Sheets[Google Sheets<br/>正式照片索引]
+  AppsScript[Apps Script<br/>Sheets 內維護輔助]
+  Pages[公開搜尋前端<br/>唯讀找圖介面]
+  AI[AI 助手與 agent<br/>找圖與初標候選]
+  Users[籌備團隊與公開使用者]
 
-  Flickr -->|album catalog / photo metadata| Repo
-  Repo -->|candidate rows / sync workflow| Sheets
-  Repo -->|clasp deploy| AppsScript
-  AppsScript -->|validate and assist editing| Sheets
-  Sheets -->|public photos CSV/JSON or public sheet access| Pages
-  Sheets -->|public photos CSV/JSON or public sheet access| AI
-  Repo -->|schema / taxonomy / docs| AI
-  Repo -->|GitHub Actions Pages artifact| Pages
-  Pages -->|search and filter| Users
-  AI -->|recommend candidates / propose metadata diff| Users
-  Users -->|confirmed edits| Sheets
+  subgraph Project[這個專案提供的能力]
+    Rules[資料規則<br/>schema / taxonomy / 欄位文件]
+    Intake[匯入與同步工具<br/>相簿盤點 / intake / validation]
+    Interfaces[使用介面原始碼<br/>GitHub Pages / Apps Script]
+    AIGuide[AI 輔助流程<br/>prompt / run artifact / report]
+  end
+
+  Flickr -->|相簿與照片 metadata| Intake
+  Rules --> Intake
+  Intake -->|候選列與同步計畫| Sheets
+  Interfaces -->|clasp deploy| AppsScript
+  Interfaces -->|GitHub Actions artifact| Pages
+  Rules --> AppsScript
+  AppsScript -->|提示與校對| Sheets
+  Sheets -->|公開 photos CSV / Sheet| Pages
+  Sheets -->|公開 photos CSV / Sheet| AI
+  AIGuide -->|輸入規則與報表| AI
+  AI -->|找圖建議或候選標註| Users
+  Pages -->|搜尋與篩選| Users
+  Users -->|確認後編輯| Sheets
 ```
 
 ## 資料模型
@@ -62,7 +70,7 @@ flowchart LR
 
 維護流程從 SITCON Flickr 相簿開始：
 
-1. repo 工具盤點 SITCON Flickr 相簿清單，更新 Google Sheets `albums`。
+1. 專案工具盤點 SITCON Flickr 相簿清單，更新 Google Sheets `albums`。
 2. 使用者從 `albums` 選擇本次要處理的相簿。
 3. 技術志工或 agent 掃描選定相簿，比對 Google Sheets `photos` 既有 `photo_id`。
 4. 工具產生一次 intake run artifact，包含缺少照片的最低必要欄位、更新後的 `albums.last_processed_at`、`import_batches` 與摘要。
@@ -77,7 +85,7 @@ flowchart LR
 找圖流程應把自然語言需求拆成可搜尋條件：
 
 - 場景與畫面內容：`scene_tags`。
-- 照片海初篩主體：`subject_type`。
+- 大量照片初篩主體：`subject_type`。
 - 情緒與宣傳感受：`mood_tags`。
 - 工作用途或素材包：`recommended_uses`、`collections`。
 - 贊助品項與贊助價值：`sponsorship_items`、`sponsorship_tags`。
@@ -96,9 +104,9 @@ flowchart LR
 - Apps Script 應透過 `clasp` 部署。Apps Script source 應保存在 repo 中，讓修改能被 review，也讓未來 agent 能理解目前部署內容。
 - `clasp` credential、Google API credential、OAuth token cache、第三方工具 token 與 AI API key 都不應 commit。
 
-## Repo 的責任
+## 專案工具層的責任
 
-Repo 保存：
+這個專案保存：
 
 - schema 與欄位文件。
 - taxonomy 與贊助品項固定版本資料。
@@ -108,7 +116,7 @@ Repo 保存：
 - GitHub Pages 前端 source。
 - AI/agent 維護指南與資料解讀文件。
 
-Repo 不保存：
+這個專案不保存：
 
 - 正式 Google Sheets 完整資料快照。
 - Google Drive、Google API、OAuth、第三方工具或 AI API credential。
@@ -127,6 +135,6 @@ Repo 不保存：
 6. GitHub Pages 和外部 AI 能讀同一份公開照片索引。
 7. 真實使用者能用工作需求找到照片，並回饋標籤或欄位是否足夠。
 
-目前 repo 已支援相簿盤點、相簿選擇、intake run 產生、Sheets 初始化與匯入 dry-run/write、AI 初標 prepare/review/report/apply、Pages artifact build/check，以及 Apps Script 維護輔助 source。GitHub Pages 部署已走 GitHub Actions artifact；Apps Script source 可透過 `clasp` 部署到 Sheet-bound script，但實際綁定與部署仍需由有目標 Sheet / Apps Script 權限的維護者執行。最新可用指令、低階工具與改善項目請以 `docs/README.md` 的「目前狀態」為準。
+目前專案已支援相簿盤點、相簿選擇、intake run 產生、Sheets 初始化與匯入 dry-run/write、AI 初標 prepare/review/report/apply、Pages artifact build/check，以及 Apps Script 維護輔助 source。GitHub Pages 部署已走 GitHub Actions artifact；Apps Script source 可透過 `clasp` 部署到 Sheet-bound script，但實際綁定與部署仍需由有目標 Sheet / Apps Script 權限的維護者執行。最新可用指令、低階工具與改善項目請以 `docs/README.md` 的「目前狀態」為準。
 
 若未來真的出現權限分層、非公開欄位、審核歷程、多人衝突或查詢效能問題，再評估正式資料庫或後台。

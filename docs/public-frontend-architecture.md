@@ -1,10 +1,10 @@
-# 公開檢索前端架構
+# 公開搜尋前端架構
 
 ## 目的
 
-這份文件記錄公開唯讀照片檢索前端的方向。
+這份文件記錄公開唯讀照片搜尋前端的方向。
 
-Google Sheets 是正式照片索引資料庫，Apps Script 可以作為具有授權的維護輔助介面；但更多使用者只需要能夠存取、搜尋與篩選照片，不需要編輯資料。公開檢索前端應部署到 GitHub Pages，降低使用門檻。
+Google Sheets 是正式照片索引資料庫，Apps Script 可以作為具有授權的維護輔助介面；但更多使用者只需要能夠存取、搜尋與篩選照片，不需要編輯資料。公開搜尋前端應部署到 GitHub Pages，降低使用門檻。
 
 Apps Script Web App 是另一個授權後的校對入口，適合需要批量瀏覽、編輯與儲存 metadata 的整理者。它不作為 GitHub Pages 的資料 API，也不讓公開前端取得寫入能力。
 
@@ -36,7 +36,7 @@ GitHub Pages
   唯讀搜尋 UI
   讀取 photos 公開 CSV
 
-Repo
+專案工具與原始碼
   schema
   taxonomy
   validation
@@ -137,7 +137,7 @@ GitHub Pages 應透過 GitHub Actions 發布乾淨的 Pages artifact，不應直
 
 `pnpm pages:build` 產生的 artifact 應只包含：
 
-- 公開檢索前端所需的 HTML、CSS、JavaScript。
+- 公開搜尋前端所需的 HTML、CSS、JavaScript。
 - 經過資料流程產生或指定的公開資料來源設定。
 - `data/photo-schema.json`、`data/tag-taxonomy.json` 與 `data/search-aliases.json`，讓前端用同一份欄位、受控字彙、顯示文字與資料值搜尋同義詞來源理解資料。
 - 必要的靜態資源。

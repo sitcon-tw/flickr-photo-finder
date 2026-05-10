@@ -6,7 +6,7 @@
 
 正式資料與 repo fixture 的權威關係請先看 `docs/README.md` 的真理來源表。
 
-Repo 的角色是：
+專案 repo 的角色是：
 
 - 保存 schema、taxonomy、validation 與工具。
 - 提供相簿掃描、匯入、AI 輔助、匯出與同步流程。
@@ -21,7 +21,7 @@ Repo 的角色是：
 
 Agent 適合協助：
 
-- 讀懂 repo 文件並更新維護流程。
+- 讀懂專案文件並更新維護流程。
 - 掃描 Flickr 相簿，找出尚未匯入的照片。
 - 產生可寫入 Google Sheets 的候選資料。
 - 根據 repo schema/taxonomy 檢查資料格式。
@@ -40,7 +40,7 @@ Agent 不應自行假設：
 
 ## 權限與交接
 
-SITCON 組織已有既有文件存放與交接制度。這個 repo 不保存 credential，也不重新定義 Google Drive 權限交接。
+SITCON 組織已有既有文件存放與交接制度。這個專案不保存 credential，也不重新定義 Google Drive 權限交接。
 
 遇到權限問題時，agent 應該：
 

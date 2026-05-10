@@ -25,7 +25,7 @@
 | `event_name` | 否 | 否 | 否 | 熟悉活動脈絡者 | 例如 `SITCON 年會`、`SITCON Camp`。不確定就留空。 |
 | `event_year` | 否 | 否 | 否 | 熟悉活動脈絡者 | 四位年份，例如 `2026`。 |
 | `people_count` | 否 | 否 | 否 | AI 或整理者 | 照片中可辨識的人數估計值。無人可填 `0`，不確定可留空。 |
-| `subject_type` | 否 | 否 | 是 | AI 或整理者 | 照片海初篩用的主要視覺主體，例如 `people`、`object`、`food`、`text_signage`、`screen`、`space`。 |
+| `subject_type` | 否 | 否 | 是 | AI 或整理者 | 大量照片初篩用的主要視覺主體，例如 `people`、`object`、`food`、`text_signage`、`screen`、`space`。 |
 | `photographer` | 否 | 否 | 否 | 匯入工具或整理者 | 攝影師署名。SITCON 是 Flickr 帳號擁有者，不等於攝影師。 |
 | `license` | 否 | 否 | 否 | 整理者 | Flickr 顯示的授權資訊。不確定時留空並使用 `needs_review`。 |
 | `scene_tags` | 否 | 是 | 是 | 整理者 | 活動情境或可見場景元素，例如 `攤位`、`會眾`、`舞台`、`指標`、`場地`、`螢幕`、`頒獎`。 |
@@ -40,7 +40,7 @@
 | `public_use_status` | 否 | 否 | 是 | 熟悉公開素材風險者 | `approved`、`needs_review`、`avoid`。不確定用 `needs_review`。 |
 | `priority_level` | 否 | 否 | 是 | 整理者 | `high`、`normal`、`low`。表示推薦使用優先度，不是客觀照片品質。 |
 | `collections` | 否 | 是 | 否 | 各組整理者 | 素材包，例如 `志工招募`、`贊助提案`、`網站 hero`。 |
-| `curation_notes` | 否 | 否 | 否 | 整理者 | 公開 repo 中仍視為公開資料，不要寫入敏感內部資訊。 |
+| `curation_notes` | 否 | 否 | 否 | 整理者 | 公開索引中仍視為公開資料，不要寫入敏感內部資訊。 |
 | `curation_status` | 否 | 否 | 是 | 整理者 | `unreviewed`、`ai_labeled`、`reviewed`。 |
 
 ## Reviewed 門檻與公開使用提醒

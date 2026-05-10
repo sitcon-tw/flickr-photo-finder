@@ -31,4 +31,4 @@ pnpm pages:check
 
 ## 授權
 
-提交 pull request 代表你同意將貢獻內容依本 repo 的 Apache-2.0 授權釋出。
+提交 pull request 代表你同意將貢獻內容依本專案的 Apache-2.0 授權釋出。

@@ -24,7 +24,13 @@
 
 實際整理時，應以 SITCON Flickr 相簿為單位處理。正式流程應由工具先盤點 SITCON Flickr 目前有哪些相簿，更新 Google Sheets `albums` 清單，再讓使用者選擇本次要處理哪一本。
 
-本機操作請看 `README.md` 的「本機操作」；Sheets 同步流程請看 `docs/sheets-sync-workflow.md`。常用指令包含：
+日常正式流程建議從互動入口開始，讓工具引導相簿選擇、工作檔產生、驗證與 Sheets dry-run：
+
+```bash
+pnpm workflow
+```
+
+完整 Sheets 同步流程請看 `docs/sheets-sync-workflow.md`。下列低階指令保留給 fixture 更新、demo、除錯或精確重跑；正式資料仍應以 Google Sheets 為準：
 
 ```bash
 pnpm albums:discover
