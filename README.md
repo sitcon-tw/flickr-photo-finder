@@ -111,7 +111,6 @@ pnpm workflow
 | 檢查資料與 AI fixtures | `pnpm workflow -- --task check` |
 | 處理一本 Flickr 相簿，並接續檢查 / dry-run | `pnpm workflow -- --task album-intake` |
 | 準備 AI 初標工作包 | `pnpm workflow -- --task ai-prepare` |
-| 建立跨活動 AI 測試樣本 | `pnpm eval:sample` |
 | 檢查 AI 初標結果 | `pnpm workflow -- --task ai-review` |
 | 維護 Google Sheets | `pnpm workflow -- --task sheets` |
 | 建立並檢查公開前端 artifact | `pnpm workflow -- --task pages-build` |
