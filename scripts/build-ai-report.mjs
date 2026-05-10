@@ -1,5 +1,6 @@
 import { access, mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { basename, join, relative, sep } from "node:path";
+import { getAiLabelingPromptMetadata } from "./ai-labeling-prompt.mjs";
 import { validateAiProposals } from "./validate-ai-proposals.mjs";
 
 const defaultOutputRoot = "tmp/ai-reports";
@@ -328,6 +329,7 @@ function fieldOrder(fields) {
 
 function buildWarnings(runs) {
   const warnings = [];
+  const currentPrompt = getAiLabelingPromptMetadata();
   const baseRunIds = new Set(runs.map((run) => run.baseRunId).filter(Boolean));
   if (baseRunIds.size > 1) {
     warnings.push(`Runs do not share one base_run_id: ${[...baseRunIds].join(", ")}`);
@@ -341,6 +343,14 @@ function buildWarnings(runs) {
   if (missingPromptHashRuns.length > 0) {
     warnings.push(
       `Some runs do not record prompt_template_sha256: ${missingPromptHashRuns.map((run) => run.label).join(", ")}. Treat prompt-version comparison as unknown.`,
+    );
+  }
+  const stalePromptRuns = runs.filter(
+    (run) => run.manifest.prompt_template_sha256 && run.manifest.prompt_template_sha256 !== currentPrompt.prompt_template_sha256,
+  );
+  if (stalePromptRuns.length > 0) {
+    warnings.push(
+      `Some runs use a prompt_template_sha256 different from the current repo prompt ${currentPrompt.prompt_template_sha256.slice(0, 12)}: ${stalePromptRuns.map((run) => `${run.label}=${run.manifest.prompt_template_sha256.slice(0, 12)}`).join(", ")}.`,
     );
   }
 
