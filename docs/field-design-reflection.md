@@ -262,6 +262,7 @@ space
    - BoF / 負一籌茶點與交流。
    - Hour of Code 兒童工作坊、手作物件與報到。
    - 青志獎頒獎、合照與合作活動舞台。
-4. 若 `subject_type` 的 enum 或定義需要調整，應同步更新 `data/photo-schema.json`、`data/tag-taxonomy.json`、prompt、AI contract、field reference、Apps Script config 與前端篩選。
+4. 已將這個需求具體化為 `data/ai-cross-activity-sample-plan.json` 與 `pnpm ai:sample`。這份抽樣刻意混合已評估與未評估相簿，未評估類型包含 Podcast、Camp、Hackathon、合作攤位、紀念品、咖啡廳、導遊團與廣播錄音，避免欄位只被年會照片校準。
+5. 若 `subject_type` 的 enum 或定義需要調整，應同步更新 `data/photo-schema.json`、`data/tag-taxonomy.json`、prompt、AI contract、field reference、Apps Script config 與前端篩選。
 
 這樣可以避免因單一模型或單一活動場景過度修正 schema，也能讓 SITCON 多元活動照片都被納入設計範疇。

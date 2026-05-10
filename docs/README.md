@@ -19,6 +19,7 @@
 | AI 初標輸入與輸出格式 | `docs/ai-labeling-contract.md` | 定義 `tmp/ai-runs/<run-id>/` 的輸入檔、圖片來源、`metadata-proposals.json` 格式與驗證流程。 |
 | AI 初標操作與 prompt | `docs/ai-labeling-operator-guide.md`、`prompts/ai-labeling.md` | 操作指南說明 prepare-to-review、報表檢視與回寫前檢查流程；prompt 是可交給模型使用的任務範本。 |
 | AI 初標品質評估 | `docs/ai-labeling-evaluation-notes.md` | 記錄模型 run 觀察、常見失準欄位與未來可工具化的檢查方向。 |
+| 跨活動 AI 測試抽樣計畫 | `data/ai-cross-activity-sample-plan.json` | 用於建立欄位、taxonomy、prompt 與 validator 評估工作包；不是正式照片資料。 |
 | AI proposal 範例 | `fixtures/ai-proposals/` | valid/invalid examples 應由 `pnpm ai:validate-fixtures` 驗證。 |
 | AI 初標 review 後續交接提示 | `scripts/review-ai-run.mjs` | CLI `Next:` 與 `metadata-review-summary.md` 的 `## Next Commands` 應和目前報表、比較、dry-run 流程同步。 |
 | 正式照片索引資料 | Google Sheets `photos` | repo 內 `fixtures/photos.csv` 只是 sample、fixture 與匯出格式參考。 |
@@ -51,6 +52,7 @@
 - `pnpm intake:validate -- --run-dir <dir>`，套用到 Google Sheets 前檢查 intake run artifact 是否完整一致。
 - `pnpm sheets:apply-intake -- --run-dir <dir>`，透過官方 Google Sheets API SDK dry-run 已審核 intake run artifact；加上 `--write` 才會追加照片、更新該相簿 `last_processed_at` 並追加批次紀錄。
 - `pnpm ai:prepare`，從正式 Sheets 匯出的 `photos.csv` 選出待初標照片，建立本機 `tmp/ai-runs/` 工作目錄與可供 AI 讀圖的輸入檔；預設下載 1024px 圖片，也可指定 `preview`、640、800 或 `original`。
+- `pnpm ai:sample`，依 `data/ai-cross-activity-sample-plan.json` 從多本 Flickr 相簿等距抽樣，建立跨活動 AI 測試工作包；這是欄位與 prompt 評估用本機資料集，不寫入 Google Sheets。
 - `pnpm ai:attempt -- --from <dir> --model <name> --round <number>`，從既有 AI run 建立可重複使用同一輸入的模型/輪次 attempt，圖片預設以 symlink 或 hardlink 共用。
 - `pnpm ai:review -- --run-dir <dir>`，檢查 AI 候選 `metadata-proposals.json`，並一次產生 `metadata-review-summary.md`、`metadata-diff.md`、`metadata-update-plan.json` 與 CSV。
 - `pnpm ai:validate -- --run-dir <dir>`，只檢查 AI 候選 `metadata-proposals.json` 是否符合 schema、taxonomy 與人工 review 邊界。

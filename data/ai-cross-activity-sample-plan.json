@@ -1,0 +1,104 @@
+{
+  "version": 1,
+  "description_zh": "跨活動 AI 初標抽樣計畫。這份計畫用來建立本機測試工作包，檢查欄位、taxonomy、prompt 與 validator 是否能涵蓋 SITCON 多元活動照片；它不是正式照片資料，也不會寫入 Google Sheets。",
+  "selection_strategy": "每本相簿依 Flickr 相簿照片順序做等距抽樣，保留相簿開頭、中段與結尾的場景差異。",
+  "default_sample_count": 4,
+  "albums": [
+    {
+      "album_id": "72177720333438501",
+      "sample_count": 4,
+      "category": "annual-conference",
+      "previously_evaluated": true,
+      "rationale_zh": "SITCON 2026 年會已做過千張級測試，仍應保留少量樣本作為年會講者、舞台、攤位與大會視覺基準。",
+      "focus_zh": ["講者", "舞台", "攤位", "大會視覺"]
+    },
+    {
+      "album_id": "72177720329615498",
+      "sample_count": 4,
+      "category": "bof-and-food",
+      "previously_evaluated": true,
+      "rationale_zh": "負一籌與 BoF 已暴露茶點、交流、SITCON 自有識別和贊助欄位混淆風險，是 food / object / people 主體判斷的重要樣本。",
+      "focus_zh": ["茶點", "交流", "SITCON 自有識別", "主體判斷"]
+    },
+    {
+      "album_id": "72177720330876634",
+      "sample_count": 4,
+      "category": "hour-of-code",
+      "previously_evaluated": true,
+      "rationale_zh": "Hour of Code 桃園場已做 122 張多模型測試，包含兒童、助教、手作物件與工作坊桌面，是 public_use_status、people_count 與 visual_description 的壓力測試。",
+      "focus_zh": ["兒童", "助教", "手作物件", "工作坊"]
+    },
+    {
+      "album_id": "72177720333028101",
+      "sample_count": 3,
+      "category": "award-and-partner-event",
+      "previously_evaluated": true,
+      "rationale_zh": "青志獎測試曾暴露獎項看板、合照、合作活動與贊助用途推論邊界，適合保留少量對照樣本。",
+      "focus_zh": ["頒獎", "合照", "合作活動舞台", "文字看板"]
+    },
+    {
+      "album_id": "72177720331280218",
+      "sample_count": 4,
+      "category": "podcast-recording",
+      "previously_evaluated": false,
+      "rationale_zh": "Podcast 相簿代表錄音、訪談、麥克風、棚內或桌面設備等非典型活動場景，可檢查 subject_type 是否能處理 people / object / space 的邊界。",
+      "focus_zh": ["錄音", "訪談", "麥克風", "設備"]
+    },
+    {
+      "album_id": "72177720327873819",
+      "sample_count": 4,
+      "category": "camp",
+      "previously_evaluated": false,
+      "rationale_zh": "Camp Day 1 代表營隊活動，和年會不同，可能包含團康、住宿環境、隊輔互動、戶外或生活化素材。",
+      "focus_zh": ["營隊", "團康", "隊輔互動", "生活場景"]
+    },
+    {
+      "album_id": "72177720319301413",
+      "sample_count": 4,
+      "category": "hackathon",
+      "previously_evaluated": false,
+      "rationale_zh": "Hackathon 相簿可測試 coding、協作、桌面工作、demo 與疲勞感等和一般議程不同的找圖需求。",
+      "focus_zh": ["協作", "coding", "demo", "桌面工作"]
+    },
+    {
+      "album_id": "72177720325544651",
+      "sample_count": 4,
+      "category": "partner-booths",
+      "previously_evaluated": false,
+      "rationale_zh": "合作攤位是贊助提案與成果報告常見需求，必須測試 sponsorship_items、sponsorship_tags、scene_tags 與 subject_type 的分工。",
+      "focus_zh": ["合作攤位", "品牌露出", "贊助成果", "互動"]
+    },
+    {
+      "album_id": "72177720325545072",
+      "sample_count": 3,
+      "category": "merchandise",
+      "previously_evaluated": false,
+      "rationale_zh": "紀念品與衣服相簿多為物件、設計細節與商品陳列，可檢查 object 主體與 sponsorship item 不混用。",
+      "focus_zh": ["紀念品", "衣服", "物件特寫", "設計素材"]
+    },
+    {
+      "album_id": "72177720325545106",
+      "sample_count": 3,
+      "category": "cafe",
+      "previously_evaluated": false,
+      "rationale_zh": "咖啡廳相簿可補足食物、飲品、休息區與社交空間，避免欄位只適合講者和會眾照片。",
+      "focus_zh": ["飲食", "休息空間", "社交", "服務"]
+    },
+    {
+      "album_id": "72177720325544881",
+      "sample_count": 3,
+      "category": "guided-tour",
+      "previously_evaluated": false,
+      "rationale_zh": "導遊團相簿可測試場地導覽、移動、指標與空間脈絡，補足 space / text_signage / people 的交界。",
+      "focus_zh": ["導覽", "場地", "指標", "移動"]
+    },
+    {
+      "album_id": "72177720302196123",
+      "sample_count": 3,
+      "category": "radio-recording",
+      "previously_evaluated": false,
+      "rationale_zh": "教育廣播電台錄音相簿只有少量照片，但活動型態特殊，可檢查錄音室、麥克風、訪談與合作活動資料是否被正確描述。",
+      "focus_zh": ["錄音室", "廣播", "訪談", "合作活動"]
+    }
+  ]
+}

@@ -46,6 +46,16 @@ pnpm ai:prepare -- --photo-ids PHOTO_ID --image-size original
 
 `--limit all` 代表不設上限；若不指定，預設最多準備 50 張。`ai:prepare` 會輸出 `tmp/ai-runs/<run-id>/`，並在同一個目錄寫入 `ai-labeling-prompt.md`。後續所有 AI 初標工作都應限制在這個 run 目錄內。
 
+若這次目的不是整理某一本相簿，而是回頭驗證欄位、taxonomy 或 prompt 是否能跨活動場景成立，請改用跨活動抽樣：
+
+```bash
+pnpm ai:sample
+```
+
+這會讀取 `data/ai-cross-activity-sample-plan.json`，從多本 SITCON Flickr 相簿依相簿順序等距抽樣，產生 `tmp/ai-samples/<run-id>/photos.csv` 與 `tmp/ai-runs/<run-id>/`。這份資料集只用於本機 AI 初標測試，不代表正式 Sheets 資料，也不會寫入 Google Sheets。
+
+跨活動抽樣預設只用 `fixtures/photos.csv` 重用少量已知 metadata，其他照片 metadata 會即時從 Flickr 取得。若要刻意沿用正式 Sheets 匯出中的既有欄位值，可以加上 `--photos tmp/sheets-export/photos.csv`，但該檔案必須先和目前 schema 同步。
+
 ### 3. 多模型或多輪比較時建立 attempt
 
 若要把同一批輸入交給不同模型，或同一模型重跑第二輪，請從既有 run 建立 attempt，不要手動複製整個資料夾：

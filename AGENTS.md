@@ -37,6 +37,7 @@ The main goal is not to replace Flickr. The repository should keep a practical i
 - `data/photo-schema.json`: shared field schema for Google Sheets, CSV exports, Apps Script helpers, and CLI validation.
 - `data/tag-taxonomy.json`: controlled taxonomy for photo tags and enum fields.
 - `data/sponsorship-items.json`: fixed snapshot derived from SITCON 2026 CFS sponsorship item data.
+- `data/ai-cross-activity-sample-plan.json`: versioned cross-activity sampling plan for field, taxonomy, prompt, and validator evaluation runs.
 - `scripts/add-photo.mjs`: helper for generating or appending a CSV row from a Flickr photo URL.
 - `scripts/discover-albums.mjs`: helper for discovering SITCON Flickr albums and writing the local album fixture.
 - `scripts/list-albums.mjs`: helper for listing and filtering exported Google Sheets albums before choosing an intake target.
@@ -44,6 +45,7 @@ The main goal is not to replace Flickr. The repository should keep a practical i
 - `scripts/build-apps-script-config.mjs`: helper for generating Apps Script config from repo schema and taxonomy.
 - `scripts/create-ai-attempt.mjs`: helper for creating model/round attempts from an existing AI run while reusing the same input photos.
 - `scripts/build-ai-report.mjs`: helper for generating read-only HTML reports for single AI runs or multi-run attempt comparisons.
+- `scripts/build-cross-activity-ai-sample.mjs`: helper for building a local cross-activity AI labeling sample run from a versioned sampling plan and Flickr album photos.
 - `scripts/run-intake.mjs`: helper for producing a complete intake run artifact from a selected album.
 - `scripts/validate-intake-run.mjs`: helper for checking an intake run artifact before applying it to Google Sheets.
 - `scripts/validate-ai-fixtures.mjs`: helper for checking AI proposal fixtures against the current validator boundary.
@@ -152,6 +154,7 @@ pnpm ai:attempt -- --from <dir> --model <name> --round <number>
 pnpm ai:report -- --run <dir>
 pnpm ai:report -- --runs <dir> <dir>
 pnpm ai:review -- --run-dir <dir>
+pnpm ai:sample
 pnpm ai:diff -- --run-dir <dir>
 pnpm ai:plan -- --run-dir <dir>
 pnpm ai:prepare -- --image-size large-1024
