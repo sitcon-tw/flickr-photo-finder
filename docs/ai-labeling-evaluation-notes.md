@@ -490,7 +490,7 @@ tmp/ai-reports/ai-report-2026-05-10T06-57-13-628Z/index.html
 | --- | ---: |
 | proposal items | 1077 |
 | planned updates | 9551 |
-| review warnings | 13 |
+| review warnings | 21 |
 | `visual_description` | 1077 |
 | `scene_tags` | 1062 |
 | `mood_tags` | 1050 |
@@ -527,13 +527,16 @@ reason 仍有局部模板化。`curation_status = ai_labeled` 的同一句 reaso
 
 這輪不建議整包直接寫回 Google Sheets。它比較適合作為 SITCON 2026 全相簿的第一層候選索引，讓人類透過報表快速篩選，再分欄位或分批套用。
 
-可優先考慮採用或抽查的欄位是 `visual_description`、`scene_tags`、`mood_tags`、部分 `people_count`。`visual_description` 的唯一性與具體度已能服務專案目標，尤其能補上 taxonomy 找不到的長尾線索；`scene_tags` 與 `mood_tags` 覆蓋率也高，適合做搜尋與篩選基礎。
+可優先考慮採用或抽查的欄位是 `visual_description`、`scene_tags`、部分 `mood_tags`、部分 `people_count`。`visual_description` 的唯一性與具體度已能服務專案目標，尤其能補上 taxonomy 找不到的長尾線索；`scene_tags` 覆蓋率高，可作為搜尋與篩選基礎。
+
+`mood_tags` 有助於情緒與宣傳語感找圖，但本輪 1050/1077 張都有 mood 候選值，`專業` 488 次、`專注` 415 次，顯示模型可能把它當成半必填分類。它應作為輔助線索，而不是高信任精準篩選條件；採用前應特別抽查 `專業`、`專注`、`友善` 這類泛用值是否真的有明確視覺證據。
 
 需要更嚴格人工守門的欄位是 `recommended_uses`、`safe_crop`、`public_use_status`、贊助相關欄位。`recommended_uses` 要特別壓低 `活動回顧` 與無贊助證據的 `贊助成果報告`；`safe_crop` 要抽查相似講者照片是否真的不裁臉、不裁字、不裁主要物件；`public_use_status` 要避免把未標記誤讀為安全。
 
 下一輪多 worker 流程應增加幾個 QA 檢查：
 
 - 檢查 reason 與 `visual_description` 是否為繁體中文。
+- 檢查 `mood_tags` 是否幾乎每張都有，或 `專業`、`專注`、`友善` 是否過度集中。
 - 針對每個 worker 或 chunk 產生欄位分布統計，避免某個 worker 特別愛填或漏填某欄。
 - 對 `recommended_uses = 贊助成果報告` 但沒有贊助欄位的照片維持 warning，並在報表中更醒目呈現。
 - 對 `people_count = 0` 但描述、reason、scene tags 提到人物線索的照片維持人工確認清單。
