@@ -6,6 +6,7 @@
   "packageManager": "pnpm@10.18.0",
   "scripts": {
     "preinstall": "node scripts/ensure-pnpm.mjs",
+    "eval": "node scripts/eval-workflow.mjs",
     "start": "node scripts/workflow.mjs",
     "workflow": "node scripts/workflow.mjs",
     "album:add": "node scripts/add-album.mjs",

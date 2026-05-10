@@ -40,6 +40,7 @@ The main goal is not to replace Flickr. The repository should keep a practical i
 - `data/ai-cross-activity-sample-plan.json`: versioned cross-activity sampling plan for field, taxonomy, prompt, and validator evaluation runs.
 - `scripts/add-photo.mjs`: helper for generating or appending a CSV row from a Flickr photo URL.
 - `scripts/discover-albums.mjs`: helper for discovering SITCON Flickr albums and writing the local album fixture.
+- `scripts/eval-workflow.mjs`: guided interface for model quality, prompt, taxonomy, cross-activity sample, and search-gain evaluation work.
 - `scripts/list-albums.mjs`: helper for listing and filtering exported Google Sheets albums before choosing an intake target.
 - `scripts/sync-albums.mjs`: helper for merging a Google Sheets albums CSV export with discovered albums and producing a Sheets-ready CSV.
 - `scripts/build-apps-script-config.mjs`: helper for generating Apps Script config from repo schema and taxonomy.
@@ -142,6 +143,7 @@ The validation script currently checks:
 
 ```bash
 pnpm dev
+pnpm eval
 pnpm workflow
 pnpm albums:discover
 pnpm albums:list

@@ -32,7 +32,8 @@
 
 ### 目前可用
 
-- `pnpm workflow`，先說明完整資料流，再依階段引導常見工作流程，包含相簿匯入、AI prepare/attempt/review/report/search、Sheets 維護與 Pages artifact build/check，作為新接觸者與日常操作的主要入口。相簿匯入會在產生 intake run 後記住 run 目錄，並可直接接續 validation 與 Sheets dry-run。
+- `pnpm workflow`，先說明完整資料流，再依階段引導常見工作流程，包含相簿匯入、AI prepare/review/report、Sheets 維護與 Pages artifact build/check，作為新接觸者與日常操作的主要入口。相簿匯入會在產生 intake run 後記住 run 目錄，並可直接接續 validation 與 Sheets dry-run。
+- `pnpm eval`，引導模型品質、prompt、taxonomy、跨活動樣本與 `visual_description` 搜尋增益評估；這是評估入口，不是一般照片整理主線。
 - 本機 static search UI，預設讀 `fixtures/photos.csv`。
 - `pnpm validate:data`，檢查 sample/export data、schema 與 taxonomy。
 - `pnpm sheets:init`，產生建立 Google Sheets MVP 所需的初始 CSV。

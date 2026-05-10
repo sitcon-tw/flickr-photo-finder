@@ -112,6 +112,7 @@ pnpm workflow
 | 處理一本 Flickr 相簿，並接續檢查 / dry-run | `pnpm workflow -- --task album-intake` |
 | 準備 AI 初標工作包 | `pnpm workflow -- --task ai-prepare` |
 | 檢查 AI 初標結果 | `pnpm workflow -- --task ai-review` |
+| 評估模型、prompt 或 taxonomy 品質 | `pnpm eval` |
 | 維護 Google Sheets | `pnpm workflow -- --task sheets` |
 | 建立並檢查公開前端 artifact | `pnpm workflow -- --task pages-build` |
 | 維護 Apps Script | `docs/apps-script-maintenance-design.md`、`pnpm apps-script:bind -- <script-id>`、`pnpm apps-script:push` |
