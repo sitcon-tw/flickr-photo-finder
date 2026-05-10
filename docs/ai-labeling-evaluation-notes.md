@@ -544,6 +544,145 @@ reason 仍有局部模板化。`curation_status = ai_labeled` 的同一句 reaso
 
 整體判斷：這輪代表流程已經能支撐千張級照片的 AI 初標，但尚未達到無人工挑選即可寫回的程度。它最有價值的不是「一次完成資料庫」，而是證明 `visual_description` 加上報表與 warning 可以把 1077 張照片壓縮成可審核的候選集。
 
+## 2026-05-10 跨活動 43 張三模型評估
+
+本輪使用 `pnpm eval:sample` 建立跨活動測試工作包：
+
+```bash
+tmp/ai-runs/ai-cross-activity-sample-2026-05-10
+```
+
+樣本共 43 張，來自 12 種活動或場景類型，混合已評估和未評估相簿：
+
+- 已評估基準：SITCON 2026、SITCON 2026 負一籌＋BoF、2025 SITCON Hour of Code 桃園場、教育部青發署第三屆青志獎。
+- 未評估類型：SITCON 學生戰鬥機 Podcast、SITCON Camp 2025 Day 1、SITCON Hackathon 2024、SITCON 2025 合作攤位、SITCON 2025 紀念品&衣服、SITCON 2025 咖啡廳、SITCON 2025 導遊團、SITCON 2022 教育廣播電台錄音。
+
+本輪目的不是挑選回寫基底，而是檢查 `subject_type`、新擴充後的 `scene_tags`、`mood_tags`、`recommended_uses`、`visual_description` 與 prompt 是否能跨活動成立。
+
+三個 attempt 為：
+
+```bash
+tmp/ai-runs/ai-cross-activity-sample-2026-05-10-attempt-claude-r1-cross-activity
+tmp/ai-runs/ai-cross-activity-sample-2026-05-10-attempt-gemini-r1-cross-activity
+tmp/ai-runs/ai-cross-activity-sample-2026-05-10-attempt-gpt-r1-cross-activity
+```
+
+比較報表：
+
+```bash
+tmp/ai-reports/ai-report-2026-05-10T10-49-54-786Z/index.html
+```
+
+操作者紀錄：
+
+- Claude attempt 使用 Claude Opus 4.7。
+- Gemini attempt 使用 Gemini 3.1 Pro Preview，耗時最久，過程中曾發生 repetition loop，重複輸出 `.0000000000002.0000000000002.0000000000002.`。
+- GPT attempt 使用 GPT 5.5，耗時約 5 分 30 秒。
+
+注意：Gemini 的 `metadata-proposals.json` producer 寫成 `gemini-2.5-pro`，但操作者紀錄為 Gemini 3.1 Pro Preview；後續比較應以操作者紀錄為準，並把 producer 欄位視為本次執行時人工或模型填寫不一致的 metadata 問題。
+
+### 彙整數字
+
+| attempt | proposals | planned updates | review warnings | confidence fields | visual_description 平均字數 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Claude Opus 4.7 | 43 | 389 | 1 | 346 | 132 |
+| Gemini 3.1 Pro Preview | 43 | 404 | 3 | 0 | 46 |
+| GPT 5.5 | 43 | 374 | 2 | 0 | 40 |
+
+三者都通過 validator，43 張都有 `people_count`、`subject_type`、`orientation`、`has_negative_space`、`visual_description` 與 `curation_status`。這表示目前 schema 與 prompt 至少能讓三個模型在跨活動樣本上產出完整基礎欄位。
+
+### Claude Opus 4.7
+
+Claude 這輪最有審核資訊量：
+
+- `visual_description` 平均約 132 字，明顯比 Gemini 與 GPT 更能保存長尾細節，例如攤位文字、指標、道具、人物姿勢與空間關係。
+- 346 個欄位有 confidence，對人工抽查排序有幫助。
+- `recommended_uses` 只出現在 15 張，沒有把用途欄位當成每張必填；這有助於降低低區辨度填值。
+- `subject_type` 覆蓋完整，並且出現 people、object、text_signage、food、screen，對本輪跨活動抽樣的主體初篩足夠。
+
+主要問題：
+
+- `safe_crop` 出現在 41/43 張，其中 `16:9` 出現 37 次，仍可能偏樂觀。
+- 有 5 張 `people_count = 0` 但 scene tags 或 reason 提到人物相關線索，需要人工確認。
+- `sponsorship_tags` 有 5 張、`sponsorship_items` 有 4 張，應抽查是否真的有贊助脈絡，而不是把合作單位、主辦單位或一般品牌畫面都當成贊助成果。
+
+判斷：Claude 是本輪最適合做 prompt / schema 評估基準的輸出，尤其適合觀察 `visual_description` 是否能支援自然語言找圖。不建議直接全量寫回，但值得優先人工抽查。
+
+### Gemini 3.1 Pro Preview
+
+Gemini 這輪比早期整批退化輸出好很多，43 張都有完整基礎欄位，`scene_tags` 40 張、`mood_tags` 33 張、`recommended_uses` 21 張，代表它有嘗試逐張讀圖。
+
+主要問題：
+
+- orientation reason 明顯模板化：40 張重複「照片長寬比例為橫式。」。
+- 所有候選值都沒有 confidence。
+- `visual_description` 平均約 46 字，能提供基本搜尋線索，但細節密度低於 Claude。
+- 有 8 張 `people_count = 0` 但 scene tags 或 reason 提到人物相關線索。
+- 操作過程中發生 repetition loop，這是執行穩定性風險，不只是輸出品質問題。
+
+判斷：Gemini 的輸出可用來觀察 taxonomy 覆蓋與基本欄位，但本輪不適合作為回寫基底。repetition loop 應被視為大型批次或長任務風險，後續若使用 Gemini，應偏向更小 chunk 或更嚴格中途檢查。
+
+### GPT 5.5
+
+GPT 這輪速度最快，約 5 分 30 秒完成 43 張。它通過 validator，planned updates 最少，欄位覆蓋比 Claude / Gemini 保守。
+
+優點：
+
+- `recommended_uses` 23 張，比 Claude 積極，但沒有像大型 run 那樣把 `活動回顧` 塞到幾乎每張。
+- `has_negative_space = false` 33 張、`true` 10 張，比 Gemini / Claude 更保守。
+- `priority_level` 只出現 1 張，沒有把它當成品質分數預設填值。
+- 贊助相關欄位只出現少量，沒有大規模亂填。
+
+主要問題：
+
+- 所有候選值都沒有 confidence。
+- `visual_description` 平均約 40 字，偏短，對長尾搜尋的幫助有限。
+- `mood_tags` 只出現在 6 張，若社群宣傳需要情緒找圖，這輪訊號不足。
+- 有 7 張 `people_count = 0` 但 scene tags 或 reason 提到人物相關線索。
+- 抽樣第一張攤位合照中，GPT 將 `people_count` 標為 3，但 Claude / Gemini 皆標為 4，顯示仍需抽查人數。
+
+判斷：GPT 適合作為快速 baseline，尤其適合看保守欄位覆蓋與流程速度；但若目標是提升自然語言搜尋與情緒找圖，這輪輸出不如 Claude。
+
+### 搜尋實驗觀察
+
+三個 attempt 都執行了：
+
+```bash
+pnpm eval:search -- --run-dir <attempt-dir> --top 5
+```
+
+初步觀察：
+
+- Claude 的 `visual_description` 對「有留白可放字的網站 hero 照片」和「適合社群貼文的青春感合照」有明顯補充效果，能讓 taxonomy-only 找不到或排序較後的照片進入 combined top results。
+- Gemini 的 `visual_description` 也能讓部分照片進入搜尋結果，例如志工招募、hero、講者宣傳查詢，但描述偏短，排序提升多半只是補基本線索。
+- GPT 的 description lift 最少，這和它的 `visual_description` 較短一致。
+- 在部分查詢中，structured taxonomy 欄位本身權重過強，`visual_description` 只能微調排序，無法修正 `recommended_uses` 或 `has_negative_space` 一旦填錯造成的錯誤高分。
+
+這支持兩個方向：
+
+1. `visual_description` 應保留，且品質差異會直接影響自然語言搜尋效果。
+2. 搜尋實驗不能只看 description lift；也要檢查 structured 欄位是否因錯誤或過度泛用而主導排序。
+
+### 本輪欄位設計判斷
+
+`subject_type` 在跨活動樣本中是有價值的。people 仍是最多，但 object、food、text_signage、screen、space 都有出現需求，特別是在紀念品、咖啡廳、導遊團、廣播錄音與舞台畫面中能幫助初篩。
+
+`scene_tags` 目前比前一版更能涵蓋跨活動場景。新加入的 `指標`、`場地`、`螢幕`、`頒獎`、`兒童` 都有用武之地。暫時不建議再急著新增更多 scene tag；下一步應先看模型是否把既有值用對。
+
+`mood_tags` 仍是低信任輔助欄位。Claude / Gemini 覆蓋較高，GPT 很低，表示 prompt 對 mood 的要求仍不穩。它適合搜尋語感，不適合作為精準篩選條件。
+
+`recommended_uses` 仍需要守門。Gemini 對 `贊助提案` 和 `贊助成果報告` 較積極；Claude 較保守；GPT 中間偏保守。這個欄位仍不應由模型直接全量採用。
+
+`safe_crop` 仍是高風險欄位。三個模型都大量提出 `16:9`，但是否真的安全需要看主體、文字和人臉位置，不應只因橫式就填。
+
+### 本輪採用建議
+
+- 不建議任何一輪直接全量寫回 Sheets。
+- 若要挑一輪作為人工抽查基底，優先 Claude，因為描述與 reason 最有資訊量，且有 confidence。
+- 若只需要快速 baseline 或測試流程速度，可用 GPT，但不應期待它補足長尾搜尋細節。
+- Gemini 本輪先作為負面/風險案例保存，重點不是「完全不可用」，而是要記錄 repetition loop、無 confidence、orientation reason 模板化與人數矛盾。
+- 下一步應抽查比較報表中的 10 到 15 張跨活動代表照片，特別看：人數為 0 的矛盾照片、合作攤位贊助欄位、hero 留白、food/object 主體、以及 `subject_type = text_signage` / `screen` 的邊界。
+
 ## 目前已知容易失準的欄位
 
 ### `safe_crop`
