@@ -173,6 +173,14 @@ pnpm apps-script:open
 pnpm apps-script:smoke-test -- --check
 ```
 
+校對 sidebar 的 UI/UX 調整可以先用本機 mock preview 加速迭代，不需要每次都 push 到 Apps Script：
+
+```bash
+pnpm review-panel:preview
+```
+
+此指令會從 `fixtures/photos.csv`、`data/photo-schema.json` 與 `data/tag-taxonomy.json` 產生 `tmp/review-panel-preview/index.html`，並注入 mock `google.script.run`。它適合檢查 sidebar 排版、sticky header、上一張 / 下一張 buffer、hover 說明、未儲存警告與背景儲存狀態；不驗證 Google 帳號授權、Apps Script deployment、真實 Sheets 寫入或 `SpreadsheetApp` 行為。正式部署前仍應執行 `pnpm apps-script:push` 並在 Sheet 上做一次手動驗收。
+
 `clasp` status/push/open 需要目前登入的 Google 帳號已啟用 Apps Script API。若出現 `User has not enabled the Apps Script API`，先到 <https://script.google.com/home/usersettings> 啟用，等待幾分鐘後重試。
 
 Apps Script manifest 目前需要以下 scopes：
