@@ -395,6 +395,8 @@
       const status = document.querySelector("#status");
 
       const bootstrapState = <?!= bootstrapState ?>;
+      const rowBufferBefore = 3;
+      const rowBufferAfter = 3;
       const sidebarFieldNames = [
         "people_count",
         "subject_type",
@@ -414,9 +416,11 @@
         "curation_status",
       ];
       const sidebarFieldSet = new Set(sidebarFieldNames);
+      const rowCache = new Map();
       let currentState = null;
       let saveToken = 0;
       let pendingSaveCount = 0;
+      let prefetchToken = 0;
 
       function setBusy(isBusy, mode = "load") {
         const loading = isBusy && mode === "load";
@@ -425,6 +429,21 @@
         nextButton.disabled = loading || !currentState;
         prevButton.disabled = loading || !currentState;
         saveButton.disabled = loading || !currentState || hasCurrentErrors();
+      }
+
+      function cacheState(state) {
+        if (!state?.rowNumber) {
+          return;
+        }
+        rowCache.set(Number(state.rowNumber), state);
+      }
+
+      function cacheBuffer(buffer) {
+        (buffer?.photos || []).forEach(cacheState);
+      }
+
+      function cachedRow(rowNumber) {
+        return rowCache.get(Number(rowNumber)) || null;
       }
 
       function updateSaveLine(message = "") {
@@ -790,6 +809,7 @@
       }
 
       function render(state) {
+        cacheState(state);
         currentState = state;
         rowNumberInput.value = state.rowNumber;
         rowSummary.textContent = `目前載入 photos 第 ${state.rowNumber} 列。`;
@@ -862,6 +882,8 @@
         setTopStatus(failureMessage(error), "error");
       }
 
+      function handlePrefetchFailure() {}
+
       function handleSaveFailure(error) {
         pendingSaveCount = Math.max(0, pendingSaveCount - 1);
         updateSaveLine();
@@ -869,18 +891,45 @@
         setSaveStatus(failureMessage(error), "error");
       }
 
-      function loadRow(rowNumber) {
+      function prefetchRowsAround(rowNumber) {
+        const normalizedRowNumber = Number(rowNumber);
+        if (!Number.isInteger(normalizedRowNumber) || normalizedRowNumber <= 1) {
+          return;
+        }
+        const token = ++prefetchToken;
+        google.script.run
+          .withSuccessHandler((buffer) => {
+            if (token < prefetchToken) {
+              return;
+            }
+            cacheBuffer(buffer);
+          })
+          .withFailureHandler(handlePrefetchFailure)
+          .getReviewPhotoBufferByRow(normalizedRowNumber, rowBufferBefore, rowBufferAfter);
+      }
+
+      function loadRow(rowNumber, options = {}) {
+        const normalizedRowNumber = Number(rowNumber);
+        const cachedState = options.useCache !== false ? cachedRow(normalizedRowNumber) : null;
+        if (cachedState) {
+          render(cachedState);
+          prefetchRowsAround(normalizedRowNumber);
+          return;
+        }
         setBusy(true);
         setTopStatus("載入中...");
         setSaveStatus("");
         google.script.run
-          .withSuccessHandler(render)
+          .withSuccessHandler((state) => {
+            render(state);
+            prefetchRowsAround(state.rowNumber);
+          })
           .withFailureHandler(handleLoadFailure)
           .getReviewPhotoByRow(rowNumber);
       }
 
       function loadRequestedRow() {
-        loadRow(rowNumberInput.value);
+        loadRow(rowNumberInput.value, { useCache: false });
       }
 
       function loadActiveRow() {
@@ -888,7 +937,10 @@
         setTopStatus("讀取目前選取列...");
         setSaveStatus("");
         google.script.run
-          .withSuccessHandler(render)
+          .withSuccessHandler((state) => {
+            render(state);
+            prefetchRowsAround(state.rowNumber);
+          })
           .withFailureHandler(handleLoadFailure)
           .getReviewPanelState();
       }
@@ -910,6 +962,7 @@
         google.script.run
           .withSuccessHandler((state) => {
             pendingSaveCount = Math.max(0, pendingSaveCount - 1);
+            cacheState(state);
             if (pendingSaveCount > 0) {
               updateSaveLine();
             } else {
@@ -937,6 +990,7 @@
       nextButton.addEventListener("click", () => loadRelativeRow(1));
       if (bootstrapState) {
         render(bootstrapState);
+        prefetchRowsAround(bootstrapState.rowNumber);
       } else {
         setBusy(false);
         setTopStatus("請關閉 panel，在 photos 選取一列後重新開啟 Open review panel。", "error");

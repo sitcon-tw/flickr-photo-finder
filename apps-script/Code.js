@@ -176,6 +176,31 @@ function getReviewPhotoByRow(rowNumber) {
   return buildReviewPanelState_(sheet, normalizedRowNumber);
 }
 
+function getReviewPhotoBufferByRow(rowNumber, beforeCount, afterCount) {
+  const sheet = getPhotosSheet_();
+  assertPhotosHeader_(sheet);
+  const normalizedRowNumber = Number(rowNumber);
+  if (!Number.isInteger(normalizedRowNumber) || normalizedRowNumber <= 1) {
+    throw new Error("請輸入 photos 的資料列列號。");
+  }
+
+  const lastRow = sheet.getLastRow();
+  if (normalizedRowNumber > lastRow) {
+    throw new Error(`第 ${normalizedRowNumber} 列超出 photos 目前資料範圍。`);
+  }
+
+  const safeBeforeCount = Math.max(0, Math.min(Number(beforeCount) || 0, 10));
+  const safeAfterCount = Math.max(0, Math.min(Number(afterCount) || 0, 10));
+  const startRow = Math.max(2, normalizedRowNumber - safeBeforeCount);
+  const endRow = Math.min(lastRow, normalizedRowNumber + safeAfterCount);
+  const rows = sheet.getRange(startRow, 1, endRow - startRow + 1, getConfig_().headers.length).getDisplayValues();
+
+  return {
+    centerRowNumber: normalizedRowNumber,
+    photos: rows.map((row, index) => buildReviewPanelStateFromRow_(row, startRow + index)),
+  };
+}
+
 function saveReviewPhoto(rowNumber, values) {
   const sheet = getPhotosSheet_();
   assertPhotosHeader_(sheet);
