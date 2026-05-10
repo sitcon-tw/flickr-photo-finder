@@ -163,8 +163,31 @@
         box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.08);
       }
 
+      .field.warning:not(.invalid) input,
+      .field.warning:not(.invalid) select,
+      .field.warning:not(.invalid) textarea,
+      .field.warning:not(.invalid) .selected-list {
+        border-color: #f59e0b;
+        box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.08);
+      }
+
       label {
+        align-items: center;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
         font-weight: 700;
+      }
+
+      .field-badge {
+        background: #fef3c7;
+        border: 1px solid #fcd34d;
+        border-radius: 4px;
+        color: #92400e;
+        font-size: 11px;
+        font-weight: 700;
+        line-height: 1.2;
+        padding: 1px 4px;
       }
 
       .help-button {
@@ -414,6 +437,17 @@
       }
 
       .field.invalid .field-error {
+        display: block;
+      }
+
+      .field-warning {
+        color: #92400e;
+        display: none;
+        font-size: 12px;
+        line-height: 1.4;
+      }
+
+      .field.warning .field-warning {
         display: block;
       }
 
@@ -876,6 +910,14 @@
         cacheState(nextState);
       }
 
+      function isReviewedRequiredField(field) {
+        return Boolean(currentState?.reviewedRequiredFields?.includes(field.name));
+      }
+
+      function isBlankValue(value) {
+        return !String(value || "").trim();
+      }
+
       function validateField(field, value, values) {
         const errors = [];
         const trimmed = String(value || "").trim();
@@ -883,6 +925,9 @@
           errors.push("必填欄位不可空白");
         }
         if (!trimmed) {
+          if (values.curation_status === "reviewed" && isReviewedRequiredField(field)) {
+            errors.push("完成審核需要填寫此欄位");
+          }
           return errors;
         }
         if (field.type === "url" && !/^https?:\/\/\S+$/i.test(trimmed)) {
@@ -911,10 +956,17 @@
             }
           });
         }
-        if (values.curation_status === "reviewed" && currentState.reviewedRequiredFields?.includes(field.name) && !trimmed) {
-          errors.push("reviewed 需要填寫此欄位");
-        }
         return errors;
+      }
+
+      function validateCompletionWarning(field, value, values) {
+        if (values.curation_status === "reviewed") {
+          return [];
+        }
+        if (!isReviewedRequiredField(field) || !isBlankValue(value)) {
+          return [];
+        }
+        return ["完成審核前需填寫"];
       }
 
       function validateForm() {
@@ -924,6 +976,7 @@
         const values = currentValuesForValidation();
         const errors = [];
         const errorMap = new Map();
+        const warningMap = new Map();
         visibleFields().forEach((field) => {
           const fieldErrors = validateField(field, values[field.name] || "", values);
           if (fieldErrors.length > 0) {
@@ -932,15 +985,25 @@
               errors.push({ rowNumber: currentState.rowNumber, fieldName: field.name, message });
             });
           }
+          const fieldWarnings = validateCompletionWarning(field, values[field.name] || "", values);
+          if (fieldWarnings.length > 0) {
+            warningMap.set(field.name, fieldWarnings);
+          }
         });
 
         form.querySelectorAll(".field").forEach((wrapper) => {
           const fieldName = wrapper.dataset.fieldName;
           const messages = errorMap.get(fieldName) || [];
+          const warnings = warningMap.get(fieldName) || [];
           wrapper.classList.toggle("invalid", messages.length > 0);
+          wrapper.classList.toggle("warning", messages.length === 0 && warnings.length > 0);
           const errorNode = wrapper.querySelector(".field-error");
           if (errorNode) {
             errorNode.textContent = messages.join("；");
+          }
+          const warningNode = wrapper.querySelector(".field-warning");
+          if (warningNode) {
+            warningNode.textContent = warnings.join("；");
           }
         });
         const hasErrors = errors.length > 0;
@@ -956,6 +1019,19 @@
 
       function hasCurrentErrors() {
         return Boolean(form.querySelector(".field.invalid"));
+      }
+
+      function focusFirstIssue(errors) {
+        const fieldName = errors.find((error) => error.fieldName)?.fieldName;
+        const wrapper = Array.from(form.querySelectorAll(".field")).find((field) => field.dataset.fieldName === fieldName);
+        if (!wrapper) {
+          return;
+        }
+        wrapper.scrollIntoView({ block: "center", behavior: "smooth" });
+        const control = wrapper.querySelector("input:not([type='hidden']), select, textarea, .combo-input");
+        if (control) {
+          control.focus({ preventScroll: true });
+        }
       }
 
       function displayImageUrl(url) {
@@ -1002,6 +1078,12 @@
           const label = document.createElement("label");
           label.htmlFor = `field-${field.name}`;
           label.textContent = field.required ? `${field.labelZh} *` : field.labelZh;
+          if (isReviewedRequiredField(field)) {
+            const badge = document.createElement("span");
+            badge.className = "field-badge";
+            badge.textContent = "完成必填";
+            label.append(badge);
+          }
           const helpButton = document.createElement("button");
           helpButton.type = "button";
           helpButton.className = "help-button";
@@ -1022,8 +1104,10 @@
           meta.textContent = parts.filter(Boolean).join(" - ");
           const fieldError = document.createElement("div");
           fieldError.className = "field-error";
+          const fieldWarning = document.createElement("div");
+          fieldWarning.className = "field-warning";
           heading.append(label, helpButton, meta);
-          wrapper.append(heading, control, fieldError);
+          wrapper.append(heading, control, fieldError, fieldWarning);
           form.append(wrapper);
         });
 
@@ -1215,6 +1299,7 @@
         const errors = validateForm();
         if (errors.length > 0) {
           setSaveStatus(errors, "error");
+          focusFirstIssue(errors);
           return;
         }
         const values = { ...valuesFromForm(), curation_status: "reviewed" };
