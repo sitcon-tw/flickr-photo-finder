@@ -112,7 +112,7 @@
 
 ## P2 需求
 
-- QA 模式：給整理志工找欄位矛盾與缺值，例如 `approved` 但缺 photographer/license、網站 hero 但無留白、贊助用途但缺贊助欄位。
+- QA 模式：給整理志工找欄位矛盾與缺值，例如網站 hero 但無留白、贊助用途但缺贊助欄位、缺攝影師或授權資訊而需要回 Flickr 原頁確認。
 - 贊助覆蓋率概覽：哪些贊助品項已有可用候選，哪些缺圖。
 - 同義詞與任務語言橋接，例如「可放字」對應 `has_negative_space`，「品牌露出」對應 `sponsorship_tags`。
 - 若正式資料量超過 browser-side CSV 可接受範圍，再導入 build-time index。

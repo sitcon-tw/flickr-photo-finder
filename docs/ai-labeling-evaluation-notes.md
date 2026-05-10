@@ -346,7 +346,7 @@ curated 版重新執行 `pnpm ai:review` 後通過，planned updates 從 298 筆
 
 - 它把「搜尋用自然語言描述」和「欄位審核 reason」分開，避免污染 reason 的審核職責。
 - 它可補足 taxonomy 的長尾盲點，讓未來自然語言搜尋或 embedding 搜尋有更好的語料。
-- 它不列入 `reviewed_required_fields` 或 `approved_required_fields`，避免變成每張照片的人工審核負擔。
+- 它不列入 `reviewed_required_fields`，避免變成每張照片的人工審核負擔。
 - 它仍可進入 AI proposal / diff / update plan，讓人類在寫入前逐欄審核。
 
 但 `visual_description` 也有新風險：

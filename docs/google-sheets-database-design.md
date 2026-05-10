@@ -182,7 +182,7 @@ https://docs.google.com/spreadsheets/d/<spreadsheetId>/gviz/tq?tqx=out:csv&sheet
 
 ## 最低資料品質
 
-能進入 `photos` 的最低條件、`curation_status = reviewed` 的完整度要求，以及 `public_use_status = approved` 的使用要求，都由 `data/photo-schema.json` 定義，並由 `pnpm validate:data` 檢查。
+能進入 `photos` 的最低條件，以及 `curation_status = reviewed` 的完整度要求，都由 `data/photo-schema.json` 定義，並由 `pnpm validate:data` 檢查。`public_use_status = approved` 是整理者的使用提醒，不會讓 `photographer` 或 `license` 變成必填。
 
 這份文件只記錄資料表設計與欄位責任；不要在這裡另外維護一份必填欄位清單。
 

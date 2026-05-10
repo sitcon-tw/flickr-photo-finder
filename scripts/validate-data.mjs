@@ -4,7 +4,6 @@ import { parseCsv, parseSemicolonList } from "./csv-utils.mjs";
 import "./project-config.mjs";
 import {
   albumHeaders,
-  approvedRequiredFields,
   controlledListFields,
   controlledScalarFields,
   importBatchHeaders,
@@ -241,14 +240,6 @@ function validateReviewedPhotoRow(photo, rowNumber) {
   for (const field of reviewedRequiredFields) {
     if (!photo[field].trim()) {
       addError(`${formatRow(rowNumber, field)} is required for reviewed photos`);
-    }
-  }
-
-  if (photo.public_use_status === "approved") {
-    for (const field of approvedRequiredFields) {
-      if (!photo[field].trim()) {
-        addError(`${formatRow(rowNumber, field)} is required when public_use_status is approved`);
-      }
     }
   }
 }

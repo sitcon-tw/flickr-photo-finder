@@ -265,10 +265,6 @@ var SITCON_PHOTO_FINDER_CONFIG = {
     "subject_type",
     "scene_tags"
   ],
-  "approvedRequiredFields": [
-    "photographer",
-    "license"
-  ],
   "taxonomy": {
     "scene_tags": [
       "講者",

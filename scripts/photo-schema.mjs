@@ -42,4 +42,3 @@ export const controlledScalarFields = photoFields
   .map((field) => field.name);
 
 export const reviewedRequiredFields = photoTableSchema.reviewed_required_fields;
-export const approvedRequiredFields = photoTableSchema.approved_required_fields;

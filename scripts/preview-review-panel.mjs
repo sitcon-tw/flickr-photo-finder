@@ -85,7 +85,6 @@ function normalizePreviewRecord(record, index) {
 
 function buildState(record, rowNumber, fields) {
   return {
-    approvedRequiredFields: photoTableSchema.approved_required_fields ?? [],
     errors: [],
     fields,
     record,

@@ -131,7 +131,7 @@
 ### 照片整理志工
 
 - 會把前端當成 metadata QA 工具，用找圖失敗反查 taxonomy、AI 初標與欄位缺口。
-- 需要 QA-oriented filters，例如「網站 hero 但沒有留白」、「贊助用途但缺 sponsorship_items」、「approved 但缺 photographer/license」。
+- 需要 QA-oriented filters，例如「網站 hero 但沒有留白」、「贊助用途但缺 sponsorship_items」、「缺攝影師或授權資訊，需要回 Flickr 原頁確認」。
 - 這類 QA 功能可以晚於一般找圖體驗，但不應和公開找圖需求混淆。
 
 ### 技術/資料維護

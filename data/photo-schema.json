@@ -8,10 +8,6 @@
         "subject_type",
         "scene_tags"
       ],
-      "approved_required_fields": [
-        "photographer",
-        "license"
-      ],
       "fields": [
         {
           "name": "photo_id",
@@ -91,7 +87,6 @@
           "type": "taxonomy",
           "taxonomy_key": "subject_type",
           "required": false,
-          "required_for_reviewed": true,
           "multi_value": false,
           "maintainer_zh": "AI 或整理者",
           "description_zh": "照片海初篩用的主要視覺主體粗分類，例如人物、物件、餐食茶點、文字標示、螢幕或空間。只描述主體種類，不描述活動場景、人數規模或用途。"
@@ -102,7 +97,6 @@
           "type": "string",
           "required": false,
           "multi_value": false,
-          "required_when_public_use_status": "approved",
           "maintainer_zh": "匯入工具或整理者",
           "description_zh": "攝影師署名。SITCON 是 Flickr 帳號擁有者，不等於攝影師。"
         },
@@ -112,7 +106,6 @@
           "type": "string",
           "required": false,
           "multi_value": false,
-          "required_when_public_use_status": "approved",
           "maintainer_zh": "整理者",
           "description_zh": "Flickr 顯示的授權資訊。不確定時留空並使用 needs_review。"
         },
@@ -122,7 +115,6 @@
           "type": "taxonomy",
           "taxonomy_key": "scene_tags",
           "required": false,
-          "required_for_reviewed": true,
           "multi_value": true,
           "maintainer_zh": "整理者",
           "description_zh": "照片中看見的事實，例如攤位、會眾、舞台。"
@@ -133,7 +125,6 @@
           "type": "taxonomy",
           "taxonomy_key": "mood_tags",
           "required": false,
-          "required_for_reviewed": true,
           "multi_value": true,
           "maintainer_zh": "宣傳、設計、整理者",
           "description_zh": "照片帶來的感受，例如熱鬧、專注、青春感。"
@@ -144,7 +135,6 @@
           "type": "taxonomy",
           "taxonomy_key": "recommended_uses",
           "required": false,
-          "required_for_reviewed": true,
           "multi_value": true,
           "maintainer_zh": "各組整理者",
           "description_zh": "適合的工作用途，例如社群貼文、贊助提案。"
@@ -213,7 +203,6 @@
           "type": "taxonomy",
           "taxonomy_key": "public_use_status",
           "required": false,
-          "required_for_reviewed": true,
           "multi_value": false,
           "maintainer_zh": "熟悉公開素材風險者",
           "description_zh": "approved、needs_review、avoid。不確定用 needs_review。"
@@ -224,7 +213,6 @@
           "type": "taxonomy",
           "taxonomy_key": "priority_level",
           "required": false,
-          "required_for_reviewed": true,
           "multi_value": false,
           "maintainer_zh": "整理者",
           "description_zh": "high、normal、low。表示推薦使用優先度，不是照片品質分數。"

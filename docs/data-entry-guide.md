@@ -55,7 +55,7 @@ SITCON Flickr 上的照片擁有者是 SITCON，但攝影師 credit 會放在 Fl
 | `collections` | 素材包，例如志工招募、贊助提案、網站 hero、活動回顧。 |
 | `curation_notes` | 可公開閱讀的整理脈絡、注意事項或使用建議。不要寫敏感內部資訊。 |
 
-`reviewed` 完整度與 `approved` 使用要求由 `data/photo-schema.json` 的 `reviewed_required_fields` 與 `approved_required_fields` 定義，並由 `pnpm validate:data` 檢查。不要在這份指南另外維護欄位清單；若規則改變，請先更新 schema。
+`reviewed` 完整度由 `data/photo-schema.json` 的 `reviewed_required_fields` 定義，並由 `pnpm validate:data` 檢查。不要在這份指南另外維護欄位清單；若規則改變，請先更新 schema。`public_use_status = approved` 不會讓 `photographer` 或 `license` 變成必填，缺值時只代表實際對外使用前仍要回 Flickr 原頁確認來源脈絡。
 
 ## CSV 與多值格式
 

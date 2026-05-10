@@ -914,9 +914,6 @@
         if (values.curation_status === "reviewed" && currentState.reviewedRequiredFields?.includes(field.name) && !trimmed) {
           errors.push("reviewed 需要填寫此欄位");
         }
-        if (values.public_use_status === "approved" && currentState.approvedRequiredFields?.includes(field.name) && !trimmed) {
-          errors.push("approved 需要填寫此欄位");
-        }
         return errors;
       }
 

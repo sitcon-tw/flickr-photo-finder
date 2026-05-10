@@ -105,6 +105,7 @@ function makeRow(runId, overrides) {
     event_name: "SITCON",
     event_year: "2026",
     people_count: "1",
+    subject_type: "people",
     photographer: "Validation Test Photographer",
     license: "CC BY 2.0",
     scene_tags: "合照;會眾",
@@ -133,8 +134,7 @@ function buildSmokeTestRows(runId) {
     makeRow(runId, { photo_id: makeTestId(runId, "bad_scalar_taxonomy"), orientation: "diagonal" }),
     makeRow(runId, { photo_id: makeTestId(runId, "bad_boolean"), has_negative_space: "maybe" }),
     makeRow(runId, { photo_id: makeTestId(runId, "bad_url"), photo_url: "abc" }),
-    makeRow(runId, { photo_id: makeTestId(runId, "reviewed_missing_required"), curation_status: "reviewed", mood_tags: "" }),
-    makeRow(runId, { photo_id: makeTestId(runId, "approved_missing_required"), public_use_status: "approved", photographer: "", license: "" }),
+    makeRow(runId, { photo_id: makeTestId(runId, "reviewed_missing_required"), curation_status: "reviewed", subject_type: "" }),
   ];
 }
 

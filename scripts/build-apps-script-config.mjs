@@ -41,7 +41,6 @@ async function main() {
     headers: photosTable.fields.map((field) => field.name),
     fields: photosTable.fields.map(fieldForAppsScript),
     reviewedRequiredFields: photosTable.reviewed_required_fields ?? [],
-    approvedRequiredFields: photosTable.approved_required_fields ?? [],
     taxonomy,
   };
 

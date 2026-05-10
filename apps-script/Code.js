@@ -312,7 +312,6 @@ function buildReviewPanelStateFromRow_(row, rowNumber, providedErrors) {
   const record = rowToRecord_(row);
   const errors = providedErrors || validateRow_(row, rowNumber);
   return {
-    approvedRequiredFields: config.approvedRequiredFields || [],
     errors,
     fields: getReviewPanelFields_(),
     record,
@@ -634,9 +633,6 @@ function validateRow_(row, rowNumber) {
 
   if (values.curation_status === "reviewed") {
     errors.push(...validateRequiredFieldGroup_(values, config.reviewedRequiredFields, rowNumber, "reviewed"));
-  }
-  if (values.public_use_status === "approved") {
-    errors.push(...validateRequiredFieldGroup_(values, config.approvedRequiredFields, rowNumber, "approved"));
   }
 
   return errors;

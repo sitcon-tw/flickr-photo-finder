@@ -1,6 +1,6 @@
 # 照片欄位參考
 
-這份文件是給整理照片資料志工使用的人類速查摘要，不是第二份 schema。欄位順序、欄位 metadata、必填、多值、reviewed 完整度與 approved 使用要求，以 `data/photo-schema.json` 為準；若本文件和 schema 不一致，請先更新 schema，再修正這份速查表。
+這份文件是給整理照片資料志工使用的人類速查摘要，不是第二份 schema。欄位順序、欄位 metadata、必填、多值與 reviewed 完整度，以 `data/photo-schema.json` 為準；若本文件和 schema 不一致，請先更新 schema，再修正這份速查表。
 
 資料權威來源請以 `docs/README.md` 的真理來源表為準；更完整的流程與判斷原則請看 `docs/data-entry-guide.md`。
 
@@ -42,16 +42,17 @@
 | `curation_notes` | 否 | 否 | 否 | 整理者 | 公開 repo 中仍視為公開資料，不要寫入敏感內部資訊。 |
 | `curation_status` | 否 | 否 | 是 | 整理者 | `unreviewed`、`ai_labeled`、`reviewed`。 |
 
-## Reviewed 與 Approved 門檻
+## Reviewed 門檻與公開使用提醒
 
-`reviewed` 完整度與 `approved` 使用要求由 `data/photo-schema.json` 定義：
+`reviewed` 完整度由 `data/photo-schema.json` 定義：
 
 - `reviewed_required_fields`
-- `approved_required_fields`
 
 請不要在文件中另外維護一份欄位清單。若規則改變，先改 `data/photo-schema.json`，再讓 `pnpm validate:data` 和相關文件跟著更新。
 
 `reviewed` 的門檻應聚焦在照片是否具備最基礎可搜尋 metadata。適合用途、公開使用風險與推薦優先度仍是重要欄位，但不應阻擋整理者把基礎資料標成已人工檢查。
+
+`public_use_status = approved` 是整理者的使用提醒，不是授權欄位完整性保證，也不會讓 `photographer` 或 `license` 變成必填。若實際發布或交付素材時缺少攝影師或授權資訊，請回 Flickr 原頁確認來源脈絡。
 
 精選、素材包與不推薦使用不放在 `curation_status`。優先推薦用 `priority_level` 或 `collections` 表達；不建議推薦使用用 `public_use_status = avoid` 表達。
 

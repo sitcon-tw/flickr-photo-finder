@@ -87,9 +87,9 @@ Apps Script 讀取 `photos` 列時應使用 Sheets 顯示值，而不是原始 t
 
 ### 檢查 reviewed 完整度
 
-Apps Script 應依 `data/photo-schema.json` 的 `reviewed_required_fields` 與 `approved_required_fields` 提醒缺漏欄位。
+Apps Script 應依 `data/photo-schema.json` 的 `reviewed_required_fields` 提醒完成審核前必須補齊的欄位。
 
-不要在 Apps Script 中另寫一份永久分歧的規則，也不要在文件中重複維護欄位清單。
+不要在 Apps Script 中另寫一份永久分歧的規則，也不要在文件中重複維護欄位清單。`public_use_status = approved` 不額外要求 `photographer` 或 `license` 必填；這兩個欄位缺值時代表實際使用前仍需要回 Flickr 原頁確認來源脈絡。
 
 sidebar 的 `完成審核並下一張` 會使用 `reviewed_required_fields` 作為門檻。這組門檻應只阻擋最基礎可搜尋 metadata 的缺漏；`recommended_uses`、`public_use_status`、`priority_level`、`mood_tags` 等需要更多情境或主觀判斷的欄位，不應讓整理者無法完成基礎審核。
 
