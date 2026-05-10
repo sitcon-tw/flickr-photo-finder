@@ -539,10 +539,35 @@
         return option;
       }
 
-      function fillSelect(select, emptyLabel, values) {
+      function fieldByName(fieldName) {
+        return state.current?.fields?.find((field) => field.name === fieldName)
+          || state.list?.fields?.find((field) => field.name === fieldName)
+          || null;
+      }
+
+      function optionLabelForField(fieldName, value) {
+        const field = fieldByName(fieldName);
+        return field?.optionLabels?.[value] || value;
+      }
+
+      function optionLabel(field, value) {
+        return field.optionLabels?.[value] || value;
+      }
+
+      function photoTagLabel(value) {
+        for (const fieldName of ["curation_status", "public_use_status", "priority_level"]) {
+          const label = optionLabelForField(fieldName, value);
+          if (label !== value) {
+            return label;
+          }
+        }
+        return value;
+      }
+
+      function fillSelect(select, emptyLabel, values, fieldName = "") {
         select.textContent = "";
         select.append(optionElement("", emptyLabel));
-        values.forEach((value) => select.append(optionElement(value)));
+        values.forEach((value) => select.append(optionElement(value, fieldName ? optionLabelForField(fieldName, value) : value)));
       }
 
       function splitList(value) {
@@ -566,8 +591,8 @@
       function renderState(nextState) {
         const filters = currentFilters();
         state.list = nextState;
-        fillSelect(controls.curation, "全部整理", nextState.filters.curation_status || []);
-        fillSelect(controls.publicStatus, "全部公開狀態", nextState.filters.public_use_status || []);
+        fillSelect(controls.curation, "全部整理", nextState.filters.curation_status || [], "curation_status");
+        fillSelect(controls.publicStatus, "全部公開狀態", nextState.filters.public_use_status || [], "public_use_status");
         fillSelect(controls.use, "全部用途", nextState.filters.recommended_uses || []);
         fillSelect(controls.scene, "全部場景", nextState.filters.scene_tags || []);
         fillSelect(controls.sponsorship, "全部品項", nextState.filters.sponsorship_items || []);
@@ -628,7 +653,7 @@
               tag.className = ["unreviewed", "ai_labeled", "reviewed", "approved", "needs_review", "avoid"].includes(value)
                 ? "tag status"
                 : "tag";
-              tag.textContent = value;
+              tag.textContent = photoTagLabel(value);
               tags.append(tag);
             });
 
@@ -643,7 +668,7 @@
           const select = document.createElement("select");
           select.name = field.name;
           select.append(optionElement("", "未填寫"));
-          field.options.forEach((option) => select.append(optionElement(option)));
+          field.options.forEach((option) => select.append(optionElement(option, optionLabel(field, option))));
           select.value = value;
           return select;
         }
@@ -723,7 +748,10 @@
           const query = input.value.trim().toLowerCase();
           return field.options
             .filter((option) => !selectedValues.includes(option))
-            .filter((option) => !query || option.toLowerCase().includes(query));
+            .filter((option) => {
+              const label = optionLabel(field, option).toLowerCase();
+              return !query || option.toLowerCase().includes(query) || label.includes(query);
+            });
         }
 
         function renderSelected() {
@@ -732,10 +760,11 @@
             const token = document.createElement("span");
             token.className = field.options.includes(item) ? "selected-token" : "selected-token unknown";
             const text = document.createElement("span");
-            text.textContent = item;
+            const label = optionLabel(field, item);
+            text.textContent = label;
             const remove = document.createElement("button");
             remove.type = "button";
-            remove.setAttribute("aria-label", `移除 ${item}`);
+            remove.setAttribute("aria-label", `移除 ${label}`);
             remove.textContent = "×";
             remove.addEventListener("click", () => {
               removeValue(item);
@@ -760,7 +789,8 @@
           options.forEach((option, index) => {
             const item = document.createElement("div");
             item.className = index === 0 ? "option active" : "option";
-            item.textContent = option;
+            item.textContent = optionLabel(field, option);
+            item.title = option;
             item.addEventListener("mousedown", (event) => {
               event.preventDefault();
               addValue(option);

@@ -65,6 +65,7 @@ function fieldForPreview(field, taxonomy) {
     labelZh: field.label_zh ?? field.name,
     multiValue: Boolean(field.multi_value),
     name: field.name,
+    optionLabels: taxonomy.option_labels?.[field.name] ?? {},
     options: field.taxonomy_key ? taxonomy[field.taxonomy_key] || [] : field.type === "boolean" ? ["true", "false"] : [],
     readOnly: ["photo_id", "photo_url", "image_preview_url"].includes(field.name),
     required: Boolean(field.required),

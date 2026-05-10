@@ -335,12 +335,27 @@ function getReviewPanelFields_() {
     labelZh: field.labelZh || field.name,
     multiValue: Boolean(field.multiValue),
     name: field.name,
+    optionLabels: getOptionLabelsForField_(field.name),
     options: field.taxonomyKey ? config.taxonomy[field.taxonomyKey] || [] : field.type === "boolean" ? ["true", "false"] : [],
     readOnly: ["photo_id", "photo_url", "image_preview_url"].includes(field.name),
     required: Boolean(field.required),
     taxonomyKey: field.taxonomyKey || "",
     type: field.type || "string",
   }));
+}
+
+function getOptionLabelsForField_(fieldName) {
+  const labels = getConfig_().taxonomy.option_labels || {};
+  return labels[fieldName] || {};
+}
+
+function labelForOption_(fieldName, value) {
+  return getOptionLabelsForField_(fieldName)[value] || value;
+}
+
+function formatOptionForNote_(fieldName, value) {
+  const label = labelForOption_(fieldName, value);
+  return label === value ? value : `${value} = ${label}`;
 }
 
 function readPhotoRow_(sheet, rowNumber) {
@@ -593,8 +608,9 @@ function buildFieldNote_(field, taxonomyValues) {
   if (field.multiValue) {
     lines.push("多值請用分號 ; 分隔。");
   }
-  if (taxonomyValues.length > 0) {
-    lines.push(`受控字彙：${taxonomyValues.join("、")}`);
+  const optionValues = taxonomyValues.length > 0 ? taxonomyValues : field.type === "boolean" ? ["true", "false"] : [];
+  if (optionValues.length > 0) {
+    lines.push(`受控字彙：${optionValues.map((value) => formatOptionForNote_(field.name, value)).join("、")}`);
   }
   return lines.filter(Boolean).join("\n");
 }

@@ -653,6 +653,19 @@
         return option;
       }
 
+      function optionLabel(field, value) {
+        return field.optionLabels?.[value] || value;
+      }
+
+      function fieldByName(fieldName) {
+        return currentState?.fields?.find((field) => field.name === fieldName) || null;
+      }
+
+      function optionLabelForField(fieldName, value) {
+        const field = fieldByName(fieldName);
+        return field ? optionLabel(field, value) : value;
+      }
+
       function splitList(value) {
         return String(value || "")
           .split(";")
@@ -730,7 +743,10 @@
           const query = input.value.trim().toLowerCase();
           return field.options
             .filter((option) => !selectedValues.includes(option))
-            .filter((option) => !query || option.toLowerCase().includes(query));
+            .filter((option) => {
+              const label = optionLabel(field, option).toLowerCase();
+              return !query || option.toLowerCase().includes(query) || label.includes(query);
+            });
         }
 
         function renderSelected() {
@@ -742,10 +758,11 @@
               token.classList.add("unknown");
             }
             const text = document.createElement("span");
-            text.textContent = item;
+            const label = optionLabel(field, item);
+            text.textContent = label;
             const remove = document.createElement("button");
             remove.type = "button";
-            remove.setAttribute("aria-label", `移除 ${item}`);
+            remove.setAttribute("aria-label", `移除 ${label}`);
             remove.textContent = "×";
             remove.addEventListener("click", () => {
               removeValue(item);
@@ -770,7 +787,8 @@
           options.forEach((option, index) => {
             const item = document.createElement("div");
             item.className = index === 0 ? "option active" : "option";
-            item.textContent = option;
+            item.textContent = optionLabel(field, option);
+            item.title = option;
             item.addEventListener("mousedown", (event) => {
               event.preventDefault();
               addValue(option);
@@ -825,7 +843,7 @@
           const select = document.createElement("select");
           select.name = field.name;
           select.append(optionElement("", "未填寫"));
-          field.options.forEach((option) => select.append(optionElement(option)));
+          field.options.forEach((option) => select.append(optionElement(option, optionLabel(field, option))));
           select.value = value;
           return select;
         }
@@ -1060,8 +1078,8 @@
         photoContext.textContent = [
           state.record.event_name,
           state.record.event_year,
-          state.record.public_use_status ? `公開狀態：${state.record.public_use_status}` : "",
-          state.record.curation_status ? `整理狀態：${state.record.curation_status}` : "",
+          state.record.public_use_status ? `公開狀態：${optionLabelForField("public_use_status", state.record.public_use_status)}` : "",
+          state.record.curation_status ? `整理狀態：${optionLabelForField("curation_status", state.record.curation_status)}` : "",
         ].filter(Boolean).join(" / ");
         photoUrl.href = state.record.photo_url || "#";
         previewUrl.href = imageUrl || state.record.image_preview_url || "#";

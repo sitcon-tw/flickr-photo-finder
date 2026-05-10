@@ -2,7 +2,7 @@
 var SITCON_PHOTO_FINDER_CONFIG = {
   "generatedAt": "not recorded in committed source",
   "schemaVersion": "2026-mvp-1",
-  "taxonomyVersion": "sha256:d95fcfc7a65a",
+  "taxonomyVersion": "sha256:8f4560bc8a24",
   "sponsorshipItemsVersion": "sha256:e33bfe6034e1",
   "sponsorshipItemsSnapshotNote": "SITCON 2026 CFS has ended. Treat this file as a fixed snapshot; future CFS versions should replace or extend it explicitly instead of being automatically synced.",
   "photosSheetName": "photos",
@@ -406,6 +406,40 @@ var SITCON_PHOTO_FINDER_CONFIG = {
       "ai_labeled",
       "reviewed"
     ],
+    "option_labels": {
+      "subject_type": {
+        "people": "人物",
+        "object": "物件",
+        "food": "餐食茶點",
+        "text_signage": "文字標示",
+        "screen": "螢幕",
+        "space": "空間"
+      },
+      "orientation": {
+        "landscape": "橫式",
+        "portrait": "直式",
+        "square": "方形"
+      },
+      "public_use_status": {
+        "approved": "已確認",
+        "needs_review": "待整理確認",
+        "avoid": "不建議"
+      },
+      "priority_level": {
+        "high": "優先推薦",
+        "normal": "一般候選",
+        "low": "低優先"
+      },
+      "curation_status": {
+        "unreviewed": "未整理",
+        "ai_labeled": "AI 初標",
+        "reviewed": "已整理"
+      },
+      "has_negative_space": {
+        "true": "有留白",
+        "false": "無明顯留白"
+      }
+    },
     "sponsorship_item_categories": [
       "打包專屬",
       "數位媒體曝光",
