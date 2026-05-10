@@ -725,6 +725,39 @@
         return { ...(currentState?.record || {}), ...valuesFromForm() };
       }
 
+      function normalizeFormValue(value) {
+        return String(value == null ? "" : value).trim();
+      }
+
+      function hasUnsavedChanges() {
+        if (!currentState) {
+          return false;
+        }
+        const values = valuesFromForm();
+        return visibleFields().some(
+          (field) => normalizeFormValue(values[field.name]) !== normalizeFormValue(currentState.record[field.name]),
+        );
+      }
+
+      function confirmDiscardChanges() {
+        if (!hasUnsavedChanges()) {
+          return true;
+        }
+        return window.confirm("目前這張照片有尚未儲存的編輯。切換照片會放棄這些變更，要繼續嗎？");
+      }
+
+      function markCurrentRowSavedLocally(values) {
+        if (!currentState) {
+          return;
+        }
+        const nextState = {
+          ...currentState,
+          record: { ...currentState.record, ...values },
+        };
+        currentState = nextState;
+        cacheState(nextState);
+      }
+
       function validateField(field, value, values) {
         const errors = [];
         const trimmed = String(value || "").trim();
@@ -909,6 +942,9 @@
       }
 
       function loadRow(rowNumber, options = {}) {
+        if (!options.skipDirtyCheck && !confirmDiscardChanges()) {
+          return;
+        }
         const normalizedRowNumber = Number(rowNumber);
         const cachedState = options.useCache !== false ? cachedRow(normalizedRowNumber) : null;
         if (cachedState) {
@@ -933,6 +969,9 @@
       }
 
       function loadActiveRow() {
+        if (!confirmDiscardChanges()) {
+          return;
+        }
         setBusy(true);
         setTopStatus("讀取目前選取列...");
         setSaveStatus("");
@@ -955,8 +994,10 @@
         }
         const values = valuesFromForm();
         const rowNumber = currentState.rowNumber;
+        const previousState = currentState;
         const token = ++saveToken;
         pendingSaveCount += 1;
+        markCurrentRowSavedLocally(values);
         updateSaveLine();
         setSaveStatus("已送出背景儲存。");
         google.script.run
@@ -972,7 +1013,15 @@
               render(state);
             }
           })
-          .withFailureHandler(handleSaveFailure)
+          .withFailureHandler((error) => {
+            rowCache.delete(Number(rowNumber));
+            if (currentState?.rowNumber === rowNumber) {
+              currentState = previousState;
+              cacheState(previousState);
+              validateForm();
+            }
+            handleSaveFailure(error);
+          })
           .saveReviewPhoto(rowNumber, values);
       }
 
