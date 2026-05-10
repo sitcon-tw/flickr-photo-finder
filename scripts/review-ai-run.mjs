@@ -14,6 +14,7 @@ const distributionFields = [
   "safe_crop",
   "recommended_uses",
   "scene_tags",
+  "mood_tags",
   "public_use_status",
 ];
 
@@ -23,6 +24,11 @@ const concentrationThreshold = 0.9;
 const genericUseThresholds = new Map([
   ["活動回顧", 0.6],
   ["社群貼文", 0.5],
+]);
+const broadMoodThresholds = new Map([
+  ["專業", 0.4],
+  ["專注", 0.4],
+  ["友善", 0.35],
 ]);
 const asciiWordPattern = /[A-Za-z][A-Za-z0-9'_-]{2,}(?:\s+[A-Za-z][A-Za-z0-9'_-]{2,}){4,}/;
 
@@ -217,6 +223,7 @@ function buildReviewNotes(items) {
   const priorityCount = items.filter((item) => item.fields.priority_level).length;
   const publicUseStatusCount = items.filter((item) => item.fields.public_use_status).length;
   const needsReviewCount = items.filter((item) => item.fields.public_use_status?.value === "needs_review").length;
+  const moodCount = items.filter((item) => item.fields.mood_tags).length;
   const recommendedUseCount = items.filter((item) => item.fields.recommended_uses).length;
   const sponsorReportItems = items.filter((item) =>
     valuesForField(item, "recommended_uses").includes("贊助成果報告")
@@ -261,6 +268,28 @@ function buildReviewNotes(items) {
   if (itemCount > 0 && mostCommonSceneTag.count / itemCount >= concentrationThreshold) {
     notes.push(
       `\`scene_tags\` 的 \`${mostCommonSceneTag.value}\` 出現在 ${mostCommonSceneTag.count}/${itemCount} 張照片（${formatPercent(mostCommonSceneTag.count / itemCount)}），請確認是否過度套用同一場景標籤。`,
+    );
+  }
+
+  const mostCommonMoodTag = mostCommonValue(items, "mood_tags");
+  if (moodCount === itemCount && itemCount > 0) {
+    notes.push("每張照片都有 `mood_tags` 候選值；請確認模型是否把情緒標籤當成必填分類。普通紀錄照可以省略。");
+  } else if (itemCount > 0 && moodCount / itemCount >= concentrationThreshold) {
+    notes.push(
+      `有 ${moodCount}/${itemCount} 張照片提出 \`mood_tags\`（${formatPercent(moodCount / itemCount)}），請抽查是否只有在情緒或宣傳語感明確時才標。`,
+    );
+  }
+  for (const [mood, threshold] of broadMoodThresholds) {
+    const moodValueCount = items.filter((item) => valuesForField(item, "mood_tags").includes(mood)).length;
+    if (itemCount > 0 && moodValueCount / itemCount >= threshold) {
+      notes.push(
+        `\`mood_tags = ${mood}\` 出現在 ${moodValueCount}/${itemCount} 張照片（${formatPercent(moodValueCount / itemCount)}），請抽查是否被當成泛用感受。`,
+      );
+    }
+  }
+  if (itemCount > 0 && mostCommonMoodTag.count / itemCount >= concentrationThreshold) {
+    notes.push(
+      `\`mood_tags\` 的 \`${mostCommonMoodTag.value}\` 出現在 ${mostCommonMoodTag.count}/${itemCount} 張照片（${formatPercent(mostCommonMoodTag.count / itemCount)}），情緒標籤區辨度可能不足。`,
     );
   }
 
@@ -324,9 +353,8 @@ function buildReviewNotes(items) {
   return notes;
 }
 
-function renderSummary({ manifest, plan, proposals, runDir, sample, summaryPath, validationWarnings }) {
+function renderSummary({ manifest, notes, plan, proposals, runDir, sample, summaryPath }) {
   const items = proposals.items;
-  const notes = [...validationWarnings, ...buildReviewNotes(items)];
   const fieldCountRows = fieldCounts(items).map(({ field, count }) => [field, count]);
   const distributionTableRows = distributionFields.flatMap((field) => distributionRows(items, field));
   const sampleRows = plan.updates.slice(0, sample).map((update) => [
@@ -434,14 +462,15 @@ async function reviewAiRun(options) {
     readJson(join(options.runDir, "manifest.json")),
     readJson(options.proposalsPath),
   ]);
+  const notes = [...validation.warnings, ...buildReviewNotes(proposals.items)];
   const summary = renderSummary({
     manifest,
+    notes,
     plan,
     proposals,
     runDir: options.runDir,
     sample: options.sample,
     summaryPath: options.summaryPath,
-    validationWarnings: validation.warnings,
   });
   await writeFile(options.summaryPath, summary);
 
@@ -454,7 +483,7 @@ async function reviewAiRun(options) {
     runId: validation.runId,
     summaryPath: options.summaryPath,
     updateCount: plan.update_count,
-    warningCount: validation.warnings.length,
+    warningCount: notes.length,
   };
 }
 
