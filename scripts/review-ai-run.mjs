@@ -31,6 +31,8 @@ const broadMoodThresholds = new Map([
   ["專注", 0.4],
   ["友善", 0.35],
 ]);
+const lowMoodCoverageMinimumItems = 20;
+const lowMoodCoverageThreshold = 0.2;
 const asciiWordPattern = /[A-Za-z][A-Za-z0-9'_-]{2,}(?:\s+[A-Za-z][A-Za-z0-9'_-]{2,}){4,}/;
 
 function printUsage() {
@@ -275,6 +277,10 @@ function buildReviewNotes(items) {
   const mostCommonMoodTag = mostCommonValue(items, "mood_tags");
   if (moodCount === itemCount && itemCount > 0) {
     notes.push("每張照片都有 `mood_tags` 候選值；請確認模型是否把情緒標籤當成必填分類。普通紀錄照可以省略。");
+  } else if (itemCount >= lowMoodCoverageMinimumItems && moodCount / itemCount < lowMoodCoverageThreshold) {
+    notes.push(
+      `只有 ${moodCount}/${itemCount} 張照片提出 \`mood_tags\`（${formatPercent(moodCount / itemCount)}）；若本批包含適合社群宣傳、招募、網站視覺或情緒找圖的照片，請抽查模型是否過度保守。`,
+    );
   } else if (itemCount > 0 && moodCount / itemCount >= concentrationThreshold) {
     notes.push(
       `有 ${moodCount}/${itemCount} 張照片提出 \`mood_tags\`（${formatPercent(moodCount / itemCount)}），請抽查是否只有在情緒或宣傳語感明確時才標。`,
