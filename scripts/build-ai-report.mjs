@@ -144,6 +144,55 @@ function stableValue(value) {
   return JSON.stringify(value);
 }
 
+function parseMarkdownTableLine(line) {
+  const trimmed = line.trim();
+  if (!trimmed.startsWith("|") || !trimmed.endsWith("|")) {
+    return [];
+  }
+  return trimmed
+    .slice(1, -1)
+    .split("|")
+    .map((cell) => cell.replaceAll("\\|", "|").trim());
+}
+
+async function readReviewFocus(summaryPath) {
+  let text = "";
+  try {
+    text = await readFile(summaryPath, "utf8");
+  } catch {
+    return [];
+  }
+
+  const lines = text.split(/\r?\n/);
+  const start = lines.findIndex((line) => line.trim() === "## Review Focus");
+  if (start === -1) {
+    return [];
+  }
+
+  const rows = [];
+  for (const line of lines.slice(start + 1)) {
+    if (line.startsWith("## ")) {
+      break;
+    }
+    const cells = parseMarkdownTableLine(line);
+    if (cells.length !== 5 || cells[0] === "issue" || cells.every((cell) => /^-+$/.test(cell))) {
+      continue;
+    }
+    const [issue, photoId, field, proposed, reason] = cells;
+    if (!issue || !photoId) {
+      continue;
+    }
+    rows.push({
+      field,
+      issue,
+      photo_id: photoId,
+      proposed,
+      reason,
+    });
+  }
+  return rows;
+}
+
 function splitErrorLines(error) {
   return String(error?.message ?? error)
     .split("\n")
@@ -182,7 +231,9 @@ async function loadRun(runDir) {
   const proposalsPath = join(runDir, proposalFile);
   const proposals = await readJsonIfExists(proposalsPath);
   const updatePlan = await readJsonIfExists(join(runDir, updatePlanFile));
-  const hasReviewSummary = await pathExists(join(runDir, reviewSummaryFile));
+  const summaryPath = join(runDir, reviewSummaryFile);
+  const hasReviewSummary = await pathExists(summaryPath);
+  const reviewFocus = await readReviewFocus(summaryPath);
   const validation = proposals
     ? await validateRun(runDir, proposalsPath)
     : { error_count: 0, errors: [], item_count: 0, status: "missing", warning_count: 0, warnings: [] };
@@ -211,6 +262,7 @@ async function loadRun(runDir) {
     photos: Array.isArray(photos) ? photos : [],
     planUpdates,
     proposals,
+    reviewFocus,
     runDir,
     validation,
   };
@@ -319,6 +371,7 @@ function buildReportData(runs, options) {
         const item = run.itemsByPhotoId.get(photoId);
         return {
           fields: item?.fields ?? {},
+          focus: run.reviewFocus.filter((row) => row.photo_id === photoId),
           has_photo: run.photoIds.has(photoId),
           has_proposal: Boolean(item),
           run_id: run.manifest.run_id || run.label,
@@ -334,6 +387,7 @@ function buildReportData(runs, options) {
       error_count: run.validation.error_count,
       errors: run.validation.errors,
       review_warnings: run.validation.warnings,
+      review_focus: run.reviewFocus,
       has_review_summary: run.hasReviewSummary,
       label: run.label,
       model: run.attempt?.model || "",
@@ -451,6 +505,16 @@ function renderHtml(reportData) {
       color: var(--warn);
       padding: 8px 10px;
       font-size: 13px;
+    }
+    .focus-row {
+      border: 1px solid #99d7ca;
+      border-radius: 6px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      padding: 8px 10px;
+      font-size: 13px;
+      margin-bottom: 8px;
+      overflow-wrap: anywhere;
     }
     .results-bar {
       display: flex;
@@ -634,6 +698,7 @@ function renderHtml(reportData) {
         <option value="all">所有照片</option>
         <option value="diff">有差異</option>
         <option value="missing">有缺 proposal</option>
+        <option value="focus">需優先抽查</option>
       </select>
       <label id="diff-toggle" class="toggle"><input id="only-diff-fields" type="checkbox"> 只顯示差異欄位</label>
     </section>
@@ -746,12 +811,14 @@ function renderHtml(reportData) {
     function renderSummary() {
       title.textContent = data.title;
       summary.replaceChildren();
+      const focusCount = data.attempts.reduce((count, attempt) => count + (attempt.review_focus || []).length, 0);
       summary.append(
         el("span", "pill", "產生時間 " + data.generated_at),
         el("span", "pill", isSingleMode ? "單次檢視" : "比較模式"),
         el("span", "pill", data.photos.length + " 張照片"),
         el("span", "pill", data.attempts.length + " 個 run"),
         el("span", data.warnings.length ? "pill warn" : "pill good", data.warnings.length + " 個警訊"),
+        el("span", focusCount ? "pill warn" : "pill good", "需抽查 " + focusCount + " 項"),
       );
     }
 
@@ -810,8 +877,8 @@ function renderHtml(reportData) {
       }
 
       const statusOptions = isSingleMode
-        ? [["all", "所有照片"], ["with-proposal", "有 proposal"], ["missing", "缺 proposal"]]
-        : [["all", "所有照片"], ["diff", "有差異"], ["missing", "有缺 proposal"]];
+        ? [["all", "所有照片"], ["with-proposal", "有 proposal"], ["missing", "缺 proposal"], ["focus", "需優先抽查"]]
+        : [["all", "所有照片"], ["diff", "有差異"], ["missing", "有缺 proposal"], ["focus", "需優先抽查"]];
       if (!statusOptions.some(([value]) => value === state.status)) {
         state.status = "all";
       }
@@ -866,6 +933,9 @@ function renderHtml(reportData) {
       const fieldCount = Object.keys(attempt.fields || {}).length;
       head.append(el("span", attempt.has_proposal ? "pill good" : "pill warn", attempt.has_proposal ? "有 proposal" : "缺 proposal"));
       head.append(el("span", "pill", fieldCount + " 個欄位"));
+      for (const focus of attempt.focus || []) {
+        head.append(el("span", "pill warn", focus.issue + (focus.field ? " / " + focus.field : "")));
+      }
       if (!attempt.has_photo) {
         head.append(el("span", "pill warn", "此 run 缺照片"));
       }
@@ -884,6 +954,9 @@ function renderHtml(reportData) {
           const block = el("section", "proposal-block" + (watchFields.has(field) ? " watch" : ""));
           const fieldLine = el("div", "proposal-field");
           fieldLine.append(el("span", "", field));
+          for (const focus of (attempt.focus || []).filter((item) => item.field === field)) {
+            fieldLine.append(el("span", "pill warn", focus.issue));
+          }
           if (watchFields.has(field)) {
             fieldLine.append(el("span", "pill", "重點檢查"));
           }
@@ -905,8 +978,22 @@ function renderHtml(reportData) {
 
     function renderComparePhotoCard(photo) {
       const card = el("article", "photo-card");
+      const focusItems = photo.attempts.flatMap((attempt, index) =>
+        (attempt.focus || []).map((focus) => ({
+          attempt: data.attempts[index]?.label || attempt.run_id,
+          ...focus,
+        })),
+      );
 
       const comparison = el("div", "comparison");
+      if (focusItems.length > 0) {
+        const focusBox = el("div", "focus-row");
+        focusBox.textContent = focusItems
+          .slice(0, 4)
+          .map((focus) => focus.attempt + ": " + focus.issue + (focus.field ? " / " + focus.field : ""))
+          .join("；");
+        comparison.append(focusBox);
+      }
       const table = el("table");
       const thead = el("thead");
       const headerRow = el("tr");
@@ -928,11 +1015,15 @@ function renderHtml(reportData) {
         for (const attempt of photo.attempts) {
           const cell = el("td");
           const proposal = attempt.fields[field];
+          const focusForField = (attempt.focus || []).filter((focus) => focus.field === field);
           if (!attempt.has_photo) {
             cell.append(el("div", "missing", "此 run 缺照片"));
           } else if (!proposal) {
             cell.append(el("div", "missing", "缺 proposal"));
           } else {
+            for (const focus of focusForField) {
+              cell.append(el("div", "focus-row", focus.issue));
+            }
             cell.append(el("div", "value", valueText(proposal.value)));
             if (proposal.confidence !== undefined) {
               cell.append(el("div", "confidence", "confidence " + proposal.confidence));
@@ -964,6 +1055,10 @@ function renderHtml(reportData) {
       return isSingleMode ? renderSinglePhotoCard(photo) : renderComparePhotoCard(photo);
     }
 
+    function photoHasFocus(photo) {
+      return photo.attempts.some((attempt) => (attempt.focus || []).length > 0);
+    }
+
     function filteredPhotos() {
       const query = state.search.trim().toLowerCase();
       return data.photos.filter((photo) => {
@@ -972,11 +1067,13 @@ function renderHtml(reportData) {
           const attempt = currentAttempt(photo);
           if (state.status === "with-proposal" && !attempt.has_proposal) return false;
           if (state.status === "missing" && !photoHasMissingProposal(photo)) return false;
+          if (state.status === "focus" && !photoHasFocus(photo)) return false;
           if (state.field !== "all" && !attempt.fields[state.field]) return false;
           return true;
         }
         if (state.status === "diff" && !photoHasDiff(photo)) return false;
         if (state.status === "missing" && !photoHasMissingProposal(photo)) return false;
+        if (state.status === "focus" && !photoHasFocus(photo)) return false;
         if (state.field !== "all" && !fieldsForPhoto(photo).includes(state.field)) return false;
         return true;
       });
