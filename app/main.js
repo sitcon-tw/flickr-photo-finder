@@ -49,6 +49,7 @@ const searchDebounceMs = 180;
 const resultTrackingDelayMs = 600;
 const discoverWindowSize = 24;
 const discoverHistorySize = 12;
+const enhancedSelects = new Map();
 
 const peopleCountFilters = [
   { label: "全部人數", value: "" },
@@ -510,6 +511,155 @@ function fillSelectWithLabels(select, label, values, labels) {
   }
 }
 
+function enhancedSelectOptionText(option) {
+  return option?.textContent ?? option?.label ?? option?.value ?? "";
+}
+
+function syncEnhancedSelectValue(control) {
+  const selected = control.select.selectedOptions[0];
+  const text = enhancedSelectOptionText(selected) || control.placeholder;
+  control.triggerText.textContent = text;
+  control.trigger.classList.toggle("is-empty", !control.select.value);
+}
+
+function closeEnhancedSelect(control) {
+  control.panel.hidden = true;
+  control.trigger.setAttribute("aria-expanded", "false");
+}
+
+function renderEnhancedSelectOptions(control) {
+  const query = normalizeText(control.search.value);
+  const options = [...control.select.options].filter((option) => {
+    if (!query) {
+      return true;
+    }
+    return normalizeText(enhancedSelectOptionText(option)).includes(query) || normalizeText(option.value).includes(query);
+  });
+  const fragment = document.createDocumentFragment();
+
+  for (const option of options) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "enhanced-select-option";
+    button.dataset.value = option.value;
+    button.setAttribute("role", "option");
+    button.setAttribute("aria-selected", option.value === control.select.value ? "true" : "false");
+    button.classList.toggle("is-selected", option.value === control.select.value);
+    button.classList.toggle("is-empty", option.value === "");
+    button.textContent = enhancedSelectOptionText(option);
+    fragment.append(button);
+  }
+
+  if (options.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "enhanced-select-empty";
+    empty.textContent = "沒有符合的選項";
+    fragment.append(empty);
+  }
+
+  control.options.replaceChildren(fragment);
+}
+
+function openEnhancedSelect(control) {
+  for (const otherControl of enhancedSelects.values()) {
+    if (otherControl !== control) {
+      closeEnhancedSelect(otherControl);
+    }
+  }
+  control.search.value = "";
+  renderEnhancedSelectOptions(control);
+  control.panel.hidden = false;
+  control.trigger.setAttribute("aria-expanded", "true");
+  window.requestAnimationFrame(() => control.search.focus({ preventScroll: true }));
+}
+
+function setEnhancedSelectValue(control, value) {
+  control.select.value = value;
+  syncEnhancedSelectValue(control);
+  closeEnhancedSelect(control);
+  control.select.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+function setupEnhancedSelect(select, searchPlaceholder) {
+  let control = enhancedSelects.get(select);
+  if (!control) {
+    select.classList.add("enhanced-select-native");
+    select.tabIndex = -1;
+
+    const root = document.createElement("div");
+    root.className = "enhanced-select";
+    const trigger = document.createElement("button");
+    trigger.type = "button";
+    trigger.className = "enhanced-select-trigger";
+    trigger.setAttribute("aria-haspopup", "listbox");
+    trigger.setAttribute("aria-expanded", "false");
+    const triggerText = document.createElement("span");
+    trigger.append(triggerText);
+
+    const panel = document.createElement("div");
+    panel.className = "enhanced-select-panel";
+    panel.hidden = true;
+    const search = document.createElement("input");
+    search.type = "search";
+    search.className = "enhanced-select-search";
+    search.autocomplete = "off";
+    const options = document.createElement("div");
+    options.className = "enhanced-select-options";
+    options.setAttribute("role", "listbox");
+    panel.append(search, options);
+    root.append(trigger, panel);
+    select.insertAdjacentElement("afterend", root);
+
+    control = { root, select, trigger, triggerText, panel, search, options, placeholder: "" };
+    enhancedSelects.set(select, control);
+
+    trigger.addEventListener("click", (event) => {
+      event.preventDefault();
+      if (panel.hidden) {
+        openEnhancedSelect(control);
+      } else {
+        closeEnhancedSelect(control);
+      }
+    });
+    search.addEventListener("input", () => renderEnhancedSelectOptions(control));
+    search.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeEnhancedSelect(control);
+        trigger.focus();
+      }
+    });
+    options.addEventListener("click", (event) => {
+      const optionButton = event.target.closest("[data-value]");
+      if (!optionButton) {
+        return;
+      }
+      setEnhancedSelectValue(control, optionButton.dataset.value ?? "");
+    });
+    select.addEventListener("input", () => syncEnhancedSelectValue(control));
+    select.addEventListener("change", () => syncEnhancedSelectValue(control));
+  }
+
+  control.placeholder = select.options[0]?.textContent ?? "";
+  control.search.placeholder = searchPlaceholder;
+  syncEnhancedSelectValue(control);
+  renderEnhancedSelectOptions(control);
+}
+
+function syncEnhancedSelects() {
+  for (const control of enhancedSelects.values()) {
+    syncEnhancedSelectValue(control);
+  }
+}
+
+document.addEventListener("pointerdown", (event) => {
+  for (const control of enhancedSelects.values()) {
+    if (!control.root.contains(event.target)) {
+      closeEnhancedSelect(control);
+    }
+  }
+});
+
 function compactLabelParts(parts) {
   const seen = new Set();
   return parts
@@ -595,6 +745,9 @@ function setupFilters(taxonomy) {
       return option;
     }),
   );
+  setupEnhancedSelect(controls.album, "搜尋活動或相簿");
+  setupEnhancedSelect(controls.scene, "搜尋場景");
+  setupEnhancedSelect(controls.collection, "搜尋素材包");
 }
 
 function normalizeText(value) {
@@ -1714,6 +1867,7 @@ function clearFilter(key) {
   } else if (controls[key]) {
     controls[key].value = "";
   }
+  syncEnhancedSelects();
   render({ resetPage: true, source: "filter" });
 }
 
@@ -1866,6 +2020,7 @@ function resetFilters() {
   controls.priority.value = "";
   controls.curationStatus.value = "";
   controls.collection.value = "";
+  syncEnhancedSelects();
   render({ resetPage: true, source: "filter" });
 }
 
@@ -1935,6 +2090,7 @@ function applyUrlState() {
   for (const photoId of (params.get("selected") ?? "").split(",").filter(Boolean)) {
     state.selectedPhotoIds.add(photoId);
   }
+  syncEnhancedSelects();
 }
 
 function revealPhotoFromHash() {
