@@ -679,6 +679,49 @@ GPT 5.5 使用調整後 prompt 重新執行 r2 後，`mood_tags` 從 r1 的 6/43
 
 r2 仍不應直接作為全量回寫基底。`safe_crop = 16:9` 出現在 40/43 張，已觸發過度套用警訊；`recommended_uses = 活動回顧` 也從 r1 的 8 張升到 21 張，顯示用途欄位可能變成泛用補值。這輪比較顯示：降低 mood 保守性是正確方向，但不能讓模型連帶提高所有主觀欄位覆蓋率。後續 prompt 已補強 `recommended_uses` 和 `safe_crop` 守門：`活動回顧` 不是「這是活動照片」的同義詞；橫式照片也不代表一定能安全裁成 `16:9`。`ai:review` 也把 `活動回顧` 的集中提醒門檻從 60% 收緊到 45%，讓 r2 這類接近半數照片都使用通用用途的情況會被提醒。
 
+GPT 5.5 使用再調整後 prompt 與 validator / report 規則重新執行 r3：
+
+```bash
+tmp/ai-runs/ai-cross-activity-sample-2026-05-10-attempt-gpt-r3-cross-activity
+```
+
+本輪和 r1 / r2 的比較報表：
+
+```bash
+tmp/ai-reports/ai-report-2026-05-10T15-16-22-887Z/index.html
+```
+
+r3 產生 43 筆 proposal、410 個 planned updates，已通過 `pnpm ai:validate`。review summary 只有兩個 notes：run 沒有記錄 `prompt_template_sha256`，以及所有候選值都沒有 confidence。這點需要小心解讀：attempt 檔案顯示 `prompt_source = prompts/ai-labeling.md`、`round = 3`，但 manifest 沒有 prompt hash，因此「使用新版 prompt」是依操作者流程與 attempt metadata 推定，不能像後續有 hash 的 run 一樣做機器可追溯比對。這也說明 prompt hash 相關變更是必要的；未來比較 prompt 成效時，應使用有 `prompt_template_sha256` 的 run。
+
+r3 和 r2 相比有明顯改善：
+
+| 指標 | GPT r1 | GPT r2 | GPT r3 |
+| --- | ---: | ---: | ---: |
+| planned updates | 374 | 418 | 410 |
+| `scene_tags` 覆蓋 | 36/43 | 40/43 | 43/43 |
+| `mood_tags` 覆蓋 | 6/43 | 38/43 | 31/43 |
+| `recommended_uses` 覆蓋 | 23/43 | 30/43 | 31/43 |
+| `safe_crop` 覆蓋 | 42/43 | 43/43 | 43/43 |
+| `safe_crop = 16:9` | 34 | 40 | 18 |
+| `safe_crop = 1:1` | 13 | 15 | 27 |
+| `recommended_uses = 活動回顧` | 8 | 21 | 4 |
+| `visual_description` 平均字數 | 40 | 44 | 56 |
+| confidence 欄位數 | 0 | 0 | 0 |
+
+這輪最重要的差異是主觀欄位的方向被拉回來。r2 修正了 mood 過度保守，但同時讓 `活動回顧` 和 `16:9` safe crop 過度膨脹；r3 則把 `活動回顧` 從 21/43 降到 4/43，`16:9` 從 40/43 降到 18/43，同時保留 31/43 的 mood 覆蓋。這表示後續 prompt 裡對 `recommended_uses`、`活動回顧` 與 `safe_crop` 的守門是有效的，沒有把模型打回 r1 那種 mood 幾乎不輸出的狀態。
+
+`recommended_uses` 的分布也更符合工作情境：r3 以 `社群貼文` 10、`簡報` 8、`志工招募` 7、`社群介紹` 7 為主，`活動回顧` 只剩 4，沒有出現 r2 那種把回顧當成通用補值的狀況。這比 r1 更有用，因為 r1 雖然保守，但缺少 `志工招募` 等實際工作用途；r3 在用途區辨度和覆蓋率之間比較平衡。
+
+`mood_tags` 的 r3 分布比 r2 更像「有宣傳感受才標」：`專注` 13、`交流感` 11、`專業` 6、`青春感` 5、`友善` 4、`幕後感` 4。它沒有回到 r1 的 6/43 過度保守，也沒有全部照片都有 mood。這支持目前 prompt 對 mood 的描述：它不是客觀物件欄位，但也不該因為主觀就省略。
+
+`visual_description` 從 r1 的平均約 40 字、r2 的 44 字提升到 r3 的 56 字。樣本 reason 顯示它開始保留更多可搜尋細節，例如 OpenCulture Foundation 攤位文字、QR code、直立說明背板、紙箱、紙張、走廊與玻璃門。這對 `visual_description` 作為自然語言搜尋欄位是正向訊號，雖然仍不如 Claude 的長描述有資訊密度。
+
+但 r3 仍有兩個重要限制。第一，`safe_crop` 仍然 43/43 全覆蓋，只是最常見比例從 `16:9` 轉向 `1:1`。這可能表示「不要濫用 16:9」有效，但模型仍傾向至少找一個可裁比例。下一步應抽查 r3 的 `1:1` 是否真的沒有裁到人臉、文字、攤位背板或桌面重點物件；若不是，就需要把 safe crop 的守門從「不要只因橫式填 16:9」再推進到「沒有明確安全裁切就整欄省略」。
+
+第二，r3 仍沒有 confidence。這不是 validator hard fail，但它讓人工審核排序少一個訊號。若未來要比較模型輸出可審核性，confidence 是否穩定提供應列入品質指標，而不是只看 planned updates 或 warning 數。
+
+整體判斷：r3 是目前 GPT 5.5 跨活動三輪中最平衡的一版。它修掉 r1 的 mood 過度保守，也修掉 r2 的 `活動回顧` 與 `16:9` 過度泛用；`visual_description` 也更有搜尋價值。仍不建議直接全量寫回，主要卡在 safe crop 全覆蓋與缺 confidence，但它可以作為後續 GPT prompt 校準的較佳基準。
+
 `recommended_uses` 仍需要守門。Gemini 對 `贊助提案` 和 `贊助成果報告` 較積極；Claude 較保守；GPT 中間偏保守。這個欄位仍不應由模型直接全量採用。
 
 `safe_crop` 仍是高風險欄位。三個模型都大量提出 `16:9`，但是否真的安全需要看主體、文字和人臉位置，不應只因橫式就填。
