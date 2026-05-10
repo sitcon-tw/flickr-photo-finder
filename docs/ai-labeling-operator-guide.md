@@ -75,6 +75,7 @@ attempt 目錄仍包含 `photos.json`、`manifest.json`、`ai-labeling-prompt.md
 操作者或 agent 應確認：
 
 - `manifest.json` 存在且 `selected_photo_count` 符合預期。
+- `manifest.json` 的 `prompt_template_sha256` 在同一批多模型或多輪比較中一致；若不一致，代表模型可能使用了不同版 prompt，結果不應直接視為公平比較。
 - `photos.json` 存在且每筆都有 `photo_id`。
 - `ai-labeling-prompt.md` 存在，可直接交給模型或 agent。
 - 若是 attempt，`attempt.json` 存在且 `model`、`round`、`base_run_id` 符合預期。

@@ -1,10 +1,20 @@
+import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 export const aiLabelingPromptFile = "ai-labeling-prompt.md";
+export const aiLabelingPromptSource = "prompts/ai-labeling.md";
+
+export function getAiLabelingPromptMetadata() {
+  const template = readFileSync(aiLabelingPromptSource, "utf8");
+  return {
+    prompt_template_path: aiLabelingPromptSource,
+    prompt_template_sha256: createHash("sha256").update(template).digest("hex"),
+  };
+}
 
 export function renderAiLabelingPrompt(runDir) {
-  const basePrompt = readFileSync("prompts/ai-labeling.md", "utf8").trim();
+  const basePrompt = readFileSync(aiLabelingPromptSource, "utf8").trim();
 
   return `# 本次 AI 初標工作包
 
@@ -35,6 +45,7 @@ export function writeAiLabelingPrompt(runDir) {
   const prompt = renderAiLabelingPrompt(runDir);
   writeFileSync(promptPath, prompt);
   return {
+    ...getAiLabelingPromptMetadata(),
     prompt,
     promptPath,
   };

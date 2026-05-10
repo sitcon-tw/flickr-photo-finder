@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { basename, extname, join, relative } from "node:path";
-import { writeAiLabelingPrompt } from "./ai-labeling-prompt.mjs";
+import { getAiLabelingPromptMetadata, writeAiLabelingPrompt } from "./ai-labeling-prompt.mjs";
 import { parseCsv, parseSemicolonList, toCsvLine } from "./csv-utils.mjs";
 import { photoHeaders } from "./photo-schema.mjs";
 import { aiRunsDir, sheetsExportPhotosPath } from "./workflow-paths.mjs";
@@ -376,6 +376,7 @@ async function prepareRun(options) {
   }
 
   const createdAt = new Date().toISOString();
+  const promptMetadata = getAiLabelingPromptMetadata();
   const manifest = {
     created_at: createdAt,
     download_enabled: options.download,
@@ -385,6 +386,7 @@ async function prepareRun(options) {
     manifest_version: 1,
     photos_json: "photos.json",
     photos_source: options.photosPath,
+    ...promptMetadata,
     requested_album_id: options.albumId,
     requested_limit: options.limit,
     requested_photo_ids: options.photoIds,

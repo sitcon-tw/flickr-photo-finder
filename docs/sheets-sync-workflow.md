@@ -340,6 +340,8 @@ pnpm ai:prepare -- --album ALBUM_ID --limit all
 
 日常操作可直接使用 `pnpm workflow` 的「準備 AI 初標工作包」。它會先從正式 Sheets 匯出的 `albums` 清單選相簿，再把選到的 album id 傳給 `ai:prepare`。工作包建立完成後，`ai:prepare` 會寫入該 run 目錄的 `ai-labeling-prompt.md`；workflow 也會印出同一份可直接複製給模型或 agent 的 prompt。這份 prompt 是模型任務入口；不要另外把 operator guide、評估筆記或 Sheets 回寫文件整份交給模型。
 
+新的 run/attempt 會在 `manifest.json` 記錄 `prompt_template_path` 與 `prompt_template_sha256`。比較多個模型或多輪結果時，應確認這兩個值一致；若不一致，代表結果同時受到 prompt 版本差異影響，不能只解讀為模型能力差異。
+
 若要把同一批輸入交給多個模型，或同一模型重跑第二輪，請建立 attempt：
 
 ```bash

@@ -55,6 +55,7 @@ AI 或 agent 應以 `photos.json` 作為主要機器可讀輸入；`input-photos
 - `download_enabled`: 若為 `false`，可能沒有本機圖片檔，只能使用 `image_download_url`。
 - `selected_photo_count`: 本次選入的照片數量。
 - `photos_source`: 這次 run 來源的 `photos.csv`。
+- `prompt_template_path`、`prompt_template_sha256`: 產生本次 `ai-labeling-prompt.md` 的 prompt 範本與 SHA-256。比較多模型或多輪結果時，這兩個值可用來確認是否使用同一版 prompt。
 
 ### `photos.json`
 

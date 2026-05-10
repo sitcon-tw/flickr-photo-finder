@@ -12,7 +12,7 @@ import {
   writeFile,
 } from "node:fs/promises";
 import { dirname, join, relative } from "node:path";
-import { writeAiLabelingPrompt } from "./ai-labeling-prompt.mjs";
+import { getAiLabelingPromptMetadata, writeAiLabelingPrompt } from "./ai-labeling-prompt.mjs";
 import { aiRunsDir } from "./workflow-paths.mjs";
 
 const requiredRunFiles = ["manifest.json", "photos.json"];
@@ -241,12 +241,14 @@ async function createAttempt(options) {
   const baseRunId = sourceAttempt?.base_run_id || sourceManifest.base_run_id || sourceManifest.run_id || "";
   const sourceRunId = sourceManifest.run_id || "";
   const imagesMode = await prepareImages(sourceDir, attemptDir, options);
+  const promptMetadata = getAiLabelingPromptMetadata();
 
   const attemptManifest = {
     ...sourceManifest,
     attempt_id: attemptId,
     base_run_id: baseRunId,
     created_at: createdAt,
+    ...promptMetadata,
     run_id: attemptId,
     source_run_id: sourceRunId,
   };
@@ -260,7 +262,8 @@ async function createAttempt(options) {
     images_mode: imagesMode,
     label: options.label,
     model: options.model,
-    prompt_source: "prompts/ai-labeling.md",
+    prompt_source: promptMetadata.prompt_template_path,
+    prompt_template_sha256: promptMetadata.prompt_template_sha256,
     round: options.round,
     source_run_dir: sourceDir,
     source_run_id: sourceRunId,
