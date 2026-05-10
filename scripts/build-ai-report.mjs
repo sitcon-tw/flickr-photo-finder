@@ -451,6 +451,37 @@ function renderHtml(reportData) {
       padding: 8px 10px;
       font-size: 13px;
     }
+    .results-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      justify-content: flex-start;
+      margin: 0 0 14px;
+    }
+    .load-more-bar {
+      display: flex;
+      justify-content: center;
+      margin: 18px 0 0;
+    }
+    .result-count {
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .load-more {
+      min-height: 36px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+      color: var(--text);
+      padding: 7px 12px;
+      font: inherit;
+      cursor: pointer;
+    }
+    .load-more:hover {
+      border-color: #99d7ca;
+      color: var(--accent);
+    }
     .photo-card {
       display: grid;
       grid-template-columns: 220px minmax(0, 1fr);
@@ -608,19 +639,27 @@ function renderHtml(reportData) {
     <section id="attempts" class="attempts"></section>
     <section id="coverage" class="coverage"></section>
     <section id="warnings" class="warnings"></section>
+    <section class="results-bar">
+      <div id="result-count" class="result-count"></div>
+    </section>
     <section id="photos"></section>
+    <section class="load-more-bar">
+      <button id="load-more" class="load-more" type="button">載入更多</button>
+    </section>
   </main>
   <script id="report-data" type="application/json">${escapeScriptJson(reportData)}</script>
   <script>
     const data = JSON.parse(document.getElementById("report-data").textContent);
     const preferredFields = ${JSON.stringify(preferredFieldOrder)};
     const isSingleMode = data.mode === "single";
+    const pageSize = 50;
     const watchFields = new Set(["visual_description", "sponsorship_items", "sponsorship_tags", "public_use_status", "safe_crop"]);
     const state = {
       field: "all",
       onlyDiffFields: false,
       search: "",
       status: "all",
+      visibleLimit: pageSize,
     };
 
     const title = document.getElementById("title");
@@ -628,6 +667,8 @@ function renderHtml(reportData) {
     const attempts = document.getElementById("attempts");
     const coverage = document.getElementById("coverage");
     const warnings = document.getElementById("warnings");
+    const resultCount = document.getElementById("result-count");
+    const loadMore = document.getElementById("load-more");
     const photosRoot = document.getElementById("photos");
     const searchInput = document.getElementById("search");
     const fieldFilter = document.getElementById("field-filter");
@@ -794,6 +835,8 @@ function renderHtml(reportData) {
         const image = el("img", "thumb");
         image.src = photo.image_src;
         image.alt = photo.photo_id;
+        image.loading = "lazy";
+        image.decoding = "async";
         media.append(image);
       } else {
         media.append(el("div", "thumb"));
@@ -942,28 +985,42 @@ function renderHtml(reportData) {
       photosRoot.replaceChildren();
       const photos = filteredPhotos();
       if (photos.length === 0) {
+        resultCount.textContent = "0 張符合篩選";
+        loadMore.hidden = true;
         photosRoot.append(el("div", "empty-state", "沒有符合目前篩選條件的照片。"));
         return;
       }
-      for (const photo of photos) {
+      const visiblePhotos = photos.slice(0, state.visibleLimit);
+      resultCount.textContent = "顯示 " + visiblePhotos.length + " / " + photos.length + " 張符合篩選";
+      loadMore.hidden = visiblePhotos.length >= photos.length;
+      for (const photo of visiblePhotos) {
         photosRoot.append(renderPhotoCard(photo));
       }
     }
 
+    function resetAndRenderPhotos() {
+      state.visibleLimit = pageSize;
+      renderPhotos();
+    }
+
     searchInput.addEventListener("input", () => {
       state.search = searchInput.value;
-      renderPhotos();
+      resetAndRenderPhotos();
     });
     fieldFilter.addEventListener("change", () => {
       state.field = fieldFilter.value;
-      renderPhotos();
+      resetAndRenderPhotos();
     });
     statusFilter.addEventListener("change", () => {
       state.status = statusFilter.value;
-      renderPhotos();
+      resetAndRenderPhotos();
     });
     onlyDiffFields.addEventListener("change", () => {
       state.onlyDiffFields = onlyDiffFields.checked;
+      resetAndRenderPhotos();
+    });
+    loadMore.addEventListener("click", () => {
+      state.visibleLimit += pageSize;
       renderPhotos();
     });
 
