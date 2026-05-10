@@ -50,7 +50,7 @@
 - 不寫宣傳文案，不替照片下標題。
 - 不和 reason 混用。`visual_description` 是搜尋語料；reason 是欄位判斷依據。
 
-### `people_count` 有用，但不應只靠精確數值
+### `people_count` 應保留原始估計數值
 
 `people_count` 對找圖很有用，因為使用者會找：
 
@@ -62,17 +62,9 @@
 
 但 AI 對大人數、局部人影、螢幕中人像、被遮擋人物容易不穩。SITCON 2026 全量 run 中，`people_count = 0` 有 58 張，其中 48 張被 review 工具標出仍有人物相關線索，需要人工確認。
 
-建議保留 `people_count`，但未來可新增衍生欄位 `people_count_range` 作為搜尋與篩選主要依據：
+這裡不建議新增正式資料欄位如 `people_count_range`。原因是 `small_group`、`medium_group`、`crowd` 這類文字對不同使用者、不同活動規模與不同 AI 模型會有不同想像，容易把主觀分類寫進正式資料。
 
-```text
-none
-single
-small_group
-medium_group
-crowd
-```
-
-精確數值可繼續作為 AI 或整理者估計值；前端與 AI 推薦則優先用 range，降低錯誤成本。
+正式資料應保留 `people_count` 的原始估計數值。若前端或 AI 需要「無人、單人、少人、多人、大合照」這種篩選體驗，應在取用層依數字即時計算或提供可調整門檻，而不是把固定 range 寫回 Sheets。這樣可以保留原始資料，也避免未來因分類標準改變而需要回頭重標。
 
 ### `public_use_status` 不需要擴張，但語意要更明確
 
@@ -186,7 +178,7 @@ document
 
 因此未來調整應分成兩種：
 
-1. **schema / taxonomy 調整**：當欄位無法承接真實需求，例如缺少 `subject_type` 或 `people_count_range`。
+1. **schema / taxonomy 調整**：當欄位無法承接真實需求，例如缺少 `subject_type`。
 2. **prompt / validator / report 調整**：當欄位方向正確，但模型使用方式不穩，例如 `活動回顧` 過度泛用、英文 reason 混入、贊助成果過度推論。
 
 這次觀察後，較適合先改 prompt 與 review warning 的項目：
@@ -201,14 +193,14 @@ document
 較適合進入 schema 討論的項目：
 
 - 新增 `subject_type`。
-- 新增 `people_count_range` 或在工具層衍生同等欄位。
+- 在前端、AI 查詢或報表層用 `people_count` 衍生人數篩選區間，不新增正式資料欄位。
 - 評估是否新增 `communication_intent` / `content_roles` 來取代過度泛用的 `recommended_uses` 部分責任。
 
 ## 建議下一步
 
 1. 先不刪現有欄位。
 2. 在 prompt 與 review 工具中收斂 `recommended_uses`、sponsorship、繁體中文 reason 與 `safe_crop` 規則。
-3. 以小批跨活動樣本測試 `subject_type` 與 `people_count_range`，至少涵蓋：
+3. 以小批跨活動樣本測試 `subject_type`，並同步檢查前端以 `people_count` 衍生人數篩選是否足夠，至少涵蓋：
    - 年會講者與舞台。
    - 年會攤位與贊助相關畫面。
    - BoF / 負一籌茶點與交流。
