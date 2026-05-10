@@ -317,6 +317,7 @@ function buildReviewPanelStateFromRow_(row, rowNumber, providedErrors) {
     record,
     reviewedRequiredFields: config.reviewedRequiredFields || [],
     rowNumber,
+    validationMessages: getValidationMessages_(),
   };
 }
 
@@ -347,6 +348,14 @@ function getReviewPanelFields_() {
 function getOptionLabelsForField_(fieldName) {
   const labels = getConfig_().taxonomy.option_labels || {};
   return labels[fieldName] || {};
+}
+
+function getValidationMessages_() {
+  return Object.assign({}, getConfig_().validationMessages || {});
+}
+
+function validationMessage_(key) {
+  return getValidationMessages_()[key] || key;
 }
 
 function labelForOption_(fieldName, value) {
@@ -640,7 +649,7 @@ function validateRow_(row, rowNumber) {
   config.fields.forEach((field) => {
     const value = values[field.name];
     if (field.required && isBlank_(value)) {
-      errors.push(formatError_(rowNumber, field.name, "必填欄位不可空白"));
+      errors.push(formatError_(rowNumber, field.name, validationMessage_("required")));
     }
     if (!isBlank_(value)) {
       errors.push(...validateFieldValue_(field, value, rowNumber));
@@ -648,7 +657,7 @@ function validateRow_(row, rowNumber) {
   });
 
   if (values.curation_status === "reviewed") {
-    errors.push(...validateRequiredFieldGroup_(values, config.reviewedRequiredFields, rowNumber, "reviewed"));
+    errors.push(...validateRequiredFieldGroup_(values, config.reviewedRequiredFields, rowNumber));
   }
 
   return errors;
@@ -658,21 +667,21 @@ function validateFieldValue_(field, value, rowNumber) {
   const errors = [];
 
   if (field.type === "url" && !/^https?:\/\/\S+$/i.test(value)) {
-    errors.push(formatError_(rowNumber, field.name, "必須是 http 或 https URL"));
+    errors.push(formatError_(rowNumber, field.name, validationMessage_("invalidUrl")));
   }
   if (field.type === "year" && !/^\d{4}$/.test(value)) {
-    errors.push(formatError_(rowNumber, field.name, "必須是四位數年份"));
+    errors.push(formatError_(rowNumber, field.name, validationMessage_("invalidYear")));
   }
   if (field.type === "integer" && !/^(0|[1-9]\d*)$/.test(value)) {
-    errors.push(formatError_(rowNumber, field.name, "必須是非負整數"));
+    errors.push(formatError_(rowNumber, field.name, validationMessage_("invalidInteger")));
   }
   if (field.type === "boolean" && !["true", "false"].includes(value)) {
-    errors.push(formatError_(rowNumber, field.name, "必須是 true 或 false"));
+    errors.push(formatError_(rowNumber, field.name, validationMessage_("invalidBoolean")));
   }
   if (field.multiValue) {
     const duplicateValues = findDuplicateValues_(splitList_(value));
     if (duplicateValues.length > 0) {
-      errors.push(formatError_(rowNumber, field.name, `不可重複填寫：${duplicateValues.join("、")}`));
+      errors.push(formatError_(rowNumber, field.name, `${validationMessage_("duplicateListPrefix")}${duplicateValues.join("、")}`));
     }
   }
   if (field.taxonomyKey) {
@@ -688,16 +697,16 @@ function validateTaxonomyValue_(field, value, rowNumber) {
   const errors = [];
   values.forEach((item) => {
     if (!allowedValues.includes(item)) {
-      errors.push(formatError_(rowNumber, field.name, `未知受控字彙：${item}`));
+      errors.push(formatError_(rowNumber, field.name, `${validationMessage_("unknownTaxonomyPrefix")}${item}`));
     }
   });
   return errors;
 }
 
-function validateRequiredFieldGroup_(values, fieldNames, rowNumber, statusName) {
+function validateRequiredFieldGroup_(values, fieldNames, rowNumber) {
   return fieldNames
     .filter((fieldName) => isBlank_(values[fieldName]))
-    .map((fieldName) => formatError_(rowNumber, fieldName, `${statusName} 需要填寫此欄位`));
+    .map((fieldName) => formatError_(rowNumber, fieldName, validationMessage_("completionRequired")));
 }
 
 function splitList_(value) {

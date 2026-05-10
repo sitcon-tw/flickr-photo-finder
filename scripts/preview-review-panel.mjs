@@ -59,6 +59,10 @@ async function readTaxonomy() {
   return JSON.parse(await readFile("data/tag-taxonomy.json", "utf8"));
 }
 
+async function readValidationMessages() {
+  return JSON.parse(await readFile("data/validation-messages.json", "utf8"));
+}
+
 function fieldForPreview(field, taxonomy) {
   return {
     descriptionZh: field.description_zh ?? "",
@@ -84,18 +88,19 @@ function normalizePreviewRecord(record, index) {
   };
 }
 
-function buildState(record, rowNumber, fields) {
+function buildState(record, rowNumber, fields, validationMessages) {
   return {
     errors: [],
     fields,
     record,
     reviewedRequiredFields: photoTableSchema.reviewed_required_fields ?? [],
     rowNumber,
+    validationMessages,
   };
 }
 
-function buildPreviewModel(records, fields) {
-  const states = records.map((record, index) => buildState(normalizePreviewRecord(record, index), index + 2, fields));
+function buildPreviewModel(records, fields, validationMessages) {
+  const states = records.map((record, index) => buildState(normalizePreviewRecord(record, index), index + 2, fields, validationMessages));
   const firstRow = states[0]?.rowNumber ?? 2;
   const buffer = buildBuffer(states, firstRow, 10, 10);
   return {
@@ -198,13 +203,14 @@ body {
 }
 
 async function writePreviewHtml() {
-  const [panelHtml, records, taxonomy] = await Promise.all([
+  const [panelHtml, records, taxonomy, validationMessages] = await Promise.all([
     readFile("apps-script/ReviewPanel.html", "utf8"),
     readFixtureRecords(),
     readTaxonomy(),
+    readValidationMessages(),
   ]);
   const fields = photoTableSchema.fields.map((field) => fieldForPreview(field, taxonomy));
-  const model = buildPreviewModel(records, fields);
+  const model = buildPreviewModel(records, fields, validationMessages);
   const html = panelHtml
     .replace("<?!= bootstrapState ?>", JSON.stringify(model.bootstrapState).replace(/</g, "\\u003c"))
     .replace("</head>", `${buildPreviewFrameCss()}\n  </head>`)

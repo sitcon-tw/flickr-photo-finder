@@ -77,6 +77,8 @@ Apps Script UI 顯示文字應使用 `data/tag-taxonomy.json` 的 `option_labels
 
 Apps Script 讀取 `photos` 列時應使用 Sheets 顯示值，而不是原始 typed value。這可避免 `safe_crop` 的 `9:16` 等比例字串被 Sheets / Apps Script 當成時間或日期處理。
 
+Apps Script 後端驗證與 sidebar 即時提示應共用 `data/validation-messages.json` 產生的訊息，不要在 HTML 中手寫另一套同義錯誤文案。HTML 可以保留畫面專屬操作提示，但資料驗證錯誤應由這份 shared message source 驅動。
+
 ### 驗證目前列或整張表
 
 提供選單讓志工檢查：

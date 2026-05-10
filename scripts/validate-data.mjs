@@ -24,6 +24,7 @@ Options:
   --import-batches <path>     Import batches CSV path. Default: fixtures/import-batches.csv.
   --search-aliases <path>     Search aliases JSON path. Default: data/search-aliases.json.
   --taxonomy <path>           Tag taxonomy JSON path. Default: data/tag-taxonomy.json.
+  --validation-messages <path> Validation messages JSON path. Default: data/validation-messages.json.
   --sponsorship-items <path>  Sponsorship items JSON path. Default: data/sponsorship-items.json.
   --help, -h                  Show this help.
 
@@ -38,6 +39,7 @@ function parseArgs(argv) {
     photos: "fixtures/photos.csv",
     searchAliases: "data/search-aliases.json",
     taxonomy: "data/tag-taxonomy.json",
+    validationMessages: "data/validation-messages.json",
     sponsorshipItems: "data/sponsorship-items.json",
   };
 
@@ -62,6 +64,9 @@ function parseArgs(argv) {
     } else if (arg === "--taxonomy") {
       paths.taxonomy = args[index + 1] ?? "";
       index += 1;
+    } else if (arg === "--validation-messages") {
+      paths.validationMessages = args[index + 1] ?? "";
+      index += 1;
     } else if (arg === "--sponsorship-items") {
       paths.sponsorshipItems = args[index + 1] ?? "";
       index += 1;
@@ -77,6 +82,7 @@ function parseArgs(argv) {
     searchAliases: "--search-aliases",
     sponsorshipItems: "--sponsorship-items",
     taxonomy: "--taxonomy",
+    validationMessages: "--validation-messages",
   };
 
   for (const [name, path] of Object.entries(paths)) {
@@ -296,6 +302,30 @@ function validateSearchAliases(searchAliases, taxonomy) {
       if (duplicates.length > 0) {
         addError(`${paths.searchAliases}: ${fieldName}.${value} has duplicate aliases: ${[...new Set(duplicates)].join(", ")}`);
       }
+    }
+  }
+}
+
+function validateValidationMessages(validationMessages) {
+  if (!validationMessages || typeof validationMessages !== "object" || Array.isArray(validationMessages)) {
+    addError(`${paths.validationMessages}: root must be an object`);
+    return;
+  }
+
+  const requiredKeys = [
+    "completionRequired",
+    "completionWarning",
+    "duplicateListPrefix",
+    "invalidBoolean",
+    "invalidInteger",
+    "invalidUrl",
+    "invalidYear",
+    "required",
+    "unknownTaxonomyPrefix",
+  ];
+  for (const key of requiredKeys) {
+    if (!String(validationMessages[key] || "").trim()) {
+      addError(`${paths.validationMessages}: ${key} must not be blank`);
     }
   }
 }
@@ -548,17 +578,19 @@ function validateUniqueImportBatchFields(importBatchRows) {
   });
 }
 
-const [albumsText, importBatchesText, photosText, searchAliasesText, taxonomyText, sponsorshipItemsText] = await Promise.all([
+const [albumsText, importBatchesText, photosText, searchAliasesText, taxonomyText, validationMessagesText, sponsorshipItemsText] = await Promise.all([
   readFile(paths.albums, "utf8"),
   readFile(paths.importBatches, "utf8"),
   readFile(paths.photos, "utf8"),
   readFile(paths.searchAliases, "utf8"),
   readFile(paths.taxonomy, "utf8"),
+  readFile(paths.validationMessages, "utf8"),
   readFile(paths.sponsorshipItems, "utf8"),
 ]);
 
 const searchAliases = JSON.parse(searchAliasesText);
 const taxonomy = JSON.parse(taxonomyText);
+const validationMessages = JSON.parse(validationMessagesText);
 const sponsorshipItems = JSON.parse(sponsorshipItemsText);
 const albumRows = parseCsv(albumsText);
 const importBatchRows = parseCsv(importBatchesText);
@@ -595,6 +627,7 @@ if (rows.length === 0) {
   validateHeaders(paths.photos, headers, photoHeaders);
   validateTaxonomy(taxonomy, sponsorshipItems);
   validateSearchAliases(searchAliases, taxonomy);
+  validateValidationMessages(validationMessages);
   validateUniquePhotoFields(photoRows);
 
   photoRows.forEach((row, index) => {

@@ -1,0 +1,11 @@
+{
+  "completionRequired": "完成審核需要填寫此欄位",
+  "completionWarning": "完成審核前需填寫",
+  "duplicateListPrefix": "不可重複填寫：",
+  "invalidBoolean": "必須是 true 或 false",
+  "invalidInteger": "必須是非負整數",
+  "invalidUrl": "必須是 http 或 https URL",
+  "invalidYear": "必須是四位數年份",
+  "required": "必填欄位不可空白",
+  "unknownTaxonomyPrefix": "未知受控字彙："
+}

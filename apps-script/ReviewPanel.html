@@ -936,41 +936,45 @@
         return !String(value || "").trim();
       }
 
+      function validationMessage(key) {
+        return currentState?.validationMessages?.[key] || key;
+      }
+
       function validateField(field, value, values) {
         const errors = [];
         const trimmed = String(value || "").trim();
         if (field.required && !trimmed) {
-          errors.push("必填欄位不可空白");
+          errors.push(validationMessage("required"));
         }
         if (!trimmed) {
           if (values.curation_status === "reviewed" && isReviewedRequiredField(field)) {
-            errors.push("完成審核需要填寫此欄位");
+            errors.push(validationMessage("completionRequired"));
           }
           return errors;
         }
         if (field.type === "url" && !/^https?:\/\/\S+$/i.test(trimmed)) {
-          errors.push("必須是 http 或 https URL");
+          errors.push(validationMessage("invalidUrl"));
         }
         if (field.type === "year" && !/^\d{4}$/.test(trimmed)) {
-          errors.push("必須是四位數年份");
+          errors.push(validationMessage("invalidYear"));
         }
         if (field.type === "integer" && !/^(0|[1-9]\d*)$/.test(trimmed)) {
-          errors.push("必須是非負整數");
+          errors.push(validationMessage("invalidInteger"));
         }
         if (field.type === "boolean" && !["true", "false"].includes(trimmed)) {
-          errors.push("必須是 true 或 false");
+          errors.push(validationMessage("invalidBoolean"));
         }
         const listValues = field.multiValue ? splitList(trimmed) : [trimmed];
         if (field.multiValue) {
           const duplicates = findDuplicateValues(listValues);
           if (duplicates.length > 0) {
-            errors.push(`不可重複填寫：${duplicates.join("、")}`);
+            errors.push(`${validationMessage("duplicateListPrefix")}${duplicates.join("、")}`);
           }
         }
         if (field.taxonomyKey) {
           listValues.forEach((item) => {
             if (!field.options.includes(item)) {
-              errors.push(`未知受控字彙：${item}`);
+              errors.push(`${validationMessage("unknownTaxonomyPrefix")}${item}`);
             }
           });
         }
@@ -984,7 +988,7 @@
         if (!isReviewedRequiredField(field) || !isBlankValue(value)) {
           return [];
         }
-        return ["完成審核前需填寫"];
+        return [validationMessage("completionWarning")];
       }
 
       function validateForm() {
