@@ -14,6 +14,35 @@ AI 使用者應讀取 `photos` 主表，或讀取由 `photos` 以同一套欄位
 
 AI 應依欄位值判斷資料，不應依賴 Google Sheets 畫面上的顏色、註解、排序、篩選檢視或儲存格格式。
 
+## 給使用者的 LLM 使用方式
+
+除了 GitHub Pages 搜尋前端，使用者也可以使用自己熟悉的 LLM 介面讀取公開 Google Sheets。這種方式適合尚未能用固定篩選條件描述的需求，例如「找有活力、適合社群、畫面右側能放字的照片」。
+
+操作時，把正式 Google Sheets 連結提供給 LLM，請它讀取 `photos` 工作表。若 LLM 不能直接讀取 Google Sheets，請改提供 `photos` 工作表匯出的公開 CSV。
+
+可複製提示：
+
+```text
+請讀取這份 Google Sheets 的 photos 工作表，協助我找 SITCON Flickr 照片。
+
+請把 photos 視為公開照片索引，不要只找 reviewed 照片；ai_labeled 和 unreviewed 也可以列為候選，但請在回答中標示整理狀態。
+
+排序時請優先考慮：
+1. 我的需求和 subject_type、scene_tags、people_count、mood_tags、recommended_uses、sponsorship_items、sponsorship_tags、visual_description 的匹配程度。
+2. public_use_status。avoid 預設不要推薦；needs_review 可以列為候選，但請提醒使用前確認。
+3. curation_status。reviewed 優先於 ai_labeled，ai_labeled 優先於 unreviewed，但不要完全排除未 review 照片。
+4. priority_level 和 collections。
+
+每個候選請提供：
+- photo_url
+- 為什麼符合需求
+- curation_status
+- public_use_status
+- photographer 和 license，如果欄位有值
+
+請不要自行推測缺少的攝影師、授權、活動身份或照片外脈絡。
+```
+
 AI 若需要理解欄位與可用值，應同時讀取：
 
 - `data/photo-schema.json`
