@@ -51,6 +51,11 @@
         z-index: 20;
       }
 
+      .review-toolbar {
+        display: grid;
+        gap: 8px;
+      }
+
       .nav-row {
         display: grid;
         grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -397,21 +402,24 @@
   </head>
   <body>
     <main class="panel">
+      <section class="toolbar">
+        <div id="rowSummary" class="meta">請從 photos 選取一列後開啟 panel。</div>
+        <div class="row-loader">
+          <input id="rowNumberInput" inputmode="numeric" aria-label="photos row number" />
+          <button id="loadButton" class="secondary" type="button">載入</button>
+          <button id="activeButton" class="secondary" type="button">目前列</button>
+        </div>
+      </section>
+
+      <section id="status" class="status"></section>
+
       <div class="review-context">
-        <section class="toolbar">
-          <div id="rowSummary" class="meta">請從 photos 選取一列後開啟 panel。</div>
+        <section class="toolbar review-toolbar">
           <div class="nav-row">
             <button id="prevButton" class="secondary" type="button">上一張</button>
             <button id="nextButton" class="secondary" type="button">下一張</button>
           </div>
-          <div class="row-loader">
-            <input id="rowNumberInput" inputmode="numeric" aria-label="photos row number" />
-            <button id="loadButton" class="secondary" type="button">載入</button>
-            <button id="activeButton" class="secondary" type="button">目前列</button>
-          </div>
         </section>
-
-        <section id="status" class="status"></section>
 
         <section id="photo" class="photo" hidden>
           <img id="preview" alt="" />
