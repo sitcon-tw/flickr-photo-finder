@@ -150,6 +150,7 @@ let visibleCount = pageSize;
 let renderTimer = 0;
 let projectConfig = {};
 let optionLabelMaps = new Map();
+let searchAliases = {};
 
 const state = {
   taskMode: "all",
@@ -471,6 +472,20 @@ function labelFor(fieldName, value) {
   return optionLabels(fieldName).get(value) ?? value;
 }
 
+function valueAliases(fieldName, value) {
+  const normalized = String(value ?? "").trim();
+  return normalized ? searchAliases[fieldName]?.[normalized] ?? [] : [];
+}
+
+function searchTokensForField(fieldName, value) {
+  const normalized = String(value ?? "").trim();
+  if (!normalized) {
+    return [];
+  }
+  const label = labelFor(fieldName, normalized);
+  return [...new Set([normalized, label, ...valueAliases(fieldName, normalized)].filter(Boolean))];
+}
+
 function fillSelect(select, label, values) {
   select.replaceChildren();
   select.append(new Option(label, ""));
@@ -589,29 +604,14 @@ function normalizeText(value) {
 }
 
 function derivedSearchTokens(photo) {
-  const tokens = [];
-  if (photo.has_negative_space === "true") {
-    tokens.push(labelFor("has_negative_space", "true"), "可放字", "適合放字", "negative space");
-  }
-  if (photo.orientation === "landscape") {
-    tokens.push(labelFor("orientation", "landscape"), "橫幅", "hero", "網站 hero");
-  }
-  if (photo.orientation === "portrait") {
-    tokens.push(labelFor("orientation", "portrait"), "手機", "限時動態");
-  }
-  if (photo.safe_crop?.length > 0) {
-    tokens.push("可裁切", ...photo.safe_crop.map((value) => `${value} 裁切`));
-  }
-  if (photo.public_use_status === "approved") {
-    tokens.push(labelFor("public_use_status", "approved"), "可用", "approved");
-  }
-  if (photo.public_use_status === "needs_review") {
-    tokens.push(labelFor("public_use_status", "needs_review"), "使用提醒", "needs review");
-  }
-  if (photo.curation_status === "ai_labeled") {
-    tokens.push("ai 初標", "ai labeled");
-  }
-  return tokens;
+  return [
+    ...searchTokensForField("has_negative_space", photo.has_negative_space),
+    ...searchTokensForField("orientation", photo.orientation),
+    ...searchTokensForField("public_use_status", photo.public_use_status),
+    ...searchTokensForField("priority_level", photo.priority_level),
+    ...searchTokensForField("curation_status", photo.curation_status),
+    ...(photo.safe_crop ?? []).flatMap((value) => searchTokensForField("safe_crop", value)),
+  ];
 }
 
 function buildSearchText(photo) {
@@ -623,28 +623,16 @@ function buildSearchText(photo) {
     photo.event_name,
     photo.event_year,
     photo.people_count,
-    photo.subject_type,
-    labelFor("subject_type", photo.subject_type),
+    ...searchTokensForField("subject_type", photo.subject_type),
     photo.photographer,
     photo.license,
-    photo.orientation,
-    labelFor("orientation", photo.orientation),
-    photo.has_negative_space,
-    labelFor("has_negative_space", photo.has_negative_space),
     photo.visual_description,
-    photo.public_use_status,
-    labelFor("public_use_status", photo.public_use_status),
-    photo.priority_level,
-    labelFor("priority_level", photo.priority_level),
     photo.curation_notes,
-    photo.curation_status,
-    labelFor("curation_status", photo.curation_status),
     ...photo.scene_tags,
     ...photo.mood_tags,
     ...photo.recommended_uses,
     ...photo.sponsorship_items,
     ...photo.sponsorship_tags,
-    ...photo.safe_crop,
     ...photo.collections,
     ...derivedSearchTokens(photo),
   ]
@@ -1971,26 +1959,29 @@ function revealPhotoFromHash() {
 }
 
 async function loadData() {
-  const [photosResponse, schemaResponse, taxonomyResponse, projectConfigResponse] = await Promise.all([
+  const [photosResponse, schemaResponse, taxonomyResponse, searchAliasesResponse, projectConfigResponse] = await Promise.all([
     fetch(dataSources.photosCsvUrl),
     fetch(dataSources.schemaJsonUrl),
     fetch(dataSources.taxonomyJsonUrl),
+    fetch(dataSources.searchAliasesJsonUrl),
     fetch(projectConfigUrl),
   ]);
 
-  if (!photosResponse.ok || !schemaResponse.ok || !taxonomyResponse.ok || !projectConfigResponse.ok) {
+  if (!photosResponse.ok || !schemaResponse.ok || !taxonomyResponse.ok || !searchAliasesResponse.ok || !projectConfigResponse.ok) {
     throw new Error("資料載入失敗");
   }
 
-  const [photosText, schema, taxonomy, projectConfig] = await Promise.all([
+  const [photosText, schema, taxonomy, loadedSearchAliases, projectConfig] = await Promise.all([
     photosResponse.text(),
     schemaResponse.json(),
     taxonomyResponse.json(),
+    searchAliasesResponse.json(),
     projectConfigResponse.json(),
   ]);
   applyProjectConfig(projectConfig);
   applySchema(schema);
   optionLabelMaps = buildOptionLabelMaps(taxonomy);
+  searchAliases = loadedSearchAliases;
   photos = toObjects(parseCsv(photosText), schema);
   setupTaskModes();
   setupFilters(taxonomy);

@@ -68,6 +68,7 @@ async function main() {
     "config.js",
     "config/project.json",
     "data/photo-schema.json",
+    "data/search-aliases.json",
     "data/tag-taxonomy.json",
     "index.html",
     "main.js",
@@ -81,8 +82,8 @@ async function main() {
   await assertIncludes(join(options.artifactDir, "index.html"), "./styles.css", "styles.css");
   await assertIncludes(join(options.artifactDir, "index.html"), "./main.js", "main.js");
   const config = await assertIncludes(join(options.artifactDir, "config.js"), "photosCsvUrl", "photosCsvUrl");
-  if (!config.includes("schemaJsonUrl") || !config.includes("taxonomyJsonUrl")) {
-    throw new Error("config.js must include schemaJsonUrl and taxonomyJsonUrl");
+  if (!config.includes("schemaJsonUrl") || !config.includes("searchAliasesJsonUrl") || !config.includes("taxonomyJsonUrl")) {
+    throw new Error("config.js must include schemaJsonUrl, searchAliasesJsonUrl, and taxonomyJsonUrl");
   }
   if (!/https:\/\/docs\.google\.com\/spreadsheets\/d\/[^/]+\/gviz\/tq/.test(config)) {
     throw new Error("config.js does not appear to point photosCsvUrl at a public Google Sheets CSV URL");
@@ -90,6 +91,7 @@ async function main() {
 
   JSON.parse(await readFile(join(options.artifactDir, "config/project.json"), "utf8"));
   JSON.parse(await readFile(join(options.artifactDir, "data/photo-schema.json"), "utf8"));
+  JSON.parse(await readFile(join(options.artifactDir, "data/search-aliases.json"), "utf8"));
   JSON.parse(await readFile(join(options.artifactDir, "data/tag-taxonomy.json"), "utf8"));
 
   console.log(`GitHub Pages artifact looks valid: ${options.artifactDir}`);

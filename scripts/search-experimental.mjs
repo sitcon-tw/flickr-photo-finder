@@ -1,6 +1,7 @@
 import { access, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { parseCsv, parseSemicolonList } from "./csv-utils.mjs";
+import { searchTokensForValue } from "./metadata-display.mjs";
 import { listFields, photoHeaders } from "./photo-schema.mjs";
 
 const defaultQueries = [
@@ -37,33 +38,12 @@ const descriptionField = { name: "visual_description", weight: 3 };
 const defaultTop = 5;
 const defaultProposalFile = "metadata-proposals.json";
 const defaultRunPhotosFile = "photos.json";
+const searchAliasesPath = "data/search-aliases.json";
 const sheetsExportPhotosPath = "tmp/sheets-export/photos.csv";
 const fixturePhotosPath = "fixtures/photos.csv";
 const validPhotoFields = new Set(photoHeaders);
 const listFieldSet = new Set(listFields);
-
-const aliasText = {
-  approved: "可公開 使用核准 approved",
-  avoid: "避免 不推薦 avoid",
-  false: "否 false 無 沒有",
-  high: "高優先 推薦 high",
-  landscape: "landscape 橫式 橫向 寬幅",
-  low: "低優先 補充 low",
-  needs_review: "需要確認 需人工確認 needs_review",
-  normal: "一般 normal",
-  portrait: "portrait 直式 直向",
-  reviewed: "人工確認 reviewed",
-  ai_labeled: "AI 初標 ai_labeled",
-  object: "物件 object 道具 素材 桌面 特寫",
-  food: "餐食 茶點 點心 飲料 便當 食物 food",
-  people: "人物 people 人 參與者 講者 工作人員 合照",
-  square: "square 方形 正方形",
-  screen: "螢幕 screen 投影 簡報 投影片 電視",
-  space: "空間 space 場地 空景 走廊 座位 入口",
-  text_signage: "文字 標示 標誌 招牌 指標 看板 立牌 text signage",
-  true: "是 true 有 留白 可放字",
-  unreviewed: "未審 unreviewed",
-};
+let searchAliases = {};
 
 function printUsage() {
   console.log(`Usage:
@@ -274,7 +254,10 @@ function displayValue(record, field) {
   const values = listFieldSet.has(field) ? parseSemicolonList(rawValue) : [String(rawValue).trim()];
   return values
     .filter(Boolean)
-    .flatMap((value) => [value, aliasText[value] ?? ""])
+    .flatMap((value) => [
+      ...searchTokensForValue(field, value),
+      ...(searchAliases[field]?.[value] ?? []),
+    ])
     .filter(Boolean)
     .join(" ");
 }
@@ -463,6 +446,7 @@ async function main() {
     return;
   }
 
+  searchAliases = await readJson(searchAliasesPath);
   const { records, sourceLabel } = await loadRecords(options);
   const queries = [
     ...options.queries,

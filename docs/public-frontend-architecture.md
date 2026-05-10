@@ -137,7 +137,7 @@ GitHub Pages 應透過 GitHub Actions 發布乾淨的 Pages artifact，不應直
 
 - 公開檢索前端所需的 HTML、CSS、JavaScript。
 - 經過資料流程產生或指定的公開資料來源設定。
-- `data/photo-schema.json` 與 `data/tag-taxonomy.json`，讓前端用同一份欄位、受控字彙與顯示文字來源理解資料。
+- `data/photo-schema.json`、`data/tag-taxonomy.json` 與 `data/search-aliases.json`，讓前端用同一份欄位、受控字彙、顯示文字與資料值搜尋同義詞來源理解資料。
 - 必要的靜態資源。
 
 artifact 不應包含：

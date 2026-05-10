@@ -22,6 +22,7 @@ Options:
   --photos <path>             Photos CSV path. Default: fixtures/photos.csv.
   --albums <path>             Albums CSV path. Default: fixtures/albums.csv.
   --import-batches <path>     Import batches CSV path. Default: fixtures/import-batches.csv.
+  --search-aliases <path>     Search aliases JSON path. Default: data/search-aliases.json.
   --taxonomy <path>           Tag taxonomy JSON path. Default: data/tag-taxonomy.json.
   --sponsorship-items <path>  Sponsorship items JSON path. Default: data/sponsorship-items.json.
   --help, -h                  Show this help.
@@ -35,6 +36,7 @@ function parseArgs(argv) {
     albums: "fixtures/albums.csv",
     importBatches: "fixtures/import-batches.csv",
     photos: "fixtures/photos.csv",
+    searchAliases: "data/search-aliases.json",
     taxonomy: "data/tag-taxonomy.json",
     sponsorshipItems: "data/sponsorship-items.json",
   };
@@ -54,6 +56,9 @@ function parseArgs(argv) {
     } else if (arg === "--photos") {
       paths.photos = args[index + 1] ?? "";
       index += 1;
+    } else if (arg === "--search-aliases") {
+      paths.searchAliases = args[index + 1] ?? "";
+      index += 1;
     } else if (arg === "--taxonomy") {
       paths.taxonomy = args[index + 1] ?? "";
       index += 1;
@@ -69,6 +74,7 @@ function parseArgs(argv) {
     albums: "--albums",
     importBatches: "--import-batches",
     photos: "--photos",
+    searchAliases: "--search-aliases",
     sponsorshipItems: "--sponsorship-items",
     taxonomy: "--taxonomy",
   };
@@ -237,6 +243,59 @@ function validateOptionLabels(taxonomy) {
     const missing = definition.values.filter((value) => !String(labels[value] || "").trim());
     if (missing.length > 0) {
       addError(`${paths.taxonomy}: option_labels.${fieldName} missing labels for ${missing.join(", ")}`);
+    }
+  }
+}
+
+function selectableFieldDefinitions(taxonomy) {
+  const selectableFields = new Map();
+  for (const field of photoFields) {
+    if (field.taxonomy_key) {
+      selectableFields.set(field.name, taxonomy[field.taxonomy_key] ?? []);
+    } else if (field.type === "boolean") {
+      selectableFields.set(field.name, ["true", "false"]);
+    }
+  }
+  return selectableFields;
+}
+
+function validateSearchAliases(searchAliases, taxonomy) {
+  if (!searchAliases || typeof searchAliases !== "object" || Array.isArray(searchAliases)) {
+    addError(`${paths.searchAliases}: root must be an object`);
+    return;
+  }
+
+  const selectableFields = selectableFieldDefinitions(taxonomy);
+  for (const [fieldName, aliasesByValue] of Object.entries(searchAliases)) {
+    if (!selectableFields.has(fieldName)) {
+      addError(`${paths.searchAliases}: ${fieldName} does not match a selectable photo field`);
+      continue;
+    }
+    if (!aliasesByValue || typeof aliasesByValue !== "object" || Array.isArray(aliasesByValue)) {
+      addError(`${paths.searchAliases}: ${fieldName} must be an object`);
+      continue;
+    }
+
+    const allowedValues = new Set(selectableFields.get(fieldName));
+    for (const [value, aliases] of Object.entries(aliasesByValue)) {
+      if (!allowedValues.has(value)) {
+        addError(`${paths.searchAliases}: ${fieldName}.${value} does not match a valid option`);
+      }
+      if (!Array.isArray(aliases)) {
+        addError(`${paths.searchAliases}: ${fieldName}.${value} must be an array`);
+        continue;
+      }
+      const normalizedAliases = aliases.map((alias) => String(alias ?? "").trim());
+      const blankCount = normalizedAliases.filter((alias) => !alias).length;
+      if (blankCount > 0) {
+        addError(`${paths.searchAliases}: ${fieldName}.${value} must not contain blank aliases`);
+      }
+      const duplicates = normalizedAliases.filter(
+        (alias, index, values) => alias && values.indexOf(alias) !== index,
+      );
+      if (duplicates.length > 0) {
+        addError(`${paths.searchAliases}: ${fieldName}.${value} has duplicate aliases: ${[...new Set(duplicates)].join(", ")}`);
+      }
     }
   }
 }
@@ -489,14 +548,16 @@ function validateUniqueImportBatchFields(importBatchRows) {
   });
 }
 
-const [albumsText, importBatchesText, photosText, taxonomyText, sponsorshipItemsText] = await Promise.all([
+const [albumsText, importBatchesText, photosText, searchAliasesText, taxonomyText, sponsorshipItemsText] = await Promise.all([
   readFile(paths.albums, "utf8"),
   readFile(paths.importBatches, "utf8"),
   readFile(paths.photos, "utf8"),
+  readFile(paths.searchAliases, "utf8"),
   readFile(paths.taxonomy, "utf8"),
   readFile(paths.sponsorshipItems, "utf8"),
 ]);
 
+const searchAliases = JSON.parse(searchAliasesText);
 const taxonomy = JSON.parse(taxonomyText);
 const sponsorshipItems = JSON.parse(sponsorshipItemsText);
 const albumRows = parseCsv(albumsText);
@@ -533,6 +594,7 @@ if (rows.length === 0) {
   const [headers, ...photoRows] = rows;
   validateHeaders(paths.photos, headers, photoHeaders);
   validateTaxonomy(taxonomy, sponsorshipItems);
+  validateSearchAliases(searchAliases, taxonomy);
   validateUniquePhotoFields(photoRows);
 
   photoRows.forEach((row, index) => {
