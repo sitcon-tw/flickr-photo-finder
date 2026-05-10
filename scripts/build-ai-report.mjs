@@ -9,6 +9,7 @@ const updatePlanFile = "metadata-update-plan.json";
 
 const preferredFieldOrder = [
   "people_count",
+  "subject_type",
   "orientation",
   "has_negative_space",
   "safe_crop",

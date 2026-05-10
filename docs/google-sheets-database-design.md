@@ -140,6 +140,7 @@ schema 與同步狀態紀錄。這張表讓人類、Apps Script 與 agent 能確
 人類整理者應負責需要判斷與工作脈絡的欄位：
 
 - `scene_tags`
+- `subject_type`
 - `mood_tags`
 - `recommended_uses`
 - `people_count`

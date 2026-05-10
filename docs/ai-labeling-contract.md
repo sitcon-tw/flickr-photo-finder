@@ -170,6 +170,7 @@ AI proposal 目前只允許以下欄位：
 | 欄位 | `value` 型別 | 說明 |
 | --- | --- | --- |
 | `people_count` | 非負整數 | 照片中可辨識的人數估計。 |
+| `subject_type` | 字串 | 主要視覺主體粗分類。值必須存在於 `data/tag-taxonomy.json`，且只能單選。 |
 | `scene_tags` | 字串陣列 | 照片中看見的事實。值必須存在於 `data/tag-taxonomy.json`。 |
 | `mood_tags` | 字串陣列 | 照片帶來的感受。值必須存在於 `data/tag-taxonomy.json`。 |
 | `recommended_uses` | 字串陣列 | 適合用途。值必須存在於 `data/tag-taxonomy.json`。 |
@@ -219,7 +220,8 @@ AI 應遵守以下限制：
 - 不要把 `sponsorship_items` 當成一般場景標籤；只有在畫面或相簿脈絡足夠支持時才建議。
 - 不要把 `scene_tags`、`sponsorship_items`、`sponsorship_tags` 混用。
 - 不要覆蓋人工值；proposal 只是候選，後續工具會呈現差異給人類確認。
-- `people_count`、`orientation`、`has_negative_space` 是 AI 初標的基礎讀圖欄位；只要圖片可讀，通常應提出候選值。
+- `people_count`、`subject_type`、`orientation`、`has_negative_space` 是 AI 初標的基礎讀圖欄位；只要圖片可讀，通常應提出候選值。
+- `subject_type` 只描述照片第一眼主要視覺主體是 `people`、`object`、`food`、`text_signage`、`screen` 或 `space`，不描述活動場景、人數規模、用途或品質。若主體是人，不論一人、多人或群眾都使用 `people`；人數規模只用 `people_count` 表達。
 - `safe_crop` 應從版面可用性判斷。只有在裁切後主體、臉部、重要文字與主要物件仍可保留時才提出該比例。
 - `visual_description` 應描述 taxonomy 欄位難以涵蓋的可見細節，例如物件、文字、姿勢、動作、表情、空間位置與構圖關係。它不是照片標題，也不是欄位 reason。
 - `visual_description` 不應重複機械欄位，例如「橫式照片」、「有 5 人」；除非人數或方向對理解畫面構圖有必要。

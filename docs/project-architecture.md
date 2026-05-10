@@ -77,6 +77,7 @@ flowchart LR
 找圖流程應把自然語言需求拆成可搜尋條件：
 
 - 場景與畫面內容：`scene_tags`。
+- 照片海初篩主體：`subject_type`。
 - 情緒與宣傳感受：`mood_tags`。
 - 工作用途或素材包：`recommended_uses`、`collections`。
 - 贊助品項與贊助價值：`sponsorship_items`、`sponsorship_tags`。

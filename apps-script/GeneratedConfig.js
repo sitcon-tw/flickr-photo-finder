@@ -2,7 +2,7 @@
 var SITCON_PHOTO_FINDER_CONFIG = {
   "generatedAt": "not recorded in committed source",
   "schemaVersion": "2026-mvp-1",
-  "taxonomyVersion": "sha256:3599ed0c6097",
+  "taxonomyVersion": "sha256:8ce7cfc3217d",
   "sponsorshipItemsVersion": "sha256:e33bfe6034e1",
   "sponsorshipItemsSnapshotNote": "SITCON 2026 CFS has ended. Treat this file as a fixed snapshot; future CFS versions should replace or extend it explicitly instead of being automatically synced.",
   "photosSheetName": "photos",
@@ -16,6 +16,7 @@ var SITCON_PHOTO_FINDER_CONFIG = {
     "event_name",
     "event_year",
     "people_count",
+    "subject_type",
     "photographer",
     "license",
     "scene_tags",
@@ -105,6 +106,15 @@ var SITCON_PHOTO_FINDER_CONFIG = {
       "multiValue": false,
       "taxonomyKey": "",
       "descriptionZh": "照片中可辨識的人數估計值。可留空；若無人可填 0，值必須是非負整數。"
+    },
+    {
+      "name": "subject_type",
+      "labelZh": "主要視覺主體",
+      "type": "taxonomy",
+      "required": false,
+      "multiValue": false,
+      "taxonomyKey": "subject_type",
+      "descriptionZh": "照片海初篩用的主要視覺主體粗分類，例如人物、物件、餐食茶點、文字標示、螢幕或空間。只描述主體種類，不描述活動場景、人數規模或用途。"
     },
     {
       "name": "photographer",
@@ -252,6 +262,7 @@ var SITCON_PHOTO_FINDER_CONFIG = {
     }
   ],
   "reviewedRequiredFields": [
+    "subject_type",
     "scene_tags",
     "mood_tags",
     "recommended_uses",
@@ -280,6 +291,14 @@ var SITCON_PHOTO_FINDER_CONFIG = {
       "休息區",
       "直播",
       "攝影"
+    ],
+    "subject_type": [
+      "people",
+      "object",
+      "food",
+      "text_signage",
+      "screen",
+      "space"
     ],
     "mood_tags": [
       "熱鬧",

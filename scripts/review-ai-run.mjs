@@ -10,6 +10,7 @@ const defaultSummaryFile = "metadata-review-summary.md";
 
 const distributionFields = [
   "priority_level",
+  "subject_type",
   "has_negative_space",
   "safe_crop",
   "recommended_uses",

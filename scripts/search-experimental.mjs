@@ -14,6 +14,7 @@ const defaultQueries = [
 ];
 
 const structuredFields = [
+  { name: "subject_type", weight: 4 },
   { name: "recommended_uses", weight: 4 },
   { name: "scene_tags", weight: 4 },
   { name: "sponsorship_items", weight: 4 },
@@ -53,7 +54,13 @@ const aliasText = {
   portrait: "portrait 直式 直向",
   reviewed: "人工確認 reviewed",
   ai_labeled: "AI 初標 ai_labeled",
+  object: "物件 object 道具 素材 桌面 特寫",
+  food: "餐食 茶點 點心 飲料 便當 食物 food",
+  people: "人物 people 人 參與者 講者 工作人員 合照",
   square: "square 方形 正方形",
+  screen: "螢幕 screen 投影 簡報 投影片 電視",
+  space: "空間 space 場地 空景 走廊 座位 入口",
+  text_signage: "文字 標示 標誌 招牌 指標 看板 立牌 text signage",
   true: "是 true 有 留白 可放字",
   unreviewed: "未審 unreviewed",
 };

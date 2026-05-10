@@ -5,6 +5,7 @@
       "export_path": "fixtures/photos.csv",
       "description_zh": "SITCON Flickr 照片索引。正式資料以 Google Sheets 為準，此 schema 也定義 CSV 匯出格式。",
       "reviewed_required_fields": [
+        "subject_type",
         "scene_tags",
         "mood_tags",
         "recommended_uses",
@@ -87,6 +88,17 @@
           "multi_value": false,
           "maintainer_zh": "AI 或整理者",
           "description_zh": "照片中可辨識的人數估計值。可留空；若無人可填 0，值必須是非負整數。"
+        },
+        {
+          "name": "subject_type",
+          "label_zh": "主要視覺主體",
+          "type": "taxonomy",
+          "taxonomy_key": "subject_type",
+          "required": false,
+          "required_for_reviewed": true,
+          "multi_value": false,
+          "maintainer_zh": "AI 或整理者",
+          "description_zh": "照片海初篩用的主要視覺主體粗分類，例如人物、物件、餐食茶點、文字標示、螢幕或空間。只描述主體種類，不描述活動場景、人數規模或用途。"
         },
         {
           "name": "photographer",

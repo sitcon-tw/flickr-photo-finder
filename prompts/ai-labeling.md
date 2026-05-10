@@ -27,6 +27,7 @@
 每張有可讀圖片的照片，都應優先判斷以下基礎欄位：
 
 - `people_count`: 畫面中可辨識的所有人，包括背景與部分入鏡但可辨識的人，不只是主體。無人照片請填 `0`；人數很多時可估計，並在 reason 寫出估算依據，例如「前排約 6 人、後方約 4 排，每排約 5 人」。這是原始數值欄位，請不要輸出人數區間、少量/中量/大量、small group/crowd 這類分類。
+- `subject_type`: 主要視覺主體粗分類，用於照片海初篩。只能選一個值：`people`、`object`、`food`、`text_signage`、`screen`、`space`。請只描述畫面主體種類，不要用它描述活動場景、人數規模、用途或品質。
 - `orientation`: 橫式、直式或方形。
 - `has_negative_space`: 是否有明顯留白可放文字。只要圖片可讀，通常應輸出 `true` 或 `false`。
 - `safe_crop`: 不是「能裁就標」。請逐一比例驗證 `1:1`、`16:9`、`9:16`；裁切後主要人物臉部、主要物件、可讀文字或重要構圖元素不可被截斷。若沒有安全裁切比例，請省略整個欄位。
@@ -94,6 +95,7 @@ metadata-proposals.json
 只允許：
 
 - `people_count`: 非負整數。
+- `subject_type`: 字串，必須來自 `data/tag-taxonomy.json`。
 - `scene_tags`: 字串陣列，必須來自 `data/tag-taxonomy.json`。
 - `mood_tags`: 字串陣列，必須來自 `data/tag-taxonomy.json`。
 - `recommended_uses`: 字串陣列，必須來自 `data/tag-taxonomy.json`。
@@ -125,6 +127,13 @@ metadata-proposals.json
 ## 判斷原則
 
 - `scene_tags` 是畫面事實，例如 `合照`、`舞台`、`背板`。
+- `subject_type` 是主要視覺主體，例如人物、物件、餐食茶點、文字標示、螢幕或空間。它只回答「這張照片第一眼主要在看什麼」，不取代 `scene_tags`。
+- 若主體是人，不論是一人、多人、合照或群眾，`subject_type` 都是 `people`；人數規模只用 `people_count` 表達。
+- 若主體是桌旗、貼紙、手冊、獎座、紀念品或其他可拿取物，`subject_type` 是 `object`；是否為手作、攤位等活動情境再交給 `scene_tags`。
+- 若主體是餐點、茶點、飲料、便當、點心或食物配置，`subject_type` 是 `food`；若它也代表活動中的茶點情境，可同時使用 `scene_tags = 茶點`。
+- 若主體是活動標誌、看板、指標、白板、A 字牌、布條或可讀文字，`subject_type` 是 `text_signage`。
+- 若主體是投影幕、簡報、電視、監看畫面或電子螢幕，`subject_type` 是 `screen`。
+- 若主體是場地、空景、入口、走廊、座位區或空間配置，`subject_type` 是 `space`。
 - `mood_tags` 是照片帶來的感受，例如 `儀式感`、`成就感`、`青春感`。它用來輔助社群、網站、招募與宣傳找圖，不是品質分數，也不是每張照片都要有的分類。
 - `recommended_uses` 是工作用途，例如 `社群貼文`、`活動回顧`。
 - `recommended_uses` 的目的不是把每張照片分類，而是提示照片特別適合的使用情境。若照片只是普通可用，但沒有明確用途優勢，請省略。

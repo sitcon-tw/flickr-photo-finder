@@ -11,6 +11,7 @@ import {
 const defaultProposalFile = "metadata-proposals.json";
 const allowedAiFields = new Set([
   "people_count",
+  "subject_type",
   "scene_tags",
   "mood_tags",
   "recommended_uses",

@@ -17,6 +17,14 @@
     "直播",
     "攝影"
   ],
+  "subject_type": [
+    "people",
+    "object",
+    "food",
+    "text_signage",
+    "screen",
+    "space"
+  ],
   "mood_tags": [
     "熱鬧",
     "專注",

@@ -6,6 +6,7 @@ const controls = {
   mood: document.querySelector("#moodFilter"),
   scene: document.querySelector("#sceneFilter"),
   peopleCount: document.querySelector("#peopleCountFilter"),
+  subjectType: document.querySelector("#subjectTypeFilter"),
   sponsorshipItem: document.querySelector("#sponsorshipItemFilter"),
   publicStatus: document.querySelector("#publicStatusFilter"),
   priority: document.querySelector("#priorityFilter"),
@@ -23,6 +24,15 @@ const peopleCountFilters = [
   { label: "6-20 人", value: "6-20" },
   { label: "21 人以上", value: "21+" },
 ];
+
+const subjectTypeLabels = new Map([
+  ["people", "人物"],
+  ["object", "物件"],
+  ["food", "餐食茶點"],
+  ["text_signage", "文字標示"],
+  ["screen", "螢幕"],
+  ["space", "空間"],
+]);
 
 const grid = document.querySelector("#photoGrid");
 const summary = document.querySelector("#resultSummary");
@@ -116,6 +126,7 @@ function currentFilterSnapshot() {
     mood: controls.mood.value,
     scene: controls.scene.value,
     peopleCount: controls.peopleCount.value,
+    subjectType: controls.subjectType.value,
     sponsorshipItem: controls.sponsorshipItem.value,
     publicUseStatus: controls.publicStatus.value,
     priorityLevel: controls.priority.value,
@@ -131,6 +142,7 @@ function hasActiveFilters(snapshot) {
       snapshot.mood ||
       snapshot.scene ||
       snapshot.peopleCount ||
+      snapshot.subjectType ||
       snapshot.sponsorshipItem ||
       snapshot.publicUseStatus ||
       snapshot.priorityLevel ||
@@ -176,6 +188,7 @@ function trackVisibleResults(source) {
       mood_filter_used: Boolean(snapshot.mood),
       scene_filter_used: Boolean(snapshot.scene),
       people_count_filter: snapshot.peopleCount,
+      subject_type: snapshot.subjectType,
       ...resultsEventParams(snapshot),
     });
   }
@@ -295,6 +308,14 @@ function fillSelect(select, label, values) {
   }
 }
 
+function fillSelectWithLabels(select, label, values, labels) {
+  select.replaceChildren();
+  select.append(new Option(label, ""));
+  for (const value of values) {
+    select.append(new Option(labels.get(value) ?? value, value));
+  }
+}
+
 function setupFilters(taxonomy) {
   fillSelect(controls.use, "全部用途", taxonomy.recommended_uses ?? []);
   fillSelect(controls.mood, "全部氛圍", taxonomy.mood_tags ?? []);
@@ -302,6 +323,7 @@ function setupFilters(taxonomy) {
   controls.peopleCount.replaceChildren(
     ...peopleCountFilters.map(({ label, value }) => new Option(label, value)),
   );
+  fillSelectWithLabels(controls.subjectType, "全部主體", taxonomy.subject_type ?? [], subjectTypeLabels);
   fillSelect(controls.sponsorshipItem, "全部品項", taxonomy.sponsorship_items ?? []);
   fillSelect(controls.publicStatus, "全部狀態", taxonomy.public_use_status ?? []);
   fillSelect(controls.priority, "全部優先度", taxonomy.priority_level ?? []);
@@ -324,6 +346,7 @@ function textMatches(photo, query) {
     photo.event_name,
     photo.event_year,
     photo.people_count,
+    photo.subject_type,
     photo.photographer,
     photo.license,
     photo.orientation,
@@ -383,6 +406,7 @@ function matchesFilters(photo) {
     hasListValue(photo, "mood_tags", controls.mood.value) &&
     hasListValue(photo, "scene_tags", controls.scene.value) &&
     matchesPeopleCount(photo, controls.peopleCount.value) &&
+    (!controls.subjectType.value || photo.subject_type === controls.subjectType.value) &&
     hasListValue(photo, "sponsorship_items", controls.sponsorshipItem.value) &&
     hasListValue(photo, "collections", controls.collection.value) &&
     (!controls.publicStatus.value || photo.public_use_status === controls.publicStatus.value) &&
@@ -406,7 +430,7 @@ function appendDetail(details, label, values, options = {}) {
   for (const value of normalizedValues) {
     const tag = document.createElement("span");
     tag.className = options.status ? `tag status-${value}` : "tag";
-    tag.textContent = value;
+    tag.textContent = options.labels?.get(value) ?? value;
     description.append(tag);
   }
 
@@ -566,7 +590,7 @@ function formatCountRatio(count, total = photos.length) {
   return `${count} / ${total} (${percent}%)`;
 }
 
-function countByField(fieldName) {
+function countByField(fieldName, labels = new Map()) {
   const counts = new Map();
   for (const photo of photos) {
     const rawValue = photo[fieldName];
@@ -580,7 +604,9 @@ function countByField(fieldName) {
       counts.set(value, (counts.get(value) ?? 0) + 1);
     }
   }
-  return [...counts.entries()].sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0], "zh-Hant-TW"));
+  return [...counts.entries()]
+    .map(([value, count]) => [labels.get(value) ?? value, count])
+    .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0], "zh-Hant-TW"));
 }
 
 function peopleCountBuckets() {
@@ -660,6 +686,7 @@ function makeOverviewItem({ title, value, detail, values = [] }) {
 function renderOverview() {
   const reviewedComplete = reviewedCompletenessCount();
   const peopleCountFilled = countFilled("people_count");
+  const subjectTypeFilled = countFilled("subject_type");
   const sponsorshipItemsFilled = countFilled("sponsorship_items");
   const sponsorshipTagsFilled = countFilled("sponsorship_tags");
   const missingPreview = missingPreviewCount();
@@ -694,6 +721,12 @@ function renderOverview() {
       value: formatCountRatio(peopleCountFilled),
       detail: "支援單人、群眾、無人畫面等篩選。",
       values: peopleCountBuckets(),
+    }),
+    makeOverviewItem({
+      title: "主要視覺主體",
+      value: formatCountRatio(subjectTypeFilled),
+      detail: "照片海初篩用的主體粗分類。",
+      values: countByField("subject_type", subjectTypeLabels),
     }),
     makeOverviewItem({
       title: "Reviewed 欄位完整度",
@@ -770,6 +803,7 @@ function renderPhoto(photo, resultRank, resultCount) {
   appendDetail(details, "氛圍", photo.mood_tags);
   appendDetail(details, "場景", photo.scene_tags);
   appendDetail(details, "人數", formatPeopleCount(photo));
+  appendDetail(details, "主體", photo.subject_type, { labels: subjectTypeLabels });
   appendDetail(details, "贊助品項", photo.sponsorship_items);
   appendDetail(details, "贊助價值", photo.sponsorship_tags);
   appendDetail(details, "素材包", photo.collections);
