@@ -43,9 +43,17 @@
         gap: 8px;
       }
 
+      .review-context {
+        display: grid;
+        gap: 8px;
+        position: sticky;
+        top: 0;
+        z-index: 20;
+      }
+
       .nav-row {
         display: grid;
-        grid-template-columns: auto minmax(0, 1fr) auto;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
         gap: 6px;
       }
 
@@ -64,9 +72,6 @@
         display: grid;
         gap: 8px;
         grid-template-columns: 96px minmax(0, 1fr);
-        position: sticky;
-        top: 0;
-        z-index: 20;
       }
 
       .photo img {
@@ -392,33 +397,35 @@
   </head>
   <body>
     <main class="panel">
-      <section class="toolbar">
-        <div id="rowSummary" class="meta">請從 photos 選取一列後開啟 panel。</div>
-        <div class="nav-row">
-          <button id="prevButton" class="secondary" type="button">上一張</button>
-          <button id="nextButton" class="secondary" type="button">下一張</button>
-          <button id="activeButton" class="secondary" type="button">目前列</button>
-        </div>
-        <div class="row-loader">
-          <input id="rowNumberInput" inputmode="numeric" aria-label="photos row number" />
-          <button id="loadButton" class="secondary" type="button">載入</button>
-        </div>
-      </section>
+      <div class="review-context">
+        <section class="toolbar">
+          <div id="rowSummary" class="meta">請從 photos 選取一列後開啟 panel。</div>
+          <div class="nav-row">
+            <button id="prevButton" class="secondary" type="button">上一張</button>
+            <button id="nextButton" class="secondary" type="button">下一張</button>
+          </div>
+          <div class="row-loader">
+            <input id="rowNumberInput" inputmode="numeric" aria-label="photos row number" />
+            <button id="loadButton" class="secondary" type="button">載入</button>
+            <button id="activeButton" class="secondary" type="button">目前列</button>
+          </div>
+        </section>
 
-      <section id="status" class="status"></section>
+        <section id="status" class="status"></section>
 
-      <section id="photo" class="photo" hidden>
-        <img id="preview" alt="" />
-        <div>
-          <div id="photoTitle" class="photo-title"></div>
-          <div id="photoMeta" class="meta"></div>
-        </div>
-        <div id="photoContext" class="photo-context meta"></div>
-        <div class="photo-links">
-          <a id="photoUrl" href="#" target="_blank" rel="noreferrer">Flickr</a>
-          <a id="previewUrl" href="#" target="_blank" rel="noreferrer">縮圖</a>
-        </div>
-      </section>
+        <section id="photo" class="photo" hidden>
+          <img id="preview" alt="" />
+          <div>
+            <div id="photoTitle" class="photo-title"></div>
+            <div id="photoMeta" class="meta"></div>
+          </div>
+          <div id="photoContext" class="photo-context meta"></div>
+          <div class="photo-links">
+            <a id="photoUrl" href="#" target="_blank" rel="noreferrer">Flickr</a>
+            <a id="previewUrl" href="#" target="_blank" rel="noreferrer">縮圖</a>
+          </div>
+        </section>
+      </div>
 
       <form id="form" class="form"></form>
 
