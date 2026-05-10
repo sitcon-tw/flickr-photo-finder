@@ -163,8 +163,8 @@ CLI 也需要 GA4 property ID。property ID 不是 measurement ID；它是 GA4 U
 可以使用任一方式提供：
 
 ```bash
-pnpm ga4:dimensions:check -- --property 123456789
-GA4_PROPERTY_ID=123456789 pnpm ga4:dimensions:check
+pnpm analytics:dimensions:check -- --property 123456789
+GA4_PROPERTY_ID=123456789 pnpm analytics:dimensions:check
 ```
 
 若要讓 repo 預設知道 property ID，可填入 `config/project.json` 的 `frontend.ga4PropertyId`。這不是 secret；credential 才是 secret。
@@ -212,7 +212,7 @@ GA4 後台只註冊低基數 event-scoped custom dimensions，例如：
 檢查 GA4 後台和 repo 設定的差異：
 
 ```bash
-pnpm ga4:dimensions:check -- --property <GA4_PROPERTY_ID>
+pnpm analytics:dimensions:check -- --property <GA4_PROPERTY_ID>
 ```
 
 這個指令只會列出：
@@ -224,7 +224,7 @@ pnpm ga4:dimensions:check -- --property <GA4_PROPERTY_ID>
 建立缺少的 dimensions：
 
 ```bash
-pnpm ga4:dimensions:sync -- --property <GA4_PROPERTY_ID> --write
+pnpm analytics:dimensions:sync -- --property <GA4_PROPERTY_ID> --write
 ```
 
 這個指令只會建立缺少的 custom dimensions，不會修改、刪除或 archive 既有 GA4 設定。重複執行應該是 idempotent。
@@ -244,19 +244,19 @@ pnpm ga4:dimensions:sync -- --property <GA4_PROPERTY_ID> --write
 - service account 已可依 API Explorer workaround 加入 GA4 property。
 - `config/ga4-custom-dimensions.json` 已定義低基數 event-scoped custom dimensions。
 - 前端已送出任務模式、搜尋、篩選、零結果、載入更多、照片操作、候選清單與 AI 助手找圖入口事件；事件設計以 `docs/frontend-analytics-design.md` 為準。
-- 提供 GA4 property ID 後，`pnpm ga4:dimensions:sync -- --property <GA4_PROPERTY_ID> --write` 已可將缺少的 custom dimensions 同步到 GA4。也可以改用 `GA4_PROPERTY_ID` 環境變數，或在 `config/project.json` 的 `frontend.ga4PropertyId` 填入預設值；目前 repo 不把 property ID 當成 secret。
+- 提供 GA4 property ID 後，`pnpm analytics:dimensions:sync -- --property <GA4_PROPERTY_ID> --write` 已可將缺少的 custom dimensions 同步到 GA4。也可以改用 `GA4_PROPERTY_ID` 環境變數，或在 `config/project.json` 的 `frontend.ga4PropertyId` 填入預設值；目前 repo 不把 property ID 當成 secret。
 
 日後維護者應先用 dry-run 檢查 GA4 後台是否仍和 repo 設定一致：
 
 ```bash
 export GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
-pnpm ga4:dimensions:check -- --property <GA4_PROPERTY_ID>
+pnpm analytics:dimensions:check -- --property <GA4_PROPERTY_ID>
 ```
 
 若輸出有 missing dimensions，確認差異後再執行：
 
 ```bash
-pnpm ga4:dimensions:sync -- --property <GA4_PROPERTY_ID> --write
+pnpm analytics:dimensions:sync -- --property <GA4_PROPERTY_ID> --write
 ```
 
 ## 事件驗收清單

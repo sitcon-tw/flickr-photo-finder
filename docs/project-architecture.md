@@ -6,7 +6,7 @@ SITCON Flickr Photo Finder 是 Flickr 之上的照片索引層，不是相簿替
 
 這個專案要解決的問題是：籌備團隊常常不是用「哪一年哪個相簿」找照片，而是用工作需求找照片，例如社群宣傳、網站視覺、贊助提案、贊助成果報告、新聞稿、志工招募、活動回顧、設計素材或對外簡報。
 
-因此資料庫的核心任務是替 Flickr 照片加上可搜尋、可排序、可被 AI 理解的 metadata，讓人類和 AI 都能更快挑出合適照片。
+因此照片索引的核心任務是替 Flickr 照片加上可搜尋、可排序、可被 AI 理解的 metadata，讓人類和 AI 都能更快挑出合適照片。
 
 ## 使用者與需求
 
@@ -76,9 +76,9 @@ flowchart LR
 4. 工具產生一次 intake run artifact，包含缺少照片的最低必要欄位、更新後的 `albums.last_processed_at`、`import_batches` 與摘要。
 5. 人類檢查 run artifact 後，透過官方 Google Sheets API SDK 寫入工具套用到 Google Sheets；新照片可以直接由志工在 Google Sheets 補資料，也可以先由 AI 產生候選 metadata。
 6. AI 候選值必須先經過 `ai:review`、`ai:report` 或必要的搜尋實驗檢視，以 diff / report 形式給人類確認，確認後才回寫。
-7. Apps Script 在 Sheets 內提供即時提示；必要時匯出資料並執行 repo validation。
+7. Apps Script 在 Sheets 內提供即時提示；必要時匯出資料並執行專案 validation。
 
-匯入階段最低必要欄位、`reviewed` 完整度與 `approved` 使用要求由 `data/photo-schema.json` 定義，並由 `pnpm validate:data` 檢查。文件只說明流程與判斷，不另外維護欄位清單。
+匯入階段最低必要欄位、`reviewed` 完整度與 `approved` 使用要求由 `data/photo-schema.json` 定義，並由 `pnpm data:validate` 檢查。文件只說明流程與判斷，不另外維護欄位清單。
 
 ## 找圖流程
 
@@ -123,9 +123,9 @@ flowchart LR
 - 原圖檔案。
 - 私人授權資訊或不該公開的內部資料。
 
-## 目前 MVP 判斷
+## 1.0 現況與演進邊界
 
-目前最重要的不是導入正式後台或 PostgreSQL，而是先讓以下流程成立：
+目前 1.0 的成果展現不是導入正式後台或 PostgreSQL，而是讓以下流程穩定成立：
 
 1. 技術志工或 agent 能從 SITCON Flickr 盤點目前有哪些相簿。
 2. 使用者能從已盤點的相簿清單選擇本次要處理哪一本。
@@ -135,6 +135,6 @@ flowchart LR
 6. GitHub Pages 和外部 AI 能讀同一份公開照片索引。
 7. 真實使用者能用工作需求找到照片，並回饋標籤或欄位是否足夠。
 
-目前專案已支援相簿盤點、相簿選擇、intake run 產生、Sheets 初始化與匯入 dry-run/write、AI 初標 prepare/review/report/apply、Pages artifact build/check，以及 Apps Script 維護輔助 source。GitHub Pages 部署已走 GitHub Actions artifact；Apps Script source 可透過 `clasp` 部署到 Sheet-bound script，但實際綁定與部署仍需由有目標 Sheet / Apps Script 權限的維護者執行。最新可用指令、低階工具與改善項目請以 `docs/README.md` 的「目前狀態」為準。
+目前專案已支援相簿盤點、相簿選擇、intake run 產生、Sheets 初始化與匯入 dry-run/write、AI 初標 prepare/review/report/apply、公開搜尋前端 artifact build/check，以及 Apps Script 維護輔助 source。GitHub Pages 部署已走 GitHub Actions artifact；Apps Script source 可透過 `clasp` 部署到 Sheet-bound script，但實際綁定與部署仍需由有目標 Sheet / Apps Script 權限的維護者執行。最新可用指令、低階工具與改善項目請以 `docs/README.md` 的「目前狀態」為準。
 
-若未來真的出現權限分層、非公開欄位、審核歷程、多人衝突或查詢效能問題，再評估正式資料庫或後台。
+未來發展仍應優先延伸這個架構：改善公開搜尋體驗、Sheets 內維護輔助、AI 初標審核與資料品質檢查。只有當 Google Sheets-first 架構無法合理處理權限分層、非公開欄位、審核歷程、多人衝突或查詢效能時，才重新評估正式資料庫或後台；這不是目前 1.0 的專案目標。

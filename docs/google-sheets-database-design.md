@@ -1,10 +1,10 @@
-# Google Sheets 資料庫設計
+# Google Sheets 照片索引表格設計
 
 ## 目的
 
-這份文件定義 SITCON Flickr Photo Finder 的正式 Google Sheets 資料庫結構。
+這份文件定義 SITCON Flickr Photo Finder 的正式 Google Sheets 照片索引表格結構。
 
-此專案的正式照片資料不放在 repo 內。repo 負責保存 schema、taxonomy、驗證規則、匯入工具、同步流程、Apps Script 來源與 AI/agent 維護文件；Google Sheets 則是志工實際共同維護照片索引的資料庫。
+此專案的正式照片資料不放在 repo 內。repo 負責保存 schema、taxonomy、驗證規則、匯入工具、同步流程、Apps Script 來源與 AI/agent 維護文件；Google Sheets 則是志工實際共同維護照片索引的地方。
 
 ## 核心決策
 
@@ -12,14 +12,14 @@
 - `data/photo-schema.json` 是 `photos`、`albums`、`import_batches` 欄位順序、欄位 metadata 與基本完整度規則的機器可讀來源。
 - `data/tag-taxonomy.json` 是受控字彙與列舉值來源。
 - `data/sponsorship-items.json` 是 SITCON 2026 CFS 贊助品項固定版本資料。
-- `photos` 主表本身就是公開照片索引。資料庫的目標是為照片加註 metadata，方便人類、前端與 AI 挑選，而不是另外做一層篩選資料表。
+- `photos` 主表本身就是公開照片索引。索引的目標是為照片加註 metadata，方便人類、前端與 AI 挑選，而不是另外做一層篩選資料表。
 - 資料語意必須存在欄位值，不依賴顏色、註解、篩選、排序或合併儲存格。
 
 ## 建議工作表
 
 以下列出正式 Google Sheets 應有的工作表與各表責任。工具支援狀態、目前可用指令與改善項目請以 `docs/README.md` 的「目前狀態」為準；同步與寫入流程請看 `docs/sheets-sync-workflow.md`。
 
-建立 MVP Sheets 前，可以先執行：
+建立 1.0 Sheets 前，可以先執行：
 
 ```bash
 pnpm sheets:init
@@ -35,7 +35,7 @@ pnpm sheets:init
 
 `photos` 和 `import_batches` 初始可以只有 header；`albums` 可先使用 repo 目前已盤點的相簿清單，或先重新執行 `pnpm albums:discover -- --write` 再產生初始化檔。`taxonomy` 與 `sponsorship_items` 是輔助表，供 Apps Script、下拉選單與人類查詢使用。
 
-Google Sheets tab 名稱在 MVP 固定，不提供 `worksheetNames` 對照設定。其他組織 fork 時若要複用，應使用同樣 tab 名稱；未來若真的有改名需求，再加入對照設定。
+Google Sheets tab 名稱在 1.0 固定，不提供 `worksheetNames` 對照設定。其他組織 fork 時若要複用，應使用同樣 tab 名稱；未來若真的有改名需求，再加入對照設定。
 
 若 `config/project.json` 已填入 `googleSheets.spreadsheetId`，可先執行只讀檢查：
 
@@ -160,7 +160,7 @@ AI 可以協助產生候選值，但不應靜默覆蓋人類已整理的值。AI
 
 ## 公開讀取方式
 
-MVP 階段不建立額外的公開篩選表。GitHub Pages 使用 Google Sheets `photos` 工作表的公開 CSV URL，外部 AI 與其他唯讀工具也應讀取 `photos` 主表，或讀取由 `photos` 以同一套欄位匯出的公開 CSV/JSON。
+1.0 階段不建立額外的公開篩選表。GitHub Pages 使用 Google Sheets `photos` 工作表的公開 CSV URL，外部 AI 與其他唯讀工具也應讀取 `photos` 主表，或讀取由 `photos` 以同一套欄位匯出的公開 CSV/JSON。
 
 GitHub Pages 使用的公開 CSV URL 形式為：
 
@@ -168,7 +168,7 @@ GitHub Pages 使用的公開 CSV URL 形式為：
 https://docs.google.com/spreadsheets/d/<spreadsheetId>/gviz/tq?tqx=out:csv&sheet=photos
 ```
 
-這個 URL 由 `pnpm pages:build` 根據 `config/project.json` 的 `googleSheets.spreadsheetId` 產生。它不需要 API key、OAuth、service account 或 Apps Script Web App。
+這個 URL 由 `pnpm finder:build` 根據 `config/project.json` 的 `googleSheets.spreadsheetId` 產生。它不需要 API key、OAuth、service account 或 Apps Script Web App。
 
 公開匯出只是技術傳輸格式，不是另一份資料表，也不應做資料篩選。它應：
 
@@ -178,11 +178,11 @@ https://docs.google.com/spreadsheets/d/<spreadsheetId>/gviz/tq?tqx=out:csv&sheet
 - 不因 `curation_status = unreviewed` 或 `ai_labeled` 排除照片。
 - 不因 `public_use_status = needs_review` 或 `avoid` 排除照片。
 
-若未來真的出現不適合公開的欄位或資料，再重新設計公開/非公開資料邊界；不要在 MVP 先預設一張額外篩選表。
+若未來真的出現不適合公開的欄位或資料，再重新設計公開/非公開資料邊界；不要在 1.0 先預設一張額外篩選表。
 
 ## 最低資料品質
 
-能進入 `photos` 的最低條件，以及 `curation_status = reviewed` 的完整度要求，都由 `data/photo-schema.json` 定義，並由 `pnpm validate:data` 檢查。`public_use_status = approved` 是整理者的使用提醒，不會讓 `photographer` 或 `license` 變成必填。
+能進入 `photos` 的最低條件，以及 `curation_status = reviewed` 的完整度要求，都由 `data/photo-schema.json` 定義，並由 `pnpm data:validate` 檢查。`public_use_status = approved` 是整理者的使用提醒，不會讓 `photographer` 或 `license` 變成必填。
 
 這份文件只記錄資料表設計與欄位責任；不要在這裡另外維護一份必填欄位清單。
 
@@ -215,7 +215,7 @@ Google Sheets 應盡量提供以下保護：
 
 ## 遷移性
 
-這個 Sheets 設計應保留未來遷移到 PostgreSQL、SQLite 或其他資料庫的可能性。
+這個 Sheets 設計應保留未來改用其他資料層的可能性，但 1.0 目標仍是維持 Google Sheets-first。
 
 因此：
 

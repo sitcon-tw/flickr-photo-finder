@@ -49,7 +49,7 @@
 
 - `reviewed_required_fields`
 
-請不要在文件中另外維護一份欄位清單。若規則改變，先改 `data/photo-schema.json`，再讓 `pnpm validate:data` 和相關文件跟著更新。
+請不要在文件中另外維護一份欄位清單。若規則改變，先改 `data/photo-schema.json`，再讓 `pnpm data:validate` 和相關文件跟著更新。
 
 `reviewed` 的門檻應聚焦在照片是否具備最基礎可搜尋 metadata。適合用途、公開使用風險與推薦優先度仍是重要欄位，但不應阻擋整理者把基礎資料標成已人工檢查。
 

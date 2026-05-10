@@ -14,10 +14,10 @@
 請使用 pnpm，不要使用 npm 或 yarn。
 
 ```bash
-pnpm validate:data
+pnpm data:validate
 pnpm eval:validate-fixtures
-pnpm pages:build
-pnpm pages:check
+pnpm finder:build
+pnpm finder:check
 ```
 
 如果只改文件，可以視情況只跑和變更相關的檢查。

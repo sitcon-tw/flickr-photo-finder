@@ -136,9 +136,9 @@
 
 ## 驗收
 
-- `pnpm validate:data` 通過。
+- `pnpm data:validate` 通過。
 - `node --check app/main.js` 通過。
-- `pnpm pages:build` 與 `pnpm pages:check` 通過。
+- `pnpm finder:build` 與 `pnpm finder:check` 通過。
 - 用正式或合成 10k 級資料手動驗證搜尋、篩選、載入更多與候選清單。
 - 手機與桌機都能完成至少三個任務：社群貼文、網站 hero、贊助成果。
 - 每個任務都能在結果中看見任務匹配、整理狀態、Flickr 來源與必要使用提醒。

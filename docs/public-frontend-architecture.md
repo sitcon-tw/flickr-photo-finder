@@ -4,7 +4,7 @@
 
 這份文件記錄公開唯讀照片搜尋前端的方向。
 
-Google Sheets 是正式照片索引資料庫，Apps Script 可以作為具有授權的維護輔助介面；但更多使用者只需要能夠存取、搜尋與篩選照片，不需要編輯資料。公開搜尋前端應部署到 GitHub Pages，降低使用門檻。
+Google Sheets 是正式照片索引，Apps Script 可以作為具有授權的維護輔助介面；但更多使用者只需要能夠存取、搜尋與篩選照片，不需要編輯資料。公開搜尋前端應部署到 GitHub Pages，降低使用門檻。
 
 Apps Script Web App 是另一個授權後的校對入口，適合需要批量瀏覽、編輯與儲存 metadata 的整理者。它不作為 GitHub Pages 的資料 API，也不讓公開前端取得寫入能力。
 
@@ -13,7 +13,7 @@ Apps Script Web App 是另一個授權後的校對入口，適合需要批量瀏
 - GitHub Pages 前端是公開、唯讀、無登入門檻的搜尋介面。
 - 資料來源仍是 Google Sheets，不是 repo 內 sample data。
 - GitHub Pages 前端不保存 secret，也不使用需要私人 credential 的 Google API。
-- MVP 階段 GitHub Pages 直接讀取 Google Sheets `photos` 工作表的公開 CSV 輸出。
+- 1.0 階段 GitHub Pages 直接讀取 Google Sheets `photos` 工作表的公開 CSV 輸出。
 - 公開 CSV 只是 `photos` 主表的傳輸格式，不是另一張篩選表或 curated subset。
 - Apps Script 保留為授權維護介面與欄位驗證工具，不負責建立額外篩選表。
 - Apps Script Web App 可以提供可寫入的校對 UI，但 GitHub Pages 不呼叫它，也不共用其授權狀態。
@@ -48,9 +48,9 @@ GitHub Pages
 
 ## 為什麼不建立額外公開表
 
-目前資料庫的目標是替 Flickr 照片加註 metadata，讓人類、前端與 AI 可以依欄位自行挑選。它不是要在資料庫內先做出另一層篩選結果。
+目前照片索引的目標是替 Flickr 照片加註 metadata，讓人類、前端與 AI 可以依欄位自行挑選。它不是要在索引內先做出另一層篩選結果。
 
-因此 MVP 不建立 `photos` 之外的公開篩選表。公開前端可以直接讀 `photos`，或讀由 `photos` 匯出的同欄位 CSV/JSON。
+因此 1.0 不建立 `photos` 之外的公開篩選表。公開前端可以直接讀 `photos`，或讀由 `photos` 匯出的同欄位 CSV/JSON。
 
 這個設計的好處：
 
@@ -61,15 +61,15 @@ GitHub Pages
 
 前端不應依賴 Sheets 的顏色、註解、排序或篩選檢視。所有可搜尋、可排序、可提醒的語意都應來自欄位值。
 
-## MVP 資料讀取方式
+## 1.0 資料讀取方式
 
-MVP 採用 Google Sheets 公開 CSV URL：
+1.0 採用 Google Sheets 公開 CSV URL：
 
 ```text
 https://docs.google.com/spreadsheets/d/<spreadsheetId>/gviz/tq?tqx=out:csv&sheet=photos
 ```
 
-`pnpm pages:build` 會依 `config/project.json` 的 `googleSheets.spreadsheetId` 產生部署版 `config.js`，並把 `photosCsvUrl` 指向上述公開 CSV URL。
+`pnpm finder:build` 會依 `config/project.json` 的 `googleSheets.spreadsheetId` 產生部署版 `config.js`，並把 `photosCsvUrl` 指向上述公開 CSV URL。
 
 採用這個方式的理由：
 
@@ -78,11 +78,11 @@ https://docs.google.com/spreadsheets/d/<spreadsheetId>/gviz/tq?tqx=out:csv&sheet
 - Apps Script 仍可專注在授權後的 Sheets 維護輔助，不需要額外提供公開 API。
 - 資料治理仍回到 `photos` 主表、repo schema、taxonomy、validation 與 Apps Script 檢查，不會多出另一套公開資料規則。
 
-GitHub Pages MVP 暫不採用以下方式：
+1.0 GitHub Pages 暫不採用以下方式：
 
 - Google Sheets API from browser：會引入 API key / OAuth / quota 等前端不需要承擔的問題。
 - Apps Script Web App API：公開前端不透過 Apps Script 讀寫資料；Web App 只作為授權校對介面存在。
-- GitHub Actions 以 service account 匯出靜態資料：可作為未來選項，但 MVP 先避免 GitHub Secrets 與部署時資料快照同步問題。
+- GitHub Actions 以 service account 匯出靜態資料：可作為未來選項，但 1.0 先避免 GitHub Secrets 與部署時資料快照同步問題。
 
 ## 上線前準備
 
@@ -94,7 +94,7 @@ GitHub Pages MVP 暫不採用以下方式：
 - `photos` 不含敏感內部資訊；`curation_notes` 也視為公開欄位。
 - Sheets 中所有可供篩選、排序、提醒的語意都寫在欄位值中，不依賴顏色、註解或篩選檢視。
 - GitHub repository Settings > Pages 的來源設定為 GitHub Actions。
-- `pnpm pages:build` 可以成功產生 `tmp/pages/`。
+- `pnpm finder:build` 可以成功產生 `tmp/pages/`。
 - 產生出的公開 CSV URL 能以匿名 HTTP request 讀到 `photos` header。
 
 若其中任一項不成立，應先修正 Google Sheets 權限、header 或 repo 設定，不要在 GitHub Pages 前端加入 credential 或 fallback 寫入邏輯。
@@ -103,15 +103,15 @@ GitHub Pages MVP 暫不採用以下方式：
 
 本機開發前端應明確選擇資料來源，不應靠 `app/config.js` 和部署 artifact 的隱含差異判斷：
 
-- `pnpm dev`：預設讀正式 Google Sheets `photos` 公開 CSV，適合真實資料規模下的 UX、排序、篩選與效能檢查。
-- `pnpm dev:fixture`：讀 `fixtures/photos.csv`，適合最小樣本、離線 smoke test 與 regression 檢查。
-- `pnpm dev:export`：讀 `tmp/sheets-export/photos.csv`，適合使用最近一次正式 Sheets 匯出快照開發；若檔案不存在，先執行 `pnpm sheets:export`。
+- `pnpm finder:dev`：預設讀正式 Google Sheets `photos` 公開 CSV，適合真實資料規模下的 UX、排序、篩選與效能檢查。
+- `pnpm finder:dev:fixture`：讀 `fixtures/photos.csv`，適合最小樣本、離線 smoke test 與 regression 檢查。
+- `pnpm finder:dev:export`：讀 `tmp/sheets-export/photos.csv`，適合使用最近一次正式 Sheets 匯出快照開發；若檔案不存在，先執行 `pnpm sheets:export`。
 
-這三種入口都會先產生本機 dev artifact，預設放在 `tmp/pages-dev/<source>/`，並在 terminal 印出 `Data source` 與實際 `Photos CSV URL`。部署到 GitHub Pages 時，仍使用 `pnpm pages:build` 產生 `tmp/pages/`，讓 `photosCsvUrl` 指向 `config/project.json` 中 `googleSheets.spreadsheetId` 的 Google Sheets `photos` 公開 CSV 輸出。
+這三種入口都會先產生本機 dev artifact，預設放在 `tmp/pages-dev/<source>/`，並在 terminal 印出 `Data source` 與實際 `Photos CSV URL`。部署到 GitHub Pages 時，仍使用 `pnpm finder:build` 產生 `tmp/pages/`，讓 `photosCsvUrl` 指向 `config/project.json` 中 `googleSheets.spreadsheetId` 的 Google Sheets `photos` 公開 CSV 輸出。
 
 前端可以讀公開資料 URL，但不能使用任何需要保密的 token、API key 或 OAuth credential。
 
-公開前端除了照片卡片搜尋，也應提供資料庫概覽，協助維護者快速判斷目前索引整理成效。概覽應優先使用 `data/photo-schema.json` 與 `data/tag-taxonomy.json` 理解欄位與必要規則，例如整理狀態、使用提醒、人數標記、reviewed 必要欄位完整度與贊助欄位覆蓋率，不應在前端另外維護一份欄位規則或 raw value 翻譯表。前端顯示文字應使用 `data/tag-taxonomy.json` 的 `option_labels`，但篩選值、URL 參數與資料比對仍使用 raw value。
+公開前端除了照片卡片搜尋，也應提供索引概覽，協助維護者快速判斷目前索引整理成效。概覽應優先使用 `data/photo-schema.json` 與 `data/tag-taxonomy.json` 理解欄位與必要規則，例如整理狀態、使用提醒、人數標記、reviewed 必要欄位完整度與贊助欄位覆蓋率，不應在前端另外維護一份欄位規則或 raw value 翻譯表。前端顯示文字應使用 `data/tag-taxonomy.json` 的 `option_labels`，但篩選值、URL 參數與資料比對仍使用 raw value。
 
 公開前端遇到選項可能偏長的篩選欄位，例如活動/相簿、場景、素材包、贊助品項，應使用頁面內可搜尋的選單或 autocomplete，不依賴瀏覽器原生 `<select>` / `<datalist>` 彈出層。原生彈出層由瀏覽器與作業系統控制，長列表在小視窗或特定環境中可能出現 fallback 呈現，難以用 CSS 穩定修正。實作上仍可保留原本欄位值作為篩選狀態來源，但使用者操作層應提供可搜尋、可捲動且不離開頁面布局的選單。贊助品項仍應保留輸入片段文字搜尋的能力，不應被限制成只能選擇完整品項名稱。
 
@@ -135,7 +135,7 @@ Google Sheets 列連結應貼近 Google Sheets UI 的「Get link to this cell」
 
 GitHub Pages 應透過 GitHub Actions 發布乾淨的 Pages artifact，不應直接把整個 repo root 當成 Pages source。
 
-`pnpm pages:build` 產生的 artifact 應只包含：
+`pnpm finder:build` 產生的 artifact 應只包含：
 
 - 公開搜尋前端所需的 HTML、CSS、JavaScript。
 - 經過資料流程產生或指定的公開資料來源設定。
@@ -154,9 +154,9 @@ artifact 不應包含：
 目前 repo 內的 `.github/workflows/pages.yml` 會在 pull request 執行 build/check，並在 `master` push 或手動觸發時部署：
 
 1. 安裝 pnpm dependencies。
-2. 執行 `pnpm validate:data`。
-3. 執行 `pnpm pages:build -- --output-dir tmp/pages`。
-4. 執行 `pnpm pages:check -- --dir tmp/pages`，確認 artifact 真的包含前端與資料設定。
+2. 執行 `pnpm data:validate`。
+3. 執行 `pnpm finder:build -- --output-dir tmp/pages`。
+4. 執行 `pnpm finder:check -- --dir tmp/pages`，確認 artifact 真的包含前端與資料設定。
 5. 非 pull request 時，上傳 `tmp/pages` 作為 GitHub Pages artifact。
 6. 非 pull request 時，使用 GitHub Pages deploy action 發布。
 
@@ -178,7 +178,7 @@ GitHub Pages 前端目前仍一次讀取公開 CSV，但不可一次把所有照
 
 - 在 build 階段產生靜態搜尋索引或分頁資料。
 - 改用可匿名讀取的靜態 JSON 分片。
-- 改用 API 或正式資料庫；若採用 API，仍需維持公開唯讀與無 credential 的前端邊界。
+- 改用 API 或其他正式資料層；若採用 API，仍需維持公開唯讀與無 credential 的前端邊界。
 
 ## 殘餘風險
 

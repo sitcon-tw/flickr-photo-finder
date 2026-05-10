@@ -1,5 +1,5 @@
 {
-  "version": "2026-mvp-1",
+  "version": "2026-1.0.0",
   "tables": {
     "photos": {
       "export_path": "fixtures/photos.csv",
