@@ -1056,13 +1056,6 @@
 
       function handlePrefetchFailure() {}
 
-      function handleSaveFailure(error) {
-        pendingSaveCount = Math.max(0, pendingSaveCount - 1);
-        updateSaveLine();
-        setBusy(false, "save");
-        setSaveStatus(failureMessage(error), "error");
-      }
-
       function prefetchRowsAround(rowNumber) {
         const normalizedRowNumber = Number(rowNumber);
         if (!Number.isInteger(normalizedRowNumber) || normalizedRowNumber <= 1) {
@@ -1135,7 +1128,9 @@
         pendingSaveCount += 1;
         markCurrentRowSavedLocally(values);
         updateSaveLine();
-        setSaveStatus(options.pendingMessage || "已送出背景儲存。");
+        if (options.showPendingStatus !== false) {
+          setSaveStatus(options.pendingMessage || "已送出背景儲存。");
+        }
         google.script.run
           .withSuccessHandler((state) => {
             pendingSaveCount = Math.max(0, pendingSaveCount - 1);
@@ -1145,11 +1140,18 @@
                 currentState = { ...state, record: { ...state.record, ...values } };
                 render(currentState);
                 setSaveStatus(state.errors, "error");
+              } else {
+                updateSaveLine(`第 ${rowNumber} 列背景儲存失敗：${state.errors.map(formatError).join("；")}`);
               }
               if (options.completeReview) {
-                setBusy(false, "complete");
+                if (options.releaseCompleteBusy !== false) {
+                  setBusy(false, "complete");
+                }
+                reviewTargetMode = false;
               }
-              updateSaveLine();
+              if (currentState?.rowNumber === rowNumber) {
+                updateSaveLine();
+              }
               return;
             }
             cacheState(state);
@@ -1159,9 +1161,13 @@
               updateSaveLine(options.successMessage || "儲存完成。");
             }
             if (options.completeReview) {
-              setBusy(false, "complete");
+              if (options.releaseCompleteBusy !== false) {
+                setBusy(false, "complete");
+              }
               reviewTargetMode = false;
-              loadRow(Number(state.rowNumber) + 1, { skipDirtyCheck: true });
+              if (options.loadNextOnSuccess !== false) {
+                loadRow(Number(state.rowNumber) + 1, { skipDirtyCheck: true });
+              }
               return;
             }
             if (token === saveToken && currentState?.rowNumber === state.rowNumber) {
@@ -1169,16 +1175,25 @@
             }
           })
           .withFailureHandler((error) => {
+            pendingSaveCount = Math.max(0, pendingSaveCount - 1);
             rowCache.delete(Number(rowNumber));
             if (currentState?.rowNumber === rowNumber) {
               currentState = previousState;
               cacheState(previousState);
               validateForm();
+              setSaveStatus(failureMessage(error), "error");
+            } else {
+              updateSaveLine(`第 ${rowNumber} 列背景儲存失敗：${failureMessage(error)}`);
             }
             if (options.completeReview) {
-              setBusy(false, "complete");
+              if (options.releaseCompleteBusy !== false) {
+                setBusy(false, "complete");
+              }
+              reviewTargetMode = false;
             }
-            handleSaveFailure(error);
+            if (currentState?.rowNumber === rowNumber) {
+              updateSaveLine();
+            }
           })
           .saveReviewPhoto(rowNumber, values);
       }
@@ -1205,13 +1220,19 @@
           setSaveStatus(errors, "error");
           return;
         }
-        setBusy(true, "complete");
         const values = { ...valuesFromForm(), curation_status: "reviewed" };
+        const nextRowNumber = Number(currentState.rowNumber) + 1;
         saveValues(values, {
           completeReview: true,
+          loadNextOnSuccess: false,
           pendingMessage: "正在完成審核並儲存...",
+          releaseCompleteBusy: false,
           successMessage: "已完成審核。",
+          showPendingStatus: false,
         });
+        reviewTargetMode = false;
+        setSaveStatus("");
+        loadRow(nextRowNumber, { skipDirtyCheck: true });
       }
 
       function loadRelativeRow(offset) {
