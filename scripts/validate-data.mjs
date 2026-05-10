@@ -14,6 +14,22 @@ import {
   reviewedRequiredFields,
 } from "./photo-schema.mjs";
 
+function printUsage() {
+  console.log(`Usage:
+  pnpm validate:data
+
+Options:
+  --photos <path>             Photos CSV path. Default: fixtures/photos.csv.
+  --albums <path>             Albums CSV path. Default: fixtures/albums.csv.
+  --import-batches <path>     Import batches CSV path. Default: fixtures/import-batches.csv.
+  --taxonomy <path>           Tag taxonomy JSON path. Default: data/tag-taxonomy.json.
+  --sponsorship-items <path>  Sponsorship items JSON path. Default: data/sponsorship-items.json.
+  --help, -h                  Show this help.
+
+This command validates local sample/export data against the repo schema,
+taxonomy, and sponsorship items snapshot.`);
+}
+
 function parseArgs(argv) {
   const paths = {
     albums: "fixtures/albums.csv",
@@ -26,7 +42,10 @@ function parseArgs(argv) {
   const args = argv.slice(2).filter((arg) => arg !== "--");
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
-    if (arg === "--albums") {
+    if (arg === "--help" || arg === "-h") {
+      printUsage();
+      process.exit(0);
+    } else if (arg === "--albums") {
       paths.albums = args[index + 1] ?? "";
       index += 1;
     } else if (arg === "--import-batches") {
