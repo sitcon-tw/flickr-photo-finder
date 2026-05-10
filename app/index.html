@@ -11,124 +11,183 @@
       <header class="topbar">
         <div>
           <h1 id="appTitle">Flickr Photo Finder</h1>
-          <p id="resultSummary">載入中</p>
+          <p>SITCON 公開照片索引，依任務、內容與整理狀態快速找圖。</p>
         </div>
         <a id="sourceLink" class="source-link" href="https://www.flickr.com/" target="_blank" rel="noreferrer">Flickr</a>
       </header>
 
-      <section class="overview" aria-label="資料庫概覽">
-        <div class="overview-heading">
-          <h2>資料庫概覽</h2>
-          <p id="overviewSummary">載入中</p>
+      <section class="task-panel" aria-label="找圖任務">
+        <div class="section-heading">
+          <h2>任務模式</h2>
+          <p>社群、網站、贊助、新聞稿與活動回顧情境。</p>
         </div>
-        <div id="overviewGrid" class="overview-grid"></div>
+        <div id="taskModes" class="task-modes"></div>
       </section>
 
-      <section class="toolbar" aria-label="篩選照片">
-        <label class="search-field">
-          <span>搜尋</span>
-          <input id="searchInput" type="search" placeholder="志工、攤位、hero、贊助" autocomplete="off" />
-        </label>
+      <section class="search-panel" aria-label="搜尋與篩選">
+        <div class="primary-search">
+          <label class="search-field">
+            <span>搜尋</span>
+            <input id="searchInput" type="search" placeholder="可放字、品牌露出、友善交流、舞台講者" autocomplete="off" />
+          </label>
 
-        <label>
-          <span>用途</span>
-          <select id="useFilter"></select>
-        </label>
+          <label>
+            <span>排序</span>
+            <select id="sortSelect">
+              <option value="recommended">推薦排序</option>
+              <option value="newest">年份新到舊</option>
+              <option value="oldest">年份舊到新</option>
+              <option value="people-desc">人數多到少</option>
+              <option value="people-asc">人數少到多</option>
+            </select>
+          </label>
 
-        <label>
-          <span>氛圍</span>
-          <select id="moodFilter"></select>
-        </label>
+          <button id="resetButton" type="button">清除</button>
+        </div>
 
-        <label>
-          <span>場景</span>
-          <select id="sceneFilter"></select>
-        </label>
+        <div class="filter-grid">
+          <label>
+            <span>用途</span>
+            <select id="useFilter"></select>
+          </label>
 
-        <label>
-          <span>人數</span>
-          <select id="peopleCountFilter"></select>
-        </label>
+          <label>
+            <span>氛圍</span>
+            <select id="moodFilter"></select>
+          </label>
 
-        <label>
-          <span>主體</span>
-          <select id="subjectTypeFilter"></select>
-        </label>
+          <label>
+            <span>場景</span>
+            <select id="sceneFilter"></select>
+          </label>
 
-        <label>
-          <span>贊助品項</span>
-          <select id="sponsorshipItemFilter"></select>
-        </label>
+          <label>
+            <span>人數</span>
+            <select id="peopleCountFilter"></select>
+          </label>
 
-        <label>
-          <span>公開狀態</span>
-          <select id="publicStatusFilter"></select>
-        </label>
+          <label>
+            <span>主體</span>
+            <select id="subjectTypeFilter"></select>
+          </label>
 
-        <label>
-          <span>推薦優先度</span>
-          <select id="priorityFilter"></select>
-        </label>
+          <label>
+            <span>照片方向</span>
+            <select id="orientationFilter"></select>
+          </label>
 
-        <label>
-          <span>整理狀態</span>
-          <select id="curationStatusFilter"></select>
-        </label>
+          <label>
+            <span>留白</span>
+            <select id="negativeSpaceFilter">
+              <option value="">全部留白狀態</option>
+              <option value="true">有留白</option>
+              <option value="false">無明顯留白</option>
+            </select>
+          </label>
 
-        <label>
-          <span>素材包</span>
-          <select id="collectionFilter"></select>
-        </label>
+          <label>
+            <span>安全裁切</span>
+            <select id="safeCropFilter"></select>
+          </label>
 
-        <button id="resetButton" type="button">清除</button>
+          <label>
+            <span>贊助價值</span>
+            <select id="sponsorshipTagFilter"></select>
+          </label>
+
+          <label>
+            <span>贊助品項</span>
+            <input id="sponsorshipItemFilter" type="search" list="sponsorshipItemOptions" placeholder="搜尋品項" autocomplete="off" />
+            <datalist id="sponsorshipItemOptions"></datalist>
+          </label>
+
+          <label>
+            <span>使用提醒</span>
+            <select id="publicStatusFilter"></select>
+          </label>
+
+          <label>
+            <span>推薦優先度</span>
+            <select id="priorityFilter"></select>
+          </label>
+
+          <label>
+            <span>整理狀態</span>
+            <select id="curationStatusFilter"></select>
+          </label>
+
+          <label>
+            <span>素材包</span>
+            <select id="collectionFilter"></select>
+          </label>
+        </div>
       </section>
 
-      <section id="photoGrid" class="photo-grid" aria-live="polite"></section>
+      <section class="result-bar" aria-label="搜尋結果狀態">
+        <div>
+          <strong id="resultSummary">載入中</strong>
+          <p id="resultContext">準備讀取資料</p>
+        </div>
+        <div id="activeFilters" class="active-filters" aria-label="已套用條件"></div>
+      </section>
+
+      <section class="workspace">
+        <aside class="side-panel" aria-label="候選與資料概覽">
+          <section class="candidate-panel" aria-label="候選清單">
+            <div class="section-heading">
+              <h2>候選清單</h2>
+              <p id="candidateSummary">0 張候選</p>
+            </div>
+            <div id="candidateList" class="candidate-list"></div>
+            <div class="candidate-actions">
+              <button id="copyCandidatesButton" type="button">複製清單</button>
+              <button id="clearCandidatesButton" type="button">清空</button>
+            </div>
+          </section>
+
+          <section class="overview" aria-label="資料庫概覽">
+            <div class="section-heading">
+              <h2>資料庫概覽</h2>
+              <p id="overviewSummary">載入中</p>
+            </div>
+            <div id="overviewGrid" class="overview-grid"></div>
+          </section>
+        </aside>
+
+        <section class="results-area" aria-label="照片結果">
+          <section id="photoGrid" class="photo-grid" aria-live="polite"></section>
+          <div id="loadMorePanel" class="load-more-panel" hidden>
+            <p id="loadMoreSummary"></p>
+            <button id="loadMoreButton" type="button">載入更多</button>
+          </div>
+        </section>
+      </section>
     </main>
 
     <template id="photoCardTemplate">
       <article class="photo-card">
         <a class="photo-link" target="_blank" rel="noreferrer">
-          <img alt="" loading="lazy" />
+          <img alt="" loading="lazy" decoding="async" />
         </a>
         <div class="photo-body">
+          <div class="photo-statuses"></div>
           <div class="photo-meta">
             <strong class="photo-title"></strong>
             <span class="photo-year"></span>
           </div>
-          <dl class="details"></dl>
-          <p class="notes"></p>
+          <p class="match-reasons"></p>
+          <dl class="quick-details"></dl>
+          <details class="metadata-details">
+            <summary>完整欄位</summary>
+            <dl class="details"></dl>
+          </details>
           <div class="photo-actions">
-            <a class="photo-action large-image-link" target="_blank" rel="noreferrer">
-              <svg aria-hidden="true" viewBox="0 0 24 24">
-                <path d="M12 3v12" />
-                <path d="m7 10 5 5 5-5" />
-                <path d="M5 21h14" />
-              </svg>
-              <span>大圖</span>
-            </a>
-            <a class="photo-action original-image-link" target="_blank" rel="noreferrer">
-              <svg aria-hidden="true" viewBox="0 0 24 24">
-                <path d="M12 3v12" />
-                <path d="m7 10 5 5 5-5" />
-                <path d="M5 21h14" />
-              </svg>
-              <span>原圖</span>
-            </a>
-            <button class="copy-flickr-link-button" type="button">
-              <svg aria-hidden="true" viewBox="0 0 24 24">
-                <path d="M8 8h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2Z" />
-                <path d="M4 16c-1.1 0-2-.9-2-2V4a2 2 0 0 1 2-2h10c1.1 0 2 .9 2 2" />
-              </svg>
-              <span>Flickr 連結</span>
-            </button>
-            <button class="copy-finder-link-button" type="button">
-              <svg aria-hidden="true" viewBox="0 0 24 24">
-                <path d="M8 8h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2Z" />
-                <path d="M4 16c-1.1 0-2-.9-2-2V4a2 2 0 0 1 2-2h10c1.1 0 2 .9 2 2" />
-              </svg>
-              <span>本頁連結</span>
-            </button>
+            <button class="candidate-toggle-button" type="button">加入候選</button>
+            <button class="download-large-image-button" type="button">下載大圖</button>
+            <a class="photo-action original-image-link" target="_blank" rel="noreferrer">原圖</a>
+            <button class="copy-flickr-link-button" type="button">Flickr 連結</button>
+            <button class="copy-finder-link-button" type="button">本頁連結</button>
+            <a class="photo-action sheet-row-link" target="_blank" rel="noreferrer">回 Sheets</a>
           </div>
         </div>
       </article>

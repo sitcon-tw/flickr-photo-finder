@@ -25,6 +25,12 @@
       "scope": "EVENT"
     },
     {
+      "parameterName": "task_mode",
+      "displayName": "Task mode",
+      "description": "Selected photo finder task mode.",
+      "scope": "EVENT"
+    },
+    {
       "parameterName": "recommended_use",
       "displayName": "Recommended use",
       "description": "Selected photo recommended use filter.",
@@ -79,9 +85,27 @@
       "scope": "EVENT"
     },
     {
+      "parameterName": "subject_type",
+      "displayName": "Subject type",
+      "description": "Selected subject type filter.",
+      "scope": "EVENT"
+    },
+    {
+      "parameterName": "orientation_filter",
+      "displayName": "Orientation filter",
+      "description": "Selected photo orientation filter.",
+      "scope": "EVENT"
+    },
+    {
+      "parameterName": "safe_crop_filter",
+      "displayName": "Safe crop filter",
+      "description": "Selected safe crop filter.",
+      "scope": "EVENT"
+    },
+    {
       "parameterName": "image_size",
       "displayName": "Image size",
-      "description": "Opened Flickr image size option.",
+      "description": "Opened or downloaded Flickr image size option.",
       "scope": "EVENT"
     }
   ]

@@ -15,6 +15,7 @@
     "ga4PropertyId": ""
   },
   "googleSheets": {
-    "spreadsheetId": "1JM2QzJo5kpeILZPyTSE6gUK3z-FyRcaGhPJlYE-FMbs"
+    "spreadsheetId": "1JM2QzJo5kpeILZPyTSE6gUK3z-FyRcaGhPJlYE-FMbs",
+    "photosSheetGid": 0
   }
 }
