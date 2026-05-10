@@ -76,22 +76,24 @@
         align-items: start;
         display: grid;
         gap: 8px;
-        grid-template-columns: 84px minmax(0, 1fr);
+        grid-template-columns: 96px minmax(0, 1fr);
       }
 
       .photo img {
-        aspect-ratio: 4 / 3;
-        grid-row: span 3;
-        max-height: 84px;
         object-fit: contain;
         background: #eef1f5;
         border-radius: 4px;
+        height: 72px;
         width: 100%;
       }
 
       .preview-link {
+        align-items: center;
+        background: #eef1f5;
+        border-radius: 4px;
         display: block;
         grid-row: span 3;
+        height: 72px;
       }
 
       .photo-title {
@@ -933,6 +935,14 @@
         return Boolean(form.querySelector(".field.invalid"));
       }
 
+      function displayImageUrl(url) {
+        const text = String(url || "");
+        if (!/\/\/live\.staticflickr\.com\//.test(text)) {
+          return text;
+        }
+        return text.replace(/_([sqt])(\.[a-z0-9]+)$/i, "_m$2");
+      }
+
       function render(state) {
         cacheState(state);
         currentState = state;
@@ -942,7 +952,8 @@
         form.textContent = "";
 
         photo.hidden = false;
-        preview.src = state.record.image_preview_url || "";
+        const imageUrl = displayImageUrl(state.record.image_preview_url);
+        preview.src = imageUrl || "";
         previewUrl.hidden = !state.record.image_preview_url;
         photoTitle.textContent = state.record.photo_id || "(沒有 photo_id)";
         photoAlbum.textContent = state.record.album_title || "(沒有 album_title)";
@@ -953,7 +964,7 @@
           state.record.curation_status ? `整理狀態：${state.record.curation_status}` : "",
         ].filter(Boolean).join(" / ");
         photoUrl.href = state.record.photo_url || "#";
-        previewUrl.href = state.record.image_preview_url || "#";
+        previewUrl.href = imageUrl || state.record.image_preview_url || "#";
 
         state.fields.forEach((field) => {
           if (!sidebarFieldSet.has(field.name) || field.readOnly) {
