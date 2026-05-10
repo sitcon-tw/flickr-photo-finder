@@ -17,7 +17,7 @@
 
 ## 建議工作表
 
-以下列出正式 Google Sheets 應有的工作表，以及目前 repo 工具或本機 fixture 的支援狀態。
+以下列出正式 Google Sheets 應有的工作表與各表責任。工具支援狀態、目前可用指令與改善項目請以 `docs/README.md` 的「目前狀態」為準；同步與寫入流程請看 `docs/sheets-sync-workflow.md`。
 
 建立 MVP Sheets 前，可以先執行：
 
@@ -56,7 +56,7 @@ pnpm sheets:apply-init -- --write
 
 第一個指令只做 dry-run，第二個指令才寫入。工具會建立缺少的固定 tabs，但會拒絕覆蓋已有資料或 header 不符合預期的 tab。
 
-### photos（正式主表；Sheets 建置時必備；候選列 CSV 目前可產生）
+### photos
 
 正式照片索引主表。每列代表一張 Flickr 照片。
 
@@ -66,31 +66,31 @@ pnpm sheets:apply-init -- --write
 
 `curation_status`、`public_use_status`、`priority_level` 與 `collections` 應用來協助排序、提醒與推薦，而不是把未 review 的照片完全排除。
 
-### taxonomy（正式輔助表；由 repo taxonomy 同步）
+### taxonomy
 
 受控字彙表。內容應由 `data/tag-taxonomy.json` 匯入或同步。
 
 Apps Script 可以使用這張表產生下拉選單、欄位驗證與錯誤提示。若這張表和 repo taxonomy 不一致，以 repo taxonomy 為準，並重新同步。
 
-### sponsorship_items（正式輔助表；由固定 snapshot 同步）
+### sponsorship_items
 
 贊助品項表。內容應由 `data/sponsorship-items.json` 匯入或同步。
 
 這份資料目前對應 SITCON 2026 CFS 固定版本，不需要自動同步遠端來源。未來年度若有新 CFS，應明確建立新版本資料或替換資料來源，而不是假設 2026 snapshot 會持續更新。
 
-### albums（目前可用：本機 fixture、Sheets-ready CSV、初始化 SDK 寫入與 intake `last_processed_at` SDK 更新）
+### albums
 
 SITCON Flickr 相簿清單與處理紀錄。這張表應由工具盤點 SITCON Flickr 公開相簿後更新，讓使用者從既有相簿清單中選擇本次要處理哪一本，而不是手動提供相簿 URL。
 
 欄位應以 `data/photo-schema.json` 的 `albums.fields` 為準。工具盤點時應優先填入 `album_id`、`album_url`、`album_title` 與可取得的 `photo_count`；`event_name`、`event_year`、`last_processed_at` 與 `notes` 可由同步或匯入流程後續補上。
 
-### import_batches（目前可用：Sheets-ready CSV、初始化 SDK 寫入與 intake batch SDK 追加）
+### import_batches
 
 匯入批次紀錄。這張表用來讓技術志工與 agent 回頭理解某次相簿匯入發生了什麼。
 
 欄位應以 `data/photo-schema.json` 的 `import_batches.fields` 為準。工具應填入本次處理的相簿、執行時間、來源工具，以及找到、新增、略過的照片數。
 
-### schema_meta（目前可用：Apps Script refresh 寫入）
+### schema_meta
 
 schema 與同步狀態紀錄。這張表讓人類、Apps Script 與 agent 能確認目前 Sheets 使用哪個 repo 規格。
 
@@ -107,7 +107,7 @@ schema 與同步狀態紀錄。這張表讓人類、Apps Script 與 agent 能確
 | `synced_by` | 同步操作者或工具。 |
 | `notes` | 可公開的同步備註。 |
 
-### validation_report（目前可用：Apps Script 驗證覆寫）
+### validation_report
 
 最近一次 Apps Script 驗證結果。這張表由 `Validate current row`、`Validate photos sheet` 或 `Validate public read format` 覆寫，方便維護者處理 alert 放不下的大量錯誤。
 
