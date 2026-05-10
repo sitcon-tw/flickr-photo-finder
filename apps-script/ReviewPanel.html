@@ -63,13 +63,26 @@
       }
 
       .row-loader {
+        align-items: center;
         display: grid;
-        grid-template-columns: minmax(0, 1fr) auto auto;
+        grid-template-columns: minmax(0, 1fr) 1px auto;
         gap: 6px;
+      }
+
+      .row-jump {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 4px;
+        min-width: 0;
       }
 
       .row-loader input {
         min-width: 0;
+      }
+
+      .row-loader-divider {
+        align-self: stretch;
+        background: #d8dee8;
       }
 
       .photo {
@@ -422,9 +435,12 @@
       <section class="toolbar">
         <div id="rowSummary" class="meta">請從 photos 選取一列後開啟 panel。</div>
         <div class="row-loader">
-          <input id="rowNumberInput" inputmode="numeric" aria-label="photos row number" />
-          <button id="loadButton" class="secondary" type="button">載入</button>
-          <button id="activeButton" class="secondary" type="button">目前列</button>
+          <div class="row-jump">
+            <input id="rowNumberInput" inputmode="numeric" aria-label="photos row number" placeholder="photos 列號，例如 12" />
+            <button id="loadButton" class="secondary" type="button" title="前往指定 photos 列號">前往</button>
+          </div>
+          <div class="row-loader-divider" aria-hidden="true"></div>
+          <button id="activeButton" class="secondary" type="button" title="載入 Google Sheets 目前選取的照片">選取</button>
         </div>
       </section>
 
