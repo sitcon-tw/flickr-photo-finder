@@ -84,7 +84,7 @@ flowchart LR
 - 畫面條件：`people_count`、`orientation`、`safe_crop`、`has_negative_space`。
 - taxonomy 難以涵蓋的長尾細節：`visual_description`。
 
-搜尋後再依 `public_use_status`、`curation_status`、`priority_level` 排序與提醒。使用者採用前仍應回到 Flickr 確認原圖、credit 與授權。
+搜尋後應先依任務命中、`curation_status`、`priority_level` 與構圖條件排序，再把 `public_use_status` 作為使用提醒，特別是將 `avoid` 放到後面或標示為不建議。SITCON Flickr 照片本身已是公開來源，公開前端不應把 `public_use_status` 當成照片是否公開的主門檻；需要實際發布或交付素材時，再回到 Flickr 原頁保留來源脈絡。
 
 找圖結果不應只依 `reviewed` 篩掉其他照片。SITCON Flickr 照片量很大，`unreviewed` 與 `ai_labeled` 仍可用於探索，但必須在排序與提示上清楚標示。
 

@@ -56,7 +56,7 @@ Repo
 
 - 不會讓維護者以為有兩份照片資料需要同步。
 - 不會讓 AI 誤以為公開匯出已經替它篩選過照片。
-- 未整理照片仍可被搜尋，但會透過 `curation_status`、`public_use_status`、`priority_level` 等欄位排序與提示。
+- 未整理照片仍可被搜尋，但會透過 `curation_status`、`priority_level` 與 `public_use_status` 等欄位排序與提示。`public_use_status` 是整理提醒，不是 Flickr 照片是否公開的判斷。
 - 若未來真的需要隱藏欄位或拆分公開/非公開資料，再重新設計資料邊界。
 
 前端不應依賴 Sheets 的顏色、註解、排序或篩選檢視。所有可搜尋、可排序、可提醒的語意都應來自欄位值。
@@ -115,7 +115,11 @@ export const dataSources = {
 
 前端可以讀公開資料 URL，但不能使用任何需要保密的 token、API key 或 OAuth credential。
 
-公開前端除了照片卡片搜尋，也應提供資料庫概覽，協助維護者快速判斷目前索引整理成效。概覽應優先使用 `data/photo-schema.json` 與 `data/tag-taxonomy.json` 理解欄位與必要規則，例如整理狀態、公開使用狀態、人數標記、reviewed 必要欄位完整度與贊助欄位覆蓋率，不應在前端另外維護一份欄位規則。
+公開前端除了照片卡片搜尋，也應提供資料庫概覽，協助維護者快速判斷目前索引整理成效。概覽應優先使用 `data/photo-schema.json` 與 `data/tag-taxonomy.json` 理解欄位與必要規則，例如整理狀態、使用提醒、人數標記、reviewed 必要欄位完整度與贊助欄位覆蓋率，不應在前端另外維護一份欄位規則。
+
+面對上千或上萬張照片時，公開前端應以「工作任務」作為初始心智模型，而不是只提供欄位表單。任務模式可以調整推薦排序權重，但不應隱藏資料；使用者仍可透過使用提醒、整理狀態、構圖、留白、裁切、贊助品項與素材包等欄位自行收斂結果。
+
+候選清單只存在瀏覽器當下狀態與 URL query，不寫回 Google Sheets。清單畫面應提供縮圖，避免只用 photo id 要求使用者記憶照片；複製出的清單應包含 finder deep link、Google Sheets 列連結與 Flickr URL，必要時再附上使用提醒與整理狀態。
 
 公開讀取規則記錄在 `docs/google-sheets-database-design.md`，外部 AI 讀取方式記錄在 `docs/ai-readable-dataset.md`。
 
@@ -152,14 +156,19 @@ artifact 不應包含：
 
 ## 搜尋規模
 
-MVP 初期的 100 到 300 張公開索引照片可以由前端一次載入並在瀏覽器內搜尋。
+GitHub Pages 前端目前仍一次讀取公開 CSV，但不可一次把所有照片卡片渲染到 DOM。前端應先替每筆照片建立可搜尋文字，再以 debounce 處理文字搜尋與篩選變更，並只渲染第一批結果。使用者需要看更多時再用 `載入更多` 增加顯示數量。
 
-若未來資料量增加到數千張以上，再評估：
+目前推薦排序會優先考慮：
 
-- 產生搜尋索引。
-- 分頁或 lazy loading。
-- 依 `people_count`、`curation_status`、`public_use_status`、`priority_level` 與 `collections` 產生篩選或推薦排序。
-- 改用 API 或正式資料庫。
+- 任務模式對 `recommended_uses`、`mood_tags`、`scene_tags`、`sponsorship_tags`、`orientation`、`safe_crop`、`has_negative_space` 的權重。
+- `curation_status`、`priority_level` 與縮圖 URL 是否存在。
+- `public_use_status = avoid` 作為不建議提醒；`approved` 不應被當成 Flickr 公開性的主要訊號。
+
+若未來公開 CSV 體積或瀏覽器記憶體成為瓶頸，再評估：
+
+- 在 build 階段產生靜態搜尋索引或分頁資料。
+- 改用可匿名讀取的靜態 JSON 分片。
+- 改用 API 或正式資料庫；若採用 API，仍需維持公開唯讀與無 credential 的前端邊界。
 
 ## 殘餘風險
 
