@@ -1178,6 +1178,35 @@ function matchReasons(photo) {
   return uniqueSorted(reasons).slice(0, 4);
 }
 
+function renderPhotoReference(container, photo, reasons) {
+  const idButton = document.createElement("button");
+  idButton.type = "button";
+  idButton.className = "photo-id-button";
+  idButton.textContent = `photo_id: ${photo.photo_id}`;
+  idButton.title = "複製 photo_id";
+  idButton.addEventListener("click", async () => {
+    try {
+      const copied = await copyTextToClipboard(photo.photo_id);
+      if (copied) {
+        setTemporaryButtonText(idButton, "已複製 photo_id");
+      }
+    } catch {
+      setTemporaryButtonText(idButton, "複製失敗");
+    }
+  });
+
+  container.replaceChildren(idButton);
+
+  if (reasons.length === 0) {
+    return;
+  }
+
+  const reasonText = document.createElement("span");
+  reasonText.className = "match-reason-text";
+  reasonText.textContent = reasons.join(" / ");
+  container.append(reasonText);
+}
+
 function appendBadges(container, badges) {
   container.replaceChildren();
   for (const [type, label] of badges) {
@@ -1232,7 +1261,7 @@ function renderPhoto(photo, resultRank, resultCount) {
   appendBadges(statuses, statusBadges(photo));
 
   const reasonList = matchReasons(photo);
-  reasons.textContent = reasonList.length > 0 ? reasonList.join(" / ") : "符合目前排序條件";
+  renderPhotoReference(reasons, photo, reasonList);
 
   appendDetail(quickDetails, "用途", photo.recommended_uses.slice(0, 3));
   appendDetail(quickDetails, "構圖", [orientationLabels.get(photo.orientation) ?? photo.orientation, ...photo.safe_crop].filter(Boolean));
