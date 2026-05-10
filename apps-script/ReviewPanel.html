@@ -414,6 +414,7 @@
         font-size: 12px;
         line-height: 1.4;
       }
+
     </style>
   </head>
   <body>
@@ -454,7 +455,8 @@
 
       <section class="actions">
         <section id="saveStatus" class="status"></section>
-        <button id="saveButton" type="button">儲存</button>
+        <button id="completeReviewButton" type="button">完成審核並下一張</button>
+        <button id="saveButton" class="secondary" type="button">儲存</button>
         <div id="saveLine" class="save-line"></div>
       </section>
     </main>
@@ -469,6 +471,7 @@
       const preview = document.querySelector("#preview");
       const previewUrl = document.querySelector("#previewUrl");
       const activeButton = document.querySelector("#activeButton");
+      const completeReviewButton = document.querySelector("#completeReviewButton");
       const loadButton = document.querySelector("#loadButton");
       const nextButton = document.querySelector("#nextButton");
       const prevButton = document.querySelector("#prevButton");
@@ -498,22 +501,28 @@
         "priority_level",
         "collections",
         "curation_notes",
-        "curation_status",
       ];
       const sidebarFieldSet = new Set(sidebarFieldNames);
       const rowCache = new Map();
       let currentState = null;
+      let completingReview = false;
       let saveToken = 0;
       let pendingSaveCount = 0;
       let prefetchToken = 0;
+      let reviewTargetMode = false;
 
       function setBusy(isBusy, mode = "load") {
+        if (mode === "complete") {
+          completingReview = isBusy;
+        }
         const loading = isBusy && mode === "load";
-        activeButton.disabled = loading;
-        loadButton.disabled = loading;
-        nextButton.disabled = loading || !currentState;
-        prevButton.disabled = loading || !currentState;
-        saveButton.disabled = loading || !currentState || hasCurrentErrors();
+        const blocked = loading || completingReview;
+        activeButton.disabled = blocked;
+        loadButton.disabled = blocked;
+        nextButton.disabled = blocked || !currentState;
+        prevButton.disabled = blocked || !currentState;
+        saveButton.disabled = blocked || !currentState || hasCurrentErrors();
+        completeReviewButton.disabled = blocked || !currentState || hasCurrentErrors();
       }
 
       function cacheState(state) {
@@ -818,6 +827,14 @@
         return { ...(currentState?.record || {}), ...valuesFromForm() };
       }
 
+      function currentValuesForValidation() {
+        const values = currentRecordWithEdits();
+        if (reviewTargetMode) {
+          values.curation_status = "reviewed";
+        }
+        return values;
+      }
+
       function normalizeFormValue(value) {
         return String(value == null ? "" : value).trim();
       }
@@ -899,7 +916,7 @@
         if (!currentState) {
           return [];
         }
-        const values = currentRecordWithEdits();
+        const values = currentValuesForValidation();
         const errors = [];
         const errorMap = new Map();
         visibleFields().forEach((field) => {
@@ -921,7 +938,9 @@
             errorNode.textContent = messages.join("；");
           }
         });
-        saveButton.disabled = !currentState || errors.length > 0;
+        const hasErrors = errors.length > 0;
+        saveButton.disabled = completingReview || !currentState || hasErrors;
+        completeReviewButton.disabled = completingReview || !currentState || hasErrors;
         if (errors.length > 0) {
           setSaveStatus(errors, "error");
         } else if (saveStatus.classList.contains("error")) {
@@ -945,6 +964,7 @@
       function render(state) {
         cacheState(state);
         currentState = state;
+        reviewTargetMode = false;
         rowNumberInput.value = state.rowNumber;
         rowSummary.textContent = `目前載入 photos 第 ${state.rowNumber} 列。`;
         setTopStatus("");
@@ -1097,30 +1117,44 @@
           .getReviewPanelBootstrapState();
       }
 
-      function saveRow() {
+      function saveValues(values, options = {}) {
         if (!currentState) {
           return;
         }
-        const errors = validateForm();
-        if (errors.length > 0) {
-          return;
-        }
-        const values = valuesFromForm();
         const rowNumber = currentState.rowNumber;
         const previousState = currentState;
         const token = ++saveToken;
         pendingSaveCount += 1;
         markCurrentRowSavedLocally(values);
         updateSaveLine();
-        setSaveStatus("已送出背景儲存。");
+        setSaveStatus(options.pendingMessage || "已送出背景儲存。");
         google.script.run
           .withSuccessHandler((state) => {
             pendingSaveCount = Math.max(0, pendingSaveCount - 1);
+            if (state.errors?.length > 0) {
+              rowCache.delete(Number(rowNumber));
+              if (currentState?.rowNumber === rowNumber) {
+                currentState = { ...state, record: { ...state.record, ...values } };
+                render(currentState);
+                setSaveStatus(state.errors, "error");
+              }
+              if (options.completeReview) {
+                setBusy(false, "complete");
+              }
+              updateSaveLine();
+              return;
+            }
             cacheState(state);
             if (pendingSaveCount > 0) {
               updateSaveLine();
             } else {
-              updateSaveLine("儲存完成。");
+              updateSaveLine(options.successMessage || "儲存完成。");
+            }
+            if (options.completeReview) {
+              setBusy(false, "complete");
+              reviewTargetMode = false;
+              loadRow(Number(state.rowNumber) + 1, { skipDirtyCheck: true });
+              return;
             }
             if (token === saveToken && currentState?.rowNumber === state.rowNumber) {
               render(state);
@@ -1133,9 +1167,43 @@
               cacheState(previousState);
               validateForm();
             }
+            if (options.completeReview) {
+              setBusy(false, "complete");
+            }
             handleSaveFailure(error);
           })
           .saveReviewPhoto(rowNumber, values);
+      }
+
+      function saveRow() {
+        if (!currentState) {
+          return;
+        }
+        reviewTargetMode = false;
+        const errors = validateForm();
+        if (errors.length > 0) {
+          return;
+        }
+        saveValues(valuesFromForm());
+      }
+
+      function completeReviewAndLoadNext() {
+        if (!currentState) {
+          return;
+        }
+        reviewTargetMode = true;
+        const errors = validateForm();
+        if (errors.length > 0) {
+          setSaveStatus(errors, "error");
+          return;
+        }
+        setBusy(true, "complete");
+        const values = { ...valuesFromForm(), curation_status: "reviewed" };
+        saveValues(values, {
+          completeReview: true,
+          pendingMessage: "正在完成審核並儲存...",
+          successMessage: "已完成審核。",
+        });
       }
 
       function loadRelativeRow(offset) {
@@ -1146,6 +1214,7 @@
       }
 
       saveButton.addEventListener("click", saveRow);
+      completeReviewButton.addEventListener("click", completeReviewAndLoadNext);
       loadButton.addEventListener("click", loadRequestedRow);
       activeButton.addEventListener("click", loadActiveRow);
       prevButton.addEventListener("click", () => loadRelativeRow(-1));
