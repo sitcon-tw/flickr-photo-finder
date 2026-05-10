@@ -1,0 +1,123 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720" role="img" aria-labelledby="title desc">
+  <title id="title">照片索引欄位範例</title>
+  <desc id="desc">以試算表方式呈現一張照片如何被整理成可搜尋的用途、場景、構圖、贊助價值與整理狀態。</desc>
+  <defs>
+    <style>
+      .bg { fill: #f5f6f8; }
+      .panel { fill: #ffffff; stroke: #dce2e8; stroke-width: 2; }
+      .header { fill: #0f766e; }
+      .header-text { fill: #ffffff; font: 700 24px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      .caption { fill: #485562; font: 18px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      .cell-head { fill: #e6f4f2; stroke: #c7d0d9; stroke-width: 1.5; }
+      .cell { fill: #ffffff; stroke: #dce2e8; stroke-width: 1.5; }
+      .cell-alt { fill: #fafbfc; stroke: #dce2e8; stroke-width: 1.5; }
+      .head-text { fill: #0b5f59; font: 700 17px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      .body-text { fill: #1e252d; font: 16px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      .muted { fill: #667481; font: 15px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      .tag { fill: #eaf1ff; stroke: #b8c9f4; stroke-width: 1; }
+      .tag-green { fill: #e8f6ef; stroke: #b7dbc8; stroke-width: 1; }
+      .tag-amber { fill: #fff4df; stroke: #e8c987; stroke-width: 1; }
+      .tag-text { fill: #1e252d; font: 15px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      .callout { fill: #fff7ed; stroke: #f0b35c; stroke-width: 2; }
+      .callout-text { fill: #7c3f00; font: 700 18px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    </style>
+  </defs>
+
+  <rect class="bg" width="1200" height="720" rx="0"/>
+  <rect class="panel" x="58" y="46" width="1084" height="628" rx="18"/>
+  <rect class="header" x="58" y="46" width="1084" height="86" rx="18"/>
+  <rect class="header" x="58" y="100" width="1084" height="32"/>
+  <text class="header-text" x="92" y="92">正式照片索引放在 Google Sheets</text>
+  <text class="caption" x="92" y="158">每一列是一張 Flickr 照片。欄位不是為了整理得漂亮，而是讓工作需求真的找得到。</text>
+
+  <g transform="translate(92 194)">
+    <rect class="cell-head" x="0" y="0" width="120" height="56"/>
+    <rect class="cell-head" x="120" y="0" width="142" height="56"/>
+    <rect class="cell-head" x="262" y="0" width="150" height="56"/>
+    <rect class="cell-head" x="412" y="0" width="130" height="56"/>
+    <rect class="cell-head" x="542" y="0" width="120" height="56"/>
+    <rect class="cell-head" x="662" y="0" width="170" height="56"/>
+    <rect class="cell-head" x="832" y="0" width="150" height="56"/>
+    <rect class="cell-head" x="982" y="0" width="68" height="56"/>
+
+    <text class="head-text" x="18" y="35">照片</text>
+    <text class="head-text" x="138" y="35">建議用途</text>
+    <text class="head-text" x="280" y="35">場景</text>
+    <text class="head-text" x="430" y="35">方向</text>
+    <text class="head-text" x="560" y="35">留白</text>
+    <text class="head-text" x="680" y="35">贊助價值</text>
+    <text class="head-text" x="850" y="35">整理狀態</text>
+    <text class="head-text" x="1000" y="35">來源</text>
+
+    <rect class="cell" x="0" y="56" width="120" height="92"/>
+    <rect class="cell" x="120" y="56" width="142" height="92"/>
+    <rect class="cell" x="262" y="56" width="150" height="92"/>
+    <rect class="cell" x="412" y="56" width="130" height="92"/>
+    <rect class="cell" x="542" y="56" width="120" height="92"/>
+    <rect class="cell" x="662" y="56" width="170" height="92"/>
+    <rect class="cell" x="832" y="56" width="150" height="92"/>
+    <rect class="cell" x="982" y="56" width="68" height="92"/>
+
+    <rect class="tag" x="18" y="78" width="82" height="32" rx="16"/>
+    <text class="tag-text" x="34" y="100">5525...</text>
+    <text class="body-text" x="138" y="88">社群貼文</text>
+    <text class="body-text" x="138" y="116">活動回顧</text>
+    <text class="body-text" x="280" y="88">會眾; 交流</text>
+    <text class="body-text" x="280" y="116">舞台</text>
+    <text class="body-text" x="430" y="103">橫式</text>
+    <text class="body-text" x="560" y="103">有</text>
+    <text class="body-text" x="680" y="88">會眾互動</text>
+    <text class="body-text" x="680" y="116">品牌露出</text>
+    <rect class="tag-green" x="850" y="80" width="94" height="32" rx="16"/>
+    <text class="tag-text" x="866" y="102">reviewed</text>
+    <text class="body-text" x="1000" y="103">Flickr</text>
+
+    <rect class="cell-alt" x="0" y="148" width="120" height="92"/>
+    <rect class="cell-alt" x="120" y="148" width="142" height="92"/>
+    <rect class="cell-alt" x="262" y="148" width="150" height="92"/>
+    <rect class="cell-alt" x="412" y="148" width="130" height="92"/>
+    <rect class="cell-alt" x="542" y="148" width="120" height="92"/>
+    <rect class="cell-alt" x="662" y="148" width="170" height="92"/>
+    <rect class="cell-alt" x="832" y="148" width="150" height="92"/>
+    <rect class="cell-alt" x="982" y="148" width="68" height="92"/>
+
+    <rect class="tag" x="18" y="170" width="82" height="32" rx="16"/>
+    <text class="tag-text" x="34" y="192">5524...</text>
+    <text class="body-text" x="138" y="180">網站 hero</text>
+    <text class="body-text" x="138" y="208">簡報</text>
+    <text class="body-text" x="280" y="180">舞台</text>
+    <text class="body-text" x="280" y="208">背板</text>
+    <text class="body-text" x="430" y="195">橫式</text>
+    <text class="body-text" x="560" y="195">有</text>
+    <text class="body-text" x="680" y="180">曝光情境</text>
+    <text class="body-text" x="680" y="208">活動規模</text>
+    <rect class="tag-amber" x="850" y="172" width="102" height="32" rx="16"/>
+    <text class="tag-text" x="866" y="194">ai_labeled</text>
+    <text class="body-text" x="1000" y="195">Flickr</text>
+
+    <rect class="cell" x="0" y="240" width="120" height="92"/>
+    <rect class="cell" x="120" y="240" width="142" height="92"/>
+    <rect class="cell" x="262" y="240" width="150" height="92"/>
+    <rect class="cell" x="412" y="240" width="130" height="92"/>
+    <rect class="cell" x="542" y="240" width="120" height="92"/>
+    <rect class="cell" x="662" y="240" width="170" height="92"/>
+    <rect class="cell" x="832" y="240" width="150" height="92"/>
+    <rect class="cell" x="982" y="240" width="68" height="92"/>
+
+    <rect class="tag" x="18" y="262" width="82" height="32" rx="16"/>
+    <text class="tag-text" x="34" y="284">5525...</text>
+    <text class="body-text" x="138" y="272">志工招募</text>
+    <text class="body-text" x="138" y="300">社群介紹</text>
+    <text class="body-text" x="280" y="272">工作人員</text>
+    <text class="body-text" x="280" y="300">攝影</text>
+    <text class="body-text" x="430" y="287">橫式</text>
+    <text class="body-text" x="560" y="287">少</text>
+    <text class="body-text" x="680" y="287">幕後價值</text>
+    <rect class="tag-amber" x="850" y="264" width="102" height="32" rx="16"/>
+    <text class="tag-text" x="866" y="286">unreviewed</text>
+    <text class="body-text" x="1000" y="287">Flickr</text>
+  </g>
+
+  <rect class="callout" x="92" y="574" width="1016" height="58" rx="16"/>
+  <text class="callout-text" x="120" y="610">重點：索引資料幫大家依工作需求找圖；真正發布前仍要回 Flickr 原頁確認脈絡。</text>
+</svg>

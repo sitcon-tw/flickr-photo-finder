@@ -1,176 +1,82 @@
 # SITCON Flickr Photo Finder
 
-SITCON Flickr Photo Finder 是一套放在 SITCON Flickr 之上的照片索引方法。它的目標不是取代 Flickr，也不是在 repo 裡保存原圖，而是讓籌備團隊可以用真實工作需求找到合適照片，例如社群宣傳、網站視覺、贊助提案、贊助成果報告、新聞稿、志工招募與活動回顧。
+SITCON Flickr Photo Finder 把 SITCON Flickr 上的公開活動照片，整理成一份可搜尋、可協作、可由 AI 協助初標但仍由人審核的照片索引。
 
-這個 repo 保存方法與工具：欄位設計、受控字彙、驗證規則、匯入流程、公開搜尋前端、AI 初標流程與維護文件。正式照片索引資料在 Google Sheets；Flickr 仍是照片與相簿的來源。
+它不是要取代 Flickr，也不是在 repo 裡保存原圖。照片仍在 Flickr；這個專案建立的是一層「找得到、看得懂、能持續維護」的索引，讓籌備團隊可以依照社群貼文、網站主視覺、贊助提案、贊助成果、新聞稿與活動回顧等真實需求找照片。
 
-## 核心想法
+[立即體驗公開搜尋前端](https://sitcon.org/flickr-photo-finder/) · [查看正式照片索引](https://docs.google.com/spreadsheets/d/1JM2QzJo5kpeILZPyTSE6gUK3z-FyRcaGhPJlYE-FMbs/edit) · [瀏覽 SITCON Flickr 相簿](https://www.flickr.com/photos/sitcon/albums/)
 
-照片本身已經在 Flickr，但活動籌備時真正需要的是「找得到」。只靠 Flickr 標題、相簿名稱或人工記憶，很難回答這類問題：
+![SITCON Flickr Photo Finder 搜尋前端範例畫面](docs/assets/readme/photo-finder-search.png)
 
-- 有沒有適合贊助提案使用、能看出會眾互動的照片？
-- 有沒有橫式、可放字、適合網站 hero 的照片？
-- 有沒有能呈現講者、工作人員、茶點、舞台或合照情境的照片？
-- 這張照片是否已整理過，適合支援哪一種工作情境？
+## 這能幫你做什麼
 
-因此這個專案把照片整理成一層可維護的索引：
-
-1. 從 Flickr 找到相簿與照片。
-2. 把需要整理的照片列入 Google Sheets。
-3. 用固定欄位與受控字彙描述照片。
-4. 用 AI 輔助產生候選 metadata，但不讓 AI 直接取代人工審核。
-5. 用公開搜尋前端讀取同一份資料，讓籌備團隊能用工作情境找圖。
-6. 把實際找圖回饋帶回欄位、taxonomy、prompt 與工具。
-
-## 角色分工
-
-| 角色 | 負責什麼 |
+| 需求 | 可以怎麼找 |
 | --- | --- |
-| Flickr | 保存原始照片、相簿與公開圖片來源。 |
-| Google Sheets | 正式照片索引資料庫，讓志工可以協作整理與審核。 |
-| 這個 repo | 保存欄位規則、工具、驗證、AI prompt、前端與維護文件。 |
-| AI / agent | 讀圖後產生可審核的候選 metadata，協助補足人工整理成本。 |
-| GitHub Pages | 提供公開唯讀搜尋介面，讀取 Google Sheets 的公開輸出。 |
-| 使用者熟悉的 LLM | 直接讀取公開 Google Sheets 照片索引，用自然語言協助找圖與整理候選清單。 |
-| Apps Script | 在 Sheets 內提供已驗證可用的 MVP 維護選單、校對 sidebar、欄位輔助與驗證提示，實際部署由有權限者處理。 |
+| 社群貼文 | 找有互動感、青春感、可裁切的照片，整理成候選清單。 |
+| 網站主視覺 | 找橫式、有留白、適合放字的活動現場照片。 |
+| 贊助提案與成果 | 找會眾互動、攤位、品牌露出或活動規模的佐證照片。 |
+| 新聞稿與活動回顧 | 找講者、會眾、工作人員、茶點、舞台、合照等情境照片。 |
 
-## 資料原則
+找不到照片也很重要。它會提醒我們：欄位可能不夠貼近工作需求、分類需要補強，或 AI 初標提示詞還需要調整。
 
-- Google Sheets `photos` 是正式照片索引資料庫。
-- Google Sheets `albums` 是正式相簿清單與處理狀態資料。
-- Google Sheets `import_batches` 是正式匯入批次紀錄資料。
-- `photos` 主表本身就是公開照片索引；公開 CSV/JSON 只是同欄位輸出，不是另一份資料庫。
-- `data/photo-schema.json` 是欄位順序、欄位 metadata 與 reviewed 完整度的機器可讀來源。
-- `data/tag-taxonomy.json` 是受控字彙與人類顯示文字來源；`option_labels` 統一 raw value 在 Pages、Apps Script 與文件中的顯示文字。
-- `fixtures/*.csv` 只是本機 demo、測試資料與匯出格式參考，不是正式資料。
-- `tmp/sheets-export/*.csv` 是從正式 Google Sheets 匯出的本機工作快取，可刪除、不可 commit。
+## 這套方法怎麼運作
 
-正式照片索引可從這份 Google Sheets 閱讀：<https://docs.google.com/spreadsheets/d/1JM2QzJo5kpeILZPyTSE6gUK3z-FyRcaGhPJlYE-FMbs/edit>
+![SITCON Flickr Photo Finder 資料流：Flickr、Google Sheets、repo 工具、搜尋前端與 AI 之間的關係](docs/assets/readme/photo-finder-flow.svg)
 
-如果 Google Sheets 正式資料和 repo 內測試資料不一致，以 Google Sheets 為準。若 Sheets 欄位或驗證規則和 repo schema 不一致，以 repo schema 為準，並更新 Sheets 或 Apps Script。
+核心設計很簡單：
 
-## 主流程
+- 公開照片不等於找得到；活動工作需要可搜尋的索引。
+- Google Sheets 是正式照片索引，讓志工可以一起整理與審核。
+- 這個 repo 保存欄位規則、分類、驗證、工具、公開前端與維護文件。
+- AI 只能提出候選標註，不能直接把照片變成已審核。
+- 搜尋前端與常用 AI 助手都讀同一份公開索引，不再製造第二套資料。
 
-### 1. 建立或更新照片索引
+## 資料如何被整理
 
-技術志工先從 Flickr 相簿開始，選擇這次要處理的相簿，工具會產生一份可檢查的匯入產物。人類確認後，才把新照片追加到 Google Sheets。
+![Google Sheets 照片索引欄位範例：照片用途、場景、方向、留白、贊助價值與整理狀態](docs/assets/readme/photo-index-sheet.svg)
 
-這個流程的重點是避免直接改正式表：先產生候選資料、先檢查、先 dry-run，再寫入。
+每一列是一張 Flickr 照片。除了原始 Flickr 連結，也會整理用途、場景、氛圍、人物數量、照片方向、是否有留白、贊助相關線索、使用提醒與整理狀態。
 
-### 2. 整理照片 metadata
+這些欄位不是為了把資料做得漂亮，而是為了回答實際問題：這張照片適合放社群嗎？能當網站主視覺嗎？可以支援贊助提案嗎？發布前還需要誰確認？
 
-整理者在 Google Sheets 中補上照片用途、場景、氛圍、贊助相關資訊、整理狀態，並在需要時標示使用提醒。這些欄位不是為了讓資料漂亮，而是為了讓未來的工作需求能被搜尋與篩選。
+## 信任與邊界
 
-例如「會眾」、「講者」、「茶點」、「有留白」、「適合新聞稿」、「需要人工確認」都比單純的相簿名稱更接近實際找圖方式。
+- Google Sheets 是正式照片索引資料庫；`fixtures/*.csv` 只是本機範例與測試資料。
+- Flickr 仍是照片與相簿來源；發布或交付素材前，請回 Flickr 原頁確認脈絡。
+- 這個 repo 不保存 Google credential、OAuth token、AI API key 或私人連結。
+- GitHub Pages 公開前端只能讀資料，不能寫入正式索引。
+- AI 初標只是候選資料；`ai_labeled` 不等於 `reviewed`。
+- `curation_notes` 等欄位會進入公開索引，不應放敏感內部資訊。
 
-### 3. 用 AI 輔助初標
+## 想深入或協作
 
-AI 初標只是一種加速整理的方法。它可以讀圖後提出候選值，例如人數、場景標籤、建議用途、安全裁切比例與 `visual_description`。
+| 你想做的事 | 建議入口 |
+| --- | --- |
+| 只想找照片 | [公開搜尋前端](https://sitcon.org/flickr-photo-finder/) |
+| 用自己熟悉的 AI 助手找照片 | [`docs/ai-readable-dataset.md`](docs/ai-readable-dataset.md) |
+| 協助整理照片資料 | [`docs/data-entry-guide.md`](docs/data-entry-guide.md) |
+| 理解整體架構 | [`docs/project-architecture.md`](docs/project-architecture.md) |
+| 看完整文件、狀態與工具索引 | [`docs/README.md`](docs/README.md) |
 
-AI 產出的內容必須先通過 validator，並產生 diff、更新計畫與報表。人類看過之後，才可以 dry-run 寫回 Google Sheets。即使寫回 Sheets，也只代表 `ai_labeled`，不代表照片已經人工 review。
-
-`visual_description` 是自然語言找圖輔助欄位，用來補足 taxonomy 難以覆蓋的長尾細節，例如人物動作、物件位置、畫面文字、空間關係與構圖特徵。它不是照片標題，也不應包含看不出來的推論。
-
-### 4. 用公開前端找照片
-
-GitHub Pages 前端只讀公開 Google Sheets 輸出，不保存 credential，也不寫入資料庫。它讓使用者用搜尋、篩選與資料概覽理解目前照片索引能支援哪些工作情境。
-
-前端找不到的需求很重要：它會反過來告訴我們 taxonomy 是否不夠、欄位是否難用、AI prompt 是否需要調整。
-
-### 5. 用自己熟悉的 LLM 找照片
-
-GitHub Pages 不是唯一的取用方式。正式照片索引在公開 Google Sheets，因此使用者也可以把 Sheets 連結交給自己熟悉的 LLM 介面，請它讀取 `photos` 工作表後，用自然語言協助找照片。
-
-這適合用在「我想找一張有青春感、可放字、適合社群貼文的橫式照片」這類還沒有明確篩選條件的情境。LLM 應把 `reviewed`、`ai_labeled`、`unreviewed` 都納入探索，但回答時要標示整理狀態；`public_use_status = avoid` 預設不推薦。
-
-可複製的提示範本與欄位解讀規則請看 `docs/ai-readable-dataset.md`。
-
-## 安全邊界
-
-- 不把 Google credential、OAuth token、AI API key 或私人連結放進 repo。
-- 寫入 Google Sheets 的 CLI 必須從執行環境的 `GOOGLE_APPLICATION_CREDENTIALS` 取得授權。
-- 寫入工具預設 dry-run；加上 `--write` 才會修改正式 Sheets。
-- AI 候選值不能直接把照片標成 `reviewed` 或 `approved`。
-- 公開前端只能讀資料，不能保存 secret，也不能寫入資料庫。
-- `curation_notes` 等公開欄位不要放敏感內部資訊。
-
-## 授權與協作
-
-這個 repo 會以開源方式釋出；程式碼、文件、schema、taxonomy、prompt 與工具預設採用 Apache-2.0 授權，詳見 `LICENSE`。
-
-這份授權不代表 SITCON Flickr 上的原始照片也被重新授權。SITCON Flickr 上的照片本身已是公開來源；正式 Google Sheets 內容是專案維護的公開索引資料。`public_use_status` 是整理流程中的使用提醒，不是 GitHub Pages 判斷照片是否公開的門檻。一般找圖流程應優先協助使用者找到候選照片；需要實際發布或交付素材時，再回到 Flickr 原頁保留來源脈絡。
-
-歡迎用 issue 或 pull request 協助改善欄位設計、taxonomy、AI 初標規則、資料流程、文件與公開搜尋前端。協作方式請看 `CONTRIBUTING.md`。
-
-## 開始使用
-
-第一次接觸專案，建議先用互動入口了解目前能做的工作：
+技術志工第一次接觸 repo，可以先用互動入口了解目前能做的工作：
 
 ```bash
 pnpm workflow
 ```
 
-常用起點：
-
-| 想做的事 | 入口 |
-| --- | --- |
-| 理解專案架構 | `docs/project-architecture.md` |
-| 看完整文件與工具索引 | `docs/README.md` |
-| 開啟本機搜尋 UI，用正式 Sheets 資料看真實 UX | `pnpm dev` |
-| 用 fixture 開啟最小樣本 UI | `pnpm dev:fixture` |
-| 用最近一次 Sheets 匯出快照開啟 UI | `pnpm dev:export` |
-| 用自己的 LLM 讀公開 Sheets 找照片 | `docs/ai-readable-dataset.md` |
-| 檢查資料與 AI fixtures | `pnpm workflow -- --task check` |
-| 處理一本 Flickr 相簿，並接續檢查 / dry-run | `pnpm workflow -- --task album-intake` |
-| 準備 AI 初標工作包 | `pnpm workflow -- --task ai-prepare` |
-| 檢查 AI 初標結果 | `pnpm workflow -- --task ai-review` |
-| 評估模型、prompt 或 taxonomy 品質 | `pnpm eval` |
-| 維護 Google Sheets | `pnpm workflow -- --task sheets` |
-| 建立並檢查公開前端 artifact | `pnpm workflow -- --task pages-build` |
-| 維護 Apps Script | `docs/apps-script-maintenance-design.md`、`pnpm apps-script:bind -- <script-id>`、`pnpm apps-script:push` |
-
-需要完整 command list、低階除錯工具或各流程細節時，請看 `docs/README.md`、`docs/sheets-sync-workflow.md`、`docs/ai-labeling-operator-guide.md` 與 `docs/public-frontend-architecture.md`。
-
-## 本機需求
-
-需要 Node.js 與 pnpm。目前已知可用 Node.js 版本為 `v24.15.0`。
-
-這個 repo 只使用 pnpm 作為套件管理工具。請不要使用 npm 或 yarn，避免不同 git worktree 平行開發時產生不一致的 lockfile 或安裝行為。
+常用的本機檢查與體驗入口：
 
 ```bash
+pnpm dev
 pnpm validate:data
-pnpm eval:validate-fixtures
 ```
 
-## 資料流
+完整命令清單、Sheets 流程、AI 初標流程、Apps Script 維護與 GitHub Pages 部署說明，請從 [`docs/README.md`](docs/README.md) 進入。
 
-```text
-SITCON Flickr 相簿
-  -> repo 工具盤點與選擇相簿
-  -> 產生可審核的 intake run
-  -> 人類確認後寫入 Google Sheets photos / albums / import_batches
-  -> 人工整理與 AI 候選 metadata 輔助
-  -> Google Sheets 成為正式照片索引
-  -> GitHub Pages 與外部 AI 讀取公開索引
-  -> 實際找圖回饋改善欄位、taxonomy、prompt 與工具
-```
+## 授權與協作
 
-## 進一步閱讀
+這個 repo 的程式碼、文件、欄位設計、分類、提示詞與工具預設採用 Apache-2.0 授權，詳見 [`LICENSE`](LICENSE)。
 
-| 文件 | 適合什麼時候看 |
-| --- | --- |
-| `docs/README.md` | 想看完整文件入口、目前狀態與工具索引。 |
-| `docs/project-architecture.md` | 想理解端到端架構與資料流。 |
-| `docs/photo-finder-mvp.md` | 想理解產品判斷與欄位取捨。 |
-| `docs/data-entry-guide.md` | 要人工整理照片資料。 |
-| `docs/photo-fields-reference.md` | 要查欄位用途。 |
-| `docs/google-sheets-database-design.md` | 要理解正式 Sheets 表格設計。 |
-| `docs/sheets-sync-workflow.md` | 要操作 Sheets 匯出、匯入、dry-run 或寫入。 |
-| `docs/public-frontend-architecture.md` | 要維護 GitHub Pages 唯讀前端。 |
-| `docs/public-frontend-agent-research.md` | 要理解公開前端重構前的代理使用者研究。 |
-| `docs/public-frontend-redesign-brief.md` | 要理解前端重構的需求基準、驗收標準與尚待驗證項目。 |
-| `docs/ai-labeling-operator-guide.md` | 操作者或 repo agent 要準備、檢查或安排 AI 初標結果 dry-run / 回寫。 |
-| `docs/ai-labeling-contract.md` | 模型或 agent 要知道 AI run 的輸入、輸出與驗證合約。 |
-| `docs/ai-labeling-evaluation-notes.md` | 要評估模型輸出品質與常見失準。 |
-| `docs/ai-readable-dataset.md` | 要讓外部 AI 或唯讀工具理解照片索引。 |
-| `docs/agent-maintenance-guide.md` | agent 或技術志工接手維護時閱讀。 |
+這份授權不代表 SITCON Flickr 上的原始照片被重新授權。照片本身的來源、授權與使用脈絡，仍應以 Flickr 原頁為準。
+
+歡迎用 issue 或 pull request 協助改善欄位設計、分類、AI 初標規則、資料流程、文件與公開搜尋前端。協作方式請看 [`CONTRIBUTING.md`](CONTRIBUTING.md)。

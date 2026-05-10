@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720" role="img" aria-labelledby="title desc">
+  <title id="title">SITCON Flickr Photo Finder 資料流</title>
+  <desc id="desc">Flickr 照片經過 Google Sheets 索引、repo 規則與工具治理後，提供搜尋前端、外部 AI 與人工回饋使用。</desc>
+  <defs>
+    <style>
+      .bg { fill: #f5f6f8; }
+      .title { fill: #1e252d; font: 760 30px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      .subtitle { fill: #485562; font: 18px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      .node { fill: #ffffff; stroke: #dce2e8; stroke-width: 2; }
+      .node-green { fill: #e8f6ef; stroke: #80b89a; stroke-width: 2; }
+      .node-blue { fill: #eaf1ff; stroke: #8ea9e8; stroke-width: 2; }
+      .node-amber { fill: #fff4df; stroke: #e0ad55; stroke-width: 2; }
+      .node-violet { fill: #f4efff; stroke: #b6a0dc; stroke-width: 2; }
+      .label { fill: #1e252d; font: 760 21px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      .body { fill: #485562; font: 16px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      .arrow { fill: none; stroke: #64748b; stroke-width: 3; marker-end: url(#arrow); }
+      .arrow-soft { fill: none; stroke: #94a3b8; stroke-width: 2.5; stroke-dasharray: 7 8; marker-end: url(#arrow-soft); }
+      .principle { fill: #ffffff; stroke: #dce2e8; stroke-width: 1.5; }
+      .principle-text { fill: #1e252d; font: 17px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      .small { fill: #667481; font: 14px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    </style>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#64748b"/>
+    </marker>
+    <marker id="arrow-soft" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#94a3b8"/>
+    </marker>
+  </defs>
+
+  <rect class="bg" width="1200" height="720"/>
+  <text class="title" x="70" y="76">公開照片變成可找、可信、可協作的索引</text>
+  <text class="subtitle" x="70" y="112">照片留在 Flickr；索引與規則讓籌備團隊能依社群、網站、贊助與新聞稿等需求找圖。</text>
+
+  <g transform="translate(70 162)">
+    <rect class="node node-blue" x="0" y="92" width="180" height="116" rx="18"/>
+    <text class="label" x="30" y="136">Flickr</text>
+    <text class="body" x="30" y="166">原始照片</text>
+    <text class="body" x="30" y="190">公開相簿來源</text>
+
+    <rect class="node node-green" x="260" y="60" width="210" height="180" rx="18"/>
+    <text class="label" x="300" y="104">Google Sheets</text>
+    <text class="body" x="300" y="136">正式照片索引</text>
+    <text class="body" x="300" y="164">志工協作整理</text>
+    <text class="body" x="300" y="192">review 狀態與用途</text>
+
+    <rect class="node node-amber" x="548" y="60" width="210" height="180" rx="18"/>
+    <text class="label" x="588" y="104">Repo</text>
+    <text class="body" x="588" y="136">欄位規則</text>
+    <text class="body" x="588" y="164">分類與驗證</text>
+    <text class="body" x="588" y="192">匯入與 AI 工具</text>
+
+    <rect class="node node-violet" x="848" y="0" width="210" height="116" rx="18"/>
+    <text class="label" x="884" y="44">搜尋前端</text>
+    <text class="body" x="884" y="74">依工作情境</text>
+    <text class="body" x="884" y="98">搜尋與篩選</text>
+
+    <rect class="node node-violet" x="848" y="152" width="210" height="116" rx="18"/>
+    <text class="label" x="884" y="196">外部 AI</text>
+    <text class="body" x="884" y="226">自然語言找圖</text>
+    <text class="body" x="884" y="250">候選標註</text>
+
+    <rect class="node" x="380" y="340" width="318" height="116" rx="18"/>
+    <text class="label" x="420" y="384">回饋改善</text>
+    <text class="body" x="420" y="416">找不到的需求會回到欄位、分類</text>
+    <text class="body" x="420" y="440">與 AI 初標規則，而不是只靠記憶。</text>
+
+    <path class="arrow" d="M 180 150 H 260"/>
+    <path class="arrow" d="M 470 150 H 548"/>
+    <path class="arrow" d="M 758 118 C 800 90 810 64 848 58"/>
+    <path class="arrow" d="M 758 184 C 802 202 814 210 848 210"/>
+    <path class="arrow-soft" d="M 950 268 C 910 344 778 388 698 398"/>
+    <path class="arrow-soft" d="M 430 340 C 332 298 304 252 332 240"/>
+  </g>
+
+  <g transform="translate(70 638)">
+    <rect class="principle" x="0" y="-34" width="246" height="52" rx="14"/>
+    <rect class="principle" x="266" y="-34" width="246" height="52" rx="14"/>
+    <rect class="principle" x="532" y="-34" width="246" height="52" rx="14"/>
+    <rect class="principle" x="798" y="-34" width="262" height="52" rx="14"/>
+    <text class="principle-text" x="22" y="-2">公開不等於找得到</text>
+    <text class="principle-text" x="288" y="-2">協作資料先於工具</text>
+    <text class="principle-text" x="554" y="-2">規則要能被驗證</text>
+    <text class="principle-text" x="820" y="-2">AI 只提案，人來審核</text>
+  </g>
+</svg>
