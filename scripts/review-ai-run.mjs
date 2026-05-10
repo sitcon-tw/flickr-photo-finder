@@ -1,6 +1,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
+import { getAiLabelingPromptMetadata } from "./ai-labeling-prompt.mjs";
 import { buildPlan } from "./plan-ai-updates.mjs";
 import { renderDiff } from "./render-ai-diff.mjs";
 import { validateAiProposals } from "./validate-ai-proposals.mjs";
@@ -472,6 +473,19 @@ function buildReviewNotes(items) {
   return notes;
 }
 
+function buildPromptVersionNotes(manifest) {
+  const currentPrompt = getAiLabelingPromptMetadata();
+  if (!manifest.prompt_template_sha256) {
+    return ["這個 run 沒有記錄 `prompt_template_sha256`；可能是較舊的工作包，prompt 版本無法追溯。"];
+  }
+  if (manifest.prompt_template_sha256 !== currentPrompt.prompt_template_sha256) {
+    return [
+      `這個 run 使用的 prompt template hash \`${manifest.prompt_template_sha256.slice(0, 12)}\` 不同於目前 repo 版本 \`${currentPrompt.prompt_template_sha256.slice(0, 12)}\`；若要用新版 prompt 評估模型，請重新建立 run 或 attempt。`,
+    ];
+  }
+  return [];
+}
+
 function renderSummary({ manifest, notes, plan, proposals, runDir, sample, summaryPath }) {
   const items = proposals.items;
   const fieldCountRows = fieldCounts(items).map(({ field, count }) => [field, count]);
@@ -591,7 +605,7 @@ async function reviewAiRun(options) {
     readJson(join(options.runDir, "manifest.json")),
     readJson(options.proposalsPath),
   ]);
-  const notes = [...validation.warnings, ...buildReviewNotes(proposals.items)];
+  const notes = [...buildPromptVersionNotes(manifest), ...validation.warnings, ...buildReviewNotes(proposals.items)];
   const summary = renderSummary({
     manifest,
     notes,

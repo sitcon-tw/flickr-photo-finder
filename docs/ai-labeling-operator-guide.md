@@ -116,7 +116,7 @@ pnpm ai:review -- --run-dir tmp/ai-runs/<run-id>
 
 `ai:review` 終端輸出的 `Next:` 與 `metadata-review-summary.md` 的 `## Next Commands` 是這段流程的主要交接提示。若新增報表、比較、搜尋實驗或回寫前檢查工具，應同步更新這兩個地方。
 
-`metadata-review-summary.md` 頂部會列出本次使用的 prompt template path 與短 hash。舊 run 若顯示 `unknown`，代表當時尚未記錄 prompt 版本；比較結果時應把 prompt 版本視為未知因素。
+`metadata-review-summary.md` 頂部會列出本次使用的 prompt template path 與短 hash。舊 run 若顯示 `unknown`，代表當時尚未記錄 prompt 版本；比較結果時應把 prompt 版本視為未知因素。若 run 使用的 prompt hash 與目前 repo prompt 不同，`Review Notes` 會提示重新建立 run 或 attempt，避免把舊 prompt 結果當成新版 prompt 評估。
 
 若失敗，請根據錯誤訊息修正 `metadata-proposals.json`，不要改 `photos.json` 或正式 Sheets。
 
