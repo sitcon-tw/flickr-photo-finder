@@ -178,6 +178,7 @@ GA4 後台只註冊低基數 event-scoped custom dimensions，例如：
 - `has_filters`
 - `has_search_term`
 - `recommended_use`
+- `sort_mode`
 - `public_use_status`
 - `priority_level`
 - `curation_status`

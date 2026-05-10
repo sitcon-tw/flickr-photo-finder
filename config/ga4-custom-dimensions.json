@@ -31,6 +31,12 @@
       "scope": "EVENT"
     },
     {
+      "parameterName": "sort_mode",
+      "displayName": "Sort mode",
+      "description": "Selected photo finder sort mode.",
+      "scope": "EVENT"
+    },
+    {
       "parameterName": "recommended_use",
       "displayName": "Recommended use",
       "description": "Selected photo recommended use filter.",

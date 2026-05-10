@@ -46,6 +46,8 @@ const elements = {
 const pageSize = 96;
 const searchDebounceMs = 180;
 const resultTrackingDelayMs = 600;
+const discoverWindowSize = 24;
+const discoverHistorySize = 12;
 
 const peopleCountFilters = [
   { label: "全部人數", value: "" },
@@ -275,6 +277,7 @@ function currentFilterSnapshot() {
     searchTerm: sanitizeSearchTerm(controls.search.value),
     recommendedUse: controls.use.value,
     mood: controls.mood.value,
+    sortMode: controls.sort.value,
     scene: controls.scene.value,
     peopleCount: controls.peopleCount.value,
     subjectType: controls.subjectType.value,
@@ -311,12 +314,17 @@ function hasActiveFilters(snapshot) {
   );
 }
 
+function hasTrackedResultState(snapshot) {
+  return hasActiveFilters(snapshot) || Boolean(snapshot.searchTerm) || snapshot.sortMode !== "recommended";
+}
+
 function resultsEventParams(snapshot) {
   return {
     result_count: snapshot.resultCount,
     result_count_bucket: resultCountBucket(snapshot.resultCount),
     search_surface: "main",
     task_mode: snapshot.taskMode,
+    sort_mode: snapshot.sortMode,
     recommended_use: snapshot.recommendedUse,
     public_use_status: snapshot.publicUseStatus,
     priority_level: snapshot.priorityLevel,
@@ -343,7 +351,7 @@ function trackVisibleResults(source) {
     return;
   }
 
-  if (hasActiveFilters(snapshot) || snapshot.searchTerm) {
+  if (hasTrackedResultState(snapshot)) {
     trackEvent("filter_results", {
       has_search_term: Boolean(snapshot.searchTerm),
       mood_filter_used: Boolean(snapshot.mood),
@@ -720,8 +728,69 @@ function photoScore(photo) {
   return score;
 }
 
+function compareRecommended(left, right) {
+  return (
+    photoScore(right) - photoScore(left) ||
+    (numericValue(right.event_year) ?? 0) - (numericValue(left.event_year) ?? 0) ||
+    String(left.photo_id).localeCompare(String(right.photo_id), "zh-Hant-TW")
+  );
+}
+
+function overlaps(leftValues, rightValues) {
+  const left = Array.isArray(leftValues) ? leftValues.filter(Boolean) : [leftValues].filter(Boolean);
+  const right = Array.isArray(rightValues) ? rightValues.filter(Boolean) : [rightValues].filter(Boolean);
+  return left.some((value) => right.includes(value));
+}
+
+function discoveryPenalty(photo, recentPhotos, windowOffset) {
+  let penalty = windowOffset * 4;
+  for (const recentPhoto of recentPhotos) {
+    if (photo.event_name && photo.event_name === recentPhoto.event_name) {
+      penalty += 18;
+    }
+    if (photo.event_year && photo.event_year === recentPhoto.event_year) {
+      penalty += 6;
+    }
+    if (overlaps(photo.album_ids, recentPhoto.album_ids)) {
+      penalty += 14;
+    }
+    if (overlaps(photo.collections, recentPhoto.collections)) {
+      penalty += 10;
+    }
+  }
+  return penalty;
+}
+
+function sortForDiscovery(items) {
+  const remaining = [...items].sort(compareRecommended);
+  const selected = [];
+
+  while (remaining.length > 0) {
+    const recentPhotos = selected.slice(-discoverHistorySize);
+    const windowLength = Math.min(discoverWindowSize, remaining.length);
+    let bestOffset = 0;
+    let bestPenalty = Number.POSITIVE_INFINITY;
+
+    for (let offset = 0; offset < windowLength; offset += 1) {
+      const penalty = discoveryPenalty(remaining[offset], recentPhotos, offset);
+      if (penalty < bestPenalty) {
+        bestPenalty = penalty;
+        bestOffset = offset;
+      }
+    }
+
+    selected.push(remaining.splice(bestOffset, 1)[0]);
+  }
+
+  return selected;
+}
+
 function sortPhotos(items) {
   const sort = controls.sort.value;
+  if (sort === "discover") {
+    return sortForDiscovery(items);
+  }
+
   return [...items].sort((left, right) => {
     if (sort === "newest" || sort === "oldest") {
       const leftYear = numericValue(left.event_year) ?? 0;
@@ -735,11 +804,7 @@ function sortPhotos(items) {
       return sort === "people-desc" ? rightCount - leftCount : leftCount - rightCount;
     }
 
-    return (
-      photoScore(right) - photoScore(left) ||
-      (numericValue(right.event_year) ?? 0) - (numericValue(left.event_year) ?? 0) ||
-      String(left.photo_id).localeCompare(String(right.photo_id), "zh-Hant-TW")
-    );
+    return compareRecommended(left, right);
   });
 }
 
@@ -1106,6 +1171,7 @@ function photoEventParams(photo, resultRank, resultCount) {
     result_rank: resultRank,
     result_count_bucket: resultCountBucket(resultCount),
     task_mode: state.taskMode,
+    sort_mode: controls.sort.value,
     public_use_status: photo.public_use_status,
     curation_status: photo.curation_status,
   };
@@ -1149,36 +1215,65 @@ function statusBadges(photo) {
   return badges;
 }
 
-function matchReasons(photo) {
-  const reasons = [];
-  const task = activeTask();
-  if (task.id !== "all") {
-    if (scoreOverlap(photo.recommended_uses, task.recommendedUses, 1)) {
-      reasons.push("用途符合任務");
-    }
-    if (scoreOverlap(photo.scene_tags, task.scenes, 1)) {
-      reasons.push("場景符合任務");
-    }
-    if (scoreOverlap(photo.mood_tags, task.moods, 1)) {
-      reasons.push("氛圍符合任務");
-    }
-    if (scoreOverlap(photo.sponsorship_tags, task.sponsorshipTags, 1)) {
-      reasons.push("贊助價值符合任務");
-    }
-    if (scoreOverlap(photo.safe_crop, task.safeCrops, 1)) {
-      reasons.push("裁切符合任務");
-    }
-    if (task.prefersNegativeSpace && photo.has_negative_space === "true") {
-      reasons.push("有留白可放字");
-    }
-  }
-  if (controls.search.value && textMatches(photo, controls.search.value)) {
-    reasons.push("符合搜尋文字");
-  }
-  return uniqueSorted(reasons).slice(0, 4);
+function firstOverlap(photoValues, taskValues) {
+  const values = Array.isArray(photoValues) ? photoValues : [photoValues].filter(Boolean);
+  return values.find((value) => taskValues?.includes(value)) ?? "";
 }
 
-function renderPhotoReference(container, photo, reasons) {
+function appendSignal(signals, label) {
+  if (label && !signals.includes(label)) {
+    signals.push(label);
+  }
+}
+
+function sortingSignals(photo) {
+  const signals = [];
+  const task = activeTask();
+  if (controls.search.value && textMatches(photo, controls.search.value)) {
+    appendSignal(signals, "搜尋命中");
+  }
+  if (task.id !== "all") {
+    if (scoreOverlap(photo.recommended_uses, task.recommendedUses, 1)) {
+      appendSignal(signals, "用途命中");
+    }
+    if (scoreOverlap(photo.scene_tags, task.scenes, 1)) {
+      appendSignal(signals, "場景命中");
+    }
+    if (scoreOverlap(photo.mood_tags, task.moods, 1)) {
+      appendSignal(signals, "氛圍命中");
+    }
+    if (scoreOverlap(photo.sponsorship_tags, task.sponsorshipTags, 1)) {
+      appendSignal(signals, "贊助價值命中");
+    }
+    const matchedOrientation = firstOverlap(photo.orientation, task.orientations);
+    if (matchedOrientation) {
+      appendSignal(signals, orientationLabels.get(matchedOrientation) ?? matchedOrientation);
+    }
+    const matchedCrop = firstOverlap(photo.safe_crop, task.safeCrops);
+    if (matchedCrop) {
+      appendSignal(signals, matchedCrop);
+    }
+    if (task.prefersNegativeSpace && photo.has_negative_space === "true") {
+      appendSignal(signals, "有留白");
+    }
+  }
+  if (photo.priority_level === "high") {
+    appendSignal(signals, "高優先");
+  }
+  if (photo.curation_status === "reviewed") {
+    appendSignal(signals, "已整理");
+  } else if (photo.curation_status === "ai_labeled") {
+    appendSignal(signals, "AI 初標");
+  }
+  if (photo.public_use_status === "needs_review") {
+    appendSignal(signals, "待確認");
+  } else if (photo.public_use_status === "avoid") {
+    appendSignal(signals, "不建議");
+  }
+  return signals.slice(0, 4);
+}
+
+function renderPhotoReference(container, photo, signals) {
   const idButton = document.createElement("button");
   idButton.type = "button";
   idButton.className = "photo-id-button";
@@ -1197,14 +1292,14 @@ function renderPhotoReference(container, photo, reasons) {
 
   container.replaceChildren(idButton);
 
-  if (reasons.length === 0) {
+  if (signals.length === 0) {
     return;
   }
 
-  const reasonText = document.createElement("span");
-  reasonText.className = "match-reason-text";
-  reasonText.textContent = reasons.join(" / ");
-  container.append(reasonText);
+  const signalText = document.createElement("span");
+  signalText.className = "sort-signal-text";
+  signalText.textContent = signals.join(" / ");
+  container.append(signalText);
 }
 
 function appendBadges(container, badges) {
@@ -1225,7 +1320,7 @@ function renderPhoto(photo, resultRank, resultCount) {
   const title = fragment.querySelector(".photo-title");
   const year = fragment.querySelector(".photo-year");
   const statuses = fragment.querySelector(".photo-statuses");
-  const reasons = fragment.querySelector(".match-reasons");
+  const reference = fragment.querySelector(".photo-reference");
   const quickDetails = fragment.querySelector(".quick-details");
   const details = fragment.querySelector(".details");
   const downloadLargeButton = fragment.querySelector(".download-large-image-button");
@@ -1260,8 +1355,7 @@ function renderPhoto(photo, resultRank, resultCount) {
   year.textContent = photo.event_year || "";
   appendBadges(statuses, statusBadges(photo));
 
-  const reasonList = matchReasons(photo);
-  renderPhotoReference(reasons, photo, reasonList);
+  renderPhotoReference(reference, photo, sortingSignals(photo));
 
   appendDetail(quickDetails, "用途", photo.recommended_uses.slice(0, 3));
   appendDetail(quickDetails, "構圖", [orientationLabels.get(photo.orientation) ?? photo.orientation, ...photo.safe_crop].filter(Boolean));
@@ -1435,10 +1529,10 @@ function renderCandidates() {
 function toggleCandidate(photoId) {
   if (state.selectedPhotoIds.has(photoId)) {
     state.selectedPhotoIds.delete(photoId);
-    trackEvent("remove_candidate", { photo_id: photoId, task_mode: state.taskMode });
+    trackEvent("remove_candidate", { photo_id: photoId, task_mode: state.taskMode, sort_mode: controls.sort.value });
   } else {
     state.selectedPhotoIds.add(photoId);
-    trackEvent("add_candidate", { photo_id: photoId, task_mode: state.taskMode });
+    trackEvent("add_candidate", { photo_id: photoId, task_mode: state.taskMode, sort_mode: controls.sort.value });
   }
   render({ preservePage: true, source: "candidate" });
 }
@@ -1455,6 +1549,7 @@ async function copyCandidateList() {
       trackEvent("copy_candidate_list", {
         candidate_count: state.selectedPhotoIds.size,
         task_mode: state.taskMode,
+        sort_mode: controls.sort.value,
       });
     }
   } catch {
@@ -1591,6 +1686,27 @@ function renderActiveFilters() {
   }
 }
 
+function sortContextText() {
+  const task = activeTask();
+  const taskPrefix = task.id === "all" ? "全部照片" : `「${task.label}」情境`;
+  if (controls.sort.value === "discover") {
+    return `以${taskPrefix}探索更多排序，分散年份、活動、相簿與素材包來源`;
+  }
+  if (controls.sort.value === "newest") {
+    return "以年份新到舊排序";
+  }
+  if (controls.sort.value === "oldest") {
+    return "以年份舊到新排序";
+  }
+  if (controls.sort.value === "people-desc") {
+    return "以人數多到少排序";
+  }
+  if (controls.sort.value === "people-asc") {
+    return "以人數少到多排序";
+  }
+  return task.id === "all" ? "以推薦排序" : `以「${task.label}」情境推薦排序`;
+}
+
 function resultContextText(filtered) {
   if (photos.length === 0) {
     return "尚未載入照片";
@@ -1598,10 +1714,11 @@ function resultContextText(filtered) {
   if (filtered.length === 0) {
     return "目前條件沒有結果，可放寬整理狀態、任務條件或清除使用提醒。";
   }
-  if (state.taskMode === "all" && activeFilterEntries().length === 0) {
-    return "顯示全資料庫的推薦排序候選。";
-  }
-  return `任務：${activeTask().label}。${activeFilterEntries().map(([, label, value]) => `${label} ${value}`).join(" / ")}`;
+  const filterText = activeFilterEntries()
+    .filter(([key]) => key !== "task")
+    .map(([, label, value]) => `${label} ${value}`)
+    .join(" / ");
+  return `${sortContextText()}，仍顯示符合篩選的照片。${filterText ? `已套用：${filterText}` : "未套用額外篩選。"}`;
 }
 
 function updateTaskButtons() {
@@ -1667,7 +1784,7 @@ function render({ resetPage = false, preservePage = false, source = "" } = {}) {
 
 function maybeTrackZeroResults() {
   const snapshot = currentFilterSnapshot();
-  if (!hasActiveFilters(snapshot) && !snapshot.searchTerm) {
+  if (!hasTrackedResultState(snapshot)) {
     return;
   }
   const zeroState = JSON.stringify(snapshot);
@@ -1856,6 +1973,7 @@ controls.loadMore.addEventListener("click", () => {
     visible_count: Math.min(visibleCount, currentResults.length),
     result_count_bucket: resultCountBucket(currentResults.length),
     task_mode: state.taskMode,
+    sort_mode: controls.sort.value,
   });
 });
 controls.copyCandidates.addEventListener("click", copyCandidateList);
