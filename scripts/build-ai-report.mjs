@@ -333,6 +333,17 @@ function buildWarnings(runs) {
     warnings.push(`Runs do not share one base_run_id: ${[...baseRunIds].join(", ")}`);
   }
 
+  const promptHashes = new Set(runs.map((run) => run.manifest.prompt_template_sha256).filter(Boolean));
+  const missingPromptHashRuns = runs.filter((run) => !run.manifest.prompt_template_sha256);
+  if (promptHashes.size > 1) {
+    warnings.push(`Runs do not share one prompt_template_sha256: ${[...promptHashes].map((hash) => hash.slice(0, 12)).join(", ")}`);
+  }
+  if (missingPromptHashRuns.length > 0) {
+    warnings.push(
+      `Some runs do not record prompt_template_sha256: ${missingPromptHashRuns.map((run) => run.label).join(", ")}. Treat prompt-version comparison as unknown.`,
+    );
+  }
+
   const firstRun = runs[0];
   for (const run of runs.slice(1)) {
     const missingFromRun = [...firstRun.photoIds].filter((photoId) => !run.photoIds.has(photoId));
@@ -409,6 +420,8 @@ function buildReportData(runs, options) {
       model: run.attempt?.model || "",
       plan_updates: run.planUpdates,
       proposal_count: run.proposals?.items?.length ?? 0,
+      prompt_template_path: run.manifest.prompt_template_path || "",
+      prompt_template_sha256: run.manifest.prompt_template_sha256 || "",
       round: run.attempt?.round || "",
       run_dir: run.runDir,
       run_id: run.manifest.run_id || "",
@@ -849,9 +862,11 @@ function renderHtml(reportData) {
               ? "warn"
               : "bad";
         const statusLabel = attempt.status === "valid" ? "valid" : attempt.status === "missing" ? "missing proposal" : "invalid";
+        const promptHash = attempt.prompt_template_sha256 ? "prompt " + attempt.prompt_template_sha256.slice(0, 12) : "prompt unknown";
         const parts = [
           attempt.label || attempt.run_id,
           statusLabel,
+          promptHash,
           attempt.is_review_summary_stale ? "review summary 過期" : "",
           attempt.proposal_count === undefined ? "" : attempt.proposal_count + " proposals",
           attempt.plan_updates === null ? "" : attempt.plan_updates + " updates",

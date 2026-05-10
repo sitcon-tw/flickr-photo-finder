@@ -146,7 +146,7 @@ pnpm ai:report -- --runs tmp/ai-runs/<attempt-a> tmp/ai-runs/<attempt-b> tmp/ai-
 
 這會產生 `tmp/ai-reports/<timestamp>/index.html`。報表是唯讀靜態 HTML；單一 run 會以每張照片為單位呈現縮圖、欄位覆蓋率與各 proposal 細節，多個 run 會並排顯示 value、reason、confidence、validator 狀態與差異。它不修改 proposal，也不寫入 Sheets。
 
-若 `ai:review` 已產生 `Review Focus`，HTML report 會讀取該抽查清單，並在摘要顯示需抽查項數，也可用狀態篩選切到「需優先抽查」。這是人工檢視 warning 的主要入口；不需要先手動從 summary 複製 photo_id 搜尋。若 `metadata-review-summary.md` 比 `metadata-proposals.json` 舊，report 會提示先重新執行 `pnpm ai:review`，避免使用過期抽查清單。
+若 `ai:review` 已產生 `Review Focus`，HTML report 會讀取該抽查清單，並在摘要顯示需抽查項數，也可用狀態篩選切到「需優先抽查」。這是人工檢視 warning 的主要入口；不需要先手動從 summary 複製 photo_id 搜尋。若 `metadata-review-summary.md` 比 `metadata-proposals.json` 舊，report 會提示先重新執行 `pnpm ai:review`，避免使用過期抽查清單。多 run/attempt 報表也會檢查 `prompt_template_sha256` 是否一致；若不一致或缺少紀錄，應先釐清 prompt 版本差異再解讀模型比較。
 
 若這次要驗證 `visual_description` 對自然語言找圖是否真的有幫助，可在寫回 Sheets 前跑離線搜尋比較：
 
