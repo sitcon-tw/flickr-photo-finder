@@ -477,6 +477,8 @@ function renderSummary({ manifest, notes, plan, proposals, runDir, sample, summa
   const fieldCountRows = fieldCounts(items).map(({ field, count }) => [field, count]);
   const distributionTableRows = distributionFields.flatMap((field) => distributionRows(items, field));
   const focusRows = buildReviewFocusRows(items);
+  const promptTemplate = manifest.prompt_template_path || "unknown";
+  const promptHash = manifest.prompt_template_sha256 ? manifest.prompt_template_sha256.slice(0, 12) : "unknown";
   const sampleRows = plan.updates.slice(0, sample).map((update) => [
     update.photo_id,
     update.field,
@@ -492,6 +494,7 @@ function renderSummary({ manifest, notes, plan, proposals, runDir, sample, summa
     `- Run: \`${manifest.run_id}\``,
     `- Producer: ${proposals.producer.type} / ${proposals.producer.name}`,
     `- Image size: \`${manifest.image_size ?? ""}\``,
+    `- Prompt template: \`${promptTemplate}\` @ \`${promptHash}\``,
     `- Proposal items: ${items.length}`,
     `- Planned updates: ${plan.update_count}`,
     "",
