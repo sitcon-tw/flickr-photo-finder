@@ -28,11 +28,13 @@ export function renderAiLabelingPrompt(runDir) {
 - images：\`${runDir}/images/\`
 - 輸出檔：\`${runDir}/metadata-proposals.json\`
 
-完成後請交還操作者執行檢查。若你是具備 repo 指令執行能力的 agent，可接著執行：
+完成後請交還操作者執行檢查。若你是具備 repo 指令執行能力的 agent，小型 run 可接著執行：
 
 \`\`\`bash
 pnpm ai:review -- --run-dir ${runDir}
 \`\`\`
+
+若本次照片數量很大，請先使用 repo 的 sharded 流程，把中間 shard 輸出寫在 \`/tmp/ai-labeling-shards/<run-id>/\`，合併後先用 \`--proposals\` 與 \`--output-dir\` 在暫存目錄執行 validate/review；確認後才把最後的 \`metadata-proposals.json\` 寫回 AI run 目錄。
 
 ---
 

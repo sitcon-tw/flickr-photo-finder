@@ -108,6 +108,23 @@ tmp/ai-runs/<run-id>/metadata-proposals.json
 
 不要直接修改 `photos.json`、`input-photos.csv`、`tmp/sheets-export/photos.csv` 或正式 Google Sheets。
 
+大型 run 可以先用 repo shard 工具產生暫存分片輸入，分片中間結果預設放在：
+
+```text
+/tmp/ai-labeling-shards/<run-id>/
+```
+
+分片輸出可以是正式 `items[]` 物件的 JSON array；它不是最終 proposal。最終仍必須由 merge 工具合併成下方 root object 格式，並在交給操作者正式 review 或 Sheets dry-run 前寫成單一 `metadata-proposals.json`。除非任務明確要求修補既有 proposal，模型或 agent 不應沿用舊 run、舊 attempt 或既有 `metadata-proposals.json`。
+
+大型 run 的暫存 proposal 可以先用既有 validator/review CLI 檢查，不必先寫回 run 目錄：
+
+```bash
+pnpm ai:validate -- --run-dir tmp/ai-runs/<run-id> --proposals /tmp/ai-labeling-shards/<run-id>/metadata-proposals.json
+pnpm ai:review -- --run-dir tmp/ai-runs/<run-id> --proposals /tmp/ai-labeling-shards/<run-id>/metadata-proposals.json --output-dir /tmp/ai-review-runs/<run-id>
+```
+
+這種暫存 review 會讀取正式 run 的 `manifest.json` 與 `photos.json`，但把 `metadata-review-summary.md`、`metadata-diff.md` 與 update plan 寫到 `--output-dir`。確認要採用後，再把最終 `metadata-proposals.json` 寫回 run 目錄並執行一般 `pnpm ai:review -- --run-dir <run-dir>`。
+
 ## 輸出格式
 
 `metadata-proposals.json` 必須是 JSON object，格式如下：

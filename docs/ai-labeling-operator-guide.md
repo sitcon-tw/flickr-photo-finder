@@ -46,7 +46,7 @@ pnpm ai:prepare -- --album ALBUM_ID --limit all --status all --image-size large-
 pnpm ai:prepare -- --photo-ids PHOTO_ID --image-size original
 ```
 
-`--limit all` 代表不設上限；若不指定，預設最多準備 50 張。`ai:prepare` 會輸出 `tmp/ai-runs/<run-id>/`，並在同一個目錄寫入 `ai-labeling-prompt.md`。後續所有 AI 初標工作都應限制在這個 run 目錄內。
+`--limit all` 代表不設上限；若不指定，預設最多準備 50 張。`ai:prepare` 會輸出 `tmp/ai-runs/<run-id>/`，並在同一個目錄寫入 `ai-labeling-prompt.md`。正式輸入與最終輸出應以這個 run 目錄為準；若照片量很大，分片中間檔可以依下方大型 run 流程放在 `/tmp`。
 
 若這次目的不是整理某一本相簿，而是回頭驗證欄位、taxonomy 或 prompt 是否能跨活動場景成立，請改用跨活動抽樣：
 
@@ -99,6 +99,42 @@ attempt 目錄仍包含 `photos.json`、`manifest.json`、`ai-labeling-prompt.md
 
 ```text
 tmp/ai-runs/<run-id>/metadata-proposals.json
+```
+
+若本次超過約 200 張照片，建議不要要求單一 agent 直接在 run 目錄中手動建立大量暫存檔。先準備 shard workspace：
+
+```bash
+pnpm ai:shard:prepare -- --run-dir tmp/ai-runs/<run-id>
+```
+
+這會在 `/tmp/ai-labeling-shards/<run-id>/` 產生：
+
+- `inputs/shard-XX-input.json`: 每個 agent 的照片清單與圖片路徑。
+- `worker-prompts/shard-XX.md`: 可交給該 agent 的分片任務提示。
+- `outputs/shard-XX-proposals.json`: 該 agent 應寫入的分片 proposal array 目標位置。
+
+`ai:shard:prepare` 會清掉該 workspace 中前一次產生的 inputs、worker prompts、outputs 與暫存 merged proposal，避免誤用舊分片結果。
+
+分工前先挑 2 張照片走 smoke test：產生小 proposal、用 `pnpm ai:validate -- --run-dir <run-dir> --proposals <path>` 驗證、再用 `pnpm ai:review -- --run-dir <run-dir> --proposals <path> --output-dir <tmp-dir>` 確認 review artifacts 不會寫入正式 run 目錄。確認後再平行處理全部 shard。
+
+全部 shard 完成後合併：
+
+```bash
+pnpm ai:shard:merge -- --run-dir tmp/ai-runs/<run-id>
+```
+
+合併結果預設寫在 `/tmp/ai-labeling-shards/<run-id>/metadata-proposals.json`，不會立刻改 run 目錄。先驗證與暫存 review：
+
+```bash
+pnpm ai:validate -- --run-dir tmp/ai-runs/<run-id> --proposals /tmp/ai-labeling-shards/<run-id>/metadata-proposals.json
+pnpm ai:review -- --run-dir tmp/ai-runs/<run-id> --proposals /tmp/ai-labeling-shards/<run-id>/metadata-proposals.json --output-dir /tmp/ai-review-runs/<run-id>
+```
+
+人類確認可採用後，再集中一次寫回正式 run：
+
+```bash
+pnpm ai:shard:merge -- --run-dir tmp/ai-runs/<run-id> --write-run
+pnpm ai:review -- --run-dir tmp/ai-runs/<run-id>
 ```
 
 ### 6. 檢查模型輸出

@@ -1,4 +1,4 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { getAiLabelingPromptMetadata } from "./ai-labeling-prompt.mjs";
@@ -23,7 +23,7 @@ const distributionFields = [
 
 const peopleSceneValues = new Set(["講者", "會眾", "工作人員", "合照", "交流", "攝影"]);
 const peopleReasonPattern = /人|會眾|講者|合照|志工|參與者|工作人員/;
-const noPeopleReasonPattern = /沒有人|無人|沒有可辨識人物|沒有可見人物|沒有可辨識的人|沒有人物|無可辨識人物|沒有.*人物/;
+const noPeopleReasonPattern = /沒有人|無人|未見.*(?:人物|人影|真人)|未看到.*(?:人物|人影|真人)|沒有可辨識人物|沒有可見人物|沒有可辨識的人|沒有人物|無可辨識人物|沒有.*人物|無.*人物|不可辨識.*(?:人物|人影)|(?:人形|人物|角色).*(?:插圖|圖案|標誌|海報|看板|螢幕)|(?:插圖|圖案|標誌|海報|看板|螢幕).*(?:人形|人物|角色)/;
 const concentrationThreshold = 0.9;
 const genericUseThresholds = new Map([
   ["活動回顧", 0.45],
@@ -46,6 +46,7 @@ function printUsage() {
 Options:
   --run-dir <dir>       AI run directory containing manifest.json and photos.json.
   --proposals <path>    Proposal JSON path. Default: <run-dir>/metadata-proposals.json.
+  --output-dir <dir>    Directory for review artifacts. Default: <run-dir>.
   --summary <path>      Markdown summary path. Default: <run-dir>/metadata-review-summary.md.
   --sample <number>     Number of planned updates to preview in the summary. Default: 20.
   --help, -h            Show this help.
@@ -59,6 +60,7 @@ function parseArgs(argv) {
   const args = argv.slice(2).filter((arg) => arg !== "--");
   const options = {
     help: false,
+    outputDir: "",
     proposalsPath: "",
     runDir: "",
     sample: 20,
@@ -74,6 +76,9 @@ function parseArgs(argv) {
       index += 1;
     } else if (arg === "--proposals") {
       options.proposalsPath = args[index + 1] ?? "";
+      index += 1;
+    } else if (arg === "--output-dir") {
+      options.outputDir = args[index + 1] ?? "";
       index += 1;
     } else if (arg === "--summary") {
       options.summaryPath = args[index + 1] ?? "";
@@ -96,8 +101,11 @@ function parseArgs(argv) {
     if (!options.proposalsPath) {
       options.proposalsPath = join(options.runDir, defaultProposalFile);
     }
+    if (!options.outputDir) {
+      options.outputDir = options.runDir;
+    }
     if (!options.summaryPath) {
-      options.summaryPath = join(options.runDir, defaultSummaryFile);
+      options.summaryPath = join(options.outputDir, defaultSummaryFile);
     }
   }
 
@@ -474,7 +482,7 @@ function buildPromptVersionNotes(manifest) {
   return [];
 }
 
-function renderSummary({ manifest, notes, plan, proposals, runDir, sample, summaryPath }) {
+function renderSummary({ diffPath, manifest, notes, outputDir, plan, proposals, runDir, sample, summaryPath }) {
   const items = proposals.items;
   const fieldCountRows = fieldCounts(items).map(({ field, count }) => [
     fieldLabel(field, { includeRaw: true }),
@@ -512,9 +520,10 @@ function renderSummary({ manifest, notes, plan, proposals, runDir, sample, summa
     "## Output Files",
     "",
     `- Review summary: \`${summaryPath}\``,
-    `- Human diff: \`${join(runDir, "metadata-diff.md")}\``,
+    `- Human diff: \`${diffPath}\``,
     `- Update plan JSON: \`${plan.json_output}\``,
     `- Update plan CSV: \`${plan.csv_output}\``,
+    ...(outputDir === runDir ? [] : ["", `Review artifacts 已寫在 run 目錄外：\`${outputDir}\`.`]),
     "",
     "## Review Notes",
     "",
@@ -544,39 +553,51 @@ function renderSummary({ manifest, notes, plan, proposals, runDir, sample, summa
     "",
     "## Next Commands",
     "",
-    "Open a single-run HTML report:",
-    "",
-    "```bash",
-    `pnpm ai:report -- --run ${runDir}`,
-    "```",
-    "",
-    "Compare this run with another attempt:",
-    "",
-    "```bash",
-    `pnpm ai:report -- --runs ${runDir} tmp/ai-runs/<other-run-or-attempt>`,
-    "```",
-    "",
-    "Dry-run exact Google Sheets cells:",
-    "",
-    "```bash",
-    `pnpm sheets:apply-ai-updates -- --run-dir ${runDir}`,
-    "```",
-    "",
-    "Apply after human confirmation:",
-    "",
-    "```bash",
-    `pnpm sheets:apply-ai-updates -- --run-dir ${runDir} --write`,
-    "```",
-    "",
+    ...(outputDir === runDir
+      ? [
+          "Open a single-run HTML report:",
+          "",
+          "```bash",
+          `pnpm ai:report -- --run ${runDir}`,
+          "```",
+          "",
+          "Compare this run with another attempt:",
+          "",
+          "```bash",
+          `pnpm ai:report -- --runs ${runDir} tmp/ai-runs/<other-run-or-attempt>`,
+          "```",
+          "",
+          "Dry-run exact Google Sheets cells:",
+          "",
+          "```bash",
+          `pnpm sheets:apply-ai-updates -- --run-dir ${runDir}`,
+          "```",
+          "",
+          "Apply after human confirmation:",
+          "",
+          "```bash",
+          `pnpm sheets:apply-ai-updates -- --run-dir ${runDir} --write`,
+          "```",
+          "",
+        ]
+      : [
+          "這是暫存 review。proposal 被採用並寫回 run 目錄後，請重新執行：",
+          "",
+          "```bash",
+          `pnpm ai:review -- --run-dir ${runDir}`,
+          "```",
+          "",
+        ]),
   ];
 
   return lines.join("\n");
 }
 
 async function reviewAiRun(options) {
-  const diffOutputPath = join(options.runDir, "metadata-diff.md");
-  const jsonOutputPath = join(options.runDir, "metadata-update-plan.json");
-  const csvOutputPath = join(options.runDir, "metadata-update-plan.csv");
+  await mkdir(options.outputDir, { recursive: true });
+  const diffOutputPath = join(options.outputDir, "metadata-diff.md");
+  const jsonOutputPath = join(options.outputDir, "metadata-update-plan.json");
+  const csvOutputPath = join(options.outputDir, "metadata-update-plan.csv");
 
   const validation = await validateAiProposals({
     proposalsPath: options.proposalsPath,
@@ -604,8 +625,10 @@ async function reviewAiRun(options) {
   ]);
   const notes = [...buildPromptVersionNotes(manifest), ...validation.warnings, ...buildReviewNotes(proposals.items)];
   const summary = renderSummary({
+    diffPath: diff.outputPath,
     manifest,
     notes,
+    outputDir: options.outputDir,
     plan,
     proposals,
     runDir: options.runDir,
@@ -647,10 +670,15 @@ async function main() {
   console.log("");
   console.log("Next:");
   console.log(`- Review ${result.summaryPath}`);
-  console.log(`- Open single-run report: pnpm ai:report -- --run ${options.runDir}`);
-  console.log(`- Compare attempts: pnpm ai:report -- --runs ${options.runDir} tmp/ai-runs/<other-run-or-attempt>`);
   console.log(`- Open ${result.planCsvPath} to inspect all values that may be written`);
-  console.log(`- Dry-run Sheets cells: pnpm sheets:apply-ai-updates -- --run-dir ${options.runDir}`);
+  if (options.outputDir === options.runDir) {
+    console.log(`- Open single-run report: pnpm ai:report -- --run ${options.runDir}`);
+    console.log(`- Compare attempts: pnpm ai:report -- --runs ${options.runDir} tmp/ai-runs/<other-run-or-attempt>`);
+    console.log(`- Dry-run Sheets cells: pnpm sheets:apply-ai-updates -- --run-dir ${options.runDir}`);
+  } else {
+    console.log(`- Temporary review artifacts are in ${options.outputDir}`);
+    console.log(`- After accepting the proposal, write it to the run directory and rerun: pnpm ai:review -- --run-dir ${options.runDir}`);
+  }
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {

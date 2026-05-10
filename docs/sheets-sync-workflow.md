@@ -318,8 +318,8 @@ AI 可以協助初標，但不能取代人工確認。
 2. 用 `pnpm ai:prepare` 從 `tmp/sheets-export/photos.csv` 選出待整理照片，例如 `curation_status = unreviewed`。
 3. 工具建立 `tmp/ai-runs/<run-id>/`，輸出 `input-photos.csv`、`photos.json`、`manifest.json`、`ai-labeling-prompt.md`，並下載 AI 判讀用圖片到 `images/`。
 4. 若要讓不同模型或同一模型不同輪次使用同一批輸入，先用 `pnpm eval:attempt` 從既有 run 建立 attempt，不要手動複製整個工作包。
-5. 把 run 目錄中的 `ai-labeling-prompt.md` 與工作包交給模型。模型只應讀取 prompt 指定的必要輸入，例如 `photos.json`、`images/`、schema、taxonomy 與 sponsorship items，並只產生 `metadata-proposals.json` 候選欄位值。
-6. 操作者用 `pnpm ai:review -- --run-dir tmp/ai-runs/<run-id-or-attempt>` 檢查候選欄位格式、受控字彙與責任邊界，並產生審核摘要、diff 與更新計畫。
+5. 把 run 目錄中的 `ai-labeling-prompt.md` 與工作包交給模型。模型只應讀取 prompt 指定的必要輸入，例如 `photos.json`、`images/`、schema、taxonomy 與 sponsorship items，並只產生 `metadata-proposals.json` 候選欄位值。大型 run 可先用 `pnpm ai:shard:prepare` 把中間分片放到 `/tmp/ai-labeling-shards/<run-id>/`，再用 `pnpm ai:shard:merge` 合併。
+6. 操作者用 `pnpm ai:review -- --run-dir tmp/ai-runs/<run-id-or-attempt>` 檢查候選欄位格式、受控字彙與責任邊界，並產生審核摘要、diff 與更新計畫。若要先檢查 `/tmp` 的暫存合併結果，可加上 `--proposals <path> --output-dir <tmp-dir>`，避免 review artifacts 寫入正式 run 目錄。
 7. 用 `pnpm ai:report` 產生唯讀 HTML 報表；單一 run 用逐張檢視，多個 run/attempt 用並排比較。
 8. 若本次要評估 `visual_description` 對自然語言找圖是否有幫助，先用 `pnpm eval:search` 做 taxonomy-only baseline 與 taxonomy + description 的離線比較。
 9. 用 `pnpm sheets:apply-ai-updates -- --run-dir tmp/ai-runs/<run-id-or-attempt>` 對正式 Sheets 做 dry-run，確認會更新哪些 cells。

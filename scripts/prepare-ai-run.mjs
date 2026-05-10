@@ -421,6 +421,7 @@ async function main() {
   console.log(`- downloaded images: ${result.manifest.downloaded_photo_count}`);
   console.log(`- prompt: ${result.promptPath}`);
   console.log("- next: give ai-labeling-prompt.md and this run directory to the model. The model should write metadata-proposals.json only; then an operator runs ai:review.");
+  console.log("- large runs: use pnpm ai:shard:prepare -- --run-dir <dir> and keep intermediate shard files under /tmp before the final merge.");
 }
 
 try {

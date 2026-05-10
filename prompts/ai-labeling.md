@@ -17,6 +17,16 @@
 
 `photos.json` 裡的 `local_image_path` 是相對於 AI run 目錄的圖片路徑。若 `local_image_path` 為空，使用 `image_download_url`，或回報需要操作者重新建立有下載圖片的 run。
 
+## 大型 run 與分工規則
+
+若本次照片數量很大，操作者或 repo agent 可能會把 `photos.json` 切成多個 shard 交給多個 agent 同時處理。即使分工，你仍必須遵守同一份讀圖規則：
+
+- 不可以使用既有的 `metadata-proposals.json`、其他 run 的 proposal、其他 shard 的輸出或上一輪結果作為本次標記依據；除非任務明確說明是修補某份既有 proposal。
+- 若本次任務提供 shard input，請只處理該 input 內列出的照片，不要替其他照片產生 item。
+- shard output 若被要求寫成 JSON array，請只輸出正式 `items[]` 物件；最終 root object 會由 merge 工具產生。
+- 大型 run 應先用少量照片做 smoke test，確認圖片可讀、proposal 可驗證、review 不會寫錯位置後，再展開全量分工。
+- 具備 repo 指令能力的 agent 應把分片中間檔寫到 `/tmp/ai-labeling-shards/<run-id>/` 這類暫存目錄；正式 AI run 目錄只應保留最後的 `metadata-proposals.json`。
+
 ## 你的任務
 
 針對 `photos.json` 中每張照片，觀察圖片與既有 metadata，產生可審核的欄位候選值。請只輸出你有足夠把握的欄位；不要為了填滿欄位而猜測。
@@ -179,6 +189,9 @@ metadata-proposals.json
 - 是否輸出了 `贊助成果報告` 或 `贊助提案`，但沒有可支持的 `sponsorship_items` 或 `sponsorship_tags`？若有，請移除贊助相關用途，除非 reason 能清楚指出贊助脈絡。
 - 是否對所有照片都給相同 confidence？若有，請重新依每張照片的實際把握調整；若無法評估，省略 confidence。
 - `visual_description` 是否能讓人類不用看圖就知道這張照片有哪些可見物件、動作或空間關係？若只是「有人在交流」、「活動現場照片」這類空泛描述，請重寫。
+- 若 `people_count = 0`，reason 是否仍寫了「人物」這種可能讓 review 工具誤認為真人線索的字眼？非真人請改寫成「插圖角色」、「海報上的人形圖案」、「包裝圖案」；背景太模糊請寫「背景人影不可辨識，未計入人數」。
+- `scene_tags` 是否混入 `mood_tags` 的值？例如 `幕後感` 是 mood，不是 scene；若照片有幕後工作狀態，應放在 `mood_tags` 並用 reason 說明可見動作或物件。
+- `visual_description` 是否包含具體可見物件、動作、文字、位置或空間關係？validator 會拒絕過度抽象、模板化或非視覺語言。
 
 以下是錯誤輸出範例，請勿模仿：
 

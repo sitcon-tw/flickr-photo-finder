@@ -54,7 +54,7 @@ const tasks = [
     handler: prepareAiRun,
     id: "ai-prepare",
     inputs: ["正式 Google Sheets albums / photos", "匯出正式資料時需要 GOOGLE_APPLICATION_CREDENTIALS 與讀取權限", "Flickr 圖片 URL"],
-    next: ["把 run 目錄中的 ai-labeling-prompt.md 與工作包交給模型；模型只輸出 metadata-proposals.json。若要做多模型或多輪品質比較，直接使用 eval:attempt。"],
+    next: ["把 run 目錄中的 ai-labeling-prompt.md 與工作包交給模型；模型只輸出 metadata-proposals.json。大型 run 先用 ai:shard:prepare / ai:shard:merge 把中間檔放在 /tmp。若要做多模型或多輪品質比較，直接使用 eval:attempt。"],
     outputs: ["tmp/ai-runs/<run-id>/photos.json", "tmp/ai-runs/<run-id>/images/"],
     phase: "AI 初標",
     title: "準備 AI 初標工作包",
@@ -210,7 +210,7 @@ function printWorkflowSummary() {
   console.log("2. 從 Flickr 相簿清單選一本相簿，產生 tmp/intake-runs/ 可審核匯入產物。");
   console.log("3. workflow 會記住剛產生的 intake run，通常可直接接續驗證與 Sheets dry-run。");
   console.log("4. 從 Sheets photos 建立 tmp/ai-runs/，把 ai-labeling-prompt.md 與工作包交給模型初標。");
-  console.log("5. 模型只輸出 metadata-proposals.json，工具驗證後產生 diff / update plan。");
+  console.log("5. 模型只輸出 metadata-proposals.json；大型 run 可用 ai:shard:prepare / ai:shard:merge 先在 /tmp 分片，再由工具驗證後產生 diff / update plan。");
   console.log("6. AI 候選值經人類確認後才寫回 Sheets；正式 reviewed 在 Sheets 中由志工協作完成。");
 }
 
@@ -509,7 +509,7 @@ async function prepareAiRun(context = {}) {
 
   console.log("");
   console.log("下一步：");
-  console.log(`1. 複製下方 prompt 給模型或 agent，請它只在 ${runDir}/ 輸出 metadata-proposals.json。`);
+  console.log(`1. 複製下方 prompt 給模型或 agent，請它只在 ${runDir}/ 輸出 metadata-proposals.json。大型 run 請先用 ai:shard:prepare 把中間檔放在 /tmp。`);
   console.log(`2. 模型輸出完成後，由操作者執行：pnpm workflow -- --task ai-review，並填入 ${runDir}`);
 
   const { prompt, promptPath } = writeAiLabelingPrompt(runDir);
