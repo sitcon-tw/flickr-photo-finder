@@ -944,9 +944,9 @@ function sheetRowLink(photo) {
   if (!spreadsheetId || !photo._sheet_row_number) {
     return "";
   }
-  const gid = projectConfig.googleSheets?.photosSheetGid ?? 0;
-  const range = `${photo._sheet_row_number}:${photo._sheet_row_number}`;
-  return `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit#gid=${encodeURIComponent(String(gid))}&range=${encodeURIComponent(range)}`;
+  const gid = encodeURIComponent(String(projectConfig.googleSheets?.photosSheetGid ?? 0));
+  const range = encodeURIComponent(`A${photo._sheet_row_number}`);
+  return `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit?gid=${gid}#gid=${gid}&range=${range}`;
 }
 
 async function copyTextToClipboard(text) {

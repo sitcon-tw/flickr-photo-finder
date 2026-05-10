@@ -121,7 +121,7 @@ export const dataSources = {
 
 候選清單只存在瀏覽器當下狀態與 URL query，不寫回 Google Sheets。清單畫面應提供縮圖，避免只用 photo id 要求使用者記憶照片；複製出的清單應包含 finder deep link、Google Sheets 列連結與 Flickr URL，必要時再附上使用提醒與整理狀態。
 
-Google Sheets 列連結應使用 `#gid=<sheetId>&range=<row>:<row>`，例如正式 `photos` 工作表目前是 `#gid=1663351240&range=74:74`。`gid` 已經指定工作表，不要在 `range` 參數再放 `photos!A74` 這種 sheet-qualified A1 notation；Google Sheets UI 的 cell / range deep link 不會穩定處理這種格式。`photos` 的 sheet id 應記錄在 `config/project.json` 的 `googleSheets.photosSheetGid`。
+Google Sheets 列連結應貼近 Google Sheets UI 的「Get link to this cell」格式：`edit?gid=<sheetId>#gid=<sheetId>&range=A<row>`，例如正式 `photos` 工作表第 28 列是 `edit?gid=1663351240#gid=1663351240&range=A28`。`gid` 指定工作表，`range` 只放該工作表內的 cell，不要放 `photos!A28` 這種 sheet-qualified A1 notation。`photos` 的 sheet id 應記錄在 `config/project.json` 的 `googleSheets.photosSheetGid`。
 
 公開讀取規則記錄在 `docs/google-sheets-database-design.md`，外部 AI 讀取方式記錄在 `docs/ai-readable-dataset.md`。
 
