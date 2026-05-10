@@ -17,7 +17,7 @@
 | Sheets 表格讀寫技術選擇 | `docs/sheets-sync-workflow.md` | repo CLI 應以官方 Google Sheets API SDK 為主要方向；Google Drive 檔案搬運不是 Sheets 寫入主流程。 |
 | Sheets 正式寫入身份 | `docs/sheets-sync-workflow.md` | 建議使用 SITCON 管理的 service account，並將 service account email 加入正式 Sheets 編輯者。 |
 | AI 初標輸入與輸出格式 | `docs/ai-labeling-contract.md` | 定義 `tmp/ai-runs/<run-id>/` 的輸入檔、圖片來源、`metadata-proposals.json` 格式與驗證流程。 |
-| AI 初標操作與 prompt | `docs/ai-labeling-operator-guide.md`、`prompts/ai-labeling.md` | 操作指南說明 prepare-to-review、報表檢視與回寫前檢查流程；prompt 是可交給模型使用的任務範本。 |
+| AI 初標操作與 prompt | `docs/ai-labeling-operator-guide.md`、`prompts/ai-labeling.md` | 操作指南給人類操作者與 repo 維護 agent；prompt 是可交給模型使用的任務範本。 |
 | AI 初標品質評估 | `docs/ai-labeling-evaluation-notes.md` | 記錄模型 run 觀察、常見失準欄位與未來可工具化的檢查方向。 |
 | 跨活動 AI 測試抽樣計畫 | `data/ai-cross-activity-sample-plan.json` | 用於建立欄位、taxonomy、prompt 與 validator 評估工作包；不是正式照片資料。 |
 | AI proposal 範例 | `fixtures/ai-proposals/` | valid/invalid examples 應由 `pnpm eval:validate-fixtures` 驗證。 |
@@ -86,7 +86,7 @@
 | 技術志工 | `pnpm workflow`、`docs/project-architecture.md`、`docs/sheets-sync-workflow.md`、`docs/google-sheets-database-design.md` |
 | 維護 Apps Script 的人 | `docs/apps-script-maintenance-design.md`、`data/photo-schema.json`、`data/tag-taxonomy.json` |
 | 維護 GitHub Pages 前端的人 | `docs/public-frontend-architecture.md`、`docs/frontend-analytics-design.md`、`docs/ga4-operations.md`、`app/config.js` |
-| AI / agent | `AGENTS.md`、`docs/agent-maintenance-guide.md`、`docs/ai-labeling-operator-guide.md`、`docs/ai-labeling-contract.md`、`docs/ai-labeling-evaluation-notes.md`、`docs/ai-readable-dataset.md` |
+| AI / agent | `AGENTS.md`、`docs/agent-maintenance-guide.md`；若只是產生初標 metadata，讀 run 目錄的 `ai-labeling-prompt.md` 與 `docs/ai-labeling-contract.md`；若要操作流程才讀 `docs/ai-labeling-operator-guide.md` |
 
 ## 文件分工
 
@@ -100,7 +100,7 @@
 - `frontend-analytics-design.md`: 前端使用行為分析目的、GA4 事件設計、實作前檢查與後續分析流程。
 - `ga4-operations.md`: GA4 後台操作、service account 權限、custom dimensions 與 BigQuery 延後策略。
 - `ai-readable-dataset.md`: AI 如何讀取照片索引資料。
-- `ai-labeling-operator-guide.md`: AI 初標操作者與 agent 的 prepare-to-review、報表檢視與回寫前檢查指南。
+- `ai-labeling-operator-guide.md`: AI 初標操作者與 repo 維護 agent 的 prepare-to-review、報表檢視與回寫前檢查指南；不是模型初標任務的主要 prompt。
 - `ai-labeling-contract.md`: AI 初標工作包的輸入、輸出、限制與驗證合約。
 - `ai-labeling-evaluation-notes.md`: AI 初標品質評估紀錄、常見失準欄位與工具化警訊候選。
 - `field-design-reflection.md`: 根據多輪真實 AI 初標結果回頭檢視欄位、taxonomy 與 prompt 設計。

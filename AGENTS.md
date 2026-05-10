@@ -102,7 +102,8 @@ The main goal is not to replace Flickr. The repository should keep a practical i
 - Read `docs/project-architecture.md` before changing end-to-end workflow, deployment boundaries, or user-facing architecture.
 - For database shape, read `docs/google-sheets-database-design.md` before changing Sheets or sync assumptions.
 - For public AI behavior, read `docs/ai-readable-dataset.md` before changing photo index read semantics.
-- For AI labeling run inputs or `metadata-proposals.json` output, read `docs/ai-labeling-operator-guide.md` and `docs/ai-labeling-contract.md` before changing tooling or producing proposals.
+- For AI labeling workflow changes, read `docs/ai-labeling-operator-guide.md` and `docs/ai-labeling-contract.md` before changing tooling.
+- For producing `metadata-proposals.json` inside an existing AI run, use that run directory's `ai-labeling-prompt.md` as the primary task prompt, then read `docs/ai-labeling-contract.md`, schema, taxonomy, sponsorship items, `photos.json`, and images. Do not treat `docs/ai-labeling-operator-guide.md` as required model-facing context unless the task includes operating or debugging the workflow.
 - For Apps Script helpers, read `docs/apps-script-maintenance-design.md` before adding Sheets-side validation.
 - Help maintain the repo so future agents can understand how to scan albums, validate data, assist AI labeling, and sync with Google Sheets.
 - Do not store Google Drive, Google API, OAuth token, third-party tool, or AI API credentials in this repo.

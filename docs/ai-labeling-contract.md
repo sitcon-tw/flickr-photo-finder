@@ -1,10 +1,12 @@
 # AI 初標輸入與輸出合約
 
-這份文件定義新接手的 AI model、agent 或技術志工在「照片內容初標」階段要讀取哪些輸入、輸出什麼格式，以及後續工具如何驗證與使用結果。
+這份文件定義新接手的 AI model、agent 或技術志工在「照片內容初標」階段要讀取哪些輸入、輸出什麼格式，以及後續工具如何驗證與使用結果。它刻意只描述 run 目錄、輸入檔、輸出格式與責任邊界，不取代操作者 runbook。
 
 AI 初標只產生候選 metadata。它不直接代表人工 review，也不應直接把照片推進到 `reviewed` 或 `approved`。
 
-若需要逐步操作、prompt 使用方式、常見 validator 錯誤與判斷校準，請看 `docs/ai-labeling-operator-guide.md`。可直接交給模型的提示範本放在 `prompts/ai-labeling.md`。
+若只是把照片交給模型產生 `metadata-proposals.json`，主要任務提示應使用 run 目錄中的 `ai-labeling-prompt.md`。可重用的提示範本放在 `prompts/ai-labeling.md`。
+
+若需要準備工作包、建立 attempt、執行 `ai:review`、閱讀報表、處理 stale review summary 或進行 Sheets dry-run，請看 `docs/ai-labeling-operator-guide.md`。這些是操作者流程，不是模型初標時的必讀脈絡。
 
 ## 適用階段
 

@@ -1,8 +1,10 @@
 # AI 初標操作指南
 
-這份文件給執行 `prepare -> validate` 中間階段的操作者、agent 與模型協作者使用。它補足 `docs/ai-labeling-contract.md` 的操作層細節。
+這份文件給執行 `prepare -> review -> report -> dry-run` 流程的人類操作者、技術志工與 repo 維護 agent 使用。它補足 `docs/ai-labeling-contract.md` 沒有寫的操作層細節。
 
-合約文件回答「格式是什麼」；本文件回答「接手後應該怎麼做、怎麼判斷、錯了怎麼修」。
+不要把本文件整份交給只負責照片初標的模型。模型真正需要的任務入口是 run 目錄中的 `ai-labeling-prompt.md`，再搭配 `docs/ai-labeling-contract.md`、schema、taxonomy、sponsorship items、`photos.json` 與圖片。
+
+合約文件回答「模型輸入輸出格式是什麼」；本文件回答「操作者接手後應該怎麼準備工作包、檢查結果、看報表、處理錯誤與安排回寫前 dry-run」。
 
 ## 操作流程
 
