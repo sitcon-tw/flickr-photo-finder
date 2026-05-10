@@ -51,6 +51,8 @@
 
 請不要在文件中另外維護一份欄位清單。若規則改變，先改 `data/photo-schema.json`，再讓 `pnpm validate:data` 和相關文件跟著更新。
 
+`reviewed` 的門檻應聚焦在照片是否具備最基礎可搜尋 metadata。適合用途、公開使用風險與推薦優先度仍是重要欄位，但不應阻擋整理者把基礎資料標成已人工檢查。
+
 精選、素材包與不推薦使用不放在 `curation_status`。優先推薦用 `priority_level` 或 `collections` 表達；不建議推薦使用用 `public_use_status = avoid` 表達。
 
 ## 欄位責任不是組織邊界

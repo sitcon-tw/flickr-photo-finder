@@ -117,6 +117,8 @@ scene_tags
 - `ai_labeled`: 經過 AI 初標，但尚未人工確認。
 - `reviewed`: 已由人確認到可以被搜尋與初步使用判斷。
 
+`reviewed` 不代表公開使用風險已完全確認，也不代表已經排好推薦優先度。若公開使用仍不確定，可先讓 `public_use_status` 留空或標成 `needs_review`；若沒有明確推薦排序判斷，`priority_level` 可以留空。
+
 優先推薦不要用整理狀態表示，請用 `priority_level`、`collections` 或素材包來表達。不建議推薦使用的照片請用 `public_use_status = avoid`，不要另外建立封存狀態。
 
 `priority_level` 是找圖時的排序提示，不是照片品質分數：

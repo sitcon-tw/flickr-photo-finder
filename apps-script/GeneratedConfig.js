@@ -263,11 +263,7 @@ var SITCON_PHOTO_FINDER_CONFIG = {
   ],
   "reviewedRequiredFields": [
     "subject_type",
-    "scene_tags",
-    "mood_tags",
-    "recommended_uses",
-    "public_use_status",
-    "priority_level"
+    "scene_tags"
   ],
   "approvedRequiredFields": [
     "photographer",

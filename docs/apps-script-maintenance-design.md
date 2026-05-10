@@ -91,6 +91,8 @@ Apps Script 應依 `data/photo-schema.json` 的 `reviewed_required_fields` 與 `
 
 不要在 Apps Script 中另寫一份永久分歧的規則，也不要在文件中重複維護欄位清單。
 
+sidebar 的 `完成審核並下一張` 會使用 `reviewed_required_fields` 作為門檻。這組門檻應只阻擋最基礎可搜尋 metadata 的缺漏；`recommended_uses`、`public_use_status`、`priority_level`、`mood_tags` 等需要更多情境或主觀判斷的欄位，不應讓整理者無法完成基礎審核。
+
 ### 檢查公開讀取格式
 
 Apps Script 應提供功能檢查 `photos` 是否適合公開前端與 AI 讀取。
