@@ -31,6 +31,18 @@
 | 本機 Sheets 工作快取 | `tmp/sheets-export/*.csv` | 從正式 Google Sheets 匯出，供 validation 與 intake 使用；可刪除，不 commit。 |
 | 專案角色與資料流 | `docs/project-architecture.md` | 若架構改變，先更新架構總覽，再同步相關文件。 |
 
+## 共用字串歸屬
+
+資料欄位、受控字彙、狀態與驗證規則會同時出現在 Google Sheets、GitHub Pages、Apps Script、AI report 與 CLI。新增或調整字串時，先判斷它屬於哪一層：
+
+| 字串類型 | 維護位置 | 使用原則 |
+| --- | --- | --- |
+| 欄位名稱與欄位說明 | `data/photo-schema.json` | 人類介面與報表應使用 `label_zh` / `description_zh`，儲存與比對仍使用欄位 raw key。 |
+| taxonomy / boolean raw value 的人類顯示文字 | `data/tag-taxonomy.json` 的 `option_labels` | 不在 Pages、Apps Script、文件或報表另寫翻譯表。 |
+| sponsorship item 名稱 | `data/sponsorship-items.json` 衍生到 taxonomy | 沿用 CFS 快照名稱，不另創平行詞彙。 |
+| 人類審核輸出格式 | `scripts/metadata-display.mjs` | CLI diff、report、CSV 等人類輸出應共用這個 helper，機器 JSON plan 維持 raw value。 |
+| 單一畫面的操作文案 | 該畫面程式或文件 | 例如按鈕、空狀態與提示文字可留在當地；若跨兩個以上介面重複，應提升成共用來源。 |
+
 ## 目前狀態
 
 ### 目前可用

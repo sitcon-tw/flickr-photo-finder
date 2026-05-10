@@ -15,6 +15,8 @@ Repo 的角色是：
 
 `data/photo-schema.json` 是照片、相簿與匯入批次欄位順序、欄位 metadata 與 reviewed 完整度規則的機器可讀來源。
 
+欄位、taxonomy value、boolean value、狀態與人類審核報表文字不要在各介面各自翻譯。欄位顯示文字回到 `data/photo-schema.json`，taxonomy / boolean 顯示文字回到 `data/tag-taxonomy.json` 的 `option_labels`，Node 端人類輸出使用 `scripts/metadata-display.mjs`。只有單一畫面專屬的操作文案，例如按鈕、空狀態與局部提示，才留在該畫面程式中。
+
 ## Agent 可以協助的工作
 
 Agent 適合協助：
