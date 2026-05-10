@@ -49,6 +49,7 @@ SITCON Flickr 上的照片擁有者是 SITCON，但攝影師 credit 會放在 Fl
 | `scene_tags` | 活動情境或可見場景元素，例如攤位、會眾、舞台、工作人員、合照、指標、場地、螢幕、頒獎、兒童。 |
 | `mood_tags` | 照片帶來的感受，例如熱鬧、專注、友善、青春感、幕後感。 |
 | `recommended_uses` | 適合的工作用途，例如社群貼文、網站 hero、志工招募、贊助提案。 |
+| `visual_description` | 1 到 2 句中立描述照片可見內容，例如人物動作、物件位置、畫面文字與空間關係。這不是 reviewed 必填，但能補足自然語言找圖。 |
 | `public_use_status` | 不確定就用 `needs_review`。不要為了讓資料漂亮而標成 `approved`。 |
 | `priority_level` | 推薦使用優先度，不是客觀照片品質。 |
 | `collections` | 素材包，例如志工招募、贊助提案、網站 hero、活動回顧。 |

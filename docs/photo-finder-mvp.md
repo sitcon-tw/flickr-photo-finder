@@ -59,6 +59,7 @@ MVP 應該先建立一個 Flickr 之上的照片索引層，而不是取代 Flic
 | `orientation` | 橫式、直式或方形，幫助設計與社群版型選圖。 |
 | `has_negative_space` | 是否有留白可放文字。 |
 | `safe_crop` | 是否適合裁切成常見比例，例如 1:1、16:9、9:16。 |
+| `visual_description` | 1 到 2 句中立的可見畫面描述，用來補足 taxonomy 難以涵蓋的長尾找圖線索，例如人物動作、物件位置、畫面文字、空間關係與構圖特徵。 |
 | `public_use_status` | 可公開、需確認、避免公開。 |
 | `priority_level` | 推薦使用優先度，方便排序與快速挑選候選照片。 |
 | `collections` | 素材包關聯，例如志工招募精選、贊助提案、SITCON 介紹。 |
@@ -133,6 +134,8 @@ sponsorship_tags = sponsor value / proof use
 - `face_prominence`
 
 這些欄位能提升內容搜尋精準度，也有助於判斷人物露出與品牌露出，但標註成本較高，應先確認使用頻率。
+
+`visual_description` 原本也屬於這類長尾內容輔助構想；目前已進入正式 photo schema，原因是實際 AI 初標與搜尋實驗顯示它能承接 taxonomy 無法完整描述的可見細節。它仍不應取代結構化欄位，也不列入 `reviewed_required_fields`，避免把人工整理門檻拉太高。
 
 ### 情緒與社群感
 
