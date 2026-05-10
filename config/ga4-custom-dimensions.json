@@ -73,6 +73,12 @@
       "scope": "EVENT"
     },
     {
+      "parameterName": "album_filter_used",
+      "displayName": "Album filter used",
+      "description": "Whether activity or album filter was used.",
+      "scope": "EVENT"
+    },
+    {
       "parameterName": "mood_filter_used",
       "displayName": "Mood filter used",
       "description": "Whether mood filter was used.",

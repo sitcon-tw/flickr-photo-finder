@@ -3,6 +3,7 @@ import { dataSources, projectConfigUrl } from "./config.js";
 const controls = {
   search: document.querySelector("#searchInput"),
   sort: document.querySelector("#sortSelect"),
+  album: document.querySelector("#albumFilter"),
   use: document.querySelector("#useFilter"),
   mood: document.querySelector("#moodFilter"),
   scene: document.querySelector("#sceneFilter"),
@@ -278,6 +279,7 @@ function currentFilterSnapshot() {
     recommendedUse: controls.use.value,
     mood: controls.mood.value,
     sortMode: controls.sort.value,
+    album: controls.album.value,
     scene: controls.scene.value,
     peopleCount: controls.peopleCount.value,
     subjectType: controls.subjectType.value,
@@ -299,6 +301,7 @@ function hasActiveFilters(snapshot) {
     snapshot.taskMode !== "all" ||
       snapshot.recommendedUse ||
       snapshot.mood ||
+      snapshot.album ||
       snapshot.scene ||
       snapshot.peopleCount ||
       snapshot.subjectType ||
@@ -329,6 +332,7 @@ function resultsEventParams(snapshot) {
     public_use_status: snapshot.publicUseStatus,
     priority_level: snapshot.priorityLevel,
     curation_status: snapshot.curationStatus,
+    album_filter_used: Boolean(snapshot.album),
     sponsorship_filter_used: Boolean(snapshot.sponsorshipItem || snapshot.sponsorshipTag),
     collection_filter_used: Boolean(snapshot.collection),
   };
@@ -483,12 +487,65 @@ function fillSelect(select, label, values) {
   }
 }
 
+function fillSelectOptions(select, label, options) {
+  select.replaceChildren();
+  select.append(new Option(label, ""));
+  for (const option of options) {
+    select.append(new Option(option.label, option.value));
+  }
+}
+
 function fillSelectWithLabels(select, label, values, labels) {
   select.replaceChildren();
   select.append(new Option(label, ""));
   for (const value of values) {
     select.append(new Option(labels.get(value) ?? value, value));
   }
+}
+
+function compactLabelParts(parts) {
+  const seen = new Set();
+  return parts
+    .map((part) => String(part ?? "").trim())
+    .filter(Boolean)
+    .filter((part) => {
+      const key = part.toLowerCase();
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    });
+}
+
+function albumFilterOptions() {
+  const options = new Map();
+  for (const photo of photos) {
+    const labelParts = compactLabelParts([photo.event_year, photo.event_name, photo.album_title]);
+    const fallbackLabel = labelParts.join(" · ");
+
+    for (const albumId of photo.album_ids) {
+      const id = String(albumId ?? "").trim();
+      if (!id) {
+        continue;
+      }
+      const key = `id:${id}`;
+      const label = fallbackLabel || id;
+      const current = options.get(key);
+      if (!current || label.length > current.label.length) {
+        options.set(key, { value: key, label });
+      }
+    }
+
+    if (photo.album_ids.length === 0 && photo.album_title) {
+      const key = `title:${photo.album_title}`;
+      options.set(key, { value: key, label: fallbackLabel || photo.album_title });
+    }
+  }
+
+  return [...options.values()].sort((left, right) =>
+    left.label.localeCompare(right.label, "zh-Hant-TW"),
+  );
 }
 
 function setupTaskModes() {
@@ -504,6 +561,7 @@ function setupTaskModes() {
 }
 
 function setupFilters(taxonomy) {
+  fillSelectOptions(controls.album, "全部活動/相簿", albumFilterOptions());
   fillSelect(controls.use, "全部用途", taxonomy.recommended_uses ?? []);
   fillSelect(controls.mood, "全部氛圍", taxonomy.mood_tags ?? []);
   fillSelect(controls.scene, "全部場景", taxonomy.scene_tags ?? []);
@@ -567,6 +625,7 @@ function buildSearchText(photo) {
   return [
     photo.photo_id,
     photo.photo_url,
+    ...photo.album_ids,
     photo.album_title,
     photo.event_name,
     photo.event_year,
@@ -639,6 +698,19 @@ function valuePartiallyMatchesList(photo, field, query) {
   return photo[field].some((value) => normalizeText(value).includes(normalized));
 }
 
+function matchesAlbum(photo, value) {
+  if (!value) {
+    return true;
+  }
+  if (value.startsWith("id:")) {
+    return photo.album_ids.includes(value.slice(3));
+  }
+  if (value.startsWith("title:")) {
+    return photo.album_title === value.slice(6);
+  }
+  return photo.album_ids.includes(value) || photo.album_title === value;
+}
+
 function matchesPeopleCount(photo, value) {
   if (!value) {
     return true;
@@ -669,6 +741,7 @@ function matchesPeopleCount(photo, value) {
 function matchesFilters(photo) {
   return (
     textMatches(photo, controls.search.value) &&
+    matchesAlbum(photo, controls.album.value) &&
     hasListValue(photo, "recommended_uses", controls.use.value) &&
     hasListValue(photo, "mood_tags", controls.mood.value) &&
     hasListValue(photo, "scene_tags", controls.scene.value) &&
@@ -1625,6 +1698,7 @@ function activeFilterEntries() {
     entries.push(["search", "搜尋", sanitizeSearchTerm(controls.search.value)]);
   }
   for (const [key, label, control] of [
+    ["album", "活動/相簿", controls.album],
     ["use", "用途", controls.use],
     ["mood", "氛圍", controls.mood],
     ["scene", "場景", controls.scene],
@@ -1794,6 +1868,7 @@ function resetFilters() {
   state.taskMode = "all";
   controls.search.value = "";
   controls.sort.value = "recommended";
+  controls.album.value = "";
   controls.use.value = "";
   controls.mood.value = "";
   controls.scene.value = "";
@@ -1822,6 +1897,7 @@ function syncUrlState() {
     ...urlValue("task", state.taskMode !== "all" ? state.taskMode : ""),
     ...urlValue("q", controls.search.value.trim()),
     ...urlValue("sort", controls.sort.value !== "recommended" ? controls.sort.value : ""),
+    ...urlValue("album", controls.album.value),
     ...urlValue("use", controls.use.value),
     ...urlValue("mood", controls.mood.value),
     ...urlValue("scene", controls.scene.value),
@@ -1858,6 +1934,7 @@ function applyUrlState() {
   }
   controls.search.value = params.get("q") ?? "";
   setControlValue(controls.sort, params.get("sort") ?? "");
+  setControlValue(controls.album, params.get("album") ?? "");
   setControlValue(controls.use, params.get("use") ?? "");
   setControlValue(controls.mood, params.get("mood") ?? "");
   setControlValue(controls.scene, params.get("scene") ?? "");

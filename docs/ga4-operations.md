@@ -183,6 +183,7 @@ GA4 後台只註冊低基數 event-scoped custom dimensions，例如：
 - `priority_level`
 - `curation_status`
 - `sponsorship_filter_used`
+- `album_filter_used`
 - `collection_filter_used`
 - `mood_filter_used`
 - `scene_filter_used`
@@ -195,6 +196,8 @@ GA4 後台只註冊低基數 event-scoped custom dimensions，例如：
 
 - `photo_id`
 - `content_id`
+- `album_id`
+- `album_title`
 - `search_term`
 - `result_rank`
 
