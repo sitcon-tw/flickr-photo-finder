@@ -1,12 +1,9 @@
 import { createReadStream } from "node:fs";
 import { stat } from "node:fs/promises";
 import { createServer } from "node:http";
-import { extname, join, normalize, resolve } from "node:path";
+import { extname, join, normalize, resolve, sep } from "node:path";
+import { fileURLToPath } from "node:url";
 import { appTitle } from "./project-config.mjs";
-
-const root = resolve(".");
-const port = Number(process.env.PORT ?? 4173);
-const host = process.env.HOST ?? "127.0.0.1";
 
 const mimeTypes = {
   ".css": "text/css; charset=utf-8",
@@ -18,17 +15,23 @@ const mimeTypes = {
 
 const appRootFiles = new Set(["config.js", "main.js", "styles.css"]);
 
-function resolveRequestPath(urlPath) {
+function isInsideRoot(path, root) {
+  return path === root || path.startsWith(`${root}${sep}`);
+}
+
+function resolveRequestPath(urlPath, { root, serveAppRoot }) {
   const decodedPath = decodeURIComponent(urlPath.split("?")[0]);
   const requestPath = decodedPath.replace(/^\/+/, "");
-  const relativePath = decodedPath === "/"
-    ? "app/"
-    : appRootFiles.has(requestPath)
-      ? `app/${requestPath}`
-      : requestPath;
+  const relativePath = serveAppRoot
+    ? decodedPath === "/"
+      ? "app/"
+      : appRootFiles.has(requestPath)
+        ? `app/${requestPath}`
+        : requestPath
+    : requestPath || ".";
   const absolutePath = resolve(root, normalize(relativePath));
 
-  if (!absolutePath.startsWith(root)) {
+  if (!isInsideRoot(absolutePath, root)) {
     return null;
   }
 
@@ -40,47 +43,65 @@ function sendText(response, status, text) {
   response.end(text);
 }
 
-const server = createServer(async (request, response) => {
-  const filePath = resolveRequestPath(request.url ?? "/");
-  if (!filePath) {
-    sendText(response, 403, "Forbidden");
-    return;
-  }
-
-  try {
-    let targetPath = filePath;
-    let fileStat = await stat(targetPath);
-    if (fileStat.isDirectory()) {
-      const requestPath = request.url?.split("?")[0] ?? "/";
-      if (!requestPath.endsWith("/")) {
-        response.writeHead(301, { location: `${requestPath}/` });
-        response.end();
-        return;
-      }
-      targetPath = join(targetPath, "index.html");
-      fileStat = await stat(targetPath);
-    }
-
-    if (!fileStat.isFile()) {
-      sendText(response, 404, "Not found");
+export function startStaticServer({
+  rootDir = ".",
+  host = process.env.HOST ?? "127.0.0.1",
+  port = Number(process.env.PORT ?? 4173),
+  title = appTitle,
+  serveAppRoot = false,
+} = {}) {
+  const root = resolve(rootDir);
+  const server = createServer(async (request, response) => {
+    const filePath = resolveRequestPath(request.url ?? "/", { root, serveAppRoot });
+    if (!filePath) {
+      sendText(response, 403, "Forbidden");
       return;
     }
 
-    response.writeHead(200, {
-      "content-length": fileStat.size,
-      "content-type": mimeTypes[extname(targetPath)] ?? "application/octet-stream",
-    });
-    createReadStream(targetPath).pipe(response);
-  } catch {
-    sendText(response, 404, "Not found");
-  }
-});
+    try {
+      let targetPath = filePath;
+      let fileStat = await stat(targetPath);
+      if (fileStat.isDirectory()) {
+        const requestPath = request.url?.split("?")[0] ?? "/";
+        if (!requestPath.endsWith("/")) {
+          response.writeHead(301, { location: `${requestPath}/` });
+          response.end();
+          return;
+        }
+        targetPath = join(targetPath, "index.html");
+        fileStat = await stat(targetPath);
+      }
 
-server.on("error", (error) => {
-  console.error(`Could not start server on http://${host}:${port}/: ${error.message}`);
-  process.exitCode = 1;
-});
+      if (!fileStat.isFile()) {
+        sendText(response, 404, "Not found");
+        return;
+      }
 
-server.listen(port, host, () => {
-  console.log(`${appTitle} is running at http://${host}:${port}/`);
-});
+      response.writeHead(200, {
+        "content-length": fileStat.size,
+        "content-type": mimeTypes[extname(targetPath)] ?? "application/octet-stream",
+      });
+      createReadStream(targetPath).pipe(response);
+    } catch {
+      sendText(response, 404, "Not found");
+    }
+  });
+
+  server.on("error", (error) => {
+    console.error(`Could not start server on http://${host}:${port}/: ${error.message}`);
+    process.exitCode = 1;
+  });
+
+  server.listen(port, host, () => {
+    console.log(`${title} is running at http://${host}:${port}/`);
+  });
+
+  return server;
+}
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  startStaticServer({
+    rootDir: ".",
+    serveAppRoot: true,
+  });
+}

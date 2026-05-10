@@ -116,7 +116,9 @@ pnpm workflow
 | --- | --- |
 | 理解專案架構 | `docs/project-architecture.md` |
 | 看完整文件與工具索引 | `docs/README.md` |
-| 開啟本機搜尋 UI | `pnpm dev` |
+| 開啟本機搜尋 UI，用正式 Sheets 資料看真實 UX | `pnpm dev` |
+| 用 fixture 開啟最小樣本 UI | `pnpm dev:fixture` |
+| 用最近一次 Sheets 匯出快照開啟 UI | `pnpm dev:export` |
 | 用自己的 LLM 讀公開 Sheets 找照片 | `docs/ai-readable-dataset.md` |
 | 檢查資料與 AI fixtures | `pnpm workflow -- --task check` |
 | 處理一本 Flickr 相簿，並接續檢查 / dry-run | `pnpm workflow -- --task album-intake` |

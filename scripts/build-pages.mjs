@@ -1,8 +1,9 @@
 import { copyFile, mkdir, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { googleSheetsSpreadsheetId } from "./project-config.mjs";
 
-const defaultOutputDir = "tmp/pages";
+export const defaultOutputDir = "tmp/pages";
 
 function printUsage() {
   console.log(`Usage:
@@ -57,7 +58,7 @@ function parseArgs(argv) {
   return options;
 }
 
-function googleSheetsCsvUrl(spreadsheetId, sheetName) {
+export function googleSheetsCsvUrl(spreadsheetId, sheetName) {
   const url = new URL(`https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq`);
   url.searchParams.set("tqx", "out:csv");
   url.searchParams.set("sheet", sheetName);
@@ -82,6 +83,37 @@ export const dataSources = {
   await writeFile(join(outputDir, "config.js"), content);
 }
 
+export async function buildPagesArtifact({
+  outputDir = defaultOutputDir,
+  photosCsvUrl = "",
+  spreadsheetId = googleSheetsSpreadsheetId,
+} = {}) {
+  if (!outputDir) {
+    throw new Error("--output-dir requires a path");
+  }
+  if (!photosCsvUrl && !spreadsheetId) {
+    throw new Error("Set googleSheets.spreadsheetId in config/project.json, pass --spreadsheet-id, or pass --photos-csv-url");
+  }
+
+  const resolvedPhotosCsvUrl = photosCsvUrl || googleSheetsCsvUrl(spreadsheetId, "photos");
+
+  await rm(outputDir, { recursive: true, force: true });
+  await mkdir(outputDir, { recursive: true });
+  await copyIntoArtifact("app/index.html", outputDir, "index.html");
+  await copyIntoArtifact("app/main.js", outputDir, "main.js");
+  await copyIntoArtifact("app/styles.css", outputDir, "styles.css");
+  await copyIntoArtifact("config/project.json", outputDir);
+  await copyIntoArtifact("data/photo-schema.json", outputDir);
+  await copyIntoArtifact("data/tag-taxonomy.json", outputDir);
+  await writePagesConfig(outputDir, resolvedPhotosCsvUrl);
+  await writeFile(join(outputDir, ".nojekyll"), "");
+
+  return {
+    outputDir,
+    photosCsvUrl: resolvedPhotosCsvUrl,
+  };
+}
+
 async function main() {
   const options = parseArgs(process.argv);
   if (options.help) {
@@ -89,26 +121,17 @@ async function main() {
     return;
   }
 
-  const photosCsvUrl = options.photosCsvUrl || googleSheetsCsvUrl(options.spreadsheetId, "photos");
+  const result = await buildPagesArtifact(options);
 
-  await rm(options.outputDir, { recursive: true, force: true });
-  await mkdir(options.outputDir, { recursive: true });
-  await copyIntoArtifact("app/index.html", options.outputDir, "index.html");
-  await copyIntoArtifact("app/main.js", options.outputDir, "main.js");
-  await copyIntoArtifact("app/styles.css", options.outputDir, "styles.css");
-  await copyIntoArtifact("config/project.json", options.outputDir);
-  await copyIntoArtifact("data/photo-schema.json", options.outputDir);
-  await copyIntoArtifact("data/tag-taxonomy.json", options.outputDir);
-  await writePagesConfig(options.outputDir, photosCsvUrl);
-  await writeFile(join(options.outputDir, ".nojekyll"), "");
-
-  console.log(`GitHub Pages artifact written to ${options.outputDir}`);
-  console.log(`Photos CSV URL: ${photosCsvUrl}`);
+  console.log(`GitHub Pages artifact written to ${result.outputDir}`);
+  console.log(`Photos CSV URL: ${result.photosCsvUrl}`);
 }
 
-try {
-  await main();
-} catch (error) {
-  console.error(`Could not build GitHub Pages artifact: ${error.message}`);
-  process.exitCode = 1;
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  try {
+    await main();
+  } catch (error) {
+    console.error(`Could not build GitHub Pages artifact: ${error.message}`);
+    process.exitCode = 1;
+  }
 }

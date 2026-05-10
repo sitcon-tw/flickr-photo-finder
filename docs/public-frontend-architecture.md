@@ -101,17 +101,13 @@ GitHub Pages MVP 暫不採用以下方式：
 
 ## 前端資料來源設定
 
-本機開發前端從 `app/config.js` 讀取資料來源：
+本機開發前端應明確選擇資料來源，不應靠 `app/config.js` 和部署 artifact 的隱含差異判斷：
 
-```js
-export const dataSources = {
-  photosCsvUrl: "../fixtures/photos.csv",
-  schemaJsonUrl: "../data/photo-schema.json",
-  taxonomyJsonUrl: "../data/tag-taxonomy.json",
-};
-```
+- `pnpm dev`：預設讀正式 Google Sheets `photos` 公開 CSV，適合真實資料規模下的 UX、排序、篩選與效能檢查。
+- `pnpm dev:fixture`：讀 `fixtures/photos.csv`，適合最小樣本、離線 smoke test 與 regression 檢查。
+- `pnpm dev:export`：讀 `tmp/sheets-export/photos.csv`，適合使用最近一次正式 Sheets 匯出快照開發；若檔案不存在，先執行 `pnpm sheets:export`。
 
-本機開發預設讀 repo 內 sample/export data。部署到 GitHub Pages 時，請使用 `pnpm pages:build` 產生 artifact；它會把 `app/` 前端複製到 `tmp/pages/`，並產生部署用 `config.js`，讓 `photosCsvUrl` 指向 `config/project.json` 中 `googleSheets.spreadsheetId` 的 Google Sheets `photos` 公開 CSV 輸出。
+這三種入口都會先產生本機 dev artifact，預設放在 `tmp/pages-dev/<source>/`，並在 terminal 印出 `Data source` 與實際 `Photos CSV URL`。部署到 GitHub Pages 時，仍使用 `pnpm pages:build` 產生 `tmp/pages/`，讓 `photosCsvUrl` 指向 `config/project.json` 中 `googleSheets.spreadsheetId` 的 Google Sheets `photos` 公開 CSV 輸出。
 
 前端可以讀公開資料 URL，但不能使用任何需要保密的 token、API key 或 OAuth credential。
 
