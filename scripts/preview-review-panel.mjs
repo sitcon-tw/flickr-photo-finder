@@ -190,9 +190,9 @@ body {
   box-sizing: border-box;
   width: ${sidebarWidth}px;
   min-height: 100vh;
-  margin: 0;
-  border-right: 1px solid #cbd5e1;
-  box-shadow: 4px 0 18px rgba(15, 23, 42, 0.12);
+  margin: 0 0 0 auto;
+  border-left: 1px solid #cbd5e1;
+  box-shadow: -4px 0 18px rgba(15, 23, 42, 0.12);
 }
 </style>`;
 }
