@@ -60,33 +60,6 @@ const peopleCountFilters = [
   { label: "21 人以上", value: "21+" },
 ];
 
-const subjectTypeLabels = new Map([
-  ["people", "人物"],
-  ["object", "物件"],
-  ["food", "餐食茶點"],
-  ["text_signage", "文字標示"],
-  ["screen", "螢幕"],
-  ["space", "空間"],
-]);
-
-const orientationLabels = new Map([
-  ["landscape", "橫式"],
-  ["portrait", "直式"],
-  ["square", "方形"],
-]);
-
-const publicStatusLabels = new Map([
-  ["approved", "已確認"],
-  ["needs_review", "待整理確認"],
-  ["avoid", "不建議"],
-]);
-
-const curationStatusLabels = new Map([
-  ["reviewed", "已整理"],
-  ["ai_labeled", "AI 初標"],
-  ["unreviewed", "未整理"],
-]);
-
 const taskModes = [
   {
     id: "all",
@@ -176,6 +149,7 @@ let currentResults = [];
 let visibleCount = pageSize;
 let renderTimer = 0;
 let projectConfig = {};
+let optionLabelMaps = new Map();
 
 const state = {
   taskMode: "all",
@@ -479,6 +453,24 @@ function uniqueSorted(values) {
   );
 }
 
+function buildOptionLabelMaps(taxonomy) {
+  const labels = taxonomy.option_labels ?? {};
+  return new Map(
+    Object.entries(labels).map(([fieldName, fieldLabels]) => [
+      fieldName,
+      new Map(Object.entries(fieldLabels ?? {})),
+    ]),
+  );
+}
+
+function optionLabels(fieldName) {
+  return optionLabelMaps.get(fieldName) ?? new Map();
+}
+
+function labelFor(fieldName, value) {
+  return optionLabels(fieldName).get(value) ?? value;
+}
+
 function fillSelect(select, label, values) {
   select.replaceChildren();
   select.append(new Option(label, ""));
@@ -568,13 +560,14 @@ function setupFilters(taxonomy) {
   controls.peopleCount.replaceChildren(
     ...peopleCountFilters.map(({ label, value }) => new Option(label, value)),
   );
-  fillSelectWithLabels(controls.subjectType, "全部主體", taxonomy.subject_type ?? [], subjectTypeLabels);
-  fillSelectWithLabels(controls.orientation, "全部方向", taxonomy.orientation ?? [], orientationLabels);
+  fillSelectWithLabels(controls.subjectType, "全部主體", taxonomy.subject_type ?? [], optionLabels("subject_type"));
+  fillSelectWithLabels(controls.orientation, "全部方向", taxonomy.orientation ?? [], optionLabels("orientation"));
+  fillSelectWithLabels(controls.negativeSpace, "全部留白狀態", ["true", "false"], optionLabels("has_negative_space"));
   fillSelect(controls.safeCrop, "全部裁切", taxonomy.safe_crop ?? []);
   fillSelect(controls.sponsorshipTag, "全部贊助價值", taxonomy.sponsorship_tags ?? []);
-  fillSelect(controls.publicStatus, "全部使用提醒", taxonomy.public_use_status ?? []);
-  fillSelect(controls.priority, "全部優先度", taxonomy.priority_level ?? []);
-  fillSelect(controls.curationStatus, "全部整理狀態", taxonomy.curation_status ?? []);
+  fillSelectWithLabels(controls.publicStatus, "全部使用提醒", taxonomy.public_use_status ?? [], optionLabels("public_use_status"));
+  fillSelectWithLabels(controls.priority, "全部優先度", taxonomy.priority_level ?? [], optionLabels("priority_level"));
+  fillSelectWithLabels(controls.curationStatus, "全部整理狀態", taxonomy.curation_status ?? [], optionLabels("curation_status"));
   fillSelect(
     controls.collection,
     "全部素材包",
@@ -598,22 +591,22 @@ function normalizeText(value) {
 function derivedSearchTokens(photo) {
   const tokens = [];
   if (photo.has_negative_space === "true") {
-    tokens.push("有留白", "可放字", "適合放字", "negative space");
+    tokens.push(labelFor("has_negative_space", "true"), "可放字", "適合放字", "negative space");
   }
   if (photo.orientation === "landscape") {
-    tokens.push("橫式", "橫幅", "hero", "網站 hero");
+    tokens.push(labelFor("orientation", "landscape"), "橫幅", "hero", "網站 hero");
   }
   if (photo.orientation === "portrait") {
-    tokens.push("直式", "手機", "限時動態");
+    tokens.push(labelFor("orientation", "portrait"), "手機", "限時動態");
   }
   if (photo.safe_crop?.length > 0) {
     tokens.push("可裁切", ...photo.safe_crop.map((value) => `${value} 裁切`));
   }
   if (photo.public_use_status === "approved") {
-    tokens.push("已確認", "可用", "approved");
+    tokens.push(labelFor("public_use_status", "approved"), "可用", "approved");
   }
   if (photo.public_use_status === "needs_review") {
-    tokens.push("待整理確認", "使用提醒", "needs review");
+    tokens.push(labelFor("public_use_status", "needs_review"), "使用提醒", "needs review");
   }
   if (photo.curation_status === "ai_labeled") {
     tokens.push("ai 初標", "ai labeled");
@@ -631,19 +624,21 @@ function buildSearchText(photo) {
     photo.event_year,
     photo.people_count,
     photo.subject_type,
-    subjectTypeLabels.get(photo.subject_type),
+    labelFor("subject_type", photo.subject_type),
     photo.photographer,
     photo.license,
     photo.orientation,
-    orientationLabels.get(photo.orientation),
+    labelFor("orientation", photo.orientation),
     photo.has_negative_space,
+    labelFor("has_negative_space", photo.has_negative_space),
     photo.visual_description,
     photo.public_use_status,
-    publicStatusLabels.get(photo.public_use_status),
+    labelFor("public_use_status", photo.public_use_status),
     photo.priority_level,
+    labelFor("priority_level", photo.priority_level),
     photo.curation_notes,
     photo.curation_status,
-    curationStatusLabels.get(photo.curation_status),
+    labelFor("curation_status", photo.curation_status),
     ...photo.scene_tags,
     ...photo.mood_tags,
     ...photo.recommended_uses,
@@ -1014,13 +1009,13 @@ function renderOverview() {
       title: "整理狀態",
       value: formatCountRatio(countFilled("curation_status")),
       detail: "metadata 是否人工確認。",
-      values: countByField("curation_status", curationStatusLabels),
+      values: countByField("curation_status", optionLabels("curation_status")),
     }),
     makeOverviewItem({
       title: "使用提醒",
       value: formatCountRatio(countFilled("public_use_status")),
       detail: "整理者留下的使用提醒。",
-      values: countByField("public_use_status", publicStatusLabels),
+      values: countByField("public_use_status", optionLabels("public_use_status")),
     }),
     makeOverviewItem({
       title: "Reviewed 欄位完整度",
@@ -1037,7 +1032,7 @@ function renderOverview() {
       title: "主要視覺主體",
       value: formatCountRatio(subjectTypeFilled),
       detail: "照片海初篩用的粗分類。",
-      values: countByField("subject_type", subjectTypeLabels),
+      values: countByField("subject_type", optionLabels("subject_type")),
     }),
     makeOverviewItem({
       title: "贊助品項",
@@ -1067,7 +1062,7 @@ function appendDetail(details, label, values, options = {}) {
   for (const value of normalizedValues) {
     const tag = document.createElement("span");
     tag.className = options.status ? `tag status-${value}` : "tag";
-    tag.textContent = options.labels?.get(value) ?? value;
+    tag.textContent = options.fieldName ? labelFor(options.fieldName, value) : options.labels?.get(value) ?? value;
     description.append(tag);
   }
 
@@ -1269,20 +1264,20 @@ function trackImageSizeDownload(photo, imageSize, resultRank, resultCount) {
 function statusBadges(photo) {
   const badges = [];
   if (photo.public_use_status === "avoid") {
-    badges.push(["danger", "不建議"]);
+    badges.push(["danger", labelFor("public_use_status", "avoid")]);
   } else if (photo.public_use_status === "needs_review") {
-    badges.push(["warning", "待整理確認"]);
+    badges.push(["warning", labelFor("public_use_status", "needs_review")]);
   }
 
   if (photo.priority_level === "high") {
-    badges.push(["success", "推薦"]);
+    badges.push(["success", labelFor("priority_level", "high")]);
   }
   if (photo.curation_status === "reviewed") {
-    badges.push(["info", "已整理"]);
+    badges.push(["info", labelFor("curation_status", "reviewed")]);
   } else if (photo.curation_status === "ai_labeled") {
-    badges.push(["ai", "AI 初標"]);
+    badges.push(["ai", labelFor("curation_status", "ai_labeled")]);
   } else {
-    badges.push(["neutral", "未整理"]);
+    badges.push(["neutral", labelFor("curation_status", "unreviewed")]);
   }
 
   return badges;
@@ -1320,23 +1315,23 @@ function sortingSignals(photo) {
     }
     const matchedOrientation = firstOverlap(photo.orientation, task.orientations);
     if (matchedOrientation) {
-      appendSignal(signals, orientationLabels.get(matchedOrientation) ?? matchedOrientation);
+      appendSignal(signals, labelFor("orientation", matchedOrientation));
     }
     const matchedCrop = firstOverlap(photo.safe_crop, task.safeCrops);
     if (matchedCrop) {
       appendSignal(signals, matchedCrop);
     }
     if (task.prefersNegativeSpace && photo.has_negative_space === "true") {
-      appendSignal(signals, "有留白");
+      appendSignal(signals, labelFor("has_negative_space", "true"));
     }
   }
   if (photo.priority_level === "high") {
-    appendSignal(signals, "高優先");
+    appendSignal(signals, labelFor("priority_level", "high"));
   }
   if (photo.public_use_status === "needs_review") {
-    appendSignal(signals, "待確認");
+    appendSignal(signals, labelFor("public_use_status", "needs_review"));
   } else if (photo.public_use_status === "avoid") {
-    appendSignal(signals, "不建議");
+    appendSignal(signals, labelFor("public_use_status", "avoid"));
   }
   return signals.slice(0, 4);
 }
@@ -1426,25 +1421,25 @@ function renderPhoto(photo, resultRank, resultCount) {
   renderPhotoReference(reference, photo, sortingSignals(photo));
 
   appendDetail(quickDetails, "用途", photo.recommended_uses.slice(0, 3));
-  appendDetail(quickDetails, "構圖", [orientationLabels.get(photo.orientation) ?? photo.orientation, ...photo.safe_crop].filter(Boolean));
+  appendDetail(quickDetails, "構圖", [labelFor("orientation", photo.orientation), ...photo.safe_crop].filter(Boolean));
   appendDetail(quickDetails, "贊助", [...photo.sponsorship_tags, ...photo.sponsorship_items].slice(0, 3));
 
   appendDetail(details, "用途", photo.recommended_uses);
   appendDetail(details, "氛圍", photo.mood_tags);
   appendDetail(details, "場景", photo.scene_tags);
   appendDetail(details, "人數", formatPeopleCount(photo));
-  appendDetail(details, "主體", photo.subject_type, { labels: subjectTypeLabels });
-  appendDetail(details, "方向", photo.orientation, { labels: orientationLabels });
-  appendDetail(details, "留白", photo.has_negative_space === "true" ? "有留白" : photo.has_negative_space === "false" ? "無明顯留白" : "");
+  appendDetail(details, "主體", photo.subject_type, { fieldName: "subject_type" });
+  appendDetail(details, "方向", photo.orientation, { fieldName: "orientation" });
+  appendDetail(details, "留白", photo.has_negative_space, { fieldName: "has_negative_space" });
   appendDetail(details, "裁切", photo.safe_crop);
   appendDetail(details, "贊助品項", photo.sponsorship_items);
   appendDetail(details, "贊助價值", photo.sponsorship_tags);
   appendDetail(details, "素材包", photo.collections);
   appendDetail(details, "攝影", photo.photographer);
   appendDetail(details, "授權", photo.license);
-  appendDetail(details, "使用提醒", photo.public_use_status, { status: true, labels: publicStatusLabels });
-  appendDetail(details, "推薦優先度", photo.priority_level, { status: true });
-  appendDetail(details, "整理狀態", photo.curation_status, { status: true, labels: curationStatusLabels });
+  appendDetail(details, "使用提醒", photo.public_use_status, { status: true, fieldName: "public_use_status" });
+  appendDetail(details, "推薦優先度", photo.priority_level, { status: true, fieldName: "priority_level" });
+  appendDetail(details, "整理狀態", photo.curation_status, { status: true, fieldName: "curation_status" });
   appendDetail(details, "Sheets 列", photo._sheet_row_number ? String(photo._sheet_row_number) : "");
   appendDetail(details, "照片 ID", photo.photo_id);
   appendDetail(details, "描述", photo.visual_description);
@@ -1526,8 +1521,8 @@ function selectedPhotos() {
 }
 
 function candidateMarkdown(photo) {
-  const publicStatus = publicStatusLabels.get(photo.public_use_status) || photo.public_use_status || "未填";
-  const curationStatus = curationStatusLabels.get(photo.curation_status) || photo.curation_status || "未填";
+  const publicStatus = photo.public_use_status ? labelFor("public_use_status", photo.public_use_status) : "未填";
+  const curationStatus = photo.curation_status ? labelFor("curation_status", photo.curation_status) : "未填";
   const rowLink = sheetRowLink(photo) || "未設定";
 
   return `- ${photoTitle(photo)} (${photo.photo_id})
@@ -1578,8 +1573,8 @@ function renderCandidates() {
     const meta = document.createElement("p");
     meta.textContent = [
       photo.event_year,
-      curationStatusLabels.get(photo.curation_status) ?? "整理未填",
-      publicStatusLabels.get(photo.public_use_status),
+      photo.curation_status ? labelFor("curation_status", photo.curation_status) : "整理未填",
+      photo.public_use_status ? labelFor("public_use_status", photo.public_use_status) : "",
       photo.recommended_uses.slice(0, 2).join("、"),
     ]
       .filter(Boolean)
@@ -1995,6 +1990,7 @@ async function loadData() {
   ]);
   applyProjectConfig(projectConfig);
   applySchema(schema);
+  optionLabelMaps = buildOptionLabelMaps(taxonomy);
   photos = toObjects(parseCsv(photosText), schema);
   setupTaskModes();
   setupFilters(taxonomy);
