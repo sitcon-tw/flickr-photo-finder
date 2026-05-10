@@ -442,6 +442,14 @@
         (buffer?.photos || []).forEach(cacheState);
       }
 
+      function bootstrapCurrentState(state) {
+        return state?.current || state;
+      }
+
+      function bootstrapBuffer(state) {
+        return state?.buffer || null;
+      }
+
       function cachedRow(rowNumber) {
         return rowCache.get(Number(rowNumber)) || null;
       }
@@ -977,11 +985,13 @@
         setSaveStatus("");
         google.script.run
           .withSuccessHandler((state) => {
-            render(state);
-            prefetchRowsAround(state.rowNumber);
+            const current = bootstrapCurrentState(state);
+            cacheBuffer(bootstrapBuffer(state));
+            render(current);
+            prefetchRowsAround(current.rowNumber);
           })
           .withFailureHandler(handleLoadFailure)
-          .getReviewPanelState();
+          .getReviewPanelBootstrapState();
       }
 
       function saveRow() {
@@ -1038,8 +1048,10 @@
       prevButton.addEventListener("click", () => loadRelativeRow(-1));
       nextButton.addEventListener("click", () => loadRelativeRow(1));
       if (bootstrapState) {
-        render(bootstrapState);
-        prefetchRowsAround(bootstrapState.rowNumber);
+        const current = bootstrapCurrentState(bootstrapState);
+        cacheBuffer(bootstrapBuffer(bootstrapState));
+        render(current);
+        prefetchRowsAround(current.rowNumber);
       } else {
         setBusy(false);
         setTopStatus("請關閉 panel，在 photos 選取一列後重新開啟 Open review panel。", "error");

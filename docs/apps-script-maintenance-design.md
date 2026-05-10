@@ -26,7 +26,7 @@ Apps Script 提供 Sheet-bound sidebar，讓整理者可以用較易讀的畫面
 - 單值 taxonomy 與 boolean 欄位使用選單。
 - 多值 taxonomy 欄位使用可搜尋的多選選單；已選項目會顯示為可移除的標籤，降低手打分號與重複值錯誤；自由多值與文字欄位使用可編輯文字區。
 - `photo_id`、`photo_url` 與 `image_preview_url` 在 sidebar 中只讀，避免校對時誤改識別與來源欄位。
-- 可用列號載入指定 `photos` 列、上一張 / 下一張切換，也可重新讀取 Sheet 目前選取列。載入列後應預先讀取前後數列並在 sidebar 內暫存，讓連續切換照片時優先使用本機 buffer，不必每次都等待 Apps Script 單列回應。
+- 可用列號載入指定 `photos` 列、上一張 / 下一張切換，也可重新讀取 Sheet 目前選取列。開啟 sidebar 與載入列後都應預先讀取前後數列並在 sidebar 內暫存，讓連續切換照片時優先使用本機 buffer，不必每次都等待 Apps Script 單列回應。
 - 欄位內容有錯時應在輸入當下於欄位附近與儲存區顯示回饋，避免整理者等到儲存才知道資料不合法。
 - 儲存仍會在後端再次驗證目前列；驗證失敗時不寫入 Sheet，錯誤會顯示在儲存區附近，並更新 `validation_report`。
 - 儲存應以背景作業送出。整理者送出儲存後可以繼續切換列或檢查資料，不應被迫等待 Apps Script 寫入回應才繼續工作。

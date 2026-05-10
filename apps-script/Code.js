@@ -24,6 +24,8 @@ const PHOTO_FINDER_VALIDATION_REPORT_HEADERS = [
   "field",
   "message",
 ];
+const PHOTO_FINDER_REVIEW_PANEL_BUFFER_BEFORE = 10;
+const PHOTO_FINDER_REVIEW_PANEL_BUFFER_AFTER = 10;
 const PHOTO_FINDER_REVIEW_WEB_APP_LIST_FIELDS = [
   "photo_id",
   "photo_url",
@@ -58,7 +60,7 @@ function onOpen() {
 function openPhotoReviewPanel() {
   checkAppsScriptAccess_();
   const template = HtmlService.createTemplateFromFile("ReviewPanel");
-  template.bootstrapState = JSON.stringify(getReviewPanelState()).replace(/</g, "\\u003c");
+  template.bootstrapState = JSON.stringify(getReviewPanelBootstrapState()).replace(/</g, "\\u003c");
   const html = template.evaluate()
     .setTitle("SITCON Photo Review");
   SpreadsheetApp.getUi().showSidebar(html);
@@ -163,6 +165,16 @@ function getReviewPanelState() {
   return buildReviewPanelState_(sheet, rowNumber);
 }
 
+function getReviewPanelBootstrapState() {
+  const sheet = getPhotosSheet_();
+  assertPhotosHeader_(sheet);
+  const rowNumber = getActivePhotoRowNumber_(sheet);
+  return {
+    current: buildReviewPanelState_(sheet, rowNumber),
+    buffer: buildReviewPhotoBuffer_(sheet, rowNumber, PHOTO_FINDER_REVIEW_PANEL_BUFFER_BEFORE, PHOTO_FINDER_REVIEW_PANEL_BUFFER_AFTER),
+  };
+}
+
 function getReviewPhotoByRow(rowNumber) {
   const sheet = getPhotosSheet_();
   assertPhotosHeader_(sheet);
@@ -179,6 +191,10 @@ function getReviewPhotoByRow(rowNumber) {
 function getReviewPhotoBufferByRow(rowNumber, beforeCount, afterCount) {
   const sheet = getPhotosSheet_();
   assertPhotosHeader_(sheet);
+  return buildReviewPhotoBuffer_(sheet, rowNumber, beforeCount, afterCount);
+}
+
+function buildReviewPhotoBuffer_(sheet, rowNumber, beforeCount, afterCount) {
   const normalizedRowNumber = Number(rowNumber);
   if (!Number.isInteger(normalizedRowNumber) || normalizedRowNumber <= 1) {
     throw new Error("請輸入 photos 的資料列列號。");
