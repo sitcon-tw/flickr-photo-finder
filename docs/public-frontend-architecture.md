@@ -121,6 +121,8 @@ export const dataSources = {
 
 候選清單只存在瀏覽器當下狀態與 URL query，不寫回 Google Sheets。清單畫面應提供縮圖，避免只用 photo id 要求使用者記憶照片；複製出的清單應包含 finder deep link、Google Sheets 列連結與 Flickr URL，必要時再附上使用提醒與整理狀態。
 
+Google Sheets 列連結應使用 `#gid=<sheetId>&range=<row>:<row>`，例如 `#gid=0&range=74:74`。`gid` 已經指定工作表，不要在 `range` 參數再放 `photos!A74` 這種 sheet-qualified A1 notation；Google Sheets UI 的 cell / range deep link 不會穩定處理這種格式。
+
 公開讀取規則記錄在 `docs/google-sheets-database-design.md`，外部 AI 讀取方式記錄在 `docs/ai-readable-dataset.md`。
 
 ## GitHub Pages 部署注意事項

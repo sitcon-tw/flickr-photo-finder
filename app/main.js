@@ -945,7 +945,7 @@ function sheetRowLink(photo) {
     return "";
   }
   const gid = projectConfig.googleSheets?.photosSheetGid ?? 0;
-  const range = `photos!A${photo._sheet_row_number}`;
+  const range = `${photo._sheet_row_number}:${photo._sheet_row_number}`;
   return `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit#gid=${encodeURIComponent(String(gid))}&range=${encodeURIComponent(range)}`;
 }
 
