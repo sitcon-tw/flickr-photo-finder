@@ -20,6 +20,11 @@ const distributionFields = [
 const peopleSceneValues = new Set(["講者", "會眾", "工作人員", "合照", "交流", "攝影"]);
 const peopleReasonPattern = /人|會眾|講者|合照|志工|參與者|工作人員/;
 const concentrationThreshold = 0.9;
+const genericUseThresholds = new Map([
+  ["活動回顧", 0.6],
+  ["社群貼文", 0.5],
+]);
+const asciiWordPattern = /[A-Za-z][A-Za-z0-9'_-]{2,}(?:\s+[A-Za-z][A-Za-z0-9'_-]{2,}){4,}/;
 
 function printUsage() {
   console.log(`Usage:
@@ -189,6 +194,19 @@ function allReasonText(item) {
     .join(" ");
 }
 
+function allHumanText(item) {
+  return Object.values(item.fields)
+    .flatMap((proposal) => {
+      const values = [proposal.reason];
+      if (typeof proposal.value === "string") {
+        values.push(proposal.value);
+      }
+      return values;
+    })
+    .filter((value) => typeof value === "string")
+    .join(" ");
+}
+
 function photoIdList(items) {
   return items.map((item) => item.photo_id).join(", ");
 }
@@ -199,8 +217,14 @@ function buildReviewNotes(items) {
   const priorityCount = items.filter((item) => item.fields.priority_level).length;
   const publicUseStatusCount = items.filter((item) => item.fields.public_use_status).length;
   const needsReviewCount = items.filter((item) => item.fields.public_use_status?.value === "needs_review").length;
+  const recommendedUseCount = items.filter((item) => item.fields.recommended_uses).length;
   const sponsorReportItems = items.filter((item) =>
     valuesForField(item, "recommended_uses").includes("贊助成果報告")
+    && valuesForField(item, "sponsorship_items").length === 0
+    && valuesForField(item, "sponsorship_tags").length === 0,
+  );
+  const sponsorProposalItems = items.filter((item) =>
+    valuesForField(item, "recommended_uses").includes("贊助提案")
     && valuesForField(item, "sponsorship_items").length === 0
     && valuesForField(item, "sponsorship_tags").length === 0,
   );
@@ -212,6 +236,7 @@ function buildReviewNotes(items) {
     const hasPeopleScene = sceneValues.some((value) => peopleSceneValues.has(value));
     return hasPeopleScene || peopleReasonPattern.test(allReasonText(item));
   });
+  const longEnglishTextItems = items.filter((item) => asciiWordPattern.test(allHumanText(item)));
   const { confidenceCounts, perfectCount, total } = confidenceStats(items);
 
   if (priorityCount === itemCount && itemCount > 0) {
@@ -245,6 +270,17 @@ function buildReviewNotes(items) {
       `\`recommended_uses\` 的 \`${mostCommonUse.value}\` 出現在 ${mostCommonUse.count}/${itemCount} 張照片（${formatPercent(mostCommonUse.count / itemCount)}），用途區辨度可能不足。`,
     );
   }
+  if (recommendedUseCount === itemCount && itemCount > 0) {
+    notes.push("每張照片都有 `recommended_uses` 候選值；請確認模型是否把用途當成必填欄位。普通可用但沒有明確用途優勢的照片可以省略。");
+  }
+  for (const [genericUse, threshold] of genericUseThresholds) {
+    const useCount = items.filter((item) => valuesForField(item, "recommended_uses").includes(genericUse)).length;
+    if (itemCount > 0 && useCount / itemCount >= threshold) {
+      notes.push(
+        `\`recommended_uses = ${genericUse}\` 出現在 ${useCount}/${itemCount} 張照片（${formatPercent(useCount / itemCount)}），請抽查是否被當成通用預設用途。`,
+      );
+    }
+  }
 
   if (publicUseStatusCount === 0) {
     notes.push("沒有 `public_use_status` 候選值；若本批沒有明顯 avoid 照片，這可以接受。");
@@ -266,12 +302,22 @@ function buildReviewNotes(items) {
   }
   if (sponsorReportItems.length > 0) {
     notes.push(
-      `有 ${sponsorReportItems.length} 張照片建議 \`贊助成果報告\` 但沒有 \`sponsorship_items\` 或 \`sponsorship_tags\`：${photoIdList(sponsorReportItems)}。請人工確認贊助脈絡。`,
+      `有 ${sponsorReportItems.length} 張照片建議 \`贊助成果報告\` 但沒有 \`sponsorship_items\` 或 \`sponsorship_tags\`：${photoIdList(sponsorReportItems)}。通常應移除該用途，除非照片或既有 metadata 有明確贊助脈絡。`,
+    );
+  }
+  if (sponsorProposalItems.length > 0) {
+    notes.push(
+      `有 ${sponsorProposalItems.length} 張照片建議 \`贊助提案\` 但沒有 \`sponsorship_items\` 或 \`sponsorship_tags\`：${photoIdList(sponsorProposalItems)}。請確認是否真的能支撐贊助溝通情境。`,
     );
   }
   if (zeroPeopleContradictions.length > 0) {
     notes.push(
       `有 ${zeroPeopleContradictions.length} 張照片的 \`people_count = 0\`，但 scene tags 或 reason 仍提到人物相關線索：${photoIdList(zeroPeopleContradictions)}。請人工確認人數。`,
+    );
+  }
+  if (longEnglishTextItems.length > 0) {
+    notes.push(
+      `有 ${longEnglishTextItems.length} 張照片的 reason 或 \`visual_description\` 出現較長英文段落：${photoIdList(longEnglishTextItems)}。除非是在引用照片中可見文字，否則應改用台灣慣用繁體中文。`,
     );
   }
 
