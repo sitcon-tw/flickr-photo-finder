@@ -1,4 +1,4 @@
-import { access, mkdir, readFile, writeFile } from "node:fs/promises";
+import { access, mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { basename, join, relative, sep } from "node:path";
 import { validateAiProposals } from "./validate-ai-proposals.mjs";
 
@@ -111,6 +111,14 @@ async function pathExists(path) {
     return true;
   } catch {
     return false;
+  }
+}
+
+async function fileMtimeMs(path) {
+  try {
+    return (await stat(path)).mtimeMs;
+  } catch {
+    return 0;
   }
 }
 
@@ -233,6 +241,9 @@ async function loadRun(runDir) {
   const updatePlan = await readJsonIfExists(join(runDir, updatePlanFile));
   const summaryPath = join(runDir, reviewSummaryFile);
   const hasReviewSummary = await pathExists(summaryPath);
+  const summaryMtime = await fileMtimeMs(summaryPath);
+  const proposalsMtime = await fileMtimeMs(proposalsPath);
+  const isReviewSummaryStale = Boolean(proposals && hasReviewSummary && summaryMtime < proposalsMtime);
   const reviewFocus = await readReviewFocus(summaryPath);
   const validation = proposals
     ? await validateRun(runDir, proposalsPath)
@@ -255,6 +266,7 @@ async function loadRun(runDir) {
     baseRunId: attempt?.base_run_id || manifest.base_run_id || manifest.run_id || "",
     fields,
     hasReviewSummary,
+    isReviewSummaryStale,
     itemsByPhotoId,
     label: formatRunLabel({ attempt, manifest, proposals, runDir }),
     manifest,
@@ -345,6 +357,9 @@ function buildWarnings(runs) {
     if (run.proposals && !run.hasReviewSummary) {
       warnings.push(`${run.label} has proposals but no metadata-review-summary.md yet.`);
     }
+    if (run.isReviewSummaryStale) {
+      warnings.push(`${run.label} 的 metadata-review-summary.md 比 metadata-proposals.json 舊；使用 Review Focus 前請先重新執行 pnpm ai:review。`);
+    }
   }
 
   return warnings;
@@ -389,6 +404,7 @@ function buildReportData(runs, options) {
       review_warnings: run.validation.warnings,
       review_focus: run.reviewFocus,
       has_review_summary: run.hasReviewSummary,
+      is_review_summary_stale: run.isReviewSummaryStale,
       label: run.label,
       model: run.attempt?.model || "",
       plan_updates: run.planUpdates,
@@ -825,11 +841,18 @@ function renderHtml(reportData) {
     function renderAttemptPills() {
       attempts.replaceChildren();
       for (const attempt of data.attempts) {
-        const statusClass = attempt.status === "valid" ? "good" : attempt.status === "missing" ? "warn" : "bad";
+        const statusClass = attempt.status === "valid" && !attempt.is_review_summary_stale
+          ? "good"
+          : attempt.status === "missing"
+            ? "warn"
+            : attempt.is_review_summary_stale
+              ? "warn"
+              : "bad";
         const statusLabel = attempt.status === "valid" ? "valid" : attempt.status === "missing" ? "missing proposal" : "invalid";
         const parts = [
           attempt.label || attempt.run_id,
           statusLabel,
+          attempt.is_review_summary_stale ? "review summary 過期" : "",
           attempt.proposal_count === undefined ? "" : attempt.proposal_count + " proposals",
           attempt.plan_updates === null ? "" : attempt.plan_updates + " updates",
         ].filter(Boolean);
