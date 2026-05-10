@@ -1825,7 +1825,7 @@ function render({ resetPage = false, preservePage = false, source = "" } = {}) {
   elements.context.textContent = resultContextText(filtered);
 
   if (photos.length === 0) {
-    renderEmpty("fixtures/photos.csv 目前沒有照片資料");
+    renderEmpty("目前資料來源沒有照片資料");
     updateLoadMore(filtered);
     return;
   }

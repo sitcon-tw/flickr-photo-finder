@@ -11,8 +11,9 @@
 | SITCON 2026 CFS 贊助品項 | `data/sponsorship-items.json` | 這是固定版本資料，不自動追遠端更新。 |
 | 組織名稱、Flickr 帳號與前端標題 | `config/project.json` | SITCON 是此 repo 的預設實例；其他組織 fork 時應先改這份設定。 |
 | 公開 Google Sheets ID | `config/project.json` 的 `googleSheets.spreadsheetId` | 這份 Sheets 預期可公開讀取；寫入權限由 Google Drive/Sheets 管理。 |
-| 公開前端代理使用者研究 | `docs/public-frontend-agent-research.md` | 使用多角色代理模擬確認公開前端會遇到的找圖脈絡；不等同真人訪談。 |
-| 公開前端重構需求簡報 | `docs/public-frontend-redesign-brief.md` | GitHub Pages 前端重構前的產品與工程需求；後續 UI 實作應先讀這份。 |
+| GitHub Pages 前端資料流、本機資料來源與部署 artifact | `docs/public-frontend-architecture.md` | 前端現況 runbook；`pnpm dev`、`pnpm dev:fixture`、`pnpm dev:export` 的差異以這份為準。 |
+| 公開前端代理使用者研究 | `docs/public-frontend-agent-research.md` | 重構前的多角色代理研究快照；不等同真人訪談，也不是目前缺口清單。 |
+| 公開前端重構需求簡報 | `docs/public-frontend-redesign-brief.md` | GitHub Pages 前端重構的歷史需求基準與驗收 baseline；目前已完成多數 P0/P1。 |
 | 前端使用行為分析設計 | `docs/frontend-analytics-design.md` | 導入 GA4 或分析前，先確認目前前端狀態、事件邊界、隱私限制與後續分析流程。 |
 | GA4 後台操作與 service account 權限 | `docs/ga4-operations.md` | 管理 GA4 權限、service account 加入 property、custom dimensions 與 BigQuery 延後策略。 |
 | GA4 custom dimensions 註冊清單 | `config/ga4-custom-dimensions.json` | 低基數 event-scoped custom dimensions 的 repo source of truth；不要加入 `photo_id`、`content_id`、`search_term`、`result_rank`。 |
@@ -75,7 +76,7 @@
 
 - Apps Script source 已進 repo，MVP 維護選單已可部署使用；可在 Sheets 內提供校對 sidebar、欄位提示、單值下拉選單、`photos` 純文字格式防護、`schema_meta`、`validation_report` 與基本驗證。sidebar 會先驗證再寫入，儲存錯誤顯示在按鈕附近；載入錯誤顯示在列控制區附近。`schema_meta` 應有同步資訊，不應是空白工作表。實際 `clasp` 綁定、push 與 deploy 仍需由有權限的維護者操作。
 - GitHub Pages workflow 已可產生並部署 artifact；repository Pages 來源已設定為 GitHub Actions。後續前端變更應用 `pnpm workflow -- --task pages-build` 與 GitHub Actions 部署紀錄驗證。
-- 前端已加入 GA4 基礎追蹤與照片卡片操作事件；後續調整事件或分析流程前，先依 `docs/frontend-analytics-design.md` 重新確認程式碼現況與事件設計。
+- 前端已加入 GA4 基礎追蹤、任務模式、照片卡片操作、候選清單與 AI 助手找圖入口事件；後續調整事件或分析流程前，先依 `docs/frontend-analytics-design.md` 重新確認程式碼現況與事件設計。
 - GA4 後台 service account 權限與 custom dimensions 操作應依 `docs/ga4-operations.md` 執行；custom dimensions 清單由 `config/ga4-custom-dimensions.json` 管理，可用 `pnpm ga4:dimensions:check` dry-run 檢查，BigQuery export 暫不自動化。
 - 更順手的多人 review 操作仍應在 Google Sheets 與後續 Apps Script 輔助中完善；AI 候選值寫入不等於 `curation_status = reviewed`。
 
@@ -87,7 +88,7 @@
 | 整理照片的志工 | `docs/data-entry-guide.md`、`docs/photo-fields-reference.md` |
 | 技術志工 | `pnpm workflow`、`docs/project-architecture.md`、`docs/sheets-sync-workflow.md`、`docs/google-sheets-database-design.md` |
 | 維護 Apps Script 的人 | `docs/apps-script-maintenance-design.md`、`data/photo-schema.json`、`data/tag-taxonomy.json` |
-| 維護 GitHub Pages 前端的人 | `docs/public-frontend-architecture.md`、`docs/public-frontend-agent-research.md`、`docs/public-frontend-redesign-brief.md`、`docs/frontend-analytics-design.md`、`docs/ga4-operations.md`、`app/config.js` |
+| 維護 GitHub Pages 前端的人 | `docs/public-frontend-architecture.md`、`docs/frontend-analytics-design.md`、`docs/ga4-operations.md`；需要理解重構背景時再讀 `docs/public-frontend-agent-research.md` 與 `docs/public-frontend-redesign-brief.md` |
 | AI / agent | `AGENTS.md`、`docs/agent-maintenance-guide.md`；若只是產生初標 metadata，讀 run 目錄的 `ai-labeling-prompt.md` 與 `docs/ai-labeling-contract.md`；若要操作流程才讀 `docs/ai-labeling-operator-guide.md` |
 
 ## 文件分工
@@ -98,9 +99,9 @@
 - `google-sheets-database-design.md`: Google Sheets 表格設計。
 - `sheets-sync-workflow.md`: Sheets 與 repo 工具同步流程。
 - `apps-script-maintenance-design.md`: Apps Script 維護輔助與 `clasp` 部署原則。
-- `public-frontend-architecture.md`: GitHub Pages 唯讀前端資料流。
-- `public-frontend-agent-research.md`: 多角色代理使用者研究，整理任務脈絡、痛點、確認事實與推測。
-- `public-frontend-redesign-brief.md`: GitHub Pages 前端重構需求與驗收標準。
+- `public-frontend-architecture.md`: GitHub Pages 唯讀前端資料流、本機開發資料來源與部署 artifact runbook。
+- `public-frontend-agent-research.md`: 重構前的多角色代理使用者研究快照，整理任務脈絡、痛點、確認事實與推測；不是目前缺口清單。
+- `public-frontend-redesign-brief.md`: GitHub Pages 前端重構的歷史需求基準與驗收標準；後續回歸或 P2 規劃可用來比對。
 - `frontend-analytics-design.md`: 前端使用行為分析目的、GA4 事件設計、實作前檢查與後續分析流程。
 - `ga4-operations.md`: GA4 後台操作、service account 權限、custom dimensions 與 BigQuery 延後策略。
 - `ai-readable-dataset.md`: AI 如何讀取照片索引資料。

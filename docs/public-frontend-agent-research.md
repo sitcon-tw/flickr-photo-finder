@@ -1,8 +1,12 @@
 # 公開前端代理使用者研究
 
+## 文件狀態
+
+這份文件是 GitHub Pages 前端重構前的代理使用者研究快照，不是目前前端缺口清單。後續前端已依這份研究完成多項 P0/P1 改善；要了解目前資料來源、部署與前端架構，請以 `docs/public-frontend-architecture.md` 與 `docs/README.md` 為準。
+
 ## 目的
 
-這份文件整理 6 個代理角色對 GitHub Pages Photo Finder 的模擬訪談與任務測試。它不是實際真人訪談結果；用途是先用已知 SITCON 工作脈絡、repo 文件、schema、taxonomy 與目前 MVP 前端，建立一份可執行的前端重構依據。
+這份文件整理 6 個代理角色對 GitHub Pages Photo Finder 的模擬訪談與任務測試。它不是實際真人訪談結果；用途是先用已知 SITCON 工作脈絡、repo 文件、schema、taxonomy 與重構前的 MVP 前端，建立一份可執行的前端重構依據。
 
 後續真實使用者回饋、GA4 行為資料與找圖失敗案例仍應回到這份文件修正假設。
 
@@ -15,7 +19,7 @@
 - `docs/public-frontend-architecture.md` 的 GitHub Pages 唯讀邊界與資料來源。
 - `docs/frontend-analytics-design.md` 的行為分析邊界。
 - `data/photo-schema.json`、`data/tag-taxonomy.json`、`data/sponsorship-items.json`。
-- 目前 `app/` 前端與 `fixtures/photos.csv` 的 MVP 狀態。
+- 研究當時 `app/` 前端與 `fixtures/photos.csv` 的 MVP 狀態。
 
 參與的代理角色：
 
@@ -35,9 +39,9 @@
 - 找圖情境包含社群宣傳、網站視覺、贊助提案、贊助成果、新聞稿、志工招募、活動回顧、設計素材與對外簡報。
 - 目前 schema 已支援用途、氛圍、場景、贊助品項、贊助價值、構圖、裁切、使用提醒、整理狀態與推薦優先度。
 - SITCON Flickr 上的照片本身已是公開來源；`public_use_status` 是整理者對使用的提醒，不是公開 / 非公開的主判斷。
-- 目前 MVP 前端是欄位導向搜尋與多個下拉篩選，並一次 render 全部符合結果。
-- 目前前端沒有 `orientation`、`has_negative_space`、`safe_crop`、`sponsorship_tags` 的一級篩選。
-- 目前 fixture 只有 30 筆照片，不能代表上千或上萬張資料的正式體驗。
+- 研究當時的 MVP 前端是欄位導向搜尋與多個下拉篩選，並一次 render 全部符合結果。
+- 研究當時的前端沒有 `orientation`、`has_negative_space`、`safe_crop`、`sponsorship_tags` 的一級篩選。
+- 研究當時的 fixture 只有 30 筆照片，不能代表上千或上萬張資料的正式體驗。
 
 ## 跨角色共識
 

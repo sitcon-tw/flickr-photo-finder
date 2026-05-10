@@ -168,7 +168,7 @@ SITCON Flickr 相簿
 | `docs/sheets-sync-workflow.md` | 要操作 Sheets 匯出、匯入、dry-run 或寫入。 |
 | `docs/public-frontend-architecture.md` | 要維護 GitHub Pages 唯讀前端。 |
 | `docs/public-frontend-agent-research.md` | 要理解公開前端重構前的代理使用者研究。 |
-| `docs/public-frontend-redesign-brief.md` | 要依研究結果重構 GitHub Pages 前端。 |
+| `docs/public-frontend-redesign-brief.md` | 要理解前端重構的需求基準、驗收標準與尚待驗證項目。 |
 | `docs/ai-labeling-operator-guide.md` | 操作者或 repo agent 要準備、檢查或安排 AI 初標結果 dry-run / 回寫。 |
 | `docs/ai-labeling-contract.md` | 模型或 agent 要知道 AI run 的輸入、輸出與驗證合約。 |
 | `docs/ai-labeling-evaluation-notes.md` | 要評估模型輸出品質與常見失準。 |
