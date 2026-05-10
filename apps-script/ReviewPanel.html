@@ -114,6 +114,7 @@
         display: flex;
         gap: 6px;
         justify-content: space-between;
+        position: relative;
       }
 
       .field.hidden {
@@ -149,16 +150,33 @@
         width: 22px;
       }
 
-      .help-button[aria-expanded="true"] {
+      .help-button:hover,
+      .help-button:focus {
         background: #e6f3f1;
         border-color: #99c8c1;
         color: #134e4a;
       }
 
       .meta {
+        background: #111827;
+        border-radius: 4px;
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.22);
         color: #5b6778;
+        color: #fff;
+        display: none;
         font-size: 12px;
         line-height: 1.4;
+        max-width: min(260px, calc(100vw - 40px));
+        padding: 8px;
+        position: absolute;
+        right: 0;
+        top: calc(100% + 4px);
+        z-index: 30;
+      }
+
+      .field-heading:hover .meta,
+      .field-heading:focus-within .meta {
+        display: block;
       }
 
       input,
@@ -923,15 +941,13 @@
           helpButton.type = "button";
           helpButton.className = "help-button";
           helpButton.textContent = "?";
-          helpButton.setAttribute("aria-expanded", "false");
-          helpButton.setAttribute("aria-label", `顯示 ${field.labelZh} 欄位說明`);
+          helpButton.setAttribute("aria-label", `${field.labelZh} 欄位說明`);
           const control = fieldControl(field, state.record[field.name] || "");
           control.id = `field-${field.name}`;
           control.addEventListener("input", validateForm);
           control.addEventListener("change", validateForm);
           const meta = document.createElement("div");
           meta.className = "meta";
-          meta.hidden = true;
           const parts = [field.name, field.descriptionZh];
           if (field.multiValue && field.options.length > 0) {
             parts.push("可搜尋多選");
@@ -939,15 +955,10 @@
             parts.push("多值用 ; 分隔");
           }
           meta.textContent = parts.filter(Boolean).join(" - ");
-          helpButton.addEventListener("click", () => {
-            const nextHidden = !meta.hidden;
-            meta.hidden = nextHidden;
-            helpButton.setAttribute("aria-expanded", String(!nextHidden));
-          });
           const fieldError = document.createElement("div");
           fieldError.className = "field-error";
-          heading.append(label, helpButton);
-          wrapper.append(heading, control, fieldError, meta);
+          heading.append(label, helpButton, meta);
+          wrapper.append(heading, control, fieldError);
           form.append(wrapper);
         });
 
