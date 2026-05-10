@@ -21,6 +21,7 @@ const controls = {
   loadMore: document.querySelector("#loadMoreButton"),
   copyCandidates: document.querySelector("#copyCandidatesButton"),
   clearCandidates: document.querySelector("#clearCandidatesButton"),
+  copyAiAssistantPrompt: document.querySelector("#copyAiAssistantPromptButton"),
 };
 
 const elements = {
@@ -39,6 +40,7 @@ const elements = {
   loadMoreSummary: document.querySelector("#loadMoreSummary"),
   candidateSummary: document.querySelector("#candidateSummary"),
   candidateList: document.querySelector("#candidateList"),
+  aiAssistantSheetLink: document.querySelector("#aiAssistantSheetLink"),
 };
 
 const pageSize = 96;
@@ -219,6 +221,25 @@ function setupAnalytics(config) {
   analytics.enabled = true;
 }
 
+function photosSheetUrl() {
+  const spreadsheetId = String(projectConfig.googleSheets?.spreadsheetId ?? "").trim();
+  if (!spreadsheetId) {
+    return "";
+  }
+  const gid = encodeURIComponent(String(projectConfig.googleSheets?.photosSheetGid ?? 0));
+  return `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit?gid=${gid}#gid=${gid}`;
+}
+
+function setExternalLink(link, href) {
+  if (!href) {
+    link.removeAttribute("href");
+    link.setAttribute("aria-disabled", "true");
+    return;
+  }
+  link.href = href;
+  link.removeAttribute("aria-disabled");
+}
+
 function trackEvent(name, params = {}) {
   if (!analytics.enabled || typeof window.gtag !== "function") {
     return;
@@ -351,6 +372,7 @@ function applyProjectConfig(config) {
   elements.appTitle.textContent = title;
   elements.sourceLink.href = config.flickr?.profileUrl ?? "https://www.flickr.com/";
   elements.sourceLink.textContent = config.frontend?.sourceLinkLabel ?? "Flickr";
+  setExternalLink(elements.aiAssistantSheetLink, photosSheetUrl());
   setupAnalytics(config);
 }
 
@@ -1420,6 +1442,61 @@ function selectedOptionText(select) {
   return select.selectedOptions[0]?.textContent ?? select.value;
 }
 
+function aiAssistantHasFilters() {
+  return activeFilterEntries().some(([key]) => key !== "task" && key !== "search");
+}
+
+function aiAssistantEventParams() {
+  return {
+    task_mode: state.taskMode,
+    has_search_term: Boolean(sanitizeSearchTerm(controls.search.value)),
+    has_filters: aiAssistantHasFilters(),
+  };
+}
+
+function currentAiAssistantPrompt() {
+  const sheetUrl = photosSheetUrl() || "請貼上正式 Google Sheets 連結";
+  const searchTerm = sanitizeSearchTerm(controls.search.value);
+  const filterText = activeFilterEntries()
+    .filter(([key]) => key !== "task" && key !== "search")
+    .map(([, label, value]) => `${label}: ${value}`)
+    .join("；");
+  const needText = searchTerm || "請在這裡描述想找的畫面、用途、比例、情緒或限制。";
+
+  return `請讀取這份 Google Sheets 的 photos 工作表：
+${sheetUrl}
+
+協助我找 SITCON Flickr 照片。
+任務情境：${activeTask().label}
+我的需求：${needText}
+目前已知條件：${filterText || "無，請先用自然語言探索。"}
+
+如果你無法直接讀取 Google Sheets，請先告訴我，並請我提供 photos CSV。
+
+請不要只找 reviewed 照片；ai_labeled 和 unreviewed 也可以列為候選，但請標示整理狀態。public_use_status 是整理提醒，不是 Flickr 是否公開；avoid 預設不要推薦。
+
+每個候選請提供：
+- photo_id
+- photo_url
+- 為什麼符合需求
+- curation_status
+- public_use_status
+
+請不要自行推測缺少的攝影師、授權、活動身份或照片外脈絡。`;
+}
+
+async function copyAiAssistantPrompt() {
+  try {
+    const copied = await copyTextToClipboard(currentAiAssistantPrompt());
+    if (copied) {
+      setTemporaryButtonText(controls.copyAiAssistantPrompt, "已複製");
+      trackEvent("copy_ai_assistant_prompt", aiAssistantEventParams());
+    }
+  } catch {
+    setTemporaryButtonText(controls.copyAiAssistantPrompt, "複製失敗");
+  }
+}
+
 function activeFilterEntries() {
   const entries = [];
   if (state.taskMode !== "all") {
@@ -1727,7 +1804,7 @@ elements.taskModes.addEventListener("click", (event) => {
 });
 
 for (const [key, control] of Object.entries(controls)) {
-  if (["reset", "loadMore", "copyCandidates", "clearCandidates"].includes(key)) {
+  if (["reset", "loadMore", "copyCandidates", "clearCandidates", "copyAiAssistantPrompt"].includes(key)) {
     continue;
   }
   control.addEventListener("input", key === "search" ? scheduleSearchRender : () => render({ resetPage: true, source: "filter" }));
@@ -1754,6 +1831,10 @@ controls.loadMore.addEventListener("click", () => {
 });
 controls.copyCandidates.addEventListener("click", copyCandidateList);
 controls.clearCandidates.addEventListener("click", clearCandidates);
+controls.copyAiAssistantPrompt.addEventListener("click", copyAiAssistantPrompt);
+elements.aiAssistantSheetLink.addEventListener("click", () => {
+  trackEvent("open_sheets_for_ai_assistant", aiAssistantEventParams());
+});
 window.addEventListener("hashchange", revealPhotoFromHash);
 
 try {

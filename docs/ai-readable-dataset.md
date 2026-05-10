@@ -14,31 +14,27 @@ AI 使用者應讀取 `photos` 主表，或讀取由 `photos` 以同一套欄位
 
 AI 應依欄位值判斷資料，不應依賴 Google Sheets 畫面上的顏色、註解、排序、篩選檢視或儲存格格式。
 
-## 給使用者的 LLM 使用方式
+## 給使用者的 AI 助手使用方式
 
-除了 GitHub Pages 搜尋前端，使用者也可以使用自己熟悉的 LLM 介面讀取公開 Google Sheets。這種方式適合尚未能用固定篩選條件描述的需求，例如「找有活力、適合社群、畫面右側能放字的照片」。
+除了 GitHub Pages 搜尋前端，使用者也可以使用自己熟悉的 AI 助手讀取公開 Google Sheets。這種方式適合尚未能用固定篩選條件描述的需求，例如「找有活力、適合社群、畫面右側能放字的照片」。
 
-操作時，把正式 Google Sheets 連結提供給 LLM，請它讀取 `photos` 工作表。若 LLM 不能直接讀取 Google Sheets，請改提供 `photos` 工作表匯出的公開 CSV。
+操作時，把正式 Google Sheets 連結提供給 AI 助手，請它讀取 `photos` 工作表。若 AI 助手不能直接讀取 Google Sheets，請改提供 `photos` 工作表匯出的公開 CSV。
 
 可複製提示：
 
 ```text
 請讀取這份 Google Sheets 的 photos 工作表，協助我找 SITCON Flickr 照片。
 
-請把 photos 視為公開照片索引，不要只找 reviewed 照片；ai_labeled 和 unreviewed 也可以列為候選，但請在回答中標示整理狀態。
+如果你無法直接讀取 Google Sheets，請先告訴我，並請我提供 photos CSV。
 
-排序時請優先考慮：
-1. 我的需求和 subject_type、scene_tags、people_count、mood_tags、recommended_uses、sponsorship_items、sponsorship_tags、visual_description 的匹配程度。
-2. curation_status。reviewed 優先於 ai_labeled，ai_labeled 優先於 unreviewed，但不要完全排除未 review 照片。
-3. public_use_status。這是整理者的使用提醒，不是 Flickr 是否公開；avoid 預設不要推薦，needs_review 可以列為候選但請標示提醒。
-4. priority_level 和 collections。
+請不要只找 reviewed 照片；ai_labeled 和 unreviewed 也可以列為候選，但請標示整理狀態。public_use_status 是整理提醒，不是 Flickr 是否公開；avoid 預設不要推薦。
 
 每個候選請提供：
+- photo_id
 - photo_url
 - 為什麼符合需求
 - curation_status
 - public_use_status
-- 需要來源交接時，再提供 photographer 和 license；欄位缺值時不要自行推測
 
 請不要自行推測缺少的攝影師、授權、活動身份或照片外脈絡。
 ```

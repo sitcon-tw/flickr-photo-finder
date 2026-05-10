@@ -138,6 +138,7 @@ h3 {
 .section-heading p,
 .result-bar p,
 .candidate-panel p,
+.ai-assistant-panel p,
 .overview p {
   margin-bottom: 0;
   color: var(--muted);
@@ -162,6 +163,7 @@ h3 {
 .search-panel,
 .result-bar,
 .candidate-panel,
+.ai-assistant-panel,
 .overview {
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -354,8 +356,59 @@ select {
 }
 
 .candidate-panel,
+.ai-assistant-panel,
 .overview {
   padding: 14px;
+}
+
+.ai-assistant-panel {
+  display: grid;
+  gap: 10px;
+}
+
+.ai-assistant-intro,
+.ai-assistant-example,
+.ai-assistant-steps {
+  font-size: 13px;
+}
+
+.ai-assistant-steps {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-left: 20px;
+  color: var(--muted-strong);
+}
+
+.ai-assistant-steps li {
+  padding-left: 2px;
+}
+
+.ai-assistant-example {
+  margin: 0;
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-subtle);
+  color: var(--muted-strong);
+}
+
+.ai-assistant-actions {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+}
+
+.ai-assistant-actions a,
+.ai-assistant-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  padding: 0 10px;
+  font-size: 13px;
+  font-weight: 750;
+  text-align: center;
 }
 
 .candidate-list {
@@ -865,7 +918,8 @@ select {
   }
 
   .photo-actions,
-  .candidate-actions {
+  .candidate-actions,
+  .ai-assistant-actions {
     grid-template-columns: 1fr;
   }
 }
