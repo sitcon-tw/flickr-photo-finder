@@ -73,30 +73,33 @@
       }
 
       .photo {
-        align-items: start;
         display: grid;
         gap: 8px;
-        grid-template-columns: 96px minmax(0, 1fr);
       }
 
       .photo img {
         object-fit: contain;
         background: #eef1f5;
         border-radius: 4px;
-        height: 72px;
+        max-height: 180px;
         width: 100%;
       }
 
       .preview-link {
-        align-items: center;
         background: #eef1f5;
         border-radius: 4px;
         display: block;
-        grid-row: span 3;
-        height: 72px;
       }
 
-      .photo-title {
+      .photo-id-row {
+        align-items: baseline;
+        display: flex;
+        gap: 8px;
+        justify-content: space-between;
+      }
+
+      .photo-title,
+      .photo-album {
         font-weight: 700;
         overflow-wrap: anywhere;
       }
@@ -104,9 +107,7 @@
       .photo-album {
         color: #1f2933;
         font-size: 12px;
-        font-weight: 700;
         line-height: 1.35;
-        overflow-wrap: anywhere;
       }
 
       .photo-context {
@@ -440,14 +441,12 @@
           <a id="previewUrl" class="preview-link" href="#" target="_blank" rel="noreferrer">
             <img id="preview" alt="" />
           </a>
-          <div>
+          <div class="photo-id-row">
             <div id="photoTitle" class="photo-title"></div>
-            <div id="photoAlbum" class="photo-album"></div>
-          </div>
-          <div id="photoContext" class="photo-context meta"></div>
-          <div class="photo-links">
             <a id="photoUrl" href="#" target="_blank" rel="noreferrer">Flickr</a>
           </div>
+          <div id="photoAlbum" class="photo-album"></div>
+          <div id="photoContext" class="photo-context meta"></div>
         </section>
       </div>
 
