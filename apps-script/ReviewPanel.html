@@ -76,21 +76,34 @@
         align-items: start;
         display: grid;
         gap: 8px;
-        grid-template-columns: 96px minmax(0, 1fr);
+        grid-template-columns: 84px minmax(0, 1fr);
       }
 
       .photo img {
         aspect-ratio: 4 / 3;
         grid-row: span 3;
-        max-height: 96px;
+        max-height: 84px;
         object-fit: contain;
         background: #eef1f5;
         border-radius: 4px;
         width: 100%;
       }
 
+      .preview-link {
+        display: block;
+        grid-row: span 3;
+      }
+
       .photo-title {
         font-weight: 700;
+        overflow-wrap: anywhere;
+      }
+
+      .photo-album {
+        color: #1f2933;
+        font-size: 12px;
+        font-weight: 700;
+        line-height: 1.35;
         overflow-wrap: anywhere;
       }
 
@@ -422,15 +435,16 @@
         </section>
 
         <section id="photo" class="photo" hidden>
-          <img id="preview" alt="" />
+          <a id="previewUrl" class="preview-link" href="#" target="_blank" rel="noreferrer">
+            <img id="preview" alt="" />
+          </a>
           <div>
             <div id="photoTitle" class="photo-title"></div>
-            <div id="photoMeta" class="meta"></div>
+            <div id="photoAlbum" class="photo-album"></div>
           </div>
           <div id="photoContext" class="photo-context meta"></div>
           <div class="photo-links">
             <a id="photoUrl" href="#" target="_blank" rel="noreferrer">Flickr</a>
-            <a id="previewUrl" href="#" target="_blank" rel="noreferrer">縮圖</a>
           </div>
         </section>
       </div>
@@ -447,8 +461,8 @@
     <script>
       const form = document.querySelector("#form");
       const photo = document.querySelector("#photo");
+      const photoAlbum = document.querySelector("#photoAlbum");
       const photoContext = document.querySelector("#photoContext");
-      const photoMeta = document.querySelector("#photoMeta");
       const photoTitle = document.querySelector("#photoTitle");
       const photoUrl = document.querySelector("#photoUrl");
       const preview = document.querySelector("#preview");
@@ -929,11 +943,12 @@
 
         photo.hidden = false;
         preview.src = state.record.image_preview_url || "";
-        preview.hidden = !state.record.image_preview_url;
+        previewUrl.hidden = !state.record.image_preview_url;
         photoTitle.textContent = state.record.photo_id || "(沒有 photo_id)";
-        photoMeta.textContent = [state.record.album_title, state.record.event_year].filter(Boolean).join(" / ");
+        photoAlbum.textContent = state.record.album_title || "(沒有 album_title)";
         photoContext.textContent = [
           state.record.event_name,
+          state.record.event_year,
           state.record.public_use_status ? `公開狀態：${state.record.public_use_status}` : "",
           state.record.curation_status ? `整理狀態：${state.record.curation_status}` : "",
         ].filter(Boolean).join(" / ");
