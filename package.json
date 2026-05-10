@@ -51,6 +51,7 @@
     "validate:data": "node scripts/validate-data.mjs"
   },
   "dependencies": {
+    "@inquirer/prompts": "^8.4.2",
     "googleapis": "^171.4.0"
   }
 }

@@ -128,6 +128,8 @@ pnpm ai:review -- --run-dir tmp/ai-runs/<run-id>
 
 ### 7. 檢視單次結果或比較多模型/多輪結果
 
+日常操作建議使用 `pnpm workflow -- --task ai-report` 或 `pnpm eval -- --task report`，從 `tmp/ai-runs/` 互動式選擇單一 run / attempt，或多選產生比較報表。下方低階指令仍保留給自動化、文件交接與精確重跑。
+
 若要閱讀單次 AI 初標結果：
 
 ```bash
