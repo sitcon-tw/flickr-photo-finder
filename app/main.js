@@ -1260,11 +1260,6 @@ function sortingSignals(photo) {
   if (photo.priority_level === "high") {
     appendSignal(signals, "高優先");
   }
-  if (photo.curation_status === "reviewed") {
-    appendSignal(signals, "已整理");
-  } else if (photo.curation_status === "ai_labeled") {
-    appendSignal(signals, "AI 初標");
-  }
   if (photo.public_use_status === "needs_review") {
     appendSignal(signals, "待確認");
   } else if (photo.public_use_status === "avoid") {
