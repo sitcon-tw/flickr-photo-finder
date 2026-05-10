@@ -2,9 +2,9 @@ import { checkbox, select } from "@inquirer/prompts";
 import { stdin as input } from "node:process";
 import { discoverAiRuns, formatAiRunChoice } from "./ai-run-discovery.mjs";
 
-function assertInteractive() {
+function assertInteractive(nonInteractiveHint = "Use pnpm ai:report -- --run <dir> or --runs <dir> <dir> in non-interactive environments.") {
   if (!input.isTTY) {
-    throw new Error("stdin is not interactive. Use pnpm ai:report -- --run <dir> or --runs <dir> <dir> in non-interactive environments.");
+    throw new Error(`stdin is not interactive. ${nonInteractiveHint}`);
   }
 }
 
@@ -28,12 +28,15 @@ async function loadChoices() {
   return choicesFromRuns(runs);
 }
 
-export async function selectSingleAiRun() {
-  assertInteractive();
+export async function selectSingleAiRun({
+  message = "選擇要產生 report 的 AI run / attempt",
+  nonInteractiveHint,
+} = {}) {
+  assertInteractive(nonInteractiveHint);
   const choices = await loadChoices();
   return select({
     choices,
-    message: "選擇要產生 report 的 AI run / attempt",
+    message,
     pageSize: Math.min(Math.max(choices.length, 5), 15),
   });
 }

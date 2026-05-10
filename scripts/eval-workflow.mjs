@@ -292,7 +292,15 @@ async function buildCrossActivitySample() {
 }
 
 async function createAttempt() {
-  const from = await ask("來源 AI run 目錄，例如 tmp/ai-runs/RUN_ID");
+  if (!input.isTTY) {
+    throw new Error("stdin is not interactive. Use pnpm eval:attempt -- --from <run-dir> --model <name> --round <number> in non-interactive environments.");
+  }
+
+  closeReadline();
+  const from = await selectSingleAiRun({
+    message: "選擇要建立 attempt 的來源 AI run / attempt",
+    nonInteractiveHint: "Use pnpm eval:attempt -- --from <run-dir> --model <name> --round <number> in non-interactive environments.",
+  });
   if (!from) {
     throw new Error("source run directory is required");
   }
