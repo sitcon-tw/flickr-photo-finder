@@ -51,11 +51,6 @@
         z-index: 20;
       }
 
-      .review-toolbar {
-        display: grid;
-        gap: 8px;
-      }
-
       .nav-row {
         display: grid;
         grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -447,14 +442,11 @@
       <section id="status" class="status"></section>
 
       <div class="review-context">
-        <section class="toolbar review-toolbar">
+        <section id="photo" class="photo" hidden>
           <div class="nav-row">
             <button id="prevButton" class="secondary" type="button">上一張</button>
             <button id="nextButton" class="secondary" type="button">下一張</button>
           </div>
-        </section>
-
-        <section id="photo" class="photo" hidden>
           <a id="previewUrl" class="preview-link" href="#" target="_blank" rel="noreferrer">
             <img id="preview" alt="" />
           </a>
