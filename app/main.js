@@ -50,6 +50,7 @@ const resultTrackingDelayMs = 600;
 const discoverWindowSize = 24;
 const discoverHistorySize = 12;
 const enhancedSelects = new Map();
+const autocompleteInputs = new Map();
 
 const peopleCountFilters = [
   { label: "全部人數", value: "" },
@@ -658,7 +659,94 @@ document.addEventListener("pointerdown", (event) => {
       closeEnhancedSelect(control);
     }
   }
+  for (const control of autocompleteInputs.values()) {
+    if (!control.root.contains(event.target)) {
+      closeAutocompleteInput(control);
+    }
+  }
 });
+
+function closeAutocompleteInput(control) {
+  control.panel.hidden = true;
+}
+
+function renderAutocompleteOptions(control) {
+  const query = normalizeText(control.input.value);
+  const values = control.values.filter((value) => !query || normalizeText(value).includes(query));
+  const fragment = document.createDocumentFragment();
+
+  for (const value of values) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "autocomplete-option";
+    button.dataset.value = value;
+    button.setAttribute("role", "option");
+    button.textContent = value;
+    fragment.append(button);
+  }
+
+  if (values.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "autocomplete-empty";
+    empty.textContent = query ? "沒有符合的品項，會以輸入文字搜尋" : "沒有可選品項";
+    fragment.append(empty);
+  }
+
+  control.options.replaceChildren(fragment);
+}
+
+function openAutocompleteInput(control) {
+  renderAutocompleteOptions(control);
+  control.panel.hidden = false;
+}
+
+function setAutocompleteInputValue(control, value) {
+  control.input.value = value;
+  control.input.dispatchEvent(new Event("input", { bubbles: true }));
+  closeAutocompleteInput(control);
+}
+
+function setupAutocompleteInput(input, values) {
+  let control = autocompleteInputs.get(input);
+  if (!control) {
+    input.removeAttribute("list");
+
+    const root = document.createElement("div");
+    root.className = "autocomplete-input";
+    const panel = document.createElement("div");
+    panel.className = "autocomplete-panel";
+    panel.hidden = true;
+    const options = document.createElement("div");
+    options.className = "autocomplete-options";
+    options.setAttribute("role", "listbox");
+    panel.append(options);
+
+    input.insertAdjacentElement("beforebegin", root);
+    root.append(input, panel);
+
+    control = { root, input, panel, options, values: [] };
+    autocompleteInputs.set(input, control);
+
+    input.addEventListener("focus", () => openAutocompleteInput(control));
+    input.addEventListener("input", () => openAutocompleteInput(control));
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeAutocompleteInput(control);
+      }
+    });
+    options.addEventListener("click", (event) => {
+      const optionButton = event.target.closest("[data-value]");
+      if (!optionButton) {
+        return;
+      }
+      setAutocompleteInputValue(control, optionButton.dataset.value ?? "");
+    });
+  }
+
+  control.values = values;
+  renderAutocompleteOptions(control);
+}
 
 function compactLabelParts(parts) {
   const seen = new Set();
@@ -748,6 +836,7 @@ function setupFilters(taxonomy) {
   setupEnhancedSelect(controls.album, "搜尋活動或相簿");
   setupEnhancedSelect(controls.scene, "搜尋場景");
   setupEnhancedSelect(controls.collection, "搜尋素材包");
+  setupAutocompleteInput(controls.sponsorshipItem, taxonomy.sponsorship_items ?? []);
 }
 
 function normalizeText(value) {
