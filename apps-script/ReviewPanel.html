@@ -102,6 +102,13 @@
         gap: 4px;
       }
 
+      .field-heading {
+        align-items: center;
+        display: flex;
+        gap: 6px;
+        justify-content: space-between;
+      }
+
       .field.hidden {
         display: none;
       }
@@ -116,6 +123,29 @@
 
       label {
         font-weight: 700;
+      }
+
+      .help-button {
+        align-items: center;
+        background: #fff;
+        border: 1px solid #bdc7d5;
+        border-radius: 50%;
+        color: #475569;
+        display: inline-flex;
+        flex: 0 0 auto;
+        font-size: 12px;
+        font-weight: 700;
+        height: 22px;
+        justify-content: center;
+        line-height: 1;
+        padding: 0;
+        width: 22px;
+      }
+
+      .help-button[aria-expanded="true"] {
+        background: #e6f3f1;
+        border-color: #99c8c1;
+        color: #134e4a;
       }
 
       .meta {
@@ -877,15 +907,24 @@
           const wrapper = document.createElement("div");
           wrapper.className = "field";
           wrapper.dataset.fieldName = field.name;
+          const heading = document.createElement("div");
+          heading.className = "field-heading";
           const label = document.createElement("label");
           label.htmlFor = `field-${field.name}`;
           label.textContent = field.required ? `${field.labelZh} *` : field.labelZh;
+          const helpButton = document.createElement("button");
+          helpButton.type = "button";
+          helpButton.className = "help-button";
+          helpButton.textContent = "?";
+          helpButton.setAttribute("aria-expanded", "false");
+          helpButton.setAttribute("aria-label", `顯示 ${field.labelZh} 欄位說明`);
           const control = fieldControl(field, state.record[field.name] || "");
           control.id = `field-${field.name}`;
           control.addEventListener("input", validateForm);
           control.addEventListener("change", validateForm);
           const meta = document.createElement("div");
           meta.className = "meta";
+          meta.hidden = true;
           const parts = [field.name, field.descriptionZh];
           if (field.multiValue && field.options.length > 0) {
             parts.push("可搜尋多選");
@@ -893,9 +932,15 @@
             parts.push("多值用 ; 分隔");
           }
           meta.textContent = parts.filter(Boolean).join(" - ");
+          helpButton.addEventListener("click", () => {
+            const nextHidden = !meta.hidden;
+            meta.hidden = nextHidden;
+            helpButton.setAttribute("aria-expanded", String(!nextHidden));
+          });
           const fieldError = document.createElement("div");
           fieldError.className = "field-error";
-          wrapper.append(label, control, fieldError, meta);
+          heading.append(label, helpButton);
+          wrapper.append(heading, control, fieldError, meta);
           form.append(wrapper);
         });
 
