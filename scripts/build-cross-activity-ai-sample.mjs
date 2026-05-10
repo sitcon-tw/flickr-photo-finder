@@ -17,7 +17,7 @@ const defaultImageSize = "large-1024";
 
 function printUsage() {
   console.log(`Usage:
-  pnpm ai:sample
+  pnpm eval:sample
 
 Options:
   --plan <path>          Cross-activity sample plan. Default: data/ai-cross-activity-sample-plan.json.

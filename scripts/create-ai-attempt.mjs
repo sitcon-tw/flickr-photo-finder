@@ -20,7 +20,7 @@ const optionalRunFiles = ["input-photos.csv"];
 
 function printUsage() {
   console.log(`Usage:
-  pnpm ai:attempt -- --from <run-dir> --model <name> --round <number>
+  pnpm eval:attempt -- --from <run-dir> --model <name> --round <number>
 
 Options:
   --from <run-dir>     Base AI run directory to reuse as input.
@@ -152,7 +152,7 @@ async function assertOutputDoesNotExist(path) {
 }
 
 function defaultAttemptId(manifest, options) {
-  const base = sanitizeId(manifest.run_id || manifest.base_run_id || "ai-attempt");
+  const base = sanitizeId(manifest.run_id || manifest.base_run_id || "eval-attempt");
   const model = sanitizeId(options.model);
   const label = sanitizeId(options.label);
   return [base, "attempt", model, `r${options.round}`, label].filter(Boolean).join("-");

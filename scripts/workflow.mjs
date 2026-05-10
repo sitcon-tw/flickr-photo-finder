@@ -53,20 +53,20 @@ const tasks = [
     handler: prepareAiRun,
     id: "ai-prepare",
     inputs: ["正式 Google Sheets albums / photos", "匯出正式資料時需要 GOOGLE_APPLICATION_CREDENTIALS 與讀取權限", "Flickr 圖片 URL"],
-    next: ["把 tmp/ai-runs/<run-id>/ 交給模型；若同一批輸入要給多模型或多輪，下一步選「建立 AI attempt」。"],
+    next: ["把 tmp/ai-runs/<run-id>/ 交給模型；若要做多模型或多輪品質比較，改到「模型品質評估」階段建立 attempt。"],
     outputs: ["tmp/ai-runs/<run-id>/photos.json", "tmp/ai-runs/<run-id>/images/"],
     phase: "AI 初標",
     title: "準備 AI 初標工作包",
   },
   {
-    description: "從既有 AI run 建立同一批輸入的模型或輪次 attempt。",
+    description: "從既有 AI run 建立同一批輸入的模型或輪次 attempt，用於比較模型產出品質。",
     handler: createAiAttempt,
-    id: "ai-attempt",
+    id: "eval-attempt",
     inputs: ["tmp/ai-runs/<run-id>/"],
     next: ["把 attempt 目錄交給模型；模型輸出後選「檢查 AI 初標結果」。"],
     outputs: ["tmp/ai-runs/<attempt-id>/"],
-    phase: "AI 初標",
-    title: "建立 AI attempt",
+    phase: "模型品質評估",
+    title: "建立模型 attempt",
   },
   {
     description: "驗證 AI proposals，產生 diff、update plan 與檢視摘要。",
@@ -83,7 +83,7 @@ const tasks = [
     handler: buildAiReport,
     id: "ai-report",
     inputs: ["tmp/ai-runs/<run-id-or-attempt>/"],
-    next: ["閱讀報表後，必要時再跑搜尋實驗或 Sheets dry-run。"],
+    next: ["閱讀報表後，必要時再跑 eval:search 或 Sheets dry-run。"],
     outputs: ["tmp/ai-reports/<report-id>/"],
     phase: "AI 初標",
     title: "產生 AI report",
@@ -91,12 +91,12 @@ const tasks = [
   {
     description: "離線比較 taxonomy-only 與 taxonomy + visual_description 的搜尋排序。",
     handler: runSearchExperiment,
-    id: "search-experimental",
+    id: "eval-search",
     inputs: ["AI run / attempt，或 photos CSV"],
     next: ["若 description 有實際搜尋增益，再考慮寫回 Sheets 或調整 prompt。"],
     outputs: ["搜尋比較結果"],
-    phase: "AI 初標",
-    title: "執行 visual_description 搜尋實驗",
+    phase: "模型品質評估",
+    title: "執行 visual_description 搜尋評估",
   },
   {
     description: "初始化、檢查、匯出或遷移 Google Sheets。",
@@ -360,15 +360,16 @@ async function showWorkflowOverview() {
   console.log("常見起點：");
   console.log("- 第一次接手：選「檢查專案資料與 AI fixtures」。");
   console.log("- 要匯入照片：選「處理一本 Flickr 相簿」。");
-  console.log("- 要做 AI 初標：先選「準備 AI 初標工作包」，需要多模型或多輪時再選「建立 AI attempt」。");
-  console.log("- 要驗收 AI 結果：選「檢查 AI 初標結果」，再用 report 或搜尋實驗輔助判斷。");
+  console.log("- 要做 AI 初標：先選「準備 AI 初標工作包」。");
+  console.log("- 要比較模型品質：選「建立模型 attempt」或執行 eval:sample。");
+  console.log("- 要驗收 AI 結果：選「檢查 AI 初標結果」，再用 report 或 eval:search 輔助判斷。");
   console.log("- 要部署公開檢索：選「建立 GitHub Pages artifact」。");
   console.log("- 要維護 Sheets：選「Google Sheets 工具」。");
 }
 
 async function runProjectChecks() {
   runPnpm("validate:data");
-  runPnpm("ai:validate-fixtures");
+  runPnpm("eval:validate-fixtures");
 }
 
 async function runAlbumIntake() {
@@ -563,7 +564,7 @@ async function createAiAttempt() {
     options.push("--copy-images");
   }
 
-  runPnpm("ai:attempt", pnpmArgsFromOptions(options));
+  runPnpm("eval:attempt", pnpmArgsFromOptions(options));
 }
 
 async function askImageSize() {
@@ -640,7 +641,7 @@ async function runSearchExperiment() {
     options.push("--top", top);
   }
 
-  runPnpm("search:experimental", pnpmArgsFromOptions(options));
+  runPnpm("eval:search", pnpmArgsFromOptions(options));
 }
 
 async function runSheetsTools() {

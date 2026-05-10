@@ -15,7 +15,7 @@
 
 ```bash
 pnpm validate:data
-pnpm ai:validate-fixtures
+pnpm eval:validate-fixtures
 pnpm pages:build
 pnpm pages:check
 ```

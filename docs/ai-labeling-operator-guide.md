@@ -49,7 +49,7 @@ pnpm ai:prepare -- --photo-ids PHOTO_ID --image-size original
 若這次目的不是整理某一本相簿，而是回頭驗證欄位、taxonomy 或 prompt 是否能跨活動場景成立，請改用跨活動抽樣：
 
 ```bash
-pnpm ai:sample
+pnpm eval:sample
 ```
 
 這會讀取 `data/ai-cross-activity-sample-plan.json`，從多本 SITCON Flickr 相簿依相簿順序等距抽樣，產生 `tmp/ai-samples/<run-id>/photos.csv` 與 `tmp/ai-runs/<run-id>/`。這份資料集只用於本機 AI 初標測試，不代表正式 Sheets 資料，也不會寫入 Google Sheets。
@@ -61,9 +61,9 @@ pnpm ai:sample
 若要把同一批輸入交給不同模型，或同一模型重跑第二輪，請從既有 run 建立 attempt，不要手動複製整個資料夾：
 
 ```bash
-pnpm ai:attempt -- --from tmp/ai-runs/<run-id> --model claude --round 1
-pnpm ai:attempt -- --from tmp/ai-runs/<run-id> --model claude --round 2 --label visual-description
-pnpm ai:attempt -- --from tmp/ai-runs/<run-id> --model gpt --round 1
+pnpm eval:attempt -- --from tmp/ai-runs/<run-id> --model claude --round 1
+pnpm eval:attempt -- --from tmp/ai-runs/<run-id> --model claude --round 2 --label visual-description
+pnpm eval:attempt -- --from tmp/ai-runs/<run-id> --model gpt --round 1
 ```
 
 attempt 目錄仍包含 `photos.json`、`manifest.json`、`ai-labeling-prompt.md` 與 `images/`，可以直接交給模型，也可以直接執行 `pnpm ai:review -- --run-dir <attempt-dir>`。圖片預設用 symlink 或 hardlink 共用；若環境不支援連結，可加上 `--copy-images`。
@@ -145,8 +145,8 @@ pnpm ai:report -- --runs tmp/ai-runs/<attempt-a> tmp/ai-runs/<attempt-b> tmp/ai-
 若這次要驗證 `visual_description` 對自然語言找圖是否真的有幫助，可在寫回 Sheets 前跑離線搜尋比較：
 
 ```bash
-pnpm search:experimental -- --run-dir tmp/ai-runs/<attempt-or-run>
-pnpm search:experimental -- --run-dir tmp/ai-runs/<attempt-or-run> --query "有留白的橫式講者照片" --top 10
+pnpm eval:search -- --run-dir tmp/ai-runs/<attempt-or-run>
+pnpm eval:search -- --run-dir tmp/ai-runs/<attempt-or-run> --query "有留白的橫式講者照片" --top 10
 ```
 
 這個 prototype 不呼叫 LLM、不抓圖片，也不寫入 Sheets；它只比較 taxonomy-only baseline 與 taxonomy + `visual_description` 的排序差異。
@@ -247,7 +247,7 @@ pnpm sheets:apply-ai-updates -- --run-dir tmp/ai-runs/<run-id>
 範例 proposal 放在 `fixtures/ai-proposals/`。驗證所有範例：
 
 ```bash
-pnpm ai:validate-fixtures
+pnpm eval:validate-fixtures
 ```
 
 這個指令會確認 valid example 必須通過，invalid examples 必須被 validator 擋下。若未來調整 `metadata-proposals.json` 格式、taxonomy 或 AI 邊界，應同步更新範例與此測試。

@@ -67,9 +67,9 @@ const aliasText = {
 
 function printUsage() {
   console.log(`Usage:
-  pnpm search:experimental
-  pnpm search:experimental -- --query "有留白的橫式講者照片" --photos fixtures/photos.csv
-  pnpm search:experimental -- --run-dir tmp/ai-runs/<run-id> --top 10
+  pnpm eval:search
+  pnpm eval:search -- --query "有留白的橫式講者照片" --photos fixtures/photos.csv
+  pnpm eval:search -- --run-dir tmp/ai-runs/<run-id> --top 10
 
 Options:
   --photos <path>       Photos CSV path. Defaults to tmp/sheets-export/photos.csv if present, otherwise fixtures/photos.csv.

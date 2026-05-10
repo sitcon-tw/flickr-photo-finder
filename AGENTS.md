@@ -150,17 +150,17 @@ pnpm albums:select
 pnpm albums:select -- --source sheets
 pnpm albums:sync -- --sheets-export <albums-csv> --output <albums-csv>
 pnpm apps-script:build-config
-pnpm ai:attempt -- --from <dir> --model <name> --round <number>
+pnpm eval:attempt -- --from <dir> --model <name> --round <number>
 pnpm ai:report -- --run <dir>
 pnpm ai:report -- --runs <dir> <dir>
 pnpm ai:review -- --run-dir <dir>
-pnpm ai:sample
+pnpm eval:sample
 pnpm ai:diff -- --run-dir <dir>
 pnpm ai:plan -- --run-dir <dir>
 pnpm ai:prepare -- --image-size large-1024
 pnpm ai:validate -- --run-dir <dir>
-pnpm ai:validate-fixtures
-pnpm search:experimental -- --run-dir <dir>
+pnpm eval:validate-fixtures
+pnpm eval:search -- --run-dir <dir>
 pnpm intake:run -- --album <album-id>
 pnpm intake:validate -- --run-dir <dir>
 pnpm pages:build

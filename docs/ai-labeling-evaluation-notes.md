@@ -43,7 +43,7 @@ pnpm ai:report -- --runs tmp/ai-runs/<attempt-a> tmp/ai-runs/<attempt-b>
 報表不取代 `metadata-diff.md`，而是讓人更快看到縮圖、proposal 狀態、欄位覆蓋率與不同 attempt 的差異。若本次重點是 `visual_description`，再用搜尋實驗檢查它是否真的改善工作情境找圖：
 
 ```bash
-pnpm search:experimental -- --run-dir tmp/ai-runs/<run-id-or-attempt>
+pnpm eval:search -- --run-dir tmp/ai-runs/<run-id-or-attempt>
 ```
 
 接著抽查 `metadata-diff.md` 與圖片本身。若要確認正式 Sheets 將被更新哪些 cells，再執行 dry-run：
@@ -353,7 +353,7 @@ curated 版重新執行 `pnpm ai:review` 後通過，planned updates 從 298 筆
 - 若 prompt 不夠嚴格，模型可能產生「有人在交流」這類空泛描述，對搜尋沒有幫助。
 - 若沒有近似重複檢查，它也可能變成另一個批次模板欄位。
 
-目前的應對是合理但仍屬第一階段：schema、prompt、contract、operator guide、validator 與 fixtures 已支援 `visual_description`，並用最小長度、禁用語句、具體視覺線索、完全與近似重複檢查降低品質下界。後續應使用 Claude 重新跑 132 張，再用 `pnpm search:experimental -- --run-dir <dir>` 的工作情境查詢比較 taxonomy-only 與 taxonomy + `visual_description`，確認它是否真的提升找圖效果。
+目前的應對是合理但仍屬第一階段：schema、prompt、contract、operator guide、validator 與 fixtures 已支援 `visual_description`，並用最小長度、禁用語句、具體視覺線索、完全與近似重複檢查降低品質下界。後續應使用 Claude 重新跑 132 張，再用 `pnpm eval:search -- --run-dir <dir>` 的工作情境查詢比較 taxonomy-only 與 taxonomy + `visual_description`，確認它是否真的提升找圖效果。
 
 ## 2026-05-09 新版 prompt 後的 122 張三模型 attempt
 
@@ -586,9 +586,9 @@ reason 是審核脈絡，不是正式 metadata。它應只描述可見畫面或 
 - 若同一個 confidence 值出現在 90% 以上候選欄位，提示信心分數可能沒有逐欄反映不確定性。
 - 若 `贊助成果報告` 出現但沒有 `sponsorship_items` 或 `sponsorship_tags`，提示需要人工確認贊助脈絡。
 - 若 `people_count = 0` 但 reason 或 scene_tags 提到會眾、講者、合照等人物相關線索，提示可能矛盾。
-- `pnpm ai:attempt` 可從同一個 input run 建立不同模型或不同輪次的 attempt，避免手動複製圖片與 prompt。
+- `pnpm eval:attempt` 可從同一個 input run 建立不同模型或不同輪次的 attempt，避免手動複製圖片與 prompt。
 - `pnpm ai:report` 可產生唯讀 HTML，比較多個 run/attempt 在同一張照片上的 value、reason、confidence 與 validator 狀態。
-- `pnpm search:experimental` 可在 proposal 寫回前離線比較 taxonomy-only baseline 與 taxonomy + `visual_description` 的搜尋排序差異，用來驗證描述欄位是否有實際找圖增益。
+- `pnpm eval:search` 可在 proposal 寫回前離線比較 taxonomy-only baseline 與 taxonomy + `visual_description` 的搜尋排序差異，用來驗證描述欄位是否有實際找圖增益。
 
 `pnpm ai:validate` 會擋下格式、責任邊界與明顯不可審核的單欄位內容，例如：
 
@@ -608,6 +608,6 @@ reason 是審核脈絡，不是正式 metadata。它應只描述可見畫面或 
 - 檢查 `safe_crop` 是否和 `orientation`、主體位置或圖片尺寸有高風險組合。
 - 對 `recommended_uses = 贊助成果報告` 增加更細緻的 sponsor exposure / item 檢查。
 - 找出同一相簿內高度重複的講者照片或合照，只提示少數更適合優先審核的照片。
-- 用 Claude 重新跑完整 132 張後，保留 `pnpm search:experimental` 的輸出摘要，記錄哪些真實工作查詢因 `visual_description` 讓更合適的照片進入前幾名。
+- 用 Claude 重新跑完整 132 張後，保留 `pnpm eval:search` 的輸出摘要，記錄哪些真實工作查詢因 `visual_description` 讓更合適的照片進入前幾名。
 
 批次品質檢查應先作為 review warning，不應直接讓 validation 失敗。validation 只負責格式與責任邊界；品質判斷仍應保留給人工與後續工具迭代。

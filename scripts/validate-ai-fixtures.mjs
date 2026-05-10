@@ -6,7 +6,7 @@ const defaultFixturesDir = "fixtures/ai-proposals";
 
 function printUsage() {
   console.log(`Usage:
-  pnpm ai:validate-fixtures
+  pnpm eval:validate-fixtures
 
 Options:
   --fixtures-dir <dir>  Directory containing valid-* and invalid-* AI proposal fixtures.

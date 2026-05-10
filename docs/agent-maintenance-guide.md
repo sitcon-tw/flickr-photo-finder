@@ -63,12 +63,12 @@ AI 只能作為資料匯入與整理輔助。
 
 建議流程：
 
-1. 先用 `pnpm ai:prepare` 建立 run；同一批輸入要交給多模型或多輪時，用 `pnpm ai:attempt` 建立 attempt，不要手動複製資料夾。
+1. 先用 `pnpm ai:prepare` 建立 run；同一批輸入要交給多模型或多輪時，用 `pnpm eval:attempt` 建立 attempt，不要手動複製資料夾。
 2. Agent 或模型讀取 `ai-labeling-prompt.md`、`photos.json`、`images/`、schema、taxonomy 與 sponsorship items。
 3. Agent 或模型只輸出 `metadata-proposals.json`，不要改 `photos.json`、Sheets export 或正式 Google Sheets。
 4. 用 `pnpm ai:review -- --run-dir <dir>` 驗證並產生 `metadata-review-summary.md`、`metadata-diff.md` 與 update plan。
 5. 用 `pnpm ai:report -- --run <dir>` 閱讀單次結果；比較多模型或多輪時，用 `pnpm ai:report -- --runs <dir> <dir>`。
-6. 若本次重點是 `visual_description` 或自然語言找圖，先用 `pnpm search:experimental -- --run-dir <dir>` 比較 taxonomy-only baseline 與 description 搜尋結果。
+6. 若本次重點是 `visual_description` 或自然語言找圖，先用 `pnpm eval:search -- --run-dir <dir>` 比較 taxonomy-only baseline 與 description 搜尋結果。
 7. 人類檢查後才用 `pnpm sheets:apply-ai-updates -- --run-dir <dir>` dry-run；確認後才可加上 `--write`。
 8. AI 協助過但尚未人工確認的資料應標成 `ai_labeled`。
 

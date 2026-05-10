@@ -9,7 +9,7 @@
 驗證所有範例：
 
 ```bash
-pnpm ai:validate-fixtures
+pnpm eval:validate-fixtures
 ```
 
 命名規則：
