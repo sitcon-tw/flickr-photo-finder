@@ -131,6 +131,28 @@ pnpm sheets:migrate-headers -- --write
 
 `sheets:migrate-headers` 只處理「目前 header 和 repo schema 順序相容，但缺少部分新增欄位」的情況。它會插入缺少欄位並保留既有資料欄位位置；它不會刪欄、改名、重排或覆蓋資料。若 header 已經被人工改名、調整順序或出現未知欄位，工具會阻擋，應先由人類判斷如何保留資料。
 
+## 同步 taxonomy 輔助表
+
+`taxonomy` tab 是給人類、Apps Script 與維護流程查閱的輔助表，不是受控字彙來源。正式受控字彙來源仍是 `data/tag-taxonomy.json`；顯示文字來源是同一份檔案的 `option_labels`。若 Sheets 上的 `taxonomy` tab 與 repo 不一致，應重新同步 tab，不要直接在 Sheets 裡建立新字彙或補翻譯。
+
+同步前先 dry-run：
+
+```bash
+pnpm sheets:sync-taxonomy
+```
+
+dry-run 會讀取目標 spreadsheet 的 `taxonomy` tab，回報目前 header 狀態、現有資料列數、空白 `label_zh` 數量與 repo 會寫入的列數。工具只接受目前 1.0 header `taxonomy_key,value,label_zh,order`，或舊版 header `taxonomy_key,value,order`；若 header 被人工改成未知格式，會拒絕覆寫。
+
+確認 dry-run 只會重寫 `taxonomy` 輔助表後，再執行：
+
+```bash
+pnpm sheets:sync-taxonomy -- --write
+```
+
+寫入後工具會讀回驗證 header、列數與 `label_zh` 不可空白。`label_zh` 的產生規則是：若 `data/tag-taxonomy.json` 的 `option_labels` 有對應顯示文字就使用該文字，否則使用 raw value 本身。
+
+Apps Script 的 `更新欄位選項` 也會用部署時的 `GeneratedConfig.js` 同步 `taxonomy` tab。CLI 適合在正式 Sheet 上做明確 dry-run / write 與讀回驗證；Apps Script refresh 適合在 Sheet UI 內套用欄位提示、下拉選單、`taxonomy` 與 `schema_meta`。
+
 ## 相簿工作流程
 
 建議流程：
@@ -642,6 +664,7 @@ service account key 是敏感 credential，不能 commit，也不應放在 `tmp/
 | 匯出正式 Sheets 工作 CSV | 需要 `GOOGLE_APPLICATION_CREDENTIALS` 與目標 Sheets 讀取權限 | `pnpm sheets:export` 產生 `tmp/sheets-export/*.csv` 並檢查 header | 可能是環境變數未傳入、credential scope、Sheets 權限、tab/header 或網路問題。 |
 | 套用初始化 CSV | 需要 `GOOGLE_APPLICATION_CREDENTIALS` 與目標 Sheets 編輯權限 | `pnpm sheets:apply-init` dry-run 通過，人工確認後執行 `pnpm sheets:apply-init -- --write`，寫入後讀回驗證通過 | 可能是環境變數未傳入、credential scope、Sheets 權限、tab/header 或資料格式問題，應依工具錯誤分類處理。 |
 | 套用 header 遷移 | 需要 `GOOGLE_APPLICATION_CREDENTIALS` 與目標 Sheets 編輯權限 | `pnpm sheets:migrate-headers` dry-run 通過，人工確認後執行 `pnpm sheets:migrate-headers -- --write`，寫入後讀回驗證通過 | 只支援新增缺少欄位；若 header 有未知欄位、改名或順序不相容，工具會阻擋。 |
+| 同步 taxonomy 輔助表 | 需要 `GOOGLE_APPLICATION_CREDENTIALS` 與目標 Sheets 編輯權限 | `pnpm sheets:sync-taxonomy` dry-run 通過，人工確認後執行 `pnpm sheets:sync-taxonomy -- --write`，寫入後讀回驗證通過 | 只重寫 `taxonomy` tab；若 header 是未知格式會阻擋，若 `label_zh` 寫入後仍空白會報錯。 |
 | 套用 intake run artifact | 需要 `GOOGLE_APPLICATION_CREDENTIALS` 與目標 Sheets 編輯權限 | `pnpm sheets:apply-intake -- --run-dir <dir>` dry-run 通過，人工確認後加上 `--write`，寫入後讀回驗證通過 | 可能是環境變數未傳入、credential scope、Sheets 權限、tab/header、重複 `photo_id`、重複 `batch_id` 或找不到相簿列。 |
 | 透過官方 SDK 寫入 Sheets | 需要 `GOOGLE_APPLICATION_CREDENTIALS` 與目標 Sheets 編輯權限 | SDK 寫入工具的 preflight、dry-run、confirmed write 與寫入後讀回驗證都通過 | 可能是環境變數未傳入、credential scope、Sheets 權限、tab/header 或資料格式問題，應依工具錯誤分類處理。 |
 | 驗證正式資料格式 | 不需要寫入權限；需要能取得 Sheets 匯出的 CSV | `pnpm data:validate -- --photos <csv> --albums <csv> --import-batches <csv>` | 代表匯出資料和 repo schema 不一致，或匯出檔不是預期格式。 |

@@ -70,7 +70,16 @@ pnpm sheets:apply-init -- --write
 
 受控字彙表。內容應由 `data/tag-taxonomy.json` 匯入或同步。
 
-Apps Script 可以使用這張表產生下拉選單、欄位驗證與錯誤提示。若這張表和 repo taxonomy 不一致，以 repo taxonomy 為準，並重新同步。
+表格欄位固定為：
+
+| 欄位 | 用途 |
+| --- | --- |
+| `taxonomy_key` | 對應 taxonomy 分組或欄位 key。 |
+| `value` | 實際寫入 `photos`、CSV、AI proposal 與驗證流程的 raw value。 |
+| `label_zh` | 給人類查閱的中文顯示文字。來源是 `data/tag-taxonomy.json` 的 `option_labels`；若沒有另外定義，使用 raw value 本身。這欄不應空白。 |
+| `order` | 顯示排序。 |
+
+Apps Script 可以使用 repo 產生的設定同步這張表，也可以使用 `pnpm sheets:sync-taxonomy` 透過 Sheets API 明確 dry-run / write。若這張表和 repo taxonomy 不一致，以 repo taxonomy 為準，並重新同步；不要直接在 Sheets 中創造新受控字彙或手動補一套翻譯。
 
 ### sponsorship_items
 

@@ -179,6 +179,7 @@ pnpm sheets:check
 pnpm sheets:export
 pnpm sheets:init
 pnpm sheets:migrate-headers
+pnpm sheets:sync-taxonomy
 pnpm data:validate
 git status --short
 ```

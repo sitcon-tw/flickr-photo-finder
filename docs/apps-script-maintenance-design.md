@@ -72,6 +72,7 @@ Web App deployment 應設定為：
 - 對多值欄位檢查同一儲存格內不可重複填寫相同值。
 - 對 URL、年份、整數、boolean 欄位在選單驗證時提供基本格式檢查。
 - 將 `photos` 資料區設為純文字格式，避免 Google Sheets 將 `9:16`、ID、比例或看似日期/時間的值自動轉型。
+- 同步 `taxonomy` 輔助表，欄位為 `taxonomy_key,value,label_zh,order`。`label_zh` 由 repo taxonomy 的 `option_labels` 產生；若沒有對應顯示文字則使用 raw value 本身，執行後不應留下空白 `label_zh`。
 
 Apps Script UI 顯示文字應使用 `data/tag-taxonomy.json` 的 `option_labels`，避免 sidebar、Web App 與 GitHub Pages 各自維護 raw value 翻譯。sidebar / Web App 寫回 Sheets 時仍寫入 raw value；Sheets 原生 data validation 只能顯示實際儲存值，因此 header note 應提供 `raw = 顯示文字` 對照。
 
@@ -151,11 +152,11 @@ Apps Script 應透過 `clasp` 進行部署。
 
 - `apps-script/Code.js`：Sheets 選單與公開入口函式。
 - `apps-script/Constants.js`：Apps Script 共用常數。
-- `apps-script/SheetAccess.js`：讀寫 `photos`、欄位提示、下拉選單與 `schema_meta`。
+- `apps-script/SheetAccess.js`：讀寫 `photos`、欄位提示、下拉選單、`taxonomy` 與 `schema_meta`。
 - `apps-script/Validation.js`：欄位驗證、公開讀取格式檢查與 `validation_report`。
 - `apps-script/ReviewPanelServer.js`：Sheet-bound 校對 sidebar 後端函式。
 - `apps-script/ReviewWebAppServer.js`：Web App 校對介面後端函式。
-- `apps-script/GeneratedConfig.js`：由 repo schema、taxonomy 與 sponsorship items snapshot metadata 產生，供 Apps Script 使用。不要手動編輯。
+- `apps-script/GeneratedConfig.js`：由 repo schema、taxonomy、taxonomy 輔助表資料與 sponsorship items snapshot metadata 產生，供 Apps Script 使用。不要手動編輯。
 - `apps-script/ReviewPanel.html`：Sheet-bound 校對 sidebar UI。
 - `apps-script/ReviewWebApp.html`：Web App 校對 UI。
 - `apps-script/appsscript.json`：Apps Script manifest。
@@ -248,8 +249,8 @@ pnpm apps-script:push
 1. 選單出現 `SITCON Photo Finder`。
 2. 在 `photos` 選一列資料，執行 `開始整理照片`。若 Google 要求授權，完成授權後回到 Sheet 重跑一次；成功時 sidebar 應顯示縮圖、Flickr 連結與欄位表單。
 3. 在 sidebar 修改一個非識別欄位並儲存，確認合法資料會寫回同一列，且 `validation_report` 更新。
-4. 執行 `更新欄位選項`，確認 `photos` header 有 note、資料區是純文字格式、單值 taxonomy 欄位與 boolean 欄位有下拉選單，且 `schema_meta` 已建立或更新。
-5. 檢查 `schema_meta` 至少有 header row 與一列同步資訊。`schema_version`、`taxonomy_version`、`sponsorship_items_version`、`last_synced_at` 與 `synced_by` 不應空白；`notes` 可依 sponsorship snapshot 狀態填寫或留空。
+4. 執行 `更新欄位選項`，確認 `photos` header 有 note、資料區是純文字格式、單值 taxonomy 欄位與 boolean 欄位有下拉選單，且 `taxonomy` 與 `schema_meta` 已建立或更新。
+5. 檢查 `taxonomy` header 是 `taxonomy_key,value,label_zh,order`，且 `label_zh` 沒有空白列；再檢查 `schema_meta` 至少有 header row 與一列同步資訊。`schema_version`、`taxonomy_version`、`sponsorship_items_version`、`last_synced_at` 與 `synced_by` 不應空白；`notes` 可依 sponsorship snapshot 狀態填寫或留空。
 6. 執行 `查看資料表版本`，確認看得到 repo generated config 與 `schema_meta` 內容。若 `schema_meta` 空白或缺少必要欄位，應重新執行 `更新欄位選項`，不能把空白 sheet 當成成功狀態。
 7. 在 `photos` 選一列資料執行 `檢查這張照片`。正常資料列應通過；可暫時把該列的 URL 欄位改成 `abc`，或把多值欄位改成 `合照;會眾;會眾`，確認會出現中文錯誤，再復原該儲存格。
 8. 在 sidebar 測試非法儲存，例如把 `recommended_uses` 改成 `講者宣傳;社群貼文;社群貼文`，確認錯誤顯示在 `儲存並驗證` 按鈕附近，且資料不會寫入 Sheet。
@@ -344,6 +345,7 @@ Apps Script 遇到以下狀況時應停止並提醒：
 
 - `photos` header 與 schema 不一致。
 - 缺少必要工作表。
+- `taxonomy` header 是未知格式，或同步後 `label_zh` 仍有空白。
 - `schema_meta` 同步資訊空白。
 - `photos` 公開讀取格式缺少必要欄位。
 
@@ -352,6 +354,8 @@ Apps Script 遇到以下狀況時應停止並提醒：
 ### 常見部署與執行錯誤
 
 若 `更新欄位選項` 執行後 `schema_meta` 是整張空白，這不是成功狀態。重新推送最新版 Apps Script 後再執行 refresh；目前 source 會在寫入後讀回檢查，若必要欄位仍空白應直接報錯。
+
+若 `taxonomy` 的 `label_zh` 整欄空白，代表正式 Sheet 停在舊格式或舊資料。可先用 `pnpm sheets:sync-taxonomy` 做 dry-run，確認後用 `pnpm sheets:sync-taxonomy -- --write` 重寫 `taxonomy` tab；也可以重新推送最新版 Apps Script 後執行 `更新欄位選項`。
 
 若 sidebar 顯示 `Authorization is required to perform that action`，或顯示需要授權但沒有自動跳出 prompt，先確認使用者已完成 Google 授權。若已授權仍出現同樣錯誤，通常是 Google 多帳號 session 讓 sidebar iframe 使用第一個登入帳號的授權狀態；若第一個登入帳號不是有權限並已授權的帳號，就會在 sidebar 內呼叫 `google.script.run` 時失敗。請改用有權限的 Google 帳號作為第一個登入帳號，或用單一帳號的瀏覽器 profile / 無痕視窗重開 Sheet。
 
