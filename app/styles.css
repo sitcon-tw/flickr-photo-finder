@@ -235,7 +235,7 @@ h3 {
 
 .primary-search {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) minmax(150px, 220px) auto;
+  grid-template-columns: minmax(260px, 1fr) minmax(180px, 280px) minmax(150px, 220px) auto;
   gap: 12px;
   align-items: end;
   margin-bottom: 12px;
