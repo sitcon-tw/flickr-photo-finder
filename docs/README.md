@@ -18,6 +18,8 @@
 | 前端使用行為分析設計 | `docs/frontend-analytics-design.md` | 導入 GA4 或分析前，先確認目前前端狀態、事件邊界、隱私限制與後續分析流程。 |
 | GA4 後台操作與 service account 權限 | `docs/ga4-operations.md` | 管理 GA4 權限、service account 加入 property、custom dimensions 與 BigQuery 延後策略。 |
 | GA4 custom dimensions 註冊清單 | `config/ga4-custom-dimensions.json` | 低基數 event-scoped custom dimensions 的 repo source of truth；不要加入 `photo_id`、`content_id`、`search_term`、`result_rank`。 |
+| GA4 前端 measurement ID | `config/project.json` 的 `frontend.ga4MeasurementId` | 給 GitHub Pages 前端送出 GA4 event 使用。 |
+| GA4 後台 property ID | `config/project.json` 的 `frontend.ga4PropertyId` | 給 GA4 Admin API 與 custom dimensions 管理工具使用；它不是 credential 或 secret。 |
 | Sheets 表格讀寫技術選擇 | `docs/sheets-sync-workflow.md` | repo CLI 應以官方 Google Sheets API SDK 為主要方向；Google Drive 檔案搬運不是 Sheets 寫入主流程。 |
 | Sheets 正式寫入身份 | `docs/sheets-sync-workflow.md` | 建議使用 SITCON 管理的 service account，並將 service account email 加入正式 Sheets 編輯者。 |
 | AI 初標輸入與輸出格式 | `docs/ai-labeling-contract.md` | 定義 `tmp/ai-runs/<run-id>/` 的輸入檔、圖片來源、`metadata-proposals.json` 格式與驗證流程。 |
@@ -103,7 +105,7 @@
 - Apps Script source 已進 repo，1.0 維護選單已可部署使用；可在 Sheets 內提供校對 sidebar、欄位提示、單值下拉選單、`photos` 純文字格式防護、`taxonomy` 同步、`schema_meta`、`validation_report` 與基本驗證。sidebar 會先驗證再寫入，儲存錯誤顯示在按鈕附近；載入錯誤顯示在列控制區附近。`taxonomy.label_zh` 與 `schema_meta` 都不應是空白狀態。實際 `clasp` 綁定、push 與 deploy 仍需由有權限的維護者操作。
 - GitHub Pages workflow 已可產生並部署 artifact；repository Pages 來源已設定為 GitHub Actions。後續前端變更應用 `pnpm workflow -- --task pages-build` 與 GitHub Actions 部署紀錄驗證。
 - 前端已加入 GA4 基礎追蹤、任務模式、照片卡片操作、候選清單與 AI 助手找圖入口事件；後續調整事件或分析流程前，先依 `docs/frontend-analytics-design.md` 重新確認程式碼現況與事件設計。
-- GA4 後台 service account 權限與 custom dimensions 操作應依 `docs/ga4-operations.md` 執行；custom dimensions 清單由 `config/ga4-custom-dimensions.json` 管理，可用 `pnpm analytics:dimensions:check` dry-run 檢查，BigQuery export 暫不自動化。
+- GA4 後台 service account 權限與 custom dimensions 操作應依 `docs/ga4-operations.md` 執行；property ID 已在 `config/project.json` 設為預設，custom dimensions 清單由 `config/ga4-custom-dimensions.json` 管理，可用 `pnpm analytics:dimensions:check` dry-run 檢查，BigQuery export 暫不自動化。
 - 更順手的多人 review 操作仍應在 Google Sheets 與後續 Apps Script 輔助中完善；AI 候選值寫入不等於 `curation_status = reviewed`。
 
 ## 依角色閱讀
