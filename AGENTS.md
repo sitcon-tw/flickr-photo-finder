@@ -6,67 +6,21 @@ This repository is for building a SITCON Flickr photo finder: a lightweight phot
 
 The main goal is not to replace Flickr. The repository should keep a practical index layer on top of Flickr so organizers can search by real work needs such as social promotion, website visuals, sponsor proposals, sponsor fulfillment evidence, press materials, recap posts, and design assets.
 
-## Current Artifacts
+## Repository Map
 
-- `docs/photo-finder-mvp.md`: historical product notes, MVP rationale, and field decisions.
-- `docs/mvp-implementation-plan.md`: historical MVP plan, field types, taxonomy, curation workflow, and validation criteria.
-- `docs/data-entry-guide.md`: data entry rules for the first curated photo index.
-- `docs/database-collaboration-strategy.md`: Sheets-first photo index and volunteer collaboration strategy.
-- `docs/agent-maintenance-guide.md`: maintenance guide for future agents and technical volunteers.
-- `docs/project-architecture.md`: end-to-end usage flow, data flow, and deployment architecture.
-- `docs/google-sheets-database-design.md`: formal Google Sheets photo index table design.
-- `docs/sheets-sync-workflow.md`: workflow for syncing Google Sheets with repo tools.
-- `docs/ai-readable-dataset.md`: guidance for public AI and read-only tools consuming the dataset.
-- `docs/apps-script-maintenance-design.md`: Apps Script maintenance helper design.
-- `docs/README.md`: documentation index, implementation status, and source-of-truth map.
-- `docs/photo-fields-reference.md`: field reference for the Google Sheets photo table and CSV export format.
-- `docs/public-frontend-architecture.md`: GitHub Pages public read-only frontend architecture.
-- `docs/ai-labeling-operator-guide.md`: AI labeling prepare-to-review handoff, report, and operator workflow.
-- `docs/ai-labeling-contract.md`: AI labeling run input, output, boundary, and validation contract.
-- `docs/ai-labeling-evaluation-notes.md`: AI labeling quality evaluation notes and known failure patterns.
+Use `docs/README.md` as the current documentation index, implementation status, and source-of-truth map. Do not maintain a second full artifact inventory in this file.
+
+Key areas:
+
 - `README.md`: human-facing project overview and quick start.
+- `docs/`: architecture, workflow, data-entry, Apps Script, public frontend, GA4, and AI labeling documentation.
 - `app/`: GitHub Pages and local static public finder UI.
 - `apps-script/`: Google Apps Script source for Sheets-side maintenance helpers. `GeneratedConfig.js` is generated from repo schema and taxonomy.
-- `app/config.js`: public frontend data source configuration.
-- `config/project.json`: project-level organization, Flickr account, and frontend display configuration.
-- `fixtures/albums.csv`: 1.0 sample, local fixture, and Sheets export format reference for the SITCON Flickr album catalog. It is not the authoritative album index or a Sheets cache.
-- `fixtures/photos.csv`: 1.0 sample, local fixture, and Sheets export format reference. It is not the authoritative photo index or a Sheets cache.
-- `fixtures/import-batches.csv`: 1.0 sample, local fixture, and Sheets export format reference for import batch records. It is not the authoritative import batch index or a Sheets cache.
-- `fixtures/ai-proposals/`: valid and invalid AI proposal fixtures for validator regression checks.
+- `config/project.json`: project-level organization, Flickr, Sheets, Apps Script, and GA4 identifiers. These identifiers are not credentials.
+- `data/`: machine-readable schema, taxonomy, search aliases, validation messages, sponsorship snapshot, and AI sampling plan.
+- `fixtures/`: local samples, export-format references, and validator fixtures. These files are not authoritative production data.
+- `scripts/commands/` and `scripts/workflows/`: CLI tools and guided workflows. Prefer `pnpm workflow` or `docs/README.md` before invoking low-level scripts directly.
 - `prompts/ai-labeling.md`: reusable AI labeling prompt template.
-- `data/photo-schema.json`: shared field schema for Google Sheets, CSV exports, Apps Script helpers, and CLI validation.
-- `data/tag-taxonomy.json`: controlled taxonomy for photo tags and enum fields.
-- `data/sponsorship-items.json`: fixed snapshot derived from SITCON 2026 CFS sponsorship item data.
-- `data/ai-cross-activity-sample-plan.json`: versioned cross-activity sampling plan for field, taxonomy, prompt, and validator evaluation runs.
-- `scripts/commands/add-photo.mjs`: helper for generating or appending a CSV row from a Flickr photo URL.
-- `scripts/commands/discover-albums.mjs`: helper for discovering SITCON Flickr albums and writing the local album fixture.
-- `scripts/workflows/eval-workflow.mjs`: guided interface for model quality, prompt, taxonomy, cross-activity sample, and search-gain evaluation work.
-- `scripts/commands/list-albums.mjs`: helper for listing and filtering exported Google Sheets albums before choosing an intake target.
-- `scripts/commands/sync-albums.mjs`: helper for merging a Google Sheets albums CSV export with discovered albums and producing a Sheets-ready CSV.
-- `scripts/commands/build-apps-script-config.mjs`: helper for generating Apps Script config from repo schema and taxonomy.
-- `scripts/commands/create-ai-attempt.mjs`: helper for creating model/round attempts from an existing AI run while reusing the same input photos.
-- `scripts/commands/build-ai-report.mjs`: helper for generating read-only HTML reports for single AI runs or multi-run attempt comparisons.
-- `scripts/commands/status-ai-bulk-run.mjs`: helper for checking large AI run shard workspace, merged proposals, root proposal, and review summary freshness.
-- `scripts/commands/build-cross-activity-ai-sample.mjs`: helper for building a local cross-activity AI labeling sample run from a versioned sampling plan and Flickr album photos.
-- `scripts/commands/run-intake.mjs`: helper for producing a complete intake run artifact from a selected album.
-- `scripts/commands/validate-intake-run.mjs`: helper for checking an intake run artifact before applying it to Google Sheets.
-- `scripts/commands/validate-ai-fixtures.mjs`: helper for checking AI proposal fixtures against the current validator boundary.
-- `scripts/commands/search-experimental.mjs`: helper for comparing taxonomy-only search results with taxonomy plus `visual_description` before writing AI proposals to Sheets.
-- `scripts/commands/apply-intake-run.mjs`: SDK-based helper for applying a reviewed intake run artifact to Google Sheets.
-- `scripts/commands/prepare-ai-run.mjs`: helper for creating a local AI labeling input run from exported Google Sheets photos.
-- `scripts/commands/import-album-photos.mjs`: helper for generating Sheets-ready candidate photo rows, updated album rows, and import batch rows from a selected album.
-- `scripts/lib/flickr/flickr-album-photos.mjs`: shared Flickr album photo URL extraction helper.
-- `scripts/commands/add-album.mjs`: low-level helper for checking or importing missing photos from a discovered album ID or Flickr album URL.
-- `scripts/commands/check-sheets.mjs`: read-only helper for checking public Google Sheets fixed tabs and initialization overwrite risk.
-- `scripts/commands/apply-sheets-init.mjs`: SDK-based helper for applying `sheets:init` CSVs to Google Sheets after an authenticated dry-run.
-- `scripts/commands/init-sheets.mjs`: helper for generating Google Sheets initialization CSVs.
-- `scripts/commands/build-practice-sheet.mjs`: helper for generating a small practice spreadsheet data package from exported formal Sheets rows.
-- `scripts/commands/sync-practice-sheet.mjs`: SDK-based helper for resetting the fixed practice spreadsheet from a generated practice data package.
-- `scripts/commands/sync-sheets-guide.mjs`: SDK-based helper for creating or updating the human-facing `使用說明` guide tab in the formal or practice spreadsheet.
-- `scripts/commands/export-sheets.mjs`: SDK-based helper for exporting fixed Google Sheets tabs to local CSV files for validation and intake workflows.
-- `scripts/lib/finder/serve.mjs`: local static server for the public finder UI.
-- `scripts/commands/validate-data.mjs`: data validation script.
-- `scripts/workflows/workflow.mjs`: guided interactive entrypoint for common project workflows.
 
 ## Data Principles
 

@@ -6,7 +6,7 @@ import { parseSemicolonList } from "../lib/core/csv-utils.mjs";
 
 function printUsage() {
   console.log(`Usage:
-  pnpm sheets:migrate-field-value -- --sheet photos --field recommended_uses --from "網站 hero" --to "網站橫幅"
+  pnpm sheets:migrate-field-value -- --sheet photos --field recommended_uses --from <old-value> --to <new-value>
 
 Options:
   --spreadsheet-id <id>  Google Sheets spreadsheet ID. Default: config/project.json googleSheets.spreadsheetId.

@@ -235,7 +235,7 @@ pnpm albums:sync -- --sheets-export /path/to/sheets-albums.csv --output /tmp/alb
 
 `albums:sync` 會保留 Sheets 上的人工作業欄位，例如 `event_name`、`event_year`、`last_processed_at` 與 `notes`，並用盤點結果更新 `album_id`、`album_url`、`album_title` 與 `photo_count`。若是第一次建立 `albums` 工作表，還沒有 Sheets 匯出檔，可以省略 `--sheets-export`。
 
-產出的 CSV 通過 validation 後，應由 SDK-based Sheets 寫入工具套用到正式 Google Sheets；在 `albums` 更新寫回工具尚未實作前，才由人類暫時手動匯入。這一步不需要把正式 Sheets 資料 commit 回 repo。
+`albums:sync` 產物是低階整理輔助，主要用來檢查盤點結果和既有 Sheets 匯出資料的差異。正式匯入流程應優先透過 `intake:run` 產生可審核 artifact，再用 `sheets:apply-intake` dry-run/write 套用；若只要一次性整理 albums 工作表，才由維護者人工檢查 CSV 後匯入。這一步不需要把正式 Sheets 資料 commit 回 repo。
 
 若本機 `fixtures/albums.csv` 已更新，低階相簿匯入工具可以用相簿 ID 解析 URL；正式流程則應改用 `tmp/sheets-export/albums.csv`：
 
@@ -720,7 +720,7 @@ service account key 是敏感 credential，不能 commit，也不應放在 `tmp/
 | 匯出正式 Sheets 工作 CSV | 需要 `GOOGLE_APPLICATION_CREDENTIALS` 與目標 Sheets 讀取權限 | `pnpm sheets:export` 產生 `tmp/sheets-export/*.csv` 並檢查 header | 可能是環境變數未傳入、credential scope、Sheets 權限、tab/header 或網路問題。 |
 | 套用初始化 CSV | 需要 `GOOGLE_APPLICATION_CREDENTIALS` 與目標 Sheets 編輯權限 | `pnpm sheets:apply-init` dry-run 通過，人工確認後執行 `pnpm sheets:apply-init -- --write`，寫入後讀回驗證通過 | 可能是環境變數未傳入、credential scope、Sheets 權限、tab/header 或資料格式問題，應依工具錯誤分類處理。 |
 | 套用 header 遷移 | 需要 `GOOGLE_APPLICATION_CREDENTIALS` 與目標 Sheets 編輯權限 | `pnpm sheets:migrate-headers` dry-run 通過，人工確認後執行 `pnpm sheets:migrate-headers -- --write`，寫入後讀回驗證通過 | 只支援新增缺少欄位；若 header 有未知欄位、改名或順序不相容，工具會阻擋。 |
-| 遷移固定欄位值 | 需要 `GOOGLE_APPLICATION_CREDENTIALS` 與目標 Sheets 編輯權限 | 例如 `pnpm sheets:migrate-field-value -- --sheet photos --field recommended_uses --from "網站 hero" --to "網站橫幅"` dry-run 通過，人工確認後加上 `--write`，寫入後讀回驗證通過 | 精確更新指定欄位值；多值欄位只替換分號分隔後完全相符的項目，純量欄位只替換完整相同的 cell，不會改其他欄位或任意文字。 |
+| 遷移固定欄位值 | 需要 `GOOGLE_APPLICATION_CREDENTIALS` 與目標 Sheets 編輯權限 | 例如 `pnpm sheets:migrate-field-value -- --sheet photos --field recommended_uses --from <old-value> --to <new-value>` dry-run 通過，人工確認後加上 `--write`，寫入後讀回驗證通過 | 精確更新指定欄位值；多值欄位只替換分號分隔後完全相符的項目，純量欄位只替換完整相同的 cell，不會改其他欄位或任意文字。 |
 | 同步 taxonomy 輔助表 | 需要 `GOOGLE_APPLICATION_CREDENTIALS` 與目標 Sheets 編輯權限 | `pnpm sheets:sync-taxonomy` dry-run 通過，人工確認後執行 `pnpm sheets:sync-taxonomy -- --write`，寫入後讀回驗證通過 | 只重寫 `taxonomy` tab；若 header 是未知格式會阻擋，若 `label_zh` 寫入後仍空白會報錯。 |
 | 同步 `使用說明` 分頁 | 需要 `GOOGLE_APPLICATION_CREDENTIALS` 與目標 Sheets 編輯權限 | 正式表用 `pnpm sheets:sync-guide`；練習表用 `pnpm sheets:sync-guide -- --target practice` 或由 `pnpm sheets:practice:sync` 帶出。加上 `--write` 才會寫入，寫入後讀回驗證通過 | 這是人類入口分頁，不是資料來源；正式表會連到固定練習表，練習表會連回正式表。 |
 | 產生練習用試算表資料包 | 需要已匯出的正式 Sheets 工作快取，不需要 Google 授權 | `pnpm sheets:practice:build` 產生 `tmp/sheets-practice/` 並通過 validation | 代表練習資料包可用；它只供維護者重置固定練習表，不會建立 Google Drive 檔案，也不是正式資料庫。 |

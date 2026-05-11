@@ -177,7 +177,7 @@ pnpm apps-script:build-config
 
 實際部署應由有 Google Apps Script 權限的維護者使用 `clasp` 操作。repo wrapper 會依 target 產生本機 `apps-script/.clasp.json`，內容可參考 `.clasp.json.example`；這個檔案不應 commit，也不應被視為推送目標的真理來源。
 
-此 repo 不把 `@google/clasp` 加進 dependency；標準交接入口是 `pnpm apps-script:*` scripts，內部使用 `pnpm dlx @google/clasp`，避免一般資料工具使用者被迫安裝部署工具，也減少維護者手動輸入重複參數。
+此 repo 不把 `@google/clasp` 加進 dependency；標準交接入口是 package scripts 中的 `apps-script:*` 系列指令，內部使用 `pnpm dlx @google/clasp`，避免一般資料工具使用者被迫安裝部署工具，也減少維護者手動輸入重複參數。
 
 `apps-script/` 固定作為 clasp rootDir。wrapper 不會自動建立 Apps Script 專案；維護者應先從目標 Sheet 的 `擴充功能` -> `Apps Script` 打開或建立該 Sheet 的 bound script，再把那份專案的 Script ID 寫入 `config/project.json`。正式表是預設 target；練習表必須明確指定 `--target practice`。
 
