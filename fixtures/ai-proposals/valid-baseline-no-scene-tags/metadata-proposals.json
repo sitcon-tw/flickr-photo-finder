@@ -1,0 +1,40 @@
+{
+  "proposal_version": 1,
+  "run_id": "fixture-valid-baseline-no-scene-tags",
+  "created_at": "2026-05-11T00:00:00.000Z",
+  "producer": {
+    "type": "ai",
+    "name": "fixture"
+  },
+  "items": [
+    {
+      "photo_id": "93000000001",
+      "fields": {
+        "people_count": {
+          "value": 0,
+          "reason": "畫面未見可辨識人物。"
+        },
+        "subject_type": {
+          "value": "object",
+          "reason": "主要視覺焦點是桌面上的單一活動物件。"
+        },
+        "orientation": {
+          "value": "landscape",
+          "reason": "桌面與背景以左右方向延展。"
+        },
+        "has_negative_space": {
+          "value": true,
+          "reason": "物件周圍有大片桌面背景，可避開主體放字。"
+        },
+        "visual_description": {
+          "value": "桌面中央擺放一個活動小物，周圍是大片淺色桌面，背景沒有可辨識人物。",
+          "reason": "描述畫面中可見物件、桌面背景與人物缺席狀態。"
+        },
+        "curation_status": {
+          "value": "ai_labeled",
+          "reason": "已根據照片可見內容提出 AI 初標候選。"
+        }
+      }
+    }
+  ]
+}

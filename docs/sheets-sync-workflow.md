@@ -510,7 +510,7 @@ pnpm eval:search -- --run-dir tmp/ai-runs/<run-id-or-attempt> --query "有留白
 
 這個 prototype 不呼叫 LLM、不抓圖片，也不寫入 Google Sheets；它只比較 taxonomy-only baseline 與 taxonomy + `visual_description` 的排序差異。
 
-AI 候選值只允許讀圖初標合理處理的欄位，例如 `people_count`、`scene_tags`、`mood_tags`、`recommended_uses`、`sponsorship_items`、`sponsorship_tags`、`orientation`、`has_negative_space`、`safe_crop`、`visual_description`、`public_use_status`、`priority_level`、`collections` 與 `curation_status`。AI 候選值不能修改 Flickr 基本欄位、攝影師或授權；若建議 `curation_status`，只能是 `ai_labeled`；若建議 `public_use_status`，不能直接給 `approved`。
+AI 候選值只允許讀圖初標合理處理的欄位，正式 allowlist 由 `data/photo-schema.json` 的 `ai_field_layers` 定義。AI 候選值不能修改 Flickr 基本欄位、相簿/活動脈絡、攝影師、授權或人工備註；若建議 `curation_status`，只能是 `ai_labeled`；若建議 `public_use_status`，不能直接給 `approved`。`scene_tags` 屬於高召回欄位，低覆蓋會在 review report 中提示，但不會讓 proposal validation 失敗。
 
 若只想執行單一步驟，仍可使用底層指令：
 

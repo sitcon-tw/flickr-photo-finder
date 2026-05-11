@@ -2,30 +2,18 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import {
+  aiBaselineFields,
+  aiValueConstraints,
+  allowedAiFields,
+  allowedAiFieldSet,
   controlledListFields,
   controlledScalarFields,
+  humanOnlyFieldSet,
   listFields,
   photoFields,
 } from "../lib/core/photo-schema.mjs";
 
 const defaultProposalFile = "metadata-proposals.json";
-const allowedAiFields = new Set([
-  "people_count",
-  "subject_type",
-  "scene_tags",
-  "mood_tags",
-  "recommended_uses",
-  "sponsorship_items",
-  "sponsorship_tags",
-  "orientation",
-  "has_negative_space",
-  "safe_crop",
-  "visual_description",
-  "public_use_status",
-  "priority_level",
-  "collections",
-  "curation_status",
-]);
 const repeatedVisualReasonThreshold = 5;
 const visualDescriptionMinLength = 20;
 const visualDescriptionSimilarityThreshold = 0.75;
@@ -269,13 +257,20 @@ function validateTaxonomyValue(photoId, field, value, taxonomy, errors) {
 }
 
 function validateFieldValue(photoId, field, value, taxonomy, fieldSchema, errors) {
-  if (field === "curation_status" && value !== "ai_labeled") {
-    errors.push(formatFieldError(photoId, field, "AI proposals may only set ai_labeled"));
+  const constraints = aiValueConstraints[field] ?? {};
+  if (Array.isArray(constraints.allowed_values) && !constraints.allowed_values.includes(value)) {
+    const message = field === "curation_status"
+      ? "AI proposals may only set ai_labeled"
+      : `AI proposals may only set ${constraints.allowed_values.join(", ")}`;
+    errors.push(formatFieldError(photoId, field, message));
     return;
   }
 
-  if (field === "public_use_status" && value === "approved") {
-    errors.push(formatFieldError(photoId, field, "AI proposals must not set approved"));
+  if (Array.isArray(constraints.disallowed_values) && constraints.disallowed_values.includes(value)) {
+    const message = field === "public_use_status" && value === "approved"
+      ? "AI proposals must not set approved"
+      : `AI proposals must not set ${value}`;
+    errors.push(formatFieldError(photoId, field, message));
     return;
   }
 
@@ -356,8 +351,11 @@ function validateProposalItem(item, context, errors) {
   }
 
   for (const [field, proposal] of Object.entries(item.fields)) {
-    if (!allowedAiFields.has(field)) {
-      errors.push(formatFieldError(photoId, field, "field is not allowed in AI proposals"));
+    if (!allowedAiFieldSet.has(field)) {
+      const message = humanOnlyFieldSet.has(field)
+        ? "field is human-only and not allowed in AI proposals"
+        : "field is not allowed in AI proposals";
+      errors.push(formatFieldError(photoId, field, message));
       continue;
     }
     if (!isPlainObject(proposal)) {
@@ -438,6 +436,23 @@ function validateBatchReasonQuality(proposals, warnings) {
     );
   }
 
+  const parent = visualDescriptions.map((_, index) => index);
+  const find = (index) => {
+    let cursor = index;
+    while (parent[cursor] !== cursor) {
+      parent[cursor] = parent[parent[cursor]];
+      cursor = parent[cursor];
+    }
+    return cursor;
+  };
+  const unite = (left, right) => {
+    const leftRoot = find(left);
+    const rightRoot = find(right);
+    if (leftRoot !== rightRoot) {
+      parent[rightRoot] = leftRoot;
+    }
+  };
+
   for (let leftIndex = 0; leftIndex < visualDescriptions.length; leftIndex += 1) {
     for (let rightIndex = leftIndex + 1; rightIndex < visualDescriptions.length; rightIndex += 1) {
       const left = visualDescriptions[leftIndex];
@@ -446,10 +461,55 @@ function validateBatchReasonQuality(proposals, warnings) {
       if (similarity < visualDescriptionSimilarityThreshold) {
         continue;
       }
-      warnings.push(
-        `visual_description: near-duplicate descriptions for ${left.photoId} and ${right.photoId} (${similarity.toFixed(2)} similarity)`,
-      );
+      unite(leftIndex, rightIndex);
     }
+  }
+
+  const duplicateClusters = new Map();
+  visualDescriptions.forEach((description, index) => {
+    const root = find(index);
+    const cluster = duplicateClusters.get(root) ?? [];
+    cluster.push(description);
+    duplicateClusters.set(root, cluster);
+  });
+  for (const cluster of duplicateClusters.values()) {
+    if (cluster.length < 2) {
+      continue;
+    }
+    const sampleIds = cluster.slice(0, 10).map((item) => item.photoId).join(", ");
+    const suffix = cluster.length > 10 ? ", ..." : "";
+    warnings.push(
+      `visual_description: near-duplicate description cluster for ${cluster.length} photos (${sampleIds}${suffix})`,
+    );
+  }
+}
+
+function validateBaselineCoverage(proposals, warnings) {
+  if (!Array.isArray(proposals.items) || aiBaselineFields.length === 0) {
+    return;
+  }
+
+  const missingByField = new Map();
+  for (const item of proposals.items) {
+    if (!isPlainObject(item) || typeof item.photo_id !== "string" || !isPlainObject(item.fields)) {
+      continue;
+    }
+    for (const field of aiBaselineFields) {
+      if (Object.hasOwn(item.fields, field)) {
+        continue;
+      }
+      const photoIds = missingByField.get(field) ?? [];
+      photoIds.push(item.photo_id);
+      missingByField.set(field, photoIds);
+    }
+  }
+
+  for (const [field, photoIds] of missingByField.entries()) {
+    const sampleIds = photoIds.slice(0, 10).join(", ");
+    const suffix = photoIds.length > 10 ? ", ..." : "";
+    warnings.push(
+      `${field}: missing AI baseline field for ${photoIds.length} photos (${sampleIds}${suffix})`,
+    );
   }
 }
 
@@ -477,10 +537,11 @@ export async function validateAiProposals(options) {
           errors.push(`${item.photo_id}: duplicate proposal item`);
         }
         seenProposalIds.add(item.photo_id);
-      }
-      validateProposalItem(item, { fieldSchemas, photoIds, taxonomy }, errors);
     }
+    validateProposalItem(item, { fieldSchemas, photoIds, taxonomy }, errors);
+  }
     validateBatchReasonQuality(proposals, warnings);
+    validateBaselineCoverage(proposals, warnings);
   }
 
   if (errors.length > 0) {

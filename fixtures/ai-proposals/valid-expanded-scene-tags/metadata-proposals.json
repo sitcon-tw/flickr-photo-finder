@@ -1,0 +1,48 @@
+{
+  "proposal_version": 1,
+  "run_id": "fixture-valid-expanded-scene-tags",
+  "created_at": "2026-05-11T00:00:00.000Z",
+  "producer": {
+    "type": "ai",
+    "name": "fixture"
+  },
+  "items": [
+    {
+      "photo_id": "93000000002",
+      "fields": {
+        "people_count": {
+          "value": 6,
+          "reason": "畫面可辨識約 6 人正在現場移動與解說。"
+        },
+        "subject_type": {
+          "value": "people",
+          "reason": "主要視覺焦點是正在移動與互動的人群。"
+        },
+        "orientation": {
+          "value": "landscape",
+          "reason": "人群、桌面與場地動線以左右方向展開。"
+        },
+        "has_negative_space": {
+          "value": false,
+          "reason": "人物、桌面物資與場地標示占據主要畫面。"
+        },
+        "scene_tags": {
+          "value": [
+            "場佈",
+            "錄音",
+            "導覽"
+          ],
+          "reason": "畫面同時可見志工整理現場物資、桌面收音設備，以及一人帶領小群人沿場地動線解說。"
+        },
+        "visual_description": {
+          "value": "志工在桌邊整理活動物資與線材，桌上可見麥克風和耳機，一人帶領數人沿場地動線解說。",
+          "reason": "描述畫面中物資整理、音訊設備與帶領解說的人群。"
+        },
+        "curation_status": {
+          "value": "ai_labeled",
+          "reason": "已根據照片可見內容提出 AI 初標候選。"
+        }
+      }
+    }
+  ]
+}

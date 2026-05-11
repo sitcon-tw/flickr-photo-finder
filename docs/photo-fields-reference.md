@@ -28,7 +28,7 @@
 | `subject_type` | 否 | 否 | 是 | AI 或整理者 | 大量照片初篩用的主要視覺主體，例如 `people`、`object`、`food`、`text_signage`、`screen`、`space`。 |
 | `photographer` | 否 | 否 | 否 | 匯入工具或整理者 | 攝影師署名。SITCON 是 Flickr 帳號擁有者，不等於攝影師。 |
 | `license` | 否 | 否 | 否 | 整理者 | Flickr 顯示的授權資訊。不確定時留空並使用 `needs_review`。 |
-| `scene_tags` | 否 | 是 | 是 | 整理者 | 活動情境或可見場景元素，例如 `攤位`、`會眾`、`舞台`、`指標`、`場地`、`螢幕`、`頒獎`。 |
+| `scene_tags` | 否 | 是 | 是 | 整理者 | 活動情境或可見場景元素，例如 `攤位`、`會眾`、`舞台`、`指標`、`場地`、`場佈`、`螢幕`、`頒獎`、`錄音`、`導覽`。AI 階段採高召回，人工 reviewed 前必須確認。 |
 | `mood_tags` | 否 | 是 | 是 | 宣傳、設計、整理者 | 照片帶來的感受，例如 `熱鬧`、`專注`、`青春感`。 |
 | `recommended_uses` | 否 | 是 | 是 | 各組整理者 | 適合的工作用途，例如 `社群貼文`、`贊助提案`。 |
 | `sponsorship_items` | 否 | 是 | 是 | 行銷組或熟悉贊助者 | 對應 CFS 贊助品項，必須對齊 `data/sponsorship-items.json`。 |
@@ -48,6 +48,8 @@
 `reviewed` 完整度由 `data/photo-schema.json` 定義：
 
 - `reviewed_required_fields`
+- `ai_field_layers`
+- `ai_value_constraints`
 
 請不要在文件中另外維護一份欄位清單。若規則改變，先改 `data/photo-schema.json`，再讓 `pnpm data:validate` 和相關文件跟著更新。
 

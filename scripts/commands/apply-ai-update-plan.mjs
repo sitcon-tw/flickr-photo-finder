@@ -2,26 +2,9 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { createSheetsService, explainGoogleSheetsError, quoteSheetName } from "../lib/sheets/google-sheets-client.mjs";
 import { googleSheetsSpreadsheetId } from "../lib/core/project-config.mjs";
-import { photoHeaders } from "../lib/core/photo-schema.mjs";
+import { allowedAiFieldSet, aiFieldLayerName, photoHeaders } from "../lib/core/photo-schema.mjs";
 
 const defaultPlanFile = "metadata-update-plan.json";
-const allowedAiFields = new Set([
-  "people_count",
-  "subject_type",
-  "scene_tags",
-  "mood_tags",
-  "recommended_uses",
-  "sponsorship_items",
-  "sponsorship_tags",
-  "orientation",
-  "has_negative_space",
-  "safe_crop",
-  "visual_description",
-  "public_use_status",
-  "priority_level",
-  "collections",
-  "curation_status",
-]);
 
 function printUsage() {
   console.log(`Usage:
@@ -31,6 +14,8 @@ Options:
   --run-dir <dir>       AI run directory containing metadata-update-plan.json.
   --plan <path>         Update plan JSON path. Default: <run-dir>/metadata-update-plan.json.
   --spreadsheet-id <id> Google Sheets spreadsheet ID. Default: config/project.json googleSheets.spreadsheetId.
+  --layers <list>       Comma-separated AI field layers to apply: baseline,recall,optional.
+                        Default: baseline,recall,optional.
   --write               Apply changes. Without this flag the command only performs a dry-run.
   --help, -h            Show this help.
 
@@ -45,6 +30,7 @@ function parseArgs(argv) {
   const args = argv.slice(2).filter((arg) => arg !== "--");
   const options = {
     help: false,
+    layers: new Set(["baseline", "recall", "optional"]),
     planPath: "",
     runDir: "",
     spreadsheetId: googleSheetsSpreadsheetId,
@@ -63,6 +49,9 @@ function parseArgs(argv) {
       index += 1;
     } else if (arg === "--spreadsheet-id") {
       options.spreadsheetId = args[index + 1] ?? "";
+      index += 1;
+    } else if (arg === "--layers") {
+      options.layers = parseLayers(args[index + 1] ?? "");
       index += 1;
     } else if (arg === "--write") {
       options.write = true;
@@ -84,6 +73,23 @@ function parseArgs(argv) {
   }
 
   return options;
+}
+
+function parseLayers(value) {
+  const validLayers = new Set(["baseline", "recall", "optional"]);
+  const layers = String(value)
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+  if (layers.length === 0) {
+    throw new Error("--layers requires at least one layer");
+  }
+  for (const layer of layers) {
+    if (!validLayers.has(layer)) {
+      throw new Error("--layers values must be one of: baseline,recall,optional");
+    }
+  }
+  return new Set(layers);
 }
 
 async function readJson(path) {
@@ -182,8 +188,11 @@ function validatePlan(plan) {
     }
     if (typeof update.field !== "string" || !update.field.trim()) {
       errors.push(`${update.photo_id ?? "(unknown)"}: update.field is required`);
-    } else if (!allowedAiFields.has(update.field)) {
+    } else if (!allowedAiFieldSet.has(update.field)) {
       errors.push(`${update.photo_id}.${update.field}: field is not allowed for AI update application`);
+    }
+    if (update.field_layer !== undefined && typeof update.field_layer !== "string") {
+      errors.push(`${update.photo_id}.${update.field}: field_layer must be a string when present`);
     }
     if (typeof update.current_value !== "string") {
       errors.push(`${update.photo_id}.${update.field}: current_value must be a string`);
@@ -201,6 +210,16 @@ function validatePlan(plan) {
     seenTargets.add(targetKey);
   }
   return errors;
+}
+
+function filterPlanByLayers(plan, layers) {
+  return {
+    ...plan,
+    updates: (plan.updates ?? []).filter((update) => {
+      const layer = update.field_layer || aiFieldLayerName(update.field);
+      return layers.has(layer);
+    }),
+  };
 }
 
 function buildCellPlan(plan, rows) {
@@ -242,6 +261,7 @@ function buildCellPlan(plan, rows) {
 
   return {
     blockers,
+    layers: plan.layers ?? [],
     runId: plan.run_id,
     updates,
   };
@@ -250,6 +270,7 @@ function buildCellPlan(plan, rows) {
 function printPlan(cellPlan, { write }) {
   console.log(`Mode: ${write ? "write" : "dry-run"}`);
   console.log(`Run: ${cellPlan.runId}`);
+  console.log(`Layers: ${cellPlan.layers.join(", ")}`);
   console.log(`- cell updates: ${cellPlan.updates.length}`);
   for (const update of cellPlan.updates) {
     console.log(`  - ${update.range}: ${update.photo_id}.${update.field} "${update.current_value}" -> "${update.proposed_value}"`);
@@ -301,7 +322,11 @@ async function main() {
     return;
   }
 
-  const plan = await readJson(options.planPath);
+  const rawPlan = await readJson(options.planPath);
+  const plan = {
+    ...filterPlanByLayers(rawPlan, options.layers),
+    layers: [...options.layers],
+  };
   const planErrors = validatePlan(plan);
   if (planErrors.length > 0) {
     throw new Error(planErrors.join("\n"));

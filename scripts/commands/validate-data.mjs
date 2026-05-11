@@ -3,11 +3,17 @@ import { URL } from "node:url";
 import { parseCsv, parseSemicolonList } from "../lib/core/csv-utils.mjs";
 import "../lib/core/project-config.mjs";
 import {
+  aiBaselineFields,
+  aiOptionalFields,
+  aiRecallFields,
+  aiValueConstraints,
   albumHeaders,
   controlledListFields,
   controlledScalarFields,
+  humanOnlyFields,
   importBatchHeaders,
   listFields,
+  photoTableSchema,
   photoFields,
   photoHeaders,
   requiredFields,
@@ -330,6 +336,75 @@ function validateValidationMessages(validationMessages) {
   }
 }
 
+function validatePhotoSchemaAiLayers() {
+  const knownFields = new Set(photoFields.map((field) => field.name));
+  const layers = {
+    ai_baseline_fields: aiBaselineFields,
+    ai_optional_fields: aiOptionalFields,
+    ai_recall_fields: aiRecallFields,
+    human_only_fields: humanOnlyFields,
+  };
+  const seen = new Map();
+
+  if (!photoTableSchema.ai_field_layers || typeof photoTableSchema.ai_field_layers !== "object" || Array.isArray(photoTableSchema.ai_field_layers)) {
+    addError("data/photo-schema.json: tables.photos.ai_field_layers must be an object");
+  }
+
+  for (const [layer, fields] of Object.entries(layers)) {
+    if (!Array.isArray(fields)) {
+      addError(`data/photo-schema.json: tables.photos.ai_field_layers.${layer} must be an array`);
+      continue;
+    }
+    for (const field of fields) {
+      if (!knownFields.has(field)) {
+        addError(`data/photo-schema.json: ${layer} contains unknown field "${field}"`);
+      }
+      if (seen.has(field)) {
+        addError(`data/photo-schema.json: field "${field}" appears in both ${seen.get(field)} and ${layer}`);
+      } else {
+        seen.set(field, layer);
+      }
+    }
+  }
+
+  for (const field of reviewedRequiredFields) {
+    if (!knownFields.has(field)) {
+      addError(`data/photo-schema.json: reviewed_required_fields contains unknown field "${field}"`);
+    }
+  }
+
+  if (!aiRecallFields.includes("scene_tags")) {
+    addError("data/photo-schema.json: ai_recall_fields must include scene_tags");
+  }
+  if (!reviewedRequiredFields.includes("scene_tags")) {
+    addError("data/photo-schema.json: reviewed_required_fields must include scene_tags as the human reviewed completion gate");
+  }
+
+  if (!aiValueConstraints || typeof aiValueConstraints !== "object" || Array.isArray(aiValueConstraints)) {
+    addError("data/photo-schema.json: tables.photos.ai_value_constraints must be an object");
+    return;
+  }
+
+  for (const [field, constraints] of Object.entries(aiValueConstraints)) {
+    if (!knownFields.has(field)) {
+      addError(`data/photo-schema.json: ai_value_constraints contains unknown field "${field}"`);
+      continue;
+    }
+    if (!constraints || typeof constraints !== "object" || Array.isArray(constraints)) {
+      addError(`data/photo-schema.json: ai_value_constraints.${field} must be an object`);
+      continue;
+    }
+    for (const key of ["allowed_values", "disallowed_values"]) {
+      if (constraints[key] === undefined) {
+        continue;
+      }
+      if (!Array.isArray(constraints[key])) {
+        addError(`data/photo-schema.json: ai_value_constraints.${field}.${key} must be an array`);
+      }
+    }
+  }
+}
+
 function validatePhotoRow(row, rowNumber, taxonomy) {
   const photo = Object.fromEntries(photoHeaders.map((header, index) => [header, row[index] ?? ""]));
 
@@ -626,6 +701,7 @@ if (rows.length === 0) {
   const [headers, ...photoRows] = rows;
   validateHeaders(paths.photos, headers, photoHeaders);
   validateTaxonomy(taxonomy, sponsorshipItems);
+  validatePhotoSchemaAiLayers();
   validateSearchAliases(searchAliases, taxonomy);
   validateValidationMessages(validationMessages);
   validateUniquePhotoFields(photoRows);

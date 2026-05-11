@@ -154,6 +154,10 @@ pnpm ai:review -- --run-dir tmp/ai-runs/<run-id>
 
 `metadata-review-summary.md` 頂部會列出本次使用的 prompt template path 與短 hash。舊 run 若顯示 `unknown`，代表當時尚未記錄 prompt 版本；比較結果時應把 prompt 版本視為未知因素。若 run 使用的 prompt hash 與目前 repo prompt 不同，`Review Notes` 會提示重新建立 run 或 attempt，避免把舊 prompt 結果當成新版 prompt 評估。
 
+`scene_tags` 是 AI 高召回欄位，也是人工 `reviewed` 的完成門檻。`ai:review` 會顯示整批、相簿與分片層級的 `scene_tags` 覆蓋率；低覆蓋代表可能影響找圖召回，應進入抽查或重跑低覆蓋 shard，但不代表 proposal 格式失敗。
+
+大型 run 的正式判讀來源是 run 目錄中的 root `metadata-proposals.json`。`/tmp/ai-labeling-shards/<run-id>/` 或 run 內 `proposal-shards/` 只作為分工與診斷 artifact；若 shard output 與 root proposal 不一致，回寫與 review 應以 root proposal 為準，避免重新 merge 倒退已修正結果。
+
 若失敗，請根據錯誤訊息修正 `metadata-proposals.json`，不要改 `photos.json` 或正式 Sheets。
 
 若通過但輸出 review warnings，代表格式與責任邊界可接受，但仍有批次品質疑慮需要人工判斷；例如相同 `public_use_status` reason 在多張照片重複，可能是模型套模板，也可能是同一活動情境下合理的共同限制。`metadata-review-summary.md` 的 `Review Focus` 會依 warning 挑出第一批建議抽查的照片，操作者應先看這段，再決定是否需要打開完整 diff、HTML report 或 update CSV。
@@ -230,6 +234,7 @@ pnpm sheets:apply-ai-updates -- --run-dir tmp/ai-runs/<run-id>
 
 - `subject_type` 是大量照片初篩用的主要視覺主體粗分類，只能單選 `people`、`object`、`food`、`text_signage`、`screen` 或 `space`；不要拿它描述人數規模、活動場景或用途。
 - `scene_tags` 寫畫面事實，例如 `合照`、`舞台`、`背板`。
+- `scene_tags` 採召回優先：有合理可見依據就應標。`場佈` 是佈置、撤場、搬運、器材架設或物資整理；`錄音` 是 Podcast、訪談、廣播、錄音室或明確音訊製作；`導覽` 是有人帶領人群參觀或解說場地。不要把一般講者麥克風、走廊移動或完成後背板照硬套成這些值。
 - `mood_tags` 寫照片帶來的感受，例如 `儀式感`、`成就感`、`青春感`。
 - `recommended_uses` 寫可能工作用途，例如 `社群貼文`、`活動回顧`、`新聞稿`。
 - `mood_tags` 不應被當成品質分數；品質好但情緒中性的照片可以沒有 mood。相反地，只要照片有可見的表情、互動、人群密度、舞台正式感、青春氛圍、手作專注或幕後準備狀態，足以支撐宣傳感受，就應提出 1 到 2 個候選值。

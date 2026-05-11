@@ -54,7 +54,7 @@ SITCON Flickr 上的照片擁有者是 SITCON，但攝影師 credit 會放在 Fl
 | --- | --- |
 | `people_count` | 照片中可辨識的人數估計值。無人可填 `0`，人數很多但無法精確計算時可估算或先留空。 |
 | `subject_type` | 照片第一眼主要視覺主體，只能單選 `people`、`object`、`food`、`text_signage`、`screen` 或 `space`。不要拿來描述人數規模或活動場景。 |
-| `scene_tags` | 活動情境或可見場景元素，例如攤位、會眾、舞台、工作人員、合照、指標、場地、螢幕、頒獎、兒童。 |
+| `scene_tags` | 活動情境或可見場景元素，例如攤位、會眾、舞台、工作人員、合照、指標、場地、場佈、螢幕、頒獎、兒童、錄音、導覽。 |
 | `mood_tags` | 照片帶來的感受，例如熱鬧、專注、友善、青春感、幕後感。 |
 | `recommended_uses` | 適合的工作用途，例如社群貼文、網站橫幅、志工招募、贊助提案。 |
 | `visual_description` | 1 到 2 句中立描述照片可見內容，例如人物動作、物件位置、畫面文字與空間關係。這不是 reviewed 必填，但能補足自然語言找圖。 |
@@ -64,6 +64,8 @@ SITCON Flickr 上的照片擁有者是 SITCON，但攝影師 credit 會放在 Fl
 | `curation_notes` | 可公開閱讀的整理脈絡、注意事項或使用建議。不要寫敏感內部資訊。 |
 
 `reviewed` 完整度由 `data/photo-schema.json` 的 `reviewed_required_fields` 定義，並由 `pnpm data:validate` 檢查。不要在這份指南另外維護欄位清單；若規則改變，請先更新 schema。`public_use_status = approved` 不會讓 `photographer` 或 `license` 變成必填，缺值時只代表實際對外使用前仍要回 Flickr 原頁確認來源脈絡。
+
+`scene_tags` 在 AI 初標階段是高召回候選，可能需要人類修正；在人工 `reviewed` 階段則是完成審核門檻，目的是讓已整理照片能被場景篩選找到。
 
 ## CSV 與多值格式
 

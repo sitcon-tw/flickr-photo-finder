@@ -669,7 +669,7 @@ pnpm eval:search -- --run-dir <attempt-dir> --top 5
 
 `subject_type` 在跨活動樣本中是有價值的。people 仍是最多，但 object、food、text_signage、screen、space 都有出現需求，特別是在紀念品、咖啡廳、導遊團、廣播錄音與舞台畫面中能幫助初篩。
 
-`scene_tags` 目前比前一版更能涵蓋跨活動場景。新加入的 `指標`、`場地`、`螢幕`、`頒獎`、`兒童` 都有用武之地。暫時不建議再急著新增更多 scene tag；下一步應先看模型是否把既有值用對。
+`scene_tags` 目前比前一版更能涵蓋跨活動場景。新加入的 `指標`、`場地`、`螢幕`、`頒獎`、`兒童` 都有用武之地。後續兩個大型 run 顯示 `scene_tags` 召回率會直接影響找圖機會，因此本輪再加入 `場佈`、`錄音`、`導覽`，並用嚴格負例與 album/shard-level QA 控制誤標。
 
 `mood_tags` 仍是低信任輔助欄位。Claude / Gemini 覆蓋較高，GPT 很低，表示 prompt 對 mood 的要求仍不穩。它適合搜尋語感，不適合作為精準篩選條件。
 

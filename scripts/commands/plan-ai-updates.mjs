@@ -2,6 +2,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { csvEscape } from "../lib/core/csv-utils.mjs";
+import { aiFieldLayerName } from "../lib/core/photo-schema.mjs";
 import { fieldLabel, formatDisplayValue, formatStoredValue } from "../lib/core/metadata-display.mjs";
 import { validateAiProposals } from "./validate-ai-proposals.mjs";
 
@@ -19,6 +20,8 @@ Options:
   --json-output <path>  JSON update plan path. Default: <run-dir>/metadata-update-plan.json.
   --csv-output <path>   CSV update plan path. Default: <run-dir>/metadata-update-plan.csv.
   --include-unchanged   Include proposals where current and proposed values are identical.
+  --layers <list>       Comma-separated AI field layers to include: baseline,recall,optional.
+                        Default: baseline,recall,optional.
   --help, -h            Show this help.
 
 This command validates metadata-proposals.json first, then renders a
@@ -32,6 +35,7 @@ function parseArgs(argv) {
     help: false,
     includeUnchanged: false,
     jsonOutputPath: "",
+    layers: new Set(["baseline", "recall", "optional"]),
     proposalsPath: "",
     runDir: "",
   };
@@ -54,6 +58,9 @@ function parseArgs(argv) {
       index += 1;
     } else if (arg === "--include-unchanged") {
       options.includeUnchanged = true;
+    } else if (arg === "--layers") {
+      options.layers = parseLayers(args[index + 1] ?? "");
+      index += 1;
     } else {
       throw new Error(`Unknown option: ${arg}`);
     }
@@ -77,6 +84,23 @@ function parseArgs(argv) {
   return options;
 }
 
+function parseLayers(value) {
+  const validLayers = new Set(["baseline", "recall", "optional"]);
+  const layers = String(value)
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+  if (layers.length === 0) {
+    throw new Error("--layers requires at least one layer");
+  }
+  for (const layer of layers) {
+    if (!validLayers.has(layer)) {
+      throw new Error("--layers values must be one of: baseline,recall,optional");
+    }
+  }
+  return new Set(layers);
+}
+
 async function readJson(path) {
   try {
     return JSON.parse(await readFile(path, "utf8"));
@@ -85,13 +109,17 @@ async function readJson(path) {
   }
 }
 
-function buildUpdates(photos, proposals, { includeUnchanged }) {
+function buildUpdates(photos, proposals, { includeUnchanged, layers = new Set(["baseline", "recall", "optional"]) }) {
   const photosById = new Map(photos.map((photo) => [photo.photo_id, photo]));
   const updates = [];
 
   for (const item of proposals.items) {
     const photo = photosById.get(item.photo_id) ?? {};
     for (const [field, proposal] of Object.entries(item.fields)) {
+      const fieldLayer = aiFieldLayerName(field);
+      if (fieldLayer && !layers.has(fieldLayer)) {
+        continue;
+      }
       const currentValue = formatStoredValue(photo[field] ?? "");
       const proposedValue = formatStoredValue(proposal.value);
       const changed = currentValue !== proposedValue;
@@ -104,6 +132,7 @@ function buildUpdates(photos, proposals, { includeUnchanged }) {
         confidence: proposal.confidence ?? null,
         current_value: currentValue,
         field,
+        field_layer: fieldLayer,
         photo_id: item.photo_id,
         photo_url: photo.photo_url ?? "",
         proposed_value: proposedValue,
@@ -120,6 +149,7 @@ function updatesToCsv(updates) {
     "photo_id",
     "photo_url",
     "field",
+    "field_layer",
     "field_label",
     "current_value",
     "current_display",
@@ -146,6 +176,7 @@ function updatesToCsv(updates) {
 }
 
 export async function buildPlan(options) {
+  const layers = options.layers ?? new Set(["baseline", "recall", "optional"]);
   await validateAiProposals({
     proposalsPath: options.proposalsPath,
     runDir: options.runDir,
@@ -157,12 +188,13 @@ export async function buildPlan(options) {
     readJson(options.proposalsPath),
   ]);
 
-  const updates = buildUpdates(photos, proposals, options);
+  const updates = buildUpdates(photos, proposals, { ...options, layers });
   const plan = {
     created_at: new Date().toISOString(),
     csv_output: options.csvOutputPath,
     include_unchanged: options.includeUnchanged,
     json_output: options.jsonOutputPath,
+    layers: [...layers],
     plan_version: 1,
     proposal_created_at: proposals.created_at,
     proposal_producer: proposals.producer,

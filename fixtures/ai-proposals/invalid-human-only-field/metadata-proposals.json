@@ -1,0 +1,20 @@
+{
+  "proposal_version": 1,
+  "run_id": "fixture-invalid-human-only-field",
+  "created_at": "2026-05-11T00:00:00.000Z",
+  "producer": {
+    "type": "ai",
+    "name": "fixture"
+  },
+  "items": [
+    {
+      "photo_id": "93000000004",
+      "fields": {
+        "photographer": {
+          "value": "AI 推測攝影師",
+          "reason": "AI 不應根據畫面推測攝影師。"
+        }
+      }
+    }
+  ]
+}

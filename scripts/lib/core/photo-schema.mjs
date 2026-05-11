@@ -42,3 +42,31 @@ export const controlledScalarFields = photoFields
   .map((field) => field.name);
 
 export const reviewedRequiredFields = photoTableSchema.reviewed_required_fields;
+
+const aiFieldLayers = photoTableSchema.ai_field_layers ?? {};
+
+export const aiBaselineFields = aiFieldLayers.ai_baseline_fields ?? [];
+export const aiRecallFields = aiFieldLayers.ai_recall_fields ?? [];
+export const aiOptionalFields = aiFieldLayers.ai_optional_fields ?? [];
+export const humanOnlyFields = aiFieldLayers.human_only_fields ?? [];
+export const aiValueConstraints = photoTableSchema.ai_value_constraints ?? {};
+
+export const allowedAiFields = [
+  ...aiBaselineFields,
+  ...aiRecallFields,
+  ...aiOptionalFields,
+];
+
+export const allowedAiFieldSet = new Set(allowedAiFields);
+export const humanOnlyFieldSet = new Set(humanOnlyFields);
+
+export const aiFieldLayerByName = new Map([
+  ...aiBaselineFields.map((field) => [field, "baseline"]),
+  ...aiRecallFields.map((field) => [field, "recall"]),
+  ...aiOptionalFields.map((field) => [field, "optional"]),
+  ...humanOnlyFields.map((field) => [field, "human_only"]),
+]);
+
+export function aiFieldLayerName(field) {
+  return aiFieldLayerByName.get(field) ?? "";
+}

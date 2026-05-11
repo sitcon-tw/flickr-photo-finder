@@ -2,7 +2,7 @@
 var SITCON_PHOTO_FINDER_CONFIG = {
   "generatedAt": "not recorded in committed source",
   "schemaVersion": "2026-1.0.0",
-  "taxonomyVersion": "sha256:5ca75fa79824",
+  "taxonomyVersion": "sha256:e238f9a83700",
   "sponsorshipItemsVersion": "sha256:e33bfe6034e1",
   "sponsorshipItemsSnapshotNote": "SITCON 2026 CFS has ended. Treat this file as a fixed snapshot; future CFS versions should replace or extend it explicitly instead of being automatically synced.",
   "photosSheetName": "photos",
@@ -286,9 +286,12 @@ var SITCON_PHOTO_FINDER_CONFIG = {
       "攝影",
       "指標",
       "場地",
+      "場佈",
       "螢幕",
       "頒獎",
-      "兒童"
+      "兒童",
+      "錄音",
+      "導覽"
     ],
     "subject_type": [
       "people",
@@ -582,21 +585,39 @@ var SITCON_PHOTO_FINDER_CONFIG = {
       },
       {
         "taxonomy_key": "scene_tags",
+        "value": "場佈",
+        "label_zh": "場佈",
+        "order": "19"
+      },
+      {
+        "taxonomy_key": "scene_tags",
         "value": "螢幕",
         "label_zh": "螢幕",
-        "order": "19"
+        "order": "20"
       },
       {
         "taxonomy_key": "scene_tags",
         "value": "頒獎",
         "label_zh": "頒獎",
-        "order": "20"
+        "order": "21"
       },
       {
         "taxonomy_key": "scene_tags",
         "value": "兒童",
         "label_zh": "兒童",
-        "order": "21"
+        "order": "22"
+      },
+      {
+        "taxonomy_key": "scene_tags",
+        "value": "錄音",
+        "label_zh": "錄音",
+        "order": "23"
+      },
+      {
+        "taxonomy_key": "scene_tags",
+        "value": "導覽",
+        "label_zh": "導覽",
+        "order": "24"
       },
       {
         "taxonomy_key": "subject_type",

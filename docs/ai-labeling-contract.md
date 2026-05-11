@@ -169,9 +169,18 @@ pnpm ai:review -- --run-dir tmp/ai-runs/<run-id> --proposals /tmp/ai-labeling-sh
 - 每個欄位 proposal 必須包含 `value` 和非空白 `reason`。
 - `confidence` 可省略；若提供，必須是 `0` 到 `1` 的數字。
 
-## 可輸出欄位
+## 可輸出欄位與 AI 分層
 
-AI proposal 目前只允許以下欄位：
+AI proposal 允許欄位由 `data/photo-schema.json` 的 `tables.photos.ai_field_layers` 定義。validator、update plan、report 與回寫工具都應讀同一份 schema，不要各自硬編清單。
+
+分層語意：
+
+- `ai_baseline_fields`: 圖片可讀時 AI 通常應提出的基礎讀圖候選，例如人數、主體、方向、留白、畫面描述與 `curation_status = ai_labeled`。
+- `ai_recall_fields`: 高召回欄位。`scene_tags` 屬於這層，只要有合理可見依據就應提出，避免照片在大量資料中失去被場景篩選找到的機會；缺漏是 review warning，不是格式錯誤。
+- `ai_optional_fields`: 有明確依據才提出的用途、裁切、公開使用提醒、推薦優先度與贊助欄位。
+- `human_only_fields`: Flickr 匯入欄位、相簿/活動脈絡、攝影師、授權與人工備註等，不可由 AI proposal 修改。
+
+目前允許以下 AI 欄位：
 
 | 欄位 | `value` 型別 | 說明 |
 | --- | --- | --- |
@@ -227,6 +236,8 @@ AI 應遵守以下限制：
 - 不要把 `scene_tags`、`sponsorship_items`、`sponsorship_tags` 混用。
 - 不要覆蓋人工值；proposal 只是候選，後續工具會呈現差異給人類確認。
 - `people_count`、`subject_type`、`orientation`、`has_negative_space` 是 AI 初標的基礎讀圖欄位；只要圖片可讀，通常應提出候選值。
+- `scene_tags` 是高召回欄位。只要照片中有合理可見場景、活動流程或重要元素，就應提出候選值；不要因為它不是 row-level 必填而整批省略。
+- `scene_tags` 仍是人工 `reviewed` 的完成門檻。這代表人類在 Sheets 完成審核前要補齊或確認，不代表 AI proposal 缺漏時應被 validator hard fail。
 - `subject_type` 只描述照片第一眼主要視覺主體是 `people`、`object`、`food`、`text_signage`、`screen` 或 `space`，不描述活動場景、人數規模、用途或品質。若主體是人，不論一人、多人或群眾都使用 `people`；人數規模只用 `people_count` 表達。
 - `safe_crop` 應從版面可用性判斷。只有在裁切後主體、臉部、重要文字與主要物件仍可保留時才提出該比例。
 - `visual_description` 應描述 taxonomy 欄位難以涵蓋的可見細節，例如物件、文字、姿勢、動作、表情、空間位置與構圖關係。它不是照片標題，也不是欄位 reason。

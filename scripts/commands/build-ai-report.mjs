@@ -1,6 +1,7 @@
 import { access, mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { basename, join, relative, sep } from "node:path";
 import { getAiLabelingPromptMetadata } from "../lib/ai/ai-labeling-prompt.mjs";
+import { aiFieldLayerName, allowedAiFields } from "../lib/core/photo-schema.mjs";
 import { defaultMetadataDisplayContext, fieldLabel } from "../lib/core/metadata-display.mjs";
 import { validateAiProposals } from "./validate-ai-proposals.mjs";
 
@@ -9,23 +10,8 @@ const proposalFile = "metadata-proposals.json";
 const reviewSummaryFile = "metadata-review-summary.md";
 const updatePlanFile = "metadata-update-plan.json";
 
-const preferredFieldOrder = [
-  "people_count",
-  "subject_type",
-  "orientation",
-  "has_negative_space",
-  "safe_crop",
-  "visual_description",
-  "scene_tags",
-  "mood_tags",
-  "recommended_uses",
-  "sponsorship_items",
-  "sponsorship_tags",
-  "public_use_status",
-  "priority_level",
-  "collections",
-  "curation_status",
-];
+const preferredFieldOrder = allowedAiFields;
+const watchFields = new Set(["scene_tags", "visual_description", "sponsorship_items", "sponsorship_tags", "public_use_status", "safe_crop"]);
 
 function printUsage() {
   console.log(`Usage:
@@ -444,12 +430,14 @@ function buildReportData(runs, options) {
       warning_count: run.validation.warning_count,
     })),
     field_labels: Object.fromEntries(orderedFields.map((field) => [field, fieldLabel(field, { includeRaw: true })])),
+    field_layers: Object.fromEntries(orderedFields.map((field) => [field, aiFieldLayerName(field)])),
     fields: orderedFields,
     generated_at: new Date().toISOString(),
     mode,
     option_labels: defaultMetadataDisplayContext.taxonomy.option_labels ?? {},
     photos,
     title: options.title || (mode === "single" ? "AI 初標單次檢視報表" : "AI 初標比較報表"),
+    watch_fields: [...watchFields],
     warnings: buildWarnings(runs),
   };
 }
@@ -765,7 +753,7 @@ function renderHtml(reportData) {
     const preferredFields = ${JSON.stringify(preferredFieldOrder)};
     const isSingleMode = data.mode === "single";
     const pageSize = 50;
-    const watchFields = new Set(["visual_description", "sponsorship_items", "sponsorship_tags", "public_use_status", "safe_crop"]);
+    const watchFields = new Set(data.watch_fields || []);
     const state = {
       field: "all",
       onlyDiffFields: false,
@@ -803,6 +791,14 @@ function renderHtml(reportData) {
 
     function fieldLabel(field) {
       return data.field_labels?.[field] || field;
+    }
+
+    function fieldLayerLabel(field) {
+      const layer = data.field_layers?.[field] || "";
+      if (layer === "baseline") return "baseline";
+      if (layer === "recall") return "recall";
+      if (layer === "optional") return "optional";
+      return "";
     }
 
     function valueLabel(field, raw) {
@@ -1024,6 +1020,10 @@ function renderHtml(reportData) {
           const block = el("section", "proposal-block" + (watchFields.has(field) ? " watch" : ""));
           const fieldLine = el("div", "proposal-field");
           fieldLine.append(el("span", "", fieldLabel(field)));
+          const layerLabel = fieldLayerLabel(field);
+          if (layerLabel) {
+            fieldLine.append(el("span", "pill", layerLabel));
+          }
           for (const focus of (attempt.focus || []).filter((item) => item.field === field)) {
             fieldLine.append(el("span", "pill warn", focus.issue));
           }
@@ -1081,7 +1081,11 @@ function renderHtml(reportData) {
         const hasDiff = fieldHasDiff(photo, field);
         if (state.onlyDiffFields && !hasDiff) continue;
         const row = el("tr", hasDiff ? "diff-row" : "");
-        row.append(el("td", "field-name", fieldLabel(field)));
+        const fieldCell = el("td", "field-name");
+        fieldCell.append(el("div", "", fieldLabel(field)));
+        const layerLabel = fieldLayerLabel(field);
+        if (layerLabel) fieldCell.append(el("div", "meta", layerLabel));
+        row.append(fieldCell);
         for (const attempt of photo.attempts) {
           const cell = el("td");
           const proposal = attempt.fields[field];

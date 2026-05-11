@@ -1,7 +1,9 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { access, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { getAiLabelingPromptMetadata } from "../lib/ai/ai-labeling-prompt.mjs";
+import { aiBaselineFields, aiOptionalFields, aiRecallFields } from "../lib/core/photo-schema.mjs";
 import { buildPlan } from "./plan-ai-updates.mjs";
 import { renderDiff } from "./render-ai-diff.mjs";
 import { fieldLabel, formatDisplayValue, formatStoredValue } from "../lib/core/metadata-display.mjs";
@@ -36,6 +38,16 @@ const broadMoodThresholds = new Map([
 ]);
 const lowMoodCoverageMinimumItems = 20;
 const lowMoodCoverageThreshold = 0.2;
+const largeRunMinimumItems = 200;
+const lowSceneRunCoverageThreshold = 0.75;
+const prominentSceneRunCoverageThreshold = 0.6;
+const lowSceneScopeMinimumItems = 20;
+const lowSceneScopeCoverageThreshold = 0.5;
+const urgentSceneScopeCoverageThreshold = 0.25;
+const lowSceneDensityThreshold = 1;
+const highSceneDensityThreshold = 2.5;
+const runTagConcentrationThreshold = 0.4;
+const scopeTagConcentrationThreshold = 0.8;
 const reviewFocusMaxRows = 25;
 const asciiWordPattern = /[A-Za-z][A-Za-z0-9'_-]{2,}(?:\s+[A-Za-z][A-Za-z0-9'_-]{2,}){4,}/;
 
@@ -120,6 +132,39 @@ async function readJson(path) {
   }
 }
 
+async function pathExists(path) {
+  try {
+    await access(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function readJsonIfExists(path) {
+  if (!(await pathExists(path))) {
+    return null;
+  }
+  return readJson(path);
+}
+
+function sha256Text(value) {
+  return createHash("sha256").update(value).digest("hex");
+}
+
+async function listFilesIfExists(dir) {
+  try {
+    return await readdir(dir);
+  } catch {
+    return [];
+  }
+}
+
+function formatShardNameFromFilename(filename) {
+  const match = filename.match(/^shard-(\d+)-(?:input|proposals)\.json$/);
+  return match ? `shard-${match[1]}` : "";
+}
+
 function markdownCell(value) {
   return formatStoredValue(value)
     .replaceAll("\\", "\\\\")
@@ -175,6 +220,91 @@ function distributionRows(items, field) {
   ]);
 }
 
+function layerCoverageRows(items) {
+  const layerDefinitions = [
+    ["baseline", aiBaselineFields],
+    ["recall", aiRecallFields],
+    ["optional", aiOptionalFields],
+  ];
+  return layerDefinitions.flatMap(([layer, fields]) =>
+    fields.map((field) => {
+      const count = items.filter((item) => item.fields[field]).length;
+      return [
+        layer,
+        fieldLabel(field, { includeRaw: true }),
+        count,
+        items.length > 0 ? formatPercent(count / items.length) : "0%",
+      ];
+    }),
+  );
+}
+
+function sceneStatsForItems(items) {
+  const sceneValueLists = items.map((item) => valuesForField(item, "scene_tags"));
+  const withScene = sceneValueLists.filter((values) => values.length > 0).length;
+  const allSceneValues = sceneValueLists.flat();
+  const topScene = countValues(allSceneValues)[0] ?? { count: 0, value: "" };
+  return {
+    averageDensity: items.length > 0 ? allSceneValues.length / items.length : 0,
+    coverage: items.length > 0 ? withScene / items.length : 0,
+    itemCount: items.length,
+    topScene,
+    topSceneRatio: items.length > 0 ? topScene.count / items.length : 0,
+    withScene,
+  };
+}
+
+function sceneQaIssue(stats, { minimumItems, scope }) {
+  if (stats.itemCount === 0 || stats.itemCount < minimumItems) {
+    return "";
+  }
+  if (stats.coverage < urgentSceneScopeCoverageThreshold) {
+    return `${scope} scene_tags 覆蓋率低於 ${formatPercent(urgentSceneScopeCoverageThreshold)}，建議優先檢查是否漏標或 shard 失效`;
+  }
+  if (stats.coverage < lowSceneScopeCoverageThreshold) {
+    return `${scope} scene_tags 覆蓋率低於 ${formatPercent(lowSceneScopeCoverageThreshold)}，建議抽查`;
+  }
+  if (stats.averageDensity < lowSceneDensityThreshold) {
+    return `${scope} scene tag density 低於 ${lowSceneDensityThreshold}`;
+  }
+  if (stats.averageDensity > highSceneDensityThreshold) {
+    return `${scope} scene tag density 高於 ${highSceneDensityThreshold}`;
+  }
+  if (stats.topSceneRatio > scopeTagConcentrationThreshold && stats.coverage > 0.9) {
+    return `${scope} 單一 scene tag 過度集中`;
+  }
+  return "";
+}
+
+function sceneQaRow(scope, name, items, issueOptions) {
+  const stats = sceneStatsForItems(items);
+  return [
+    scope,
+    name,
+    stats.itemCount,
+    stats.withScene,
+    formatPercent(stats.coverage),
+    stats.averageDensity.toFixed(2),
+    stats.topScene.value ? `${stats.topScene.value} (${stats.topScene.count})` : "",
+    sceneQaIssue(stats, issueOptions),
+  ];
+}
+
+function buildPhotoLookup(photos) {
+  return new Map(photos.map((photo) => [photo.photo_id, photo]));
+}
+
+function groupItemsBy(items, keyForItem) {
+  const groups = new Map();
+  for (const item of items) {
+    const key = keyForItem(item);
+    const group = groups.get(key) ?? [];
+    group.push(item);
+    groups.set(key, group);
+  }
+  return groups;
+}
+
 function confidenceStats(items) {
   const confidences = items.flatMap((item) =>
     Object.values(item.fields)
@@ -227,6 +357,73 @@ function photoIdList(items) {
   return items.map((item) => item.photo_id).join(", ");
 }
 
+async function readShardInputsFromDir(inputDir) {
+  const filenames = (await listFilesIfExists(inputDir)).filter((filename) => /^shard-\d+-input\.json$/.test(filename)).sort();
+  const rows = [];
+  const photoToShard = new Map();
+  for (const filename of filenames) {
+    const inputPath = join(inputDir, filename);
+    const payload = await readJsonIfExists(inputPath);
+    const items = Array.isArray(payload?.items) ? payload.items : [];
+    const shardName = formatShardNameFromFilename(filename);
+    rows.push({
+      count: items.length,
+      inputPath,
+      shard: shardName,
+    });
+    for (const item of items) {
+      if (item?.photo_id) {
+        photoToShard.set(item.photo_id, shardName);
+      }
+    }
+  }
+  return { photoToShard, rows };
+}
+
+async function buildShardMap(runDir, runId) {
+  const candidates = [
+    join("/tmp/ai-labeling-shards", runId, "inputs"),
+    join(runDir, "proposal-shards"),
+  ];
+  for (const dir of candidates) {
+    const result = await readShardInputsFromDir(dir);
+    if (result.photoToShard.size > 0) {
+      return result.photoToShard;
+    }
+  }
+  return new Map();
+}
+
+async function inspectShardArtifacts(runDir, runId) {
+  const standardDir = join("/tmp/ai-labeling-shards", runId);
+  const legacyDir = "/tmp/ai-labeling-shards";
+  const runShardDir = join(runDir, "proposal-shards");
+  const standardInputs = (await listFilesIfExists(join(standardDir, "inputs"))).filter((filename) => /^shard-\d+-input\.json$/.test(filename));
+  const standardOutputs = (await listFilesIfExists(join(standardDir, "outputs"))).filter((filename) => /^shard-\d+-proposals\.json$/.test(filename));
+  const runInputs = (await listFilesIfExists(runShardDir)).filter((filename) => /^shard-\d+-input\.json$/.test(filename));
+  const runOutputs = (await listFilesIfExists(runShardDir)).filter((filename) => /^shard-\d+-proposals\.json$/.test(filename));
+  const legacyOutputs = (await listFilesIfExists(legacyDir)).filter((filename) => /^shard-\d+-proposals\.json$/.test(filename));
+
+  const rows = [
+    ["standard /tmp workspace", standardInputs.length, standardOutputs.length, standardDir],
+    ["run proposal-shards", runInputs.length, runOutputs.length, runShardDir],
+    ["legacy /tmp root outputs", "", legacyOutputs.length, legacyDir],
+  ].filter(([, inputs, outputs]) => Number(inputs) > 0 || Number(outputs) > 0);
+
+  const warnings = [];
+  if (standardInputs.length > 0 && standardInputs.length !== standardOutputs.length) {
+    warnings.push(`標準 shard workspace input/output 數不一致：${standardInputs.length} inputs, ${standardOutputs.length} outputs。`);
+  }
+  if (runInputs.length > 0 && runInputs.length !== runOutputs.length) {
+    warnings.push(`run 內 proposal-shards input/output 數不一致：${runInputs.length} inputs, ${runOutputs.length} outputs。正式 proposal 仍以 root metadata-proposals.json 為準。`);
+  }
+  if (legacyOutputs.length > 0 && standardOutputs.length === 0) {
+    warnings.push("偵測到 /tmp/ai-labeling-shards 根目錄的 legacy shard outputs；這些檔案只能當診斷來源，不應覆蓋正式 root proposal。");
+  }
+
+  return { rows, warnings };
+}
+
 function isZeroPeopleContradiction(item) {
   if (item.fields.people_count?.value !== 0) {
     return false;
@@ -265,12 +462,47 @@ function pushFocusRows(rows, seen, issue, items, field, maxRows = 8) {
   }
 }
 
+function buildSceneQaRows(items, photos, shardMap) {
+  const rows = [
+    sceneQaRow("run", "all", items, { minimumItems: largeRunMinimumItems, scope: "整批" }),
+  ];
+  const photosById = buildPhotoLookup(photos);
+  const byAlbum = groupItemsBy(items, (item) => photosById.get(item.photo_id)?.album_title || "unknown");
+  for (const [album, albumItems] of [...byAlbum.entries()].sort((left, right) => right[1].length - left[1].length)) {
+    if (albumItems.length < lowSceneScopeMinimumItems) {
+      continue;
+    }
+    const row = sceneQaRow("album", album, albumItems, { minimumItems: lowSceneScopeMinimumItems, scope: "相簿" });
+    if (row[7]) {
+      rows.push(row);
+    }
+  }
+
+  if (shardMap.size > 0) {
+    const byShard = groupItemsBy(items, (item) => shardMap.get(item.photo_id) || "unknown");
+    for (const [shard, shardItems] of [...byShard.entries()].sort((left, right) => String(left[0]).localeCompare(String(right[0])))) {
+      if (shardItems.length < lowSceneScopeMinimumItems) {
+        continue;
+      }
+      const row = sceneQaRow("shard", shard, shardItems, { minimumItems: lowSceneScopeMinimumItems, scope: "分片" });
+      if (row[7]) {
+        rows.push(row);
+      }
+    }
+  }
+
+  return rows;
+}
+
 function buildReviewFocusRows(items) {
   const rows = [];
   const seen = new Set();
   const itemCount = items.length;
   const safeCrop = mostCommonValue(items, "safe_crop");
   const mood = mostCommonValue(items, "mood_tags");
+
+  const missingScene = items.filter((item) => valuesForField(item, "scene_tags").length === 0);
+  pushFocusRows(rows, seen, "缺少 scene_tags，影響場景召回", missingScene, "scene_tags");
 
   if (itemCount > 0 && safeCrop.count / itemCount >= concentrationThreshold) {
     pushFocusRows(
@@ -336,7 +568,7 @@ function buildReviewFocusRows(items) {
   return rows.slice(0, reviewFocusMaxRows);
 }
 
-function buildReviewNotes(items) {
+function buildReviewNotes(items, { sceneQaRows = [] } = {}) {
   const notes = [];
   const itemCount = items.length;
   const priorityCount = items.filter((item) => item.fields.priority_level).length;
@@ -357,6 +589,7 @@ function buildReviewNotes(items) {
   const zeroPeopleContradictions = items.filter(isZeroPeopleContradiction);
   const longEnglishTextItems = items.filter((item) => asciiWordPattern.test(allHumanText(item)));
   const { confidenceCounts, perfectCount, total } = confidenceStats(items);
+  const sceneCount = items.filter((item) => valuesForField(item, "scene_tags").length > 0).length;
 
   if (priorityCount === itemCount && itemCount > 0) {
     notes.push("`priority_level` 每張都有候選值，請確認模型是否把它當成預設欄位。");
@@ -377,10 +610,23 @@ function buildReviewNotes(items) {
   }
 
   const mostCommonSceneTag = mostCommonValue(items, "scene_tags");
+  if (itemCount >= largeRunMinimumItems && sceneCount / itemCount < prominentSceneRunCoverageThreshold) {
+    notes.push(
+      `\`scene_tags\` 只出現在 ${sceneCount}/${itemCount} 張照片（${formatPercent(sceneCount / itemCount)}），低於 ${formatPercent(prominentSceneRunCoverageThreshold)}；這很可能會降低找圖召回，建議優先檢查 prompt 或重跑低覆蓋 shard。`,
+    );
+  } else if (itemCount >= largeRunMinimumItems && sceneCount / itemCount < lowSceneRunCoverageThreshold) {
+    notes.push(
+      `\`scene_tags\` 出現在 ${sceneCount}/${itemCount} 張照片（${formatPercent(sceneCount / itemCount)}），低於 ${formatPercent(lowSceneRunCoverageThreshold)}；請抽查是否過度保守。`,
+    );
+  }
   if (itemCount > 0 && mostCommonSceneTag.count / itemCount >= concentrationThreshold) {
     notes.push(
       `\`scene_tags\` 的 \`${mostCommonSceneTag.value}\` 出現在 ${mostCommonSceneTag.count}/${itemCount} 張照片（${formatPercent(mostCommonSceneTag.count / itemCount)}），請確認是否過度套用同一場景標籤。`,
     );
+  }
+  const qaIssues = sceneQaRows.filter((row) => row[7]).slice(0, 8);
+  for (const row of qaIssues) {
+    notes.push(`${row[0]} \`${row[1]}\`: ${row[7]}。`);
   }
 
   const mostCommonMoodTag = mostCommonValue(items, "mood_tags");
@@ -482,7 +728,7 @@ function buildPromptVersionNotes(manifest) {
   return [];
 }
 
-function renderSummary({ diffPath, manifest, notes, outputDir, plan, proposals, runDir, sample, summaryPath }) {
+function renderSummary({ artifactRows, diffPath, layerRows, manifest, notes, outputDir, plan, proposals, runDir, sample, sceneQaRows, shardRows, summaryPath }) {
   const items = proposals.items;
   const fieldCountRows = fieldCounts(items).map(({ field, count }) => [
     fieldLabel(field, { includeRaw: true }),
@@ -534,6 +780,26 @@ function renderSummary({ diffPath, manifest, notes, outputDir, plan, proposals, 
     focusRows.length > 0
       ? table(["issue", "photo_id", "field", "proposed", "reason"], focusRows)
       : "No specific focus rows were generated from review warnings.",
+    "",
+    "## Artifact Provenance",
+    "",
+    artifactRows.length > 0
+      ? table(["key", "value"], artifactRows)
+      : "No artifact provenance details were generated.",
+    "",
+    shardRows.length > 0
+      ? table(["source", "input shards", "proposal shards", "path"], shardRows)
+      : "No shard artifacts were detected.",
+    "",
+    "## Layer Coverage",
+    "",
+    table(["layer", "field", "proposal count", "coverage"], layerRows),
+    "",
+    "## Scene QA",
+    "",
+    sceneQaRows.length > 0
+      ? table(["scope", "name", "items", "with scene_tags", "coverage", "tag density", "top tag", "issue"], sceneQaRows)
+      : "No scene QA rows were generated.",
     "",
     "## Field Coverage",
     "",
@@ -619,13 +885,33 @@ async function reviewAiRun(options) {
     runDir: options.runDir,
   });
 
-  const [manifest, proposals] = await Promise.all([
+  const [manifest, photos, proposals, proposalText] = await Promise.all([
     readJson(join(options.runDir, "manifest.json")),
+    readJson(join(options.runDir, "photos.json")),
     readJson(options.proposalsPath),
+    readFile(options.proposalsPath, "utf8"),
   ]);
-  const notes = [...buildPromptVersionNotes(manifest), ...validation.warnings, ...buildReviewNotes(proposals.items)];
+  const shardMap = await buildShardMap(options.runDir, manifest.run_id);
+  const shardInspection = await inspectShardArtifacts(options.runDir, manifest.run_id);
+  const sceneQaRows = buildSceneQaRows(proposals.items, photos, shardMap);
+  const layerRows = layerCoverageRows(proposals.items);
+  const artifactRows = [
+    ["final proposals", options.proposalsPath],
+    ["final proposals sha256", sha256Text(proposalText)],
+    ["photos source", manifest.photos_source ?? ""],
+    ["image link mode", manifest.image_link_mode ?? ""],
+    ["source runs", Array.isArray(manifest.source_runs) ? String(manifest.source_runs.length) : ""],
+  ].filter(([, value]) => String(value ?? "").trim());
+  const notes = [
+    ...buildPromptVersionNotes(manifest),
+    ...shardInspection.warnings,
+    ...validation.warnings,
+    ...buildReviewNotes(proposals.items, { sceneQaRows }),
+  ];
   const summary = renderSummary({
+    artifactRows,
     diffPath: diff.outputPath,
+    layerRows,
     manifest,
     notes,
     outputDir: options.outputDir,
@@ -633,6 +919,8 @@ async function reviewAiRun(options) {
     proposals,
     runDir: options.runDir,
     sample: options.sample,
+    sceneQaRows,
+    shardRows: shardInspection.rows,
     summaryPath: options.summaryPath,
   });
   await writeFile(options.summaryPath, summary);

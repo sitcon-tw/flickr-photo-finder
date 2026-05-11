@@ -15,6 +15,11 @@
           "reason": "畫面中可辨識約 15 人合照。",
           "confidence": 0.78
         },
+        "subject_type": {
+          "value": "people",
+          "reason": "主要視覺焦點是站在舞台背板前的人群。",
+          "confidence": 0.88
+        },
         "scene_tags": {
           "value": [
             "合照",
@@ -83,6 +88,31 @@
     {
       "photo_id": "55200257281",
       "fields": {
+        "people_count": {
+          "value": 9,
+          "reason": "畫面中可辨識約 9 人站在舞台區域合照。",
+          "confidence": 0.78
+        },
+        "subject_type": {
+          "value": "people",
+          "reason": "主要視覺焦點是站在舞台區域的人群。",
+          "confidence": 0.86
+        },
+        "orientation": {
+          "value": "landscape",
+          "reason": "畫面左右展開，人物橫向排列。",
+          "confidence": 0.9
+        },
+        "has_negative_space": {
+          "value": false,
+          "reason": "人物與舞台背景占滿主要畫面，沒有明顯可放字留白。",
+          "confidence": 0.82
+        },
+        "visual_description": {
+          "value": "多名人物站在舞台區域排列合照，背景可見活動看板與燈光，人物面向鏡頭。",
+          "reason": "描述畫面中人物排列、舞台背景與看板位置等可見線索。",
+          "confidence": 0.84
+        },
         "scene_tags": {
           "value": [
             "合照",
