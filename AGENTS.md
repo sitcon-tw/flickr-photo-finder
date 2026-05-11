@@ -59,6 +59,9 @@ The main goal is not to replace Flickr. The repository should keep a practical i
 - `scripts/commands/check-sheets.mjs`: read-only helper for checking public Google Sheets fixed tabs and initialization overwrite risk.
 - `scripts/commands/apply-sheets-init.mjs`: SDK-based helper for applying `sheets:init` CSVs to Google Sheets after an authenticated dry-run.
 - `scripts/commands/init-sheets.mjs`: helper for generating Google Sheets initialization CSVs.
+- `scripts/commands/build-practice-sheet.mjs`: helper for generating a small practice spreadsheet data package from exported formal Sheets rows.
+- `scripts/commands/sync-practice-sheet.mjs`: SDK-based helper for resetting the fixed practice spreadsheet from a generated practice data package.
+- `scripts/commands/sync-sheets-guide.mjs`: SDK-based helper for creating or updating the human-facing `使用說明` guide tab in the formal or practice spreadsheet.
 - `scripts/commands/export-sheets.mjs`: SDK-based helper for exporting fixed Google Sheets tabs to local CSV files for validation and intake workflows.
 - `scripts/lib/finder/serve.mjs`: local static server for the public finder UI.
 - `scripts/commands/validate-data.mjs`: data validation script.
@@ -179,6 +182,9 @@ pnpm sheets:check
 pnpm sheets:export
 pnpm sheets:init
 pnpm sheets:migrate-headers
+pnpm sheets:practice:build
+pnpm sheets:practice:sync
+pnpm sheets:sync-guide
 pnpm sheets:sync-taxonomy
 pnpm data:validate
 git status --short

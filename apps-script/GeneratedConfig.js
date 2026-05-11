@@ -2,7 +2,7 @@
 var SITCON_PHOTO_FINDER_CONFIG = {
   "generatedAt": "not recorded in committed source",
   "schemaVersion": "2026-1.0.0",
-  "taxonomyVersion": "sha256:8f4560bc8a24",
+  "taxonomyVersion": "sha256:4ee45762f300",
   "sponsorshipItemsVersion": "sha256:e33bfe6034e1",
   "sponsorshipItemsSnapshotNote": "SITCON 2026 CFS has ended. Treat this file as a fixed snapshot; future CFS versions should replace or extend it explicitly instead of being automatically synced.",
   "photosSheetName": "photos",
@@ -241,7 +241,7 @@ var SITCON_PHOTO_FINDER_CONFIG = {
       "required": false,
       "multiValue": true,
       "taxonomyKey": "",
-      "descriptionZh": "素材包，例如志工招募、贊助提案、網站 hero。"
+      "descriptionZh": "素材包，例如志工招募、贊助提案、網站視覺。"
     },
     {
       "name": "curation_notes",
@@ -435,6 +435,20 @@ var SITCON_PHOTO_FINDER_CONFIG = {
         "unreviewed": "未整理",
         "ai_labeled": "AI 初標",
         "reviewed": "已整理"
+      },
+      "recommended_uses": {
+        "社群貼文": "社群貼文",
+        "網站 hero": "網站視覺",
+        "志工招募": "志工招募",
+        "投稿宣傳": "投稿宣傳",
+        "報名宣傳": "報名宣傳",
+        "贊助提案": "贊助提案",
+        "贊助成果報告": "贊助成果",
+        "新聞稿": "新聞稿",
+        "活動回顧": "活動回顧",
+        "社群介紹": "社群介紹",
+        "講者宣傳": "講者宣傳",
+        "簡報": "簡報"
       },
       "has_negative_space": {
         "true": "有留白",
@@ -701,7 +715,7 @@ var SITCON_PHOTO_FINDER_CONFIG = {
       {
         "taxonomy_key": "recommended_uses",
         "value": "網站 hero",
-        "label_zh": "網站 hero",
+        "label_zh": "網站視覺",
         "order": "2"
       },
       {
@@ -731,7 +745,7 @@ var SITCON_PHOTO_FINDER_CONFIG = {
       {
         "taxonomy_key": "recommended_uses",
         "value": "贊助成果報告",
-        "label_zh": "贊助成果報告",
+        "label_zh": "贊助成果",
         "order": "7"
       },
       {

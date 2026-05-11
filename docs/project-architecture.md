@@ -13,6 +13,7 @@ SITCON Flickr Photo Finder 是 Flickr 之上的照片索引層，不是相簿替
 | 使用者 | 主要需求 | 主要入口 |
 | --- | --- | --- |
 | 非技術志工 | 補標籤、檢查授權、整理用途、建立素材包。 | Google Sheets |
+| 新加入的整理者 | 先理解工具列、右側整理面板與欄位填寫方式，避免直接改到正式資料。 | 練習用試算表、Google Sheets `使用說明` |
 | 宣傳、設計、網站、公關、行銷組 | 找適合當下工作情境的照片。 | GitHub Pages、Google Sheets、AI |
 | 行銷組 | 找特定贊助品項與贊助價值佐證照片。 | `sponsorship_items`、`sponsorship_tags` |
 | 技術志工 | 掃描相簿、匯入資料、跑驗證、部署工具。 | 專案 CLI、GitHub Actions、clasp |
@@ -65,6 +66,8 @@ flowchart LR
 - `schema_meta`: Sheets 目前使用的 schema、taxonomy 與同步狀態。
 
 `photos` 主表本身就是公開照片索引。公開 CSV/JSON 只是同欄位匯出，不是額外篩選表。
+
+`使用說明` 與練習用試算表是 onboarding 輔助。前者幫第一次進入 Sheets 的人判斷要找照片、整理資料或檢查資料；後者讓新整理者試編輯與測試 Apps Script，而不碰正式照片索引。它們不改變正式資料權威來源。
 
 ## 維護流程
 

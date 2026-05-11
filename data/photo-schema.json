@@ -224,7 +224,7 @@
           "required": false,
           "multi_value": true,
           "maintainer_zh": "各組整理者",
-          "description_zh": "素材包，例如志工招募、贊助提案、網站 hero。"
+          "description_zh": "素材包，例如志工招募、贊助提案、網站視覺。"
         },
         {
           "name": "curation_notes",

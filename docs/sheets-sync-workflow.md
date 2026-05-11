@@ -115,6 +115,47 @@ pnpm sheets:init -- --empty-albums
 
 初始化檔只用來建立正式 Sheets 的起點；正式資料後續以 Google Sheets 為準，不需要把完整 Sheets 內容 commit 回 repo。
 
+## 同步使用說明與固定練習用試算表
+
+正式 Google Sheets 可以加上一張 `使用說明` 分頁，讓第一次進入試算表的整理者先知道公開搜尋、正式資料整理、檢查資料與練習編輯的差異。這張分頁是給人看的入口，不是資料來源，也不應加入固定資料表契約。若 `config/project.json` 已設定 `googleSheets.practiceSpreadsheetId`，正式表的 `使用說明` 會直接提供固定練習用試算表連結，整理者不需要 clone repo 或執行 CLI。
+
+先 dry-run：
+
+```bash
+pnpm sheets:sync-guide
+```
+
+確認會建立或更新 `使用說明` 後再寫入：
+
+```bash
+pnpm sheets:sync-guide -- --write
+```
+
+練習用試算表應是一份 SITCON 管理的固定 Google Sheets。建立方式是由有 Drive 權限的人先建立空白試算表，把 service account 加為 Editor，將 spreadsheet ID 填入 `config/project.json` 的 `googleSheets.practiceSpreadsheetId`。repo 不自動管理 Google Drive 分享權限。
+
+維護者要重置練習資料時，先匯出正式資料，再 dry-run 檢查練習表同步計畫：
+
+```bash
+pnpm sheets:export
+pnpm sheets:practice:sync
+```
+
+確認目標是練習表、不是正式表後，再重置練習表：
+
+```bash
+pnpm sheets:practice:sync -- --write
+```
+
+`sheets:practice:sync` 會從 `tmp/sheets-export/` 切出少量真實照片、相關相簿列、空白 `import_batches`、repo 目前的 `taxonomy` 與 `sponsorship_items`，輸出到 `tmp/sheets-practice/`，再重寫固定練習表並同步練習表自己的 `使用說明`。它會拒絕把正式 `spreadsheetId` 當成練習表目標。
+
+若只要產生本機練習資料包、不寫入 Google Sheets，可以使用：
+
+```bash
+pnpm sheets:practice:build
+```
+
+若要在練習用試算表中重現 `SITCON Photo Finder` 選單與右側整理面板，還需要從該練習表的 `擴充功能` -> `Apps Script` 開啟 bound script，依 `docs/apps-script-maintenance-design.md` 綁定並 push repo Apps Script source。正式表與練習表應綁到各自的 Sheet-bound Apps Script 專案，不共用 `.clasp.json`。
+
 ## 套用 schema header 遷移
 
 當 `data/photo-schema.json` 新增欄位，而正式 Google Sheets 已有資料時，不應重新初始化整份 Sheets。請先使用 header 遷移工具 dry-run：
@@ -665,6 +706,9 @@ service account key 是敏感 credential，不能 commit，也不應放在 `tmp/
 | 套用初始化 CSV | 需要 `GOOGLE_APPLICATION_CREDENTIALS` 與目標 Sheets 編輯權限 | `pnpm sheets:apply-init` dry-run 通過，人工確認後執行 `pnpm sheets:apply-init -- --write`，寫入後讀回驗證通過 | 可能是環境變數未傳入、credential scope、Sheets 權限、tab/header 或資料格式問題，應依工具錯誤分類處理。 |
 | 套用 header 遷移 | 需要 `GOOGLE_APPLICATION_CREDENTIALS` 與目標 Sheets 編輯權限 | `pnpm sheets:migrate-headers` dry-run 通過，人工確認後執行 `pnpm sheets:migrate-headers -- --write`，寫入後讀回驗證通過 | 只支援新增缺少欄位；若 header 有未知欄位、改名或順序不相容，工具會阻擋。 |
 | 同步 taxonomy 輔助表 | 需要 `GOOGLE_APPLICATION_CREDENTIALS` 與目標 Sheets 編輯權限 | `pnpm sheets:sync-taxonomy` dry-run 通過，人工確認後執行 `pnpm sheets:sync-taxonomy -- --write`，寫入後讀回驗證通過 | 只重寫 `taxonomy` tab；若 header 是未知格式會阻擋，若 `label_zh` 寫入後仍空白會報錯。 |
+| 同步 `使用說明` 分頁 | 需要 `GOOGLE_APPLICATION_CREDENTIALS` 與目標 Sheets 編輯權限 | 正式表用 `pnpm sheets:sync-guide`；練習表用 `pnpm sheets:sync-guide -- --target practice` 或由 `pnpm sheets:practice:sync` 帶出。加上 `--write` 才會寫入，寫入後讀回驗證通過 | 這是人類入口分頁，不是資料來源；正式表會連到固定練習表，練習表會連回正式表。 |
+| 產生練習用試算表資料包 | 需要已匯出的正式 Sheets 工作快取，不需要 Google 授權 | `pnpm sheets:practice:build` 產生 `tmp/sheets-practice/` 並通過 validation | 代表練習資料包可用；它只供維護者重置固定練習表，不會建立 Google Drive 檔案，也不是正式資料庫。 |
+| 重置固定練習用試算表 | 需要 `GOOGLE_APPLICATION_CREDENTIALS` 與練習表編輯權限 | `pnpm sheets:practice:sync` dry-run 通過，人工確認後執行 `pnpm sheets:practice:sync -- --write`，寫入後讀回驗證通過 | 會重寫練習表固定資料 tabs 與 `使用說明`；工具會拒絕把正式表當成練習表。 |
 | 套用 intake run artifact | 需要 `GOOGLE_APPLICATION_CREDENTIALS` 與目標 Sheets 編輯權限 | `pnpm sheets:apply-intake -- --run-dir <dir>` dry-run 通過，人工確認後加上 `--write`，寫入後讀回驗證通過 | 可能是環境變數未傳入、credential scope、Sheets 權限、tab/header、重複 `photo_id`、重複 `batch_id` 或找不到相簿列。 |
 | 透過官方 SDK 寫入 Sheets | 需要 `GOOGLE_APPLICATION_CREDENTIALS` 與目標 Sheets 編輯權限 | SDK 寫入工具的 preflight、dry-run、confirmed write 與寫入後讀回驗證都通過 | 可能是環境變數未傳入、credential scope、Sheets 權限、tab/header 或資料格式問題，應依工具錯誤分類處理。 |
 | 驗證正式資料格式 | 不需要寫入權限；需要能取得 Sheets 匯出的 CSV | `pnpm data:validate -- --photos <csv> --albums <csv> --import-batches <csv>` | 代表匯出資料和 repo schema 不一致，或匯出檔不是預期格式。 |

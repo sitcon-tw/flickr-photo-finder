@@ -36,6 +36,12 @@ Apps Script 提供 Sheet-bound sidebar，讓整理者可以用較易讀的畫面
 
 sidebar 初始資料由 `開始整理照片` 選單函式讀取目前選取列後注入。後續可在 sidebar 內切換列；若使用 Google 多帳號，應確認有權限且已授權的帳號是第一個登入帳號，否則 sidebar iframe 的 `google.script.run` 可能使用未授權帳號而失敗。
 
+實際使用時，整理者會從 Google Sheets 上方的 `SITCON Photo Finder` 選單開啟右側整理面板：
+
+![Google Sheets 中的 SITCON Photo Finder 選單與右側整理面板](assets/readme/google-sheets-review-workflow.png)
+
+給整理者看的操作文字應盡量使用台灣使用者習慣的繁體中文。`photo_id`、`curation_status` 等英文欄位名稱仍是 repo schema、CSV、Apps Script 與公開前端共用的資料契約；人類介面應透過中文欄位說明、提示與 `taxonomy.label_zh` 降低理解成本，而不是改掉欄位 key。
+
 ### 校對 Web App
 
 Apps Script 也提供 Web App 型態的校對介面，給需要批量瀏覽與編輯照片 metadata 的整理者使用。它和 GitHub Pages 的分工如下：
@@ -221,6 +227,8 @@ Web App deployment type 應由 Apps Script UI 建立或更新：`Deploy` -> `New
 7. 執行 `pnpm apps-script:push`。
 8. 回正式 Sheet 重新整理，確認出現 `SITCON Photo Finder` 選單。
 9. 若要建立或更新 Web App deployment，到 Apps Script UI 選 `Deploy` -> `New deployment` 或管理既有 deployment，deployment type 必須選 `Web app`。設定 `Execute as` 為使用者本人、`Who has access` 為任何已登入 Google 帳號後部署，並複製 Web App URL。
+
+練習用試算表也照同一套流程部署，但它應使用從練習表 `擴充功能` -> `Apps Script` 開啟的另一個 Script ID。不要把正式表的 `.clasp.json` 直接拿去推練習表，也不要把練習表當成正式資料來源；練習表 ID 與資料重置流程記錄在 `docs/sheets-sync-workflow.md`，一般整理者應直接使用固定練習表，不需要自行 clone repo 或執行 CLI。
 
 ### 綁定 Sheet UI 的 Apps Script 專案
 

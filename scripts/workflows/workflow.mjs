@@ -80,7 +80,7 @@ const tasks = [
     title: "產生 AI report",
   },
   {
-    description: "初始化、檢查、匯出或遷移 Google Sheets。",
+    description: "初始化、檢查、匯出、建立練習用資料包、同步使用說明或遷移 Google Sheets。",
     handler: runSheetsTools,
     id: "sheets",
     inputs: ["config/project.json", "正式 Google Sheets；部分操作需要 GOOGLE_APPLICATION_CREDENTIALS"],
@@ -586,6 +586,9 @@ async function runSheetsTools() {
     ["sheets:apply-init", "dry-run 套用初始化 CSV"],
     ["sheets:migrate-headers", "dry-run 安全 header 遷移"],
     ["sheets:export", "匯出正式 Sheets 工作快取"],
+    ["sheets:practice:build", "產生練習用試算表資料包"],
+    ["sheets:practice:sync", "dry-run 重置固定練習用試算表"],
+    ["sheets:sync-guide", "dry-run 同步使用說明分頁"],
     ["apps-script:build-config", "從 schema 與 taxonomy 產生 Apps Script 設定"],
     ["apps-script:status", "檢查 Apps Script 本機綁定與遠端差異"],
     ["apps-script:push", "重建設定、驗證資料並推送 Apps Script"],

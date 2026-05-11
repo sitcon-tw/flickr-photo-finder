@@ -32,7 +32,7 @@ export const taskModes = [
   },
   {
     id: "hero",
-    label: "網站 hero",
+    label: "網站視覺",
     description: "橫式、留白、代表性",
     recommendedUses: ["網站 hero", "社群介紹"],
     moods: ["專業", "青春感", "友善"],

@@ -37,6 +37,10 @@ pnpm sheets:init
 
 Google Sheets tab 名稱在 1.0 固定，不提供 `worksheetNames` 對照設定。其他組織 fork 時若要複用，應使用同樣 tab 名稱；未來若真的有改名需求，再加入對照設定。
 
+正式表也可以加入 `使用說明` 分頁，作為整理者進入試算表後的中文入口。這張分頁由 `pnpm sheets:sync-guide` 建立或更新，不是正式資料表，也不應被公開前端、AI 初標或 repo 匯入流程當成資料來源。
+
+若需要教學或試驗編輯，應建立 SITCON 管理的固定練習用試算表，並把 ID 記在 `config/project.json` 的 `googleSheets.practiceSpreadsheetId`。練習表由維護者用 `pnpm sheets:practice:sync` 從正式匯出資料重置小樣本，再套用同樣的 schema、taxonomy、Apps Script 與 `使用說明`；它不是第二份正式照片索引，一般整理者也不需要為了練習操作 repo 指令。
+
 若 `config/project.json` 已填入 `googleSheets.spreadsheetId`，可先執行只讀檢查：
 
 ```bash

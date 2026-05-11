@@ -30,6 +30,8 @@
 | 正式相簿清單資料 | Google Sheets `albums` | repo 內 `fixtures/albums.csv` 只是 sample、fixture 與匯出格式參考。 |
 | 正式匯入批次資料 | Google Sheets `import_batches` | repo 內 `fixtures/import-batches.csv` 只是 sample、fixture 與匯出格式參考。 |
 | 本機 Sheets 工作快取 | `tmp/sheets-export/*.csv` | 從正式 Google Sheets 匯出，供 validation 與 intake 使用；可刪除，不 commit。 |
+| 固定練習用 Google Sheets ID | `config/project.json` 的 `googleSheets.practiceSpreadsheetId` | 這份 Sheets 供教學與試驗編輯；它不是第二份正式資料庫，寫入權限由 Google Drive/Sheets 管理。 |
+| 練習用試算表資料包 | `tmp/sheets-practice/*.csv` | 從正式匯出資料切出的小樣本，供維護者重置固定練習表；可刪除，不 commit，不是第二份正式資料庫。 |
 | 專案角色與資料流 | `docs/project-architecture.md` | 若架構改變，先更新架構總覽，再同步相關文件。 |
 
 ## 共用字串歸屬
@@ -58,6 +60,9 @@
 - `pnpm sheets:check`，只讀檢查公開 Google Sheets 固定 tabs 的 header 與初始化覆蓋風險。
 - `pnpm sheets:apply-init`，透過官方 Google Sheets API SDK dry-run 初始化套用計畫；加上 `--write` 才會建立缺少 tabs 並寫入初始化資料。
 - `pnpm sheets:migrate-headers`，透過官方 Google Sheets API SDK dry-run 安全 header 遷移；加上 `--write` 才會插入 repo schema 新增的缺少欄位。
+- `pnpm sheets:practice:build`，從 `tmp/sheets-export/` 的正式匯出資料切出練習用試算表資料包，預設輸出到 `tmp/sheets-practice/`。
+- `pnpm sheets:practice:sync`，以官方 Google Sheets API SDK dry-run 重置固定練習用試算表；加上 `--write` 才會寫入，且會拒絕寫到正式照片索引。
+- `pnpm sheets:sync-guide`，透過官方 Google Sheets API SDK dry-run 同步 `使用說明` 分頁；加上 `--write` 才會建立或更新這張人類入口分頁。
 - `pnpm sheets:sync-taxonomy`，透過官方 Google Sheets API SDK dry-run 同步 `taxonomy` 輔助表；加上 `--write` 才會以 repo taxonomy 重寫 tab，並驗證 `label_zh` 不為空白。
 - `pnpm sheets:export`，透過官方 Google Sheets API SDK 匯出正式 Sheets 固定 tabs，供 validation 與 intake 流程使用。
 - `pnpm albums:list`，從正式 Sheets 匯出的 `albums.csv` 或 `--source sheets` 直接讀取正式 `albums` 工作表列出與篩選相簿，並可輸出 album id、JSON 或可直接執行的 intake 指令。
@@ -102,7 +107,7 @@
 | 角色 | 建議閱讀 |
 | --- | --- |
 | 第一次理解專案的人 | `README.md`、`docs/project-architecture.md`、`docs/photo-finder-mvp.md` |
-| 整理照片的志工 | `docs/data-entry-guide.md`、`docs/photo-fields-reference.md` |
+| 整理照片的志工 | `README.md`、Google Sheets `使用說明`、`docs/data-entry-guide.md`、`docs/photo-fields-reference.md` |
 | 技術志工 | `pnpm workflow`、`docs/project-architecture.md`、`docs/sheets-sync-workflow.md`、`docs/google-sheets-database-design.md` |
 | 維護 Apps Script 的人 | `docs/apps-script-maintenance-design.md`、`data/photo-schema.json`、`data/tag-taxonomy.json` |
 | 維護 GitHub Pages 前端的人 | `docs/public-frontend-architecture.md`、`docs/frontend-analytics-design.md`、`docs/ga4-operations.md`；需要理解重構背景時再讀 `docs/public-frontend-agent-research.md` 與 `docs/public-frontend-redesign-brief.md` |

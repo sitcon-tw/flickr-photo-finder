@@ -83,3 +83,7 @@ export const googleSheetsSpreadsheetId = optionalString(
   projectConfig.googleSheets?.spreadsheetId,
   "googleSheets.spreadsheetId",
 );
+export const googleSheetsPracticeSpreadsheetId = optionalString(
+  projectConfig.googleSheets?.practiceSpreadsheetId,
+  "googleSheets.practiceSpreadsheetId",
+);
