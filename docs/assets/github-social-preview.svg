@@ -1,0 +1,103 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640" role="img" aria-labelledby="title desc">
+  <!-- The final PNG composites photo crops from the formal public photo index onto this layout. -->
+  <!-- Selected formal photo IDs: 54847452218 social post, 54847515585 activity recap, 55246493860 sponsorship report, 55200405673 press release. -->
+  <title id="title">SITCON Flickr Photo Finder GitHub social preview</title>
+  <desc id="desc">SITCON Flickr Photo Finder 將 Flickr 公開活動照片整理成可搜尋、可協作、可由 AI 協助初標的照片索引。</desc>
+  <defs>
+    <style>
+      .bg { fill: #f6f7f9; }
+      .ink { fill: #19232d; }
+      .muted { fill: #4d5c68; }
+      .soft { fill: #6b7785; }
+      .green { fill: #0f766e; }
+      .green-soft { fill: #e5f5ef; }
+      .blue-soft { fill: #e8efff; }
+      .yellow-soft { fill: #fff3d8; }
+      .violet-soft { fill: #f1ecff; }
+      .rose-soft { fill: #ffe9e5; }
+      .panel { fill: #ffffff; stroke: #dfe5eb; stroke-width: 2; }
+      .title-text { font: 760 62px "Noto Sans CJK TC", "Noto Sans", system-ui, sans-serif; }
+      .subtitle { font: 460 28px "Noto Sans CJK TC", "Noto Sans", system-ui, sans-serif; }
+      .body { font: 560 22px "Noto Sans CJK TC", "Noto Sans", system-ui, sans-serif; }
+      .small { font: 560 18px "Noto Sans CJK TC", "Noto Sans", system-ui, sans-serif; }
+      .label { font: 700 17px "Noto Sans CJK TC", "Noto Sans", system-ui, sans-serif; }
+      .mono { font: 560 20px "Noto Sans", "Noto Sans CJK TC", system-ui, sans-serif; }
+      .pill { fill: #ffffff; stroke: #dce3ea; stroke-width: 1.6; }
+      .search { fill: #f8fafc; stroke: #dbe2ea; stroke-width: 1.8; }
+      .card { fill: #ffffff; stroke: #dce3ea; stroke-width: 1.4; }
+      .arrow { fill: none; stroke: #8b98a7; stroke-width: 2.4; marker-end: url(#arrow); }
+    </style>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#8b98a7"/>
+    </marker>
+  </defs>
+
+  <rect class="bg" width="1280" height="640"/>
+  <rect x="42" y="42" width="1196" height="556" rx="34" fill="#ffffff" stroke="#e1e7ed" stroke-width="2"/>
+
+  <g transform="translate(86 90)">
+    <rect x="0" y="0" width="190" height="42" rx="21" class="green-soft"/>
+    <text x="22" y="28" class="label green">照片索引工具 1.0</text>
+
+    <text x="0" y="118" class="title-text ink">SITCON Flickr</text>
+    <text x="0" y="190" class="title-text ink">Photo Finder</text>
+    <text x="2" y="246" class="subtitle muted">把公開活動照片整理成</text>
+    <text x="2" y="286" class="subtitle muted">可搜尋、可協作、可由 AI 協助初標的照片索引</text>
+
+    <g transform="translate(0 326)">
+      <rect x="0" y="0" width="116" height="44" rx="22" class="pill"/>
+      <text x="24" y="29" class="small ink">社群貼文</text>
+      <rect x="130" y="0" width="132" height="44" rx="22" class="pill"/>
+      <text x="154" y="29" class="small ink">活動回顧</text>
+      <rect x="276" y="0" width="132" height="44" rx="22" class="pill"/>
+      <text x="300" y="29" class="small ink">贊助成果</text>
+      <rect x="422" y="0" width="96" height="44" rx="22" class="pill"/>
+      <text x="446" y="29" class="small ink">新聞稿</text>
+    </g>
+
+    <g transform="translate(0 380)">
+      <text x="0" y="24" class="body ink">Flickr 照片</text>
+      <path class="arrow" d="M 120 18 H 174"/>
+      <text x="198" y="24" class="body ink">試算表索引</text>
+      <path class="arrow" d="M 320 18 H 374"/>
+      <text x="398" y="24" class="body ink">公開搜尋</text>
+    </g>
+
+    <text x="0" y="448" class="mono soft">https://sitcon.org/flickr-photo-finder</text>
+  </g>
+
+  <rect x="754" y="98" width="420" height="468" rx="28" fill="#1f2937" opacity="0.10"/>
+  <g transform="translate(742 86)">
+    <rect class="panel" width="420" height="468" rx="28"/>
+    <g transform="translate(32 34)">
+      <rect class="search" x="0" y="0" width="356" height="58" rx="18"/>
+      <circle cx="28" cy="29" r="10" fill="none" stroke="#64748b" stroke-width="3"/>
+      <path d="M 35 36 L 44 45" stroke="#64748b" stroke-width="3" stroke-linecap="round"/>
+      <text x="64" y="37" class="small soft">找一張適合社群的橫式照片</text>
+
+      <g transform="translate(0 88)">
+        <rect class="card" x="0" y="0" width="166" height="136" rx="16"/>
+        <rect class="blue-soft" x="14" y="14" width="138" height="76" rx="12"/>
+        <text x="18" y="118" class="label ink">社群貼文</text>
+
+        <rect class="card" x="190" y="0" width="166" height="136" rx="16"/>
+        <rect class="yellow-soft" x="204" y="14" width="138" height="76" rx="12"/>
+        <text x="208" y="118" class="label ink">活動回顧</text>
+
+        <rect class="card" x="0" y="160" width="166" height="136" rx="16"/>
+        <rect class="violet-soft" x="14" y="174" width="138" height="76" rx="12"/>
+        <text x="18" y="278" class="label ink">贊助成果</text>
+
+        <rect class="card" x="190" y="160" width="166" height="136" rx="16"/>
+        <rect class="rose-soft" x="204" y="174" width="138" height="76" rx="12"/>
+        <text x="208" y="278" class="label ink">新聞稿</text>
+      </g>
+
+      <g transform="translate(0 388)">
+        <rect x="0" y="0" width="356" height="1.6" fill="#e5ebf0"/>
+        <circle cx="18" cy="28" r="8" class="green"/>
+        <text x="42" y="35" class="small muted">AI 初標為候選，審核後使用</text>
+      </g>
+    </g>
+  </g>
+</svg>
