@@ -137,6 +137,7 @@ MVP 是否有效，應用任務完成度驗證，而不是用資料量驗證。
 - 已有 `pnpm eval`、`eval:attempt`、`eval:sample` 與 `eval:search` 支援模型、prompt、taxonomy 與 `visual_description` 搜尋增益評估。
 - 已有 GitHub Pages artifact build/check/deploy workflow；部署版讀公開 Google Sheets `photos` CSV。
 - Apps Script source 已進 repo，可提供 Sheet-bound 維護選單、校對 sidebar、schema/taxonomy refresh、`schema_meta` 與 `validation_report`。
+- 已有正式表 `使用說明` 與固定練習用試算表流程，讓非技術整理者先試操作，不必在正式照片索引中測試。
 
 接下來的重點不是再決定是否需要 AI 初標或 Flickr 匯入腳本，而是改善已存在流程：
 

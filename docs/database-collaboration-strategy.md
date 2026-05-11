@@ -14,6 +14,7 @@
 - 這個專案的 repo 是治理與工具層，保存 schema、taxonomy、validation、匯入工具、Apps Script 來源、AI prompt 與操作文件。
 - `fixtures/*.csv` 只是 1.0 sample、local fixture 與未來 Sheets 匯出格式參考，不是正式資料來源，也不是 Sheets 快取。
 - `tmp/sheets-export/*.csv` 才是從正式 Google Sheets 匯出的本機工作快取，不應 commit。
+- 固定練習用試算表是新整理者的 onboarding 資產，不是第二份正式資料庫。
 - 若 Sheets 與 repo 內 sample data 發生衝突，以 Sheets 為準。
 - 正式 Sheets 表格設計記錄在 `docs/google-sheets-database-design.md`。
 
@@ -71,6 +72,14 @@ Sheets 應支援：
 - 透過 Apps Script 提供即時提醒與欄位輔助。
 
 Sheets 中的資料語意必須存在欄位值，不應依賴顏色、註解、排序、篩選狀態或合併儲存格。這樣未來才能穩定匯出成 CSV、JSON、SQLite 或 PostgreSQL。
+
+### 練習用試算表的角色
+
+固定練習用試算表是給新整理者熟悉 `SITCON Photo Finder` 選單、右側整理面板與欄位填寫方式的教學環境。它應使用少量真實照片樣本與正式表相同的 schema、taxonomy、Apps Script source 和 `使用說明`，讓整理者可以先試填，而不碰正式照片索引。
+
+練習表不改變資料權威來源：正式照片索引仍只有正式 Google Sheets。練習表內容可由維護者定期重置，也不應被 GitHub Pages、AI 初標或正式 intake 流程當成資料來源。
+
+一般整理者應從正式表的 `使用說明` 分頁進入練習表，不需要為了練習操作 clone repo 或執行 CLI。維護者重置練習表的流程記錄在 `docs/sheets-sync-workflow.md`。
 
 ## Apps Script 的角色
 
