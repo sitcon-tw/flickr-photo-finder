@@ -726,6 +726,54 @@ r3 和 r2 相比有明顯改善：
 
 `safe_crop` 仍是高風險欄位。三個模型都大量提出 `16:9`，但是否真的安全需要看主體、文字和人臉位置，不應只因橫式就填。
 
+## 大型平行批次觀察（2026-05-11）
+
+以下兩次 run 是目前最接近正式大量生產的 AI 初標經驗。操作者紀錄使用模型為 GPT 5.5 xhigh，且都以平行 shard 方式在一小時內完成。這個結果很重要：大型相簿標記的瓶頸不只是模型判讀，也包括圖片下載、工作包建立、shard 分配、merge、review artifact 產生與回寫前檢查；只要工作包和中間產物邊界清楚，數千張照片的初標可以被拆成可管理的平行任務。
+
+| run | proposals | planned updates | producer | prompt hash | shard / source 觀察 |
+| --- | ---: | ---: | --- | --- | --- |
+| `ai-prepare-bulk-key-albums-2026-05-11` | 3226 | 24783 | `ai / codex-parallel-shard-workers` | `71bffee49068` | 由 10 個既有 run 合併，圖片以 symlink 共用；review 時偵測到 24 個 shard inputs、11 個 run 內 proposal shards，以及 `/tmp/ai-labeling-shards` 的 legacy shard outputs。 |
+| `ai-prepare-bulk-selected-unimported-2026-05-11` | 4324 | 36054 | `ai / sharded-ai-agents` | `4405fb95243a` | 標準 `/tmp/ai-labeling-shards/<run-id>/` workspace 有 33 個 input shards 與 33 個 proposal shards；同時仍偵測到 legacy root outputs，只能當診斷資料。 |
+
+兩個 run 合計處理 7550 張照片、60837 筆 planned updates。這個規模已經不是「測試模型能不能輸出 JSON」，而是驗證整條操作鏈能否承受大量資料：準備、分片、平行執行、合併、驗證、產生 review summary、產生 update plan，再交給人類決定是否 dry-run / write。
+
+### 品質觀察
+
+兩個 run 的 baseline 欄位覆蓋都達到 100%，包含 `people_count`、`subject_type`、`orientation`、`has_negative_space`、`visual_description` 與 `curation_status`。這表示 GPT 5.5 xhigh 在大型平行批次中可以穩定產出基礎欄位，不會因照片量放大而直接崩潰或缺漏核心 schema。
+
+`scene_tags` 是這兩輪最重要的品質訊號：
+
+- `ai-prepare-bulk-key-albums-2026-05-11` 的 `scene_tags` 覆蓋率為 2167/3226（67%），低於 75%。其中多個 shard 的 scene 覆蓋率為 0%，也有 `SITCON Camp 2025 Day 2`、`SITCON Camp 2025 Day 3` 等相簿低於 50%。這顯示大型平行批次不能只看整體 validator 通過，還要看 shard / album 層級是否有整段漏標。
+- `ai-prepare-bulk-selected-unimported-2026-05-11` 的 `scene_tags` 覆蓋率為 3590/4324（83%），整體較好，但仍有 `SITCON Hackathon 2024`、`SITCON Camp 2025 工人相見歡`、`SITCON 2024 負一籌`、`2015 SITCON Hackgen` 等相簿需要抽查；也有部分 shard scene 覆蓋率為 0%。這表示整體覆蓋率合格不代表每個相簿或分片都可靠。
+
+兩個 run 都沒有提供 `confidence`，這會讓人工排序與抽查少一個訊號。未來若同樣使用 GPT 5.5 xhigh 執行大量初標，confidence 應被視為 prompt / output contract 的可審核性問題，而不是單純的可選欄位。
+
+`people_count = 0` 但 reason 或 scene 線索提到人物的情況仍存在。這些不一定都是錯誤，例如手部特寫或模糊背景人群是否應計入人數本來就有邊界；但它們是很好的 review focus，因為人數會直接影響搜尋與篩選。
+
+### 操作與架構觀察
+
+這兩輪證明「不複製大量圖片」是正確方向。`ai-prepare-bulk-key-albums-2026-05-11` 使用 symlink 共用圖片，讓大型成果可以合併成新工作包而不放大磁碟成本。未來大型 run 應持續優先使用 symlink / hardlink / manifest 指向既有圖片，只有環境不支援連結時才允許 `--copy-images`。
+
+分片工作區應有明確生命週期。標準做法應是 `/tmp/ai-labeling-shards/<run-id>/inputs`、`worker-prompts`、`outputs`，merge 前先在 `/tmp` 產生暫存 proposal，review 通過後才 `--write-run`。legacy root outputs 會造成判讀混亂；review summary 應持續把它們列為 artifact provenance / warning，而不是默默採用。
+
+`metadata-proposals.json` 的權威位置必須保持單一。正式結果以 run root 的 `metadata-proposals.json` 為準；shard outputs、legacy outputs、暫存 merged proposal 都只能作為診斷或 review-before-write 來源。這個邊界可以避免 agent 在後續步驟偷用本機舊資料，或把未確認中間檔覆蓋成正式成果。
+
+大型 run 的 review artifact 不應預設寫回正式 run。先用 `pnpm ai:review -- --run-dir <run> --output-dir /tmp/ai-review-runs/<run-id>` 檢查 summary / diff / update plan，確認品質與來源後再決定是否採用。這讓操作者能檢查 GPT 5.5 xhigh 的大量輸出，而不污染正式工作包。
+
+### 互動回顧與專案精進方向
+
+這次互動顯示，專案可以再把幾個人為協調點工具化：
+
+- 大型相簿選擇前，需要更完整的候選清單、照片數估算與「尚未匯入 Sheets / 尚未標記 / 尚未回寫」狀態篩選。操作者不應靠聊天中人工計算相簿編號與張數。
+- 下載與初標都是可平行化階段。工具應把「下載圖片」、「建立工作包」、「shard prepare」、「AI 初標」、「merge」、「review」拆成明確階段，並在每階段顯示進度與可重跑命令。
+- 高頻命令應被包成 repo workflow，減少操作者反覆貼長指令與授權確認。特別是 `ai:shard:merge --write-run`、`ai:review --output-dir /tmp/...`、`sheets:apply-ai-updates` 這類高風險但常用步驟，應提供清楚 dry-run、write、resume 介面。
+- AI output contract、schema、sidebar 必填規則與 Sheets reviewed gate 必須共用來源。`scene_tags` 可以是 AI 高召回候選，但正式 `reviewed` 仍要由人確認；工具應用 layer coverage / Scene QA 提醒低覆蓋，而不是把 AI 沒填 `scene_tags` 當成格式失敗。
+- Review summary 的 `Artifact Provenance`、`Layer Coverage`、`Scene QA` 很有價值，應視為大型 run 的必要交接資料。未來如果加入 HTML report，也應讓人能從相簿、shard、warning 類型直接跳到抽查照片。
+- 在啟動新大型任務前，應清理或隔離舊的標記文字檔與 legacy proposal outputs，或至少讓工具在 summary 中明確指出哪些檔案不是本次 run 的正式輸入。這能降低 agent 使用本機舊資料的風險。
+- Prompt 版本差異要被當成品質評估的一部分。兩個大型 run 的 prompt hash 都不同於後續 repo 版本；這些成果仍然寶貴，但不能直接當成新版 prompt 的模型能力評估。若要評估新 taxonomy 或新 scene policy，應建立新 attempt 或新 run。
+
+整體判斷：GPT 5.5 xhigh 搭配平行 shard 已經足以支援數千張照片的一小時級初標工作，但專案真正要精進的不是「再讓模型多標一點」，而是把大批次工作變成可恢復、可追溯、可抽查、可 dry-run 的正式資料流程。
+
 ### 本輪採用建議
 
 - 不建議任何一輪直接全量寫回 Sheets。
