@@ -8,9 +8,14 @@
     "albumsUrl": "https://www.flickr.com/photos/sitcon/albums/",
     "profileUrl": "https://www.flickr.com/photos/sitcon/"
   },
+  "repository": {
+    "url": "https://github.com/sitcon-tw/flickr-photo-finder"
+  },
   "frontend": {
     "appTitle": "SITCON Flickr Photo Finder",
     "sourceLinkLabel": "Flickr",
+    "repositoryLinkLabel": "GitHub 專案",
+    "repositoryLinkTitle": "了解專案細節或回報問題",
     "ga4MeasurementId": "G-ZQ49HXBJ2P",
     "ga4PropertyId": ""
   },

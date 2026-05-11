@@ -36,6 +36,18 @@ function optionalString(value, path) {
   return value.trim();
 }
 
+function optionalUrl(value, path) {
+  const url = optionalString(value, path);
+  if (!url) {
+    return "";
+  }
+  try {
+    return new URL(url).toString();
+  } catch {
+    throw new Error(`config/project.json ${path} must be a valid URL`);
+  }
+}
+
 export const projectConfig = readProjectConfig();
 
 export const organizationName = requireString(
@@ -52,10 +64,19 @@ export const flickrProfileUrl = validateUrl(
   projectConfig.flickr?.profileUrl,
   "flickr.profileUrl",
 );
+export const repositoryUrl = optionalUrl(projectConfig.repository?.url, "repository.url");
 export const appTitle = requireString(projectConfig.frontend?.appTitle, "frontend.appTitle");
 export const sourceLinkLabel = requireString(
   projectConfig.frontend?.sourceLinkLabel,
   "frontend.sourceLinkLabel",
+);
+export const repositoryLinkLabel = optionalString(
+  projectConfig.frontend?.repositoryLinkLabel,
+  "frontend.repositoryLinkLabel",
+);
+export const repositoryLinkTitle = optionalString(
+  projectConfig.frontend?.repositoryLinkTitle,
+  "frontend.repositoryLinkTitle",
 );
 export const ga4PropertyId = optionalString(projectConfig.frontend?.ga4PropertyId, "frontend.ga4PropertyId");
 export const googleSheetsSpreadsheetId = optionalString(

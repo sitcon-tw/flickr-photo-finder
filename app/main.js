@@ -45,6 +45,7 @@ const elements = {
   template: document.querySelector("#photoCardTemplate"),
   appTitle: document.querySelector("#appTitle"),
   sourceLink: document.querySelector("#sourceLink"),
+  repositoryLink: document.querySelector("#repositoryLink"),
   taskModes: document.querySelector("#taskModes"),
   sponsorshipItemOptions: document.querySelector("#sponsorshipItemOptions"),
   loadMorePanel: document.querySelector("#loadMorePanel"),
@@ -274,6 +275,13 @@ function applyProjectConfig(config) {
   elements.appTitle.textContent = title;
   elements.sourceLink.href = config.flickr?.profileUrl ?? "https://www.flickr.com/";
   elements.sourceLink.textContent = config.frontend?.sourceLinkLabel ?? "Flickr";
+  const repositoryUrl = String(config.repository?.url ?? "").trim();
+  elements.repositoryLink.hidden = !repositoryUrl;
+  if (repositoryUrl) {
+    elements.repositoryLink.href = repositoryUrl;
+    elements.repositoryLink.textContent = config.frontend?.repositoryLinkLabel ?? "GitHub 專案";
+    elements.repositoryLink.title = config.frontend?.repositoryLinkTitle ?? "了解專案細節或回報問題";
+  }
   setExternalLink(elements.aiAssistantSheetLink, photosSheetUrl());
   setupAnalytics(config);
 }

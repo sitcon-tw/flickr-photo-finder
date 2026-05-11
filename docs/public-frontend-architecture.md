@@ -111,6 +111,8 @@ https://docs.google.com/spreadsheets/d/<spreadsheetId>/gviz/tq?tqx=out:csv&sheet
 
 前端可以讀公開資料 URL，但不能使用任何需要保密的 token、API key 或 OAuth credential。
 
+公開前端右上角的外部連結由 `config/project.json` 控制。除了 Flickr 來源連結，也應提供 GitHub 專案連結，讓使用者能回到 repo 了解專案細節或回報問題。
+
 公開前端除了照片卡片搜尋，也應提供索引概覽，協助維護者快速判斷目前索引整理成效。概覽應優先使用 `data/photo-schema.json` 與 `data/tag-taxonomy.json` 理解欄位與必要規則，例如整理狀態、使用提醒、人數標記、reviewed 必要欄位完整度與贊助欄位覆蓋率，不應在前端另外維護一份欄位規則或 raw value 翻譯表。前端顯示文字應使用 `data/tag-taxonomy.json` 的 `option_labels`，但篩選值、URL 參數與資料比對仍使用 raw value。
 
 公開前端遇到選項可能偏長的篩選欄位，例如活動/相簿、場景、素材包、贊助品項，應使用頁面內可搜尋的選單或 autocomplete，不依賴瀏覽器原生 `<select>` / `<datalist>` 彈出層。原生彈出層由瀏覽器與作業系統控制，長列表在小視窗或特定環境中可能出現 fallback 呈現，難以用 CSS 穩定修正。實作上仍可保留原本欄位值作為篩選狀態來源，但使用者操作層應提供可搜尋、可捲動且不離開頁面布局的選單。贊助品項仍應保留輸入片段文字搜尋的能力，不應被限制成只能選擇完整品項名稱。
