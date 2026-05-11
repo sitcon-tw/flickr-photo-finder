@@ -4,7 +4,6 @@ import { dirname, join } from "node:path";
 import readline from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 import { writeAiLabelingPrompt } from "../lib/ai/ai-labeling-prompt.mjs";
-import { selectMultipleAiRuns, selectSingleAiRun } from "../lib/ai/ai-run-selector.mjs";
 
 const imageSizeOptions = ["large-1024", "medium-800", "medium-640", "preview", "original"];
 
@@ -58,6 +57,16 @@ const tasks = [
     outputs: ["tmp/ai-runs/<run-id>/photos.json", "tmp/ai-runs/<run-id>/images/"],
     phase: "AI 初標",
     title: "準備 AI 初標工作包",
+  },
+  {
+    description: "針對數百張以上的大型 AI run，準備 shard workspace、檢查分片進度、合併暫存 proposal，並產生暫存 review。",
+    handler: runBulkAiLabeling,
+    id: "ai-bulk",
+    inputs: ["既有或新建立的 tmp/ai-runs/<run-id>/", "大型 run 的分片輸出會放在 /tmp/ai-labeling-shards/<run-id>/"],
+    next: ["所有 shard 完成後先暫存 merge/review，人工確認後才 write-run 與 Sheets dry-run。"],
+    outputs: ["/tmp/ai-labeling-shards/<run-id>/", "/tmp/ai-review-runs/<run-id>/", "可選的 run root metadata-proposals.json"],
+    phase: "AI 初標",
+    title: "大型 AI 初標分片流程",
   },
   {
     description: "驗證 AI proposals，產生 diff、update plan 與檢視摘要。",
@@ -488,7 +497,7 @@ async function prepareAiRun(context = {}) {
     albumId = await ask("指定 album_id 篩選照片；可留空");
   }
 
-  const limit = await ask("這次最多準備幾張照片給 AI 初標；輸入 all 代表不設上限", "50");
+  const limit = await ask("這次最多準備幾張照片給 AI 初標；輸入 all 代表不設上限", context.bulk ? "all" : "50");
   const imageSize = await askImageSize();
   const status = await ask("curation_status 篩選；若要整本相簿所有狀態請輸入 all", "unreviewed");
   const photoIds = await ask("指定 photo_id，以逗號分隔；可留空");
@@ -520,6 +529,67 @@ async function prepareAiRun(context = {}) {
   console.log("----- COPY PROMPT START -----");
   console.log(prompt);
   console.log("----- COPY PROMPT END -----");
+
+  return runDir;
+}
+
+async function readAiRunId(runDir) {
+  const manifest = JSON.parse(await readFile(join(runDir, "manifest.json"), "utf8"));
+  return String(manifest.run_id || "").trim();
+}
+
+async function runBulkAiLabeling() {
+  let runDir = "";
+  if (await askYesNo("已經有 AI run 目錄？", true)) {
+    runDir = await ask("AI run 目錄，例如 tmp/ai-runs/RUN_ID");
+  } else {
+    runDir = await prepareAiRun({ bulk: true });
+  }
+  if (!runDir) {
+    throw new Error("AI run directory is required");
+  }
+  const runId = await readAiRunId(runDir);
+  const shardDir = `/tmp/ai-labeling-shards/${runId}`;
+  const reviewDir = `/tmp/ai-review-runs/${runId}`;
+  const mergedProposal = `${shardDir}/metadata-proposals.json`;
+
+  runPnpm("ai:bulk:status", pnpmArgsFromOptions(["--run-dir", runDir]));
+
+  if (await askYesNo("要重新準備 shard workspace？這會清掉同 run 的舊 shard inputs/prompts/outputs", true)) {
+    const maxPhotosPerShard = await ask("每個 shard 最多幾張照片", "135");
+    runPnpm("ai:shard:prepare", pnpmArgsFromOptions(["--run-dir", runDir, "--max-photos-per-shard", maxPhotosPerShard]));
+  }
+
+  console.log("");
+  console.log("交給平行 agent 的主要入口：");
+  console.log(`- shard prompts: ${shardDir}/worker-prompts/`);
+  console.log(`- shard inputs: ${shardDir}/inputs/`);
+  console.log(`- shard outputs: ${shardDir}/outputs/`);
+  console.log("每個 agent 只處理自己的 shard input，輸出 JSON array 到對應 shard output。");
+
+  runPnpm("ai:bulk:status", pnpmArgsFromOptions(["--run-dir", runDir]));
+
+  if (!(await askYesNo("所有 shard output 都完成後，要現在 merge 並產生暫存 review？", false))) {
+    console.log("");
+    console.log("稍後可用以下指令接續：");
+    console.log(`pnpm ai:bulk:status -- --run-dir ${runDir}`);
+    console.log(`pnpm ai:shard:merge -- --run-dir ${runDir}`);
+    console.log(`pnpm ai:review -- --run-dir ${runDir} --proposals ${mergedProposal} --output-dir ${reviewDir}`);
+    return;
+  }
+
+  runPnpm("ai:shard:merge", pnpmArgsFromOptions(["--run-dir", runDir]));
+  runPnpm("ai:review", pnpmArgsFromOptions(["--run-dir", runDir, "--proposals", mergedProposal, "--output-dir", reviewDir]));
+
+  if (await askYesNo("暫存 review 已確認可採用，要寫回正式 run 並重建正式 review artifacts？", false)) {
+    runPnpm("ai:shard:merge", pnpmArgsFromOptions(["--run-dir", runDir, "--write-run"]));
+    runPnpm("ai:review", pnpmArgsFromOptions(["--run-dir", runDir]));
+  } else {
+    console.log("");
+    console.log("尚未寫回正式 run。確認後可執行：");
+    console.log(`pnpm ai:shard:merge -- --run-dir ${runDir} --write-run`);
+    console.log(`pnpm ai:review -- --run-dir ${runDir}`);
+  }
 }
 
 async function askImageSize() {
@@ -563,6 +633,7 @@ async function buildAiReport() {
   const compare = await askYesNo("要比較多個 run / attempt？", false);
   if (compare) {
     closeReadline();
+    const { selectMultipleAiRuns } = await import("../lib/ai/ai-run-selector.mjs");
     const runDirs = await selectMultipleAiRuns();
     if (runDirs.length < 2) {
       throw new Error("comparison report requires at least two run directories");
@@ -572,6 +643,7 @@ async function buildAiReport() {
   }
 
   closeReadline();
+  const { selectSingleAiRun } = await import("../lib/ai/ai-run-selector.mjs");
   const runDir = await selectSingleAiRun();
   if (!runDir) {
     throw new Error("run directory is required");

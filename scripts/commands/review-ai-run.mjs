@@ -396,18 +396,15 @@ async function buildShardMap(runDir, runId) {
 
 async function inspectShardArtifacts(runDir, runId) {
   const standardDir = join("/tmp/ai-labeling-shards", runId);
-  const legacyDir = "/tmp/ai-labeling-shards";
   const runShardDir = join(runDir, "proposal-shards");
   const standardInputs = (await listFilesIfExists(join(standardDir, "inputs"))).filter((filename) => /^shard-\d+-input\.json$/.test(filename));
   const standardOutputs = (await listFilesIfExists(join(standardDir, "outputs"))).filter((filename) => /^shard-\d+-proposals\.json$/.test(filename));
   const runInputs = (await listFilesIfExists(runShardDir)).filter((filename) => /^shard-\d+-input\.json$/.test(filename));
   const runOutputs = (await listFilesIfExists(runShardDir)).filter((filename) => /^shard-\d+-proposals\.json$/.test(filename));
-  const legacyOutputs = (await listFilesIfExists(legacyDir)).filter((filename) => /^shard-\d+-proposals\.json$/.test(filename));
 
   const rows = [
     ["standard /tmp workspace", standardInputs.length, standardOutputs.length, standardDir],
     ["run proposal-shards", runInputs.length, runOutputs.length, runShardDir],
-    ["legacy /tmp root outputs", "", legacyOutputs.length, legacyDir],
   ].filter(([, inputs, outputs]) => Number(inputs) > 0 || Number(outputs) > 0);
 
   const warnings = [];
@@ -416,9 +413,6 @@ async function inspectShardArtifacts(runDir, runId) {
   }
   if (runInputs.length > 0 && runInputs.length !== runOutputs.length) {
     warnings.push(`run 內 proposal-shards input/output 數不一致：${runInputs.length} inputs, ${runOutputs.length} outputs。正式 proposal 仍以 root metadata-proposals.json 為準。`);
-  }
-  if (legacyOutputs.length > 0 && standardOutputs.length === 0) {
-    warnings.push("偵測到 /tmp/ai-labeling-shards 根目錄的 legacy shard outputs；這些檔案只能當診斷來源，不應覆蓋正式 root proposal。");
   }
 
   return { rows, warnings };

@@ -202,6 +202,8 @@ AI proposal 允許欄位由 `data/photo-schema.json` 的 `tables.photos.ai_field
 
 多值欄位在 proposal 中必須使用 JSON array，不使用 CSV 裡的分號字串。後續工具會在產生 Sheets update plan 時轉成正式表格需要的格式。
 
+AI 欄位值限制由 `data/photo-schema.json` 的 `tables.photos.ai_value_constraints` 定義。validator、update plan 與 Sheets 回寫工具應共用這份限制，例如 `curation_status` 只能是 `ai_labeled`，`public_use_status` 只能是 `needs_review` 或 `avoid`；不可在個別工具另外寫一份容易漂移的限制清單。
+
 ## 不可輸出欄位
 
 AI proposal 不應修改以下欄位：

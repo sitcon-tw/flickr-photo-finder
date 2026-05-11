@@ -1,4 +1,4 @@
-import { access, mkdir, readFile, stat, writeFile } from "node:fs/promises";
+import { access, mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
 import { basename, join, relative, sep } from "node:path";
 import { getAiLabelingPromptMetadata } from "../lib/ai/ai-labeling-prompt.mjs";
 import { aiFieldLayerName, allowedAiFields } from "../lib/core/photo-schema.mjs";
@@ -119,6 +119,55 @@ async function readJsonIfExists(path) {
     return null;
   }
   return readJson(path);
+}
+
+async function listFilesIfExists(path) {
+  try {
+    return await readdir(path);
+  } catch {
+    return [];
+  }
+}
+
+function formatShardNameFromFilename(filename) {
+  return filename.match(/shard-(\d+)/)?.[0] ?? filename.replace(/\.(json|md)$/, "");
+}
+
+async function readShardInputsFromDir(dir) {
+  const result = new Map();
+  const candidateDirs = [dir, join(dir, "inputs")];
+  for (const candidateDir of candidateDirs) {
+    const filenames = await listFilesIfExists(candidateDir);
+    for (const filename of filenames.filter((name) => /shard-\d+.*input\.json$/.test(name)).sort()) {
+      const payload = await readJsonIfExists(join(candidateDir, filename));
+      const shardName = typeof payload?.shard === "number"
+        ? `shard-${String(payload.shard).padStart(2, "0")}`
+        : formatShardNameFromFilename(filename);
+      for (const item of payload?.items ?? []) {
+        if (item?.photo_id) {
+          result.set(item.photo_id, shardName);
+        }
+      }
+    }
+  }
+  return result;
+}
+
+async function readShardMapForRun(runDir, manifest) {
+  const shardMap = new Map();
+  const candidates = [
+    join(runDir, "proposal-shards"),
+    join("/tmp/ai-labeling-shards", manifest.run_id || basename(runDir)),
+  ];
+  for (const dir of candidates) {
+    const map = await readShardInputsFromDir(dir);
+    for (const [photoId, shard] of map.entries()) {
+      if (!shardMap.has(photoId)) {
+        shardMap.set(photoId, shard);
+      }
+    }
+  }
+  return shardMap;
 }
 
 function formatRunLabel({ attempt, manifest, proposals, runDir }) {
@@ -243,6 +292,7 @@ async function loadRun(runDir) {
 
   const itemsByPhotoId = new Map();
   const fields = new Set();
+  const shardByPhotoId = await readShardMapForRun(runDir, manifest);
   for (const item of proposals?.items ?? []) {
     if (!item?.photo_id || !item.fields) {
       continue;
@@ -268,6 +318,7 @@ async function loadRun(runDir) {
     proposals,
     reviewFocus,
     runDir,
+    shardByPhotoId,
     validation,
   };
 }
@@ -402,6 +453,7 @@ function buildReportData(runs, options) {
           has_photo: run.photoIds.has(photoId),
           has_proposal: Boolean(item),
           run_id: run.manifest.run_id || run.label,
+          shard: run.shardByPhotoId.get(photoId) || "",
         };
       }),
     };
@@ -509,7 +561,7 @@ function renderHtml(reportData) {
     main { padding: 16px 24px 40px; }
     .toolbar {
       display: grid;
-      grid-template-columns: minmax(220px, 1fr) 220px 160px auto;
+      grid-template-columns: minmax(240px, 1.5fr) repeat(3, minmax(130px, 1fr));
       gap: 10px;
       margin-bottom: 14px;
       align-items: center;
@@ -727,7 +779,11 @@ function renderHtml(reportData) {
   <main>
     <section class="toolbar">
       <input id="search" type="search" placeholder="搜尋 photo_id、相簿、備註或欄位內容">
+      <select id="album-filter"></select>
+      <select id="shard-filter"></select>
+      <select id="layer-filter"></select>
       <select id="field-filter"></select>
+      <select id="focus-filter"></select>
       <select id="status-filter">
         <option value="all">所有照片</option>
         <option value="diff">有差異</option>
@@ -755,9 +811,13 @@ function renderHtml(reportData) {
     const pageSize = 50;
     const watchFields = new Set(data.watch_fields || []);
     const state = {
+      album: "all",
       field: "all",
+      focusIssue: "all",
+      layer: "all",
       onlyDiffFields: false,
       search: "",
+      shard: "all",
       status: "all",
       visibleLimit: pageSize,
     };
@@ -771,7 +831,11 @@ function renderHtml(reportData) {
     const loadMore = document.getElementById("load-more");
     const photosRoot = document.getElementById("photos");
     const searchInput = document.getElementById("search");
+    const albumFilter = document.getElementById("album-filter");
+    const shardFilter = document.getElementById("shard-filter");
+    const layerFilter = document.getElementById("layer-filter");
     const fieldFilter = document.getElementById("field-filter");
+    const focusFilter = document.getElementById("focus-filter");
     const statusFilter = document.getElementById("status-filter");
     const diffToggle = document.getElementById("diff-toggle");
     const onlyDiffFields = document.getElementById("only-diff-fields");
@@ -830,7 +894,8 @@ function renderHtml(reportData) {
       for (const attempt of photo.attempts) {
         Object.keys(attempt.fields || {}).forEach((field) => fields.add(field));
       }
-      return [...preferredFields.filter((field) => fields.has(field)), ...[...fields].filter((field) => !preferredFields.includes(field)).sort()];
+      const ordered = [...preferredFields.filter((field) => fields.has(field)), ...[...fields].filter((field) => !preferredFields.includes(field)).sort()];
+      return state.layer === "all" ? ordered : ordered.filter((field) => fieldLayerLabel(field) === state.layer);
     }
 
     function fieldHasDiff(photo, field) {
@@ -934,12 +999,53 @@ function renderHtml(reportData) {
     }
 
     function renderFilters() {
-      const options = [["all", "所有欄位"], ...data.fields.map((field) => [field, fieldLabel(field)])];
+      const albums = [...new Set(data.photos.map((photo) => photo.album_title).filter(Boolean))].sort((left, right) => left.localeCompare(right, "zh-Hant"));
+      albumFilter.replaceChildren();
+      for (const [value, label] of [["all", "所有相簿"], ...albums.map((album) => [album, album])]) {
+        const option = el("option", "", label);
+        option.value = value;
+        option.selected = value === state.album;
+        albumFilter.append(option);
+      }
+
+      const shards = [...new Set(data.photos.flatMap((photo) => photo.attempts.map((attempt) => attempt.shard).filter(Boolean)))].sort();
+      shardFilter.replaceChildren();
+      for (const [value, label] of [["all", "所有 shard"], ...shards.map((shard) => [shard, shard])]) {
+        const option = el("option", "", label);
+        option.value = value;
+        option.selected = value === state.shard;
+        shardFilter.append(option);
+      }
+
+      const layerOptions = [["all", "所有 layer"], ["baseline", "baseline"], ["recall", "recall"], ["optional", "optional"]];
+      layerFilter.replaceChildren();
+      for (const [value, label] of layerOptions) {
+        const option = el("option", "", label);
+        option.value = value;
+        option.selected = value === state.layer;
+        layerFilter.append(option);
+      }
+
+      const fieldsForLayer = state.layer === "all" ? data.fields : data.fields.filter((field) => fieldLayerLabel(field) === state.layer);
+      if (state.field !== "all" && !fieldsForLayer.includes(state.field)) {
+        state.field = "all";
+      }
+      const options = [["all", "所有欄位"], ...fieldsForLayer.map((field) => [field, fieldLabel(field)])];
       fieldFilter.replaceChildren();
       for (const [value, label] of options) {
         const option = el("option", "", label);
         option.value = value;
+        option.selected = value === state.field;
         fieldFilter.append(option);
+      }
+
+      const focusIssues = [...new Set(data.photos.flatMap((photo) => photo.attempts.flatMap((attempt) => (attempt.focus || []).map((focus) => focus.issue))))].sort((left, right) => left.localeCompare(right, "zh-Hant"));
+      focusFilter.replaceChildren();
+      for (const [value, label] of [["all", "所有警訊"], ...focusIssues.map((issue) => [issue, issue])]) {
+        const option = el("option", "", label);
+        option.value = value;
+        option.selected = value === state.focusIssue;
+        focusFilter.append(option);
       }
 
       const statusOptions = isSingleMode
@@ -984,6 +1090,8 @@ function renderHtml(reportData) {
         media.append(link);
       }
       if (photo.album_title) media.append(el("div", "meta", photo.album_title));
+      const shards = [...new Set(photo.attempts.map((attempt) => attempt.shard).filter(Boolean))];
+      if (shards.length > 0) media.append(el("div", "meta", "shard: " + shards.join(", ")));
       if (photo.curation_notes) media.append(el("div", "meta", photo.curation_notes));
       return media;
     }
@@ -1133,10 +1241,21 @@ function renderHtml(reportData) {
       return photo.attempts.some((attempt) => (attempt.focus || []).length > 0);
     }
 
+    function photoHasFocusIssue(photo, issue) {
+      return photo.attempts.some((attempt) => (attempt.focus || []).some((focus) => focus.issue === issue));
+    }
+
+    function photoHasShard(photo, shard) {
+      return photo.attempts.some((attempt) => attempt.shard === shard);
+    }
+
     function filteredPhotos() {
       const query = state.search.trim().toLowerCase();
       return data.photos.filter((photo) => {
         if (query && !searchableText(photo).includes(query)) return false;
+        if (state.album !== "all" && photo.album_title !== state.album) return false;
+        if (state.shard !== "all" && !photoHasShard(photo, state.shard)) return false;
+        if (state.focusIssue !== "all" && !photoHasFocusIssue(photo, state.focusIssue)) return false;
         if (isSingleMode) {
           const attempt = currentAttempt(photo);
           if (state.status === "with-proposal" && !attempt.has_proposal) return false;
@@ -1179,8 +1298,25 @@ function renderHtml(reportData) {
       state.search = searchInput.value;
       resetAndRenderPhotos();
     });
+    albumFilter.addEventListener("change", () => {
+      state.album = albumFilter.value;
+      resetAndRenderPhotos();
+    });
+    shardFilter.addEventListener("change", () => {
+      state.shard = shardFilter.value;
+      resetAndRenderPhotos();
+    });
+    layerFilter.addEventListener("change", () => {
+      state.layer = layerFilter.value;
+      renderFilters();
+      resetAndRenderPhotos();
+    });
     fieldFilter.addEventListener("change", () => {
       state.field = fieldFilter.value;
+      resetAndRenderPhotos();
+    });
+    focusFilter.addEventListener("change", () => {
+      state.focusIssue = focusFilter.value;
       resetAndRenderPhotos();
     });
     statusFilter.addEventListener("change", () => {

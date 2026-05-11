@@ -46,6 +46,7 @@ The main goal is not to replace Flickr. The repository should keep a practical i
 - `scripts/commands/build-apps-script-config.mjs`: helper for generating Apps Script config from repo schema and taxonomy.
 - `scripts/commands/create-ai-attempt.mjs`: helper for creating model/round attempts from an existing AI run while reusing the same input photos.
 - `scripts/commands/build-ai-report.mjs`: helper for generating read-only HTML reports for single AI runs or multi-run attempt comparisons.
+- `scripts/commands/status-ai-bulk-run.mjs`: helper for checking large AI run shard workspace, merged proposals, root proposal, and review summary freshness.
 - `scripts/commands/build-cross-activity-ai-sample.mjs`: helper for building a local cross-activity AI labeling sample run from a versioned sampling plan and Flickr album photos.
 - `scripts/commands/run-intake.mjs`: helper for producing a complete intake run artifact from a selected album.
 - `scripts/commands/validate-intake-run.mjs`: helper for checking an intake run artifact before applying it to Google Sheets.
@@ -160,6 +161,7 @@ pnpm eval:attempt -- --from <dir> --model <name> --round <number>
 pnpm ai:report -- --run <dir>
 pnpm ai:report -- --runs <dir> <dir>
 pnpm ai:review -- --run-dir <dir>
+pnpm ai:bulk:status -- --run-dir <dir>
 pnpm eval:sample
 pnpm ai:diff -- --run-dir <dir>
 pnpm ai:plan -- --run-dir <dir>

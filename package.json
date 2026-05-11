@@ -30,6 +30,7 @@
     "apps-script:status": "node scripts/commands/apps-script-clasp.mjs status",
     "review-panel:preview": "node scripts/commands/preview-review-panel.mjs",
     "ai:diff": "node scripts/commands/render-ai-diff.mjs",
+    "ai:bulk:status": "node scripts/commands/status-ai-bulk-run.mjs",
     "ai:plan": "node scripts/commands/plan-ai-updates.mjs",
     "ai:prepare": "node scripts/commands/prepare-ai-run.mjs",
     "ai:report": "node scripts/commands/build-ai-report.mjs",

@@ -52,7 +52,7 @@
 
 ### 目前可用
 
-- `pnpm workflow`，先說明完整資料流，再依階段引導常見工作流程，包含相簿匯入、AI prepare/review/report、Sheets 維護與公開搜尋前端 artifact build/check，作為新接觸者與日常操作的主要入口。相簿匯入會在產生 intake run 後記住 run 目錄，並可直接接續 validation 與 Sheets dry-run；AI report 入口會從 `tmp/ai-runs/` 互動式選擇 run 或 attempt。
+- `pnpm workflow`，先說明完整資料流，再依階段引導常見工作流程，包含相簿匯入、AI prepare/review/report、大型 AI 分片流程、Sheets 維護與公開搜尋前端 artifact build/check，作為新接觸者與日常操作的主要入口。相簿匯入會在產生 intake run 後記住 run 目錄，並可直接接續 validation 與 Sheets dry-run；AI report 入口會從 `tmp/ai-runs/` 互動式選擇 run 或 attempt。
 - `pnpm eval`，引導模型品質、prompt、taxonomy、跨活動樣本與 `visual_description` 搜尋增益評估；這是評估入口，不是一般照片整理主線。產生評估報表時可從既有 AI runs 互動式單選或多選，不需要手動貼 run 目錄。
 - 本機 static search UI：`pnpm finder:dev` 預設讀正式 Google Sheets 公開 CSV；`pnpm finder:dev:fixture` 讀 `fixtures/photos.csv`；`pnpm finder:dev:export` 讀 `tmp/sheets-export/photos.csv`。
 - `pnpm data:validate`，檢查 sample/export data、schema 與 taxonomy。
@@ -80,12 +80,13 @@
 - `pnpm ai:prepare`，從正式 Sheets 匯出的 `photos.csv` 選出待初標照片，建立本機 `tmp/ai-runs/` 工作目錄與可供 AI 讀圖的輸入檔；預設下載 1024px 圖片，也可指定 `preview`、640、800 或 `original`。
 - `pnpm eval:sample`，依 `data/ai-cross-activity-sample-plan.json` 從多本 Flickr 相簿等距抽樣，建立跨活動 AI 測試工作包；這是欄位與 prompt 評估用本機資料集，不寫入 Google Sheets。
 - `pnpm eval:attempt -- --from <dir> --model <name> --round <number>`，從既有 AI run 建立可重複使用同一輸入的模型/輪次 attempt，圖片預設以 symlink 或 hardlink 共用。
-- `pnpm ai:review -- --run-dir <dir>`，檢查 AI 候選 `metadata-proposals.json`，並一次產生 `metadata-review-summary.md`、`metadata-diff.md`、`metadata-update-plan.json` 與 CSV。
+- `pnpm ai:review -- --run-dir <dir>`，檢查 AI 候選 `metadata-proposals.json`，並一次產生 `metadata-review-summary.md`、`metadata-diff.md`、`metadata-update-plan.json` 與 CSV；大型 run summary 會附 artifact provenance、AI layer coverage 與 scene QA。
 - `pnpm ai:validate -- --run-dir <dir>`，只檢查 AI 候選 `metadata-proposals.json` 是否符合 schema、taxonomy 與人工 review 邊界。
 - `pnpm ai:shard:prepare -- --run-dir <dir>` / `pnpm ai:shard:merge -- --run-dir <dir>`，大型 AI run 的分片準備與暫存合併工具。預設使用 `/tmp/ai-labeling-shards/<run-id>/`，避免多 agent 在正式 run 目錄反覆寫中間檔。
+- `pnpm ai:bulk:status -- --run-dir <dir>`，檢查大型 AI run 的 root proposal、shard workspace、暫存合併結果與 review summary 狀態，不修改檔案。
 - `pnpm eval:validate-fixtures`，檢查 AI proposal valid/invalid 範例是否仍符合目前 validator 邊界。
 - `pnpm ai:diff -- --run-dir <dir>`，只將已驗證的 AI 候選 metadata 轉成 `metadata-diff.md`，供人類審核，不寫入 Sheets。
-- `pnpm ai:plan -- --run-dir <dir>`，只將已驗證的 AI 候選 metadata 轉成 `metadata-update-plan.json` 與 CSV，作為後續 dry-run 更新工具輸入，不寫入 Sheets。
+- `pnpm ai:plan -- --run-dir <dir>`，只將已驗證的 AI 候選 metadata 轉成 `metadata-update-plan.json` 與 CSV，作為後續 dry-run 更新工具輸入，不寫入 Sheets；可用 `--layers baseline,recall,optional` 分階段產生計畫。
 - `pnpm ai:report -- --run <dir>` 或 `pnpm ai:report -- --runs <dir> <dir>`，產生單次檢視或多模型/多輪比較用的 AI 初標唯讀靜態 HTML 報表。
 - `pnpm eval:search -- --run-dir <dir>`，在 proposal 寫回前離線比較 taxonomy-only baseline 與 taxonomy + `visual_description` 的搜尋排序差異，用來驗證描述欄位是否有實際找圖增益。
 - `pnpm sheets:apply-ai-updates -- --run-dir <dir>`，對 AI metadata 更新計畫執行 Sheets dry-run；加上 `--write` 才會更新 cells，且會檢查 current value 避免覆蓋人工變更。

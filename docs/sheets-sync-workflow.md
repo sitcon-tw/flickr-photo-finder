@@ -405,6 +405,12 @@ pnpm ai:prepare -- --album ALBUM_ID --limit all
 
 日常操作可直接使用 `pnpm workflow` 的「準備 AI 初標工作包」。它會先從正式 Sheets 匯出的 `albums` 清單選相簿，再把選到的 album id 傳給 `ai:prepare`。工作包建立完成後，`ai:prepare` 會寫入該 run 目錄的 `ai-labeling-prompt.md`；workflow 也會印出同一份可直接複製給模型或 agent 的 prompt。這份 prompt 是模型任務入口；不要另外把 operator guide、評估筆記或 Sheets 回寫文件整份交給模型。
 
+數百張以上的大型批次可使用 `pnpm workflow -- --task ai-bulk`。這個入口會沿用正式 Sheets 匯出的相簿清單，讓操作者挑選要處理的相簿，建立整批 AI run，接著引導分片準備、分片狀態檢查、合併、review、report 與 Sheets dry-run。若只想查看目前進度：
+
+```bash
+pnpm ai:bulk:status -- --run-dir tmp/ai-runs/<run-id>
+```
+
 新的 run/attempt 會在 `manifest.json` 記錄 `prompt_template_path` 與 `prompt_template_sha256`。比較多個模型或多輪結果時，應確認這兩個值一致；若不一致，代表結果同時受到 prompt 版本差異影響，不能只解讀為模型能力差異。
 
 若要把同一批輸入交給多個模型，或同一模型重跑第二輪，請建立 attempt：
@@ -534,6 +540,13 @@ pnpm ai:plan -- --run-dir tmp/ai-runs/<run-id>
 
 `ai:plan` 會先執行同一套 proposal validation，再輸出 `metadata-update-plan.json` 與 `metadata-update-plan.csv`。這份計畫只列出實際會改變的欄位，供後續 dry-run Sheets 更新工具使用；它不寫入 Google Sheets。
 
+若要分階段採用結果，可用 `--layers` 限制產生計畫的 AI 欄位層級。例如先只處理基礎讀圖欄位，或再加入高召回場景欄位：
+
+```bash
+pnpm ai:plan -- --run-dir tmp/ai-runs/<run-id> --layers baseline
+pnpm ai:plan -- --run-dir tmp/ai-runs/<run-id> --layers baseline,recall
+```
+
 dry-run 檢查正式 Sheets 更新：
 
 ```bash
@@ -545,6 +558,8 @@ pnpm sheets:apply-ai-updates -- --run-dir tmp/ai-runs/<run-id>
 ```bash
 pnpm sheets:apply-ai-updates -- --run-dir tmp/ai-runs/<run-id> --write
 ```
+
+`sheets:apply-ai-updates` 也支援同一個 `--layers baseline,recall,optional` 選項。若 review 決定先採用低風險欄位，應在 dry-run 與 `--write` 使用相同 layer 條件，避免實際寫入範圍和審核計畫不同。
 
 若 Sheets 已被其他志工修改，造成目前 cell 值和 plan 不一致，工具會阻擋寫入，避免覆蓋人工整理結果。
 

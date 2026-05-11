@@ -115,6 +115,14 @@ pnpm ai:shard:prepare -- --run-dir tmp/ai-runs/<run-id>
 
 `ai:shard:prepare` 會清掉該 workspace 中前一次產生的 inputs、worker prompts、outputs 與暫存 merged proposal，避免誤用舊分片結果。
 
+大型 run 中途可隨時查狀態：
+
+```bash
+pnpm ai:bulk:status -- --run-dir tmp/ai-runs/<run-id>
+```
+
+它會檢查 root run、shard manifest、分片輸入、分片輸出、暫存合併 proposal、正式 root proposal 與 review summary 是否過期，並提示下一個低階指令。這個狀態檢查不修改檔案。
+
 分工前先挑 2 張照片走 smoke test：產生小 proposal、用 `pnpm ai:validate -- --run-dir <run-dir> --proposals <path>` 驗證、再用 `pnpm ai:review -- --run-dir <run-dir> --proposals <path> --output-dir <tmp-dir>` 確認 review artifacts 不會寫入正式 run 目錄。確認後再平行處理全部 shard。
 
 全部 shard 完成後合併：
@@ -150,6 +158,8 @@ pnpm ai:review -- --run-dir tmp/ai-runs/<run-id>
 - 產生 `metadata-update-plan.json` 與 `metadata-update-plan.csv`，列出後續可能回寫的欄位值。
 - 產生 `metadata-review-summary.md`，整理欄位覆蓋率、常見值分布、批次層級警訊、優先抽查照片與下一步指令。
 
+大型或分片 run 的 summary 會額外顯示 `Artifact Provenance`、`Layer Coverage` 與 `Scene QA`。`Artifact Provenance` 用來確認 final proposals 來源、hash、圖片連結模式與 shard artifacts；`Layer Coverage` 用 schema 分層看 baseline、recall、optional 覆蓋率；`Scene QA` 用整體、相簿與分片層級檢查 `scene_tags` 是否低召回、過度集中或平均過密。
+
 `ai:review` 終端輸出的 `Next:` 與 `metadata-review-summary.md` 的 `## Next Commands` 是這段流程的主要交接提示。若新增報表、比較、搜尋實驗或回寫前檢查工具，應同步更新這兩個地方。
 
 `metadata-review-summary.md` 頂部會列出本次使用的 prompt template path 與短 hash。舊 run 若顯示 `unknown`，代表當時尚未記錄 prompt 版本；比較結果時應把 prompt 版本視為未知因素。若 run 使用的 prompt hash 與目前 repo prompt 不同，`Review Notes` 會提示重新建立 run 或 attempt，避免把舊 prompt 結果當成新版 prompt 評估。
@@ -170,7 +180,8 @@ pnpm ai:review -- --run-dir tmp/ai-runs/<run-id>
 | `unknown taxonomy value` | 使用了 taxonomy 以外的值。 | 改用 `data/tag-taxonomy.json` 中既有值；若真的不足，先省略並另行回報。 |
 | `AI proposals must not set approved` | AI 把 `public_use_status` 設成 `approved`。 | 改成 `needs_review`、`avoid`，或省略此欄。 |
 | `AI proposals may only set ai_labeled` | AI 把 `curation_status` 設成 `reviewed`。 | 改成 `ai_labeled`，或省略此欄。 |
-| `field is not allowed in AI proposals` | AI 嘗試改 Flickr 基本欄位或人工欄位。 | 移除該欄位 proposal。 |
+| `field is human-only and not allowed in AI proposals` | AI 嘗試改 Flickr 基本欄位、攝影師、授權、活動脈絡或人工備註。 | 移除該欄位 proposal。 |
+| `field is not allowed in AI proposals` | AI 嘗試輸出 schema 未列入 AI layer 的欄位。 | 移除該欄位 proposal；若確實需要，先討論 schema 與工具邊界。 |
 
 ### 7. 檢視單次結果或比較多模型/多輪結果
 
@@ -190,7 +201,7 @@ pnpm ai:report -- --runs tmp/ai-runs/<attempt-a> tmp/ai-runs/<attempt-b> tmp/ai-
 
 這會產生 `tmp/ai-reports/<timestamp>/index.html`。報表是唯讀靜態 HTML；單一 run 會以每張照片為單位呈現縮圖、欄位覆蓋率與各 proposal 細節，多個 run 會並排顯示 value、reason、confidence、validator 狀態與差異。它不修改 proposal，也不寫入 Sheets。
 
-若 `ai:review` 已產生 `Review Focus`，HTML report 會讀取該抽查清單，並在摘要顯示需抽查項數，也可用狀態篩選切到「需優先抽查」。這是人工檢視 warning 的主要入口；不需要先手動從 summary 複製 photo_id 搜尋。若 `metadata-review-summary.md` 比 `metadata-proposals.json` 舊，report 會提示先重新執行 `pnpm ai:review`，避免使用過期抽查清單。多 run/attempt 報表也會檢查 `prompt_template_sha256` 是否一致，以及是否和目前 repo prompt 相同；若不一致或缺少紀錄，應先釐清 prompt 版本差異再解讀模型比較。
+若 `ai:review` 已產生 `Review Focus`，HTML report 會讀取該抽查清單，並在摘要顯示需抽查項數，也可用狀態篩選切到「需優先抽查」。這是人工檢視 warning 的主要入口；不需要先手動從 summary 複製 photo_id 搜尋。報表也能依相簿、shard、AI field layer、欄位與 focus issue 篩選，適合大型分片 run 檢查某個 agent 或某一層欄位是否系統性漏標。若 `metadata-review-summary.md` 比 `metadata-proposals.json` 舊，report 會提示先重新執行 `pnpm ai:review`，避免使用過期抽查清單。多 run/attempt 報表也會檢查 `prompt_template_sha256` 是否一致，以及是否和目前 repo prompt 相同；若不一致或缺少紀錄，應先釐清 prompt 版本差異再解讀模型比較。
 
 若這次要驗證 `visual_description` 對自然語言找圖是否真的有幫助，可在寫回 Sheets 前跑離線搜尋比較：
 
@@ -207,6 +218,13 @@ pnpm eval:search -- --run-dir tmp/ai-runs/<attempt-or-run> --query "有留白的
 pnpm ai:validate -- --run-dir tmp/ai-runs/<run-id>
 pnpm ai:diff -- --run-dir tmp/ai-runs/<run-id>
 pnpm ai:plan -- --run-dir tmp/ai-runs/<run-id>
+```
+
+`ai:plan` 和 `sheets:apply-ai-updates` 可用 `--layers baseline,recall,optional` 限制更新範圍。例如先只回寫基礎讀圖欄位，暫緩 scene recall 或用途欄位：
+
+```bash
+pnpm ai:plan -- --run-dir tmp/ai-runs/<run-id> --layers baseline
+pnpm sheets:apply-ai-updates -- --run-dir tmp/ai-runs/<run-id> --layers baseline
 ```
 
 日常檢視請優先使用 `pnpm ai:review`。上述低階指令保留給自動化、除錯或只想重建其中一份產物的情境。
