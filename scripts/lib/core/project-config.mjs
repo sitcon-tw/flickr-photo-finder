@@ -87,3 +87,11 @@ export const googleSheetsPracticeSpreadsheetId = optionalString(
   projectConfig.googleSheets?.practiceSpreadsheetId,
   "googleSheets.practiceSpreadsheetId",
 );
+export const googleSheetsAppsScriptId = optionalString(
+  projectConfig.googleSheets?.appsScriptId,
+  "googleSheets.appsScriptId",
+);
+export const googleSheetsPracticeAppsScriptId = optionalString(
+  projectConfig.googleSheets?.practiceAppsScriptId,
+  "googleSheets.practiceAppsScriptId",
+);

@@ -662,8 +662,8 @@ async function runSheetsTools() {
     ["sheets:practice:sync", "dry-run 重置固定練習用試算表"],
     ["sheets:sync-guide", "dry-run 同步使用說明分頁"],
     ["apps-script:build-config", "從 schema 與 taxonomy 產生 Apps Script 設定"],
-    ["apps-script:status", "檢查 Apps Script 本機綁定與遠端差異"],
-    ["apps-script:push", "重建設定、驗證資料並推送 Apps Script"],
+    ["apps-script:status", "檢查 production Apps Script source 與遠端差異"],
+    ["apps-script:push", "推送 Apps Script source 到 production，不寫 Sheets 資料"],
     ["apps-script:deployments", "列出 Apps Script deployments"],
   ];
 

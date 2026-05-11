@@ -175,19 +175,19 @@ Apps Script 應透過 `clasp` 進行部署。
 pnpm apps-script:build-config
 ```
 
-實際部署應由有 Google Apps Script 權限的維護者使用 `clasp` 操作。若是既有 Apps Script 專案，維護者可以在 `apps-script/` 目錄建立本機 `.clasp.json`，內容可參考 `.clasp.json.example`；這個檔案不應 commit。
+實際部署應由有 Google Apps Script 權限的維護者使用 `clasp` 操作。repo wrapper 會依 target 產生本機 `apps-script/.clasp.json`，內容可參考 `.clasp.json.example`；這個檔案不應 commit，也不應被視為推送目標的真理來源。
 
 此 repo 不把 `@google/clasp` 加進 dependency；標準交接入口是 `pnpm apps-script:*` scripts，內部使用 `pnpm dlx @google/clasp`，避免一般資料工具使用者被迫安裝部署工具，也減少維護者手動輸入重複參數。
 
-`apps-script/` 固定作為 clasp rootDir。正式綁定不由 wrapper 自動建立 Apps Script 專案；維護者應先從目標 Sheet 的 `擴充功能` -> `Apps Script` 打開或建立該 Sheet 的 bound script，再把那份專案的 Script ID 交給 repo wrapper。
+`apps-script/` 固定作為 clasp rootDir。wrapper 不會自動建立 Apps Script 專案；維護者應先從目標 Sheet 的 `擴充功能` -> `Apps Script` 打開或建立該 Sheet 的 bound script，再把那份專案的 Script ID 寫入 `config/project.json`。正式表是預設 target；練習表必須明確指定 `--target practice`。
 
 常用入口：
 
 ```bash
 pnpm apps-script:login
-pnpm apps-script:bind -- <script-id>
 pnpm apps-script:status
 pnpm apps-script:push
+pnpm apps-script:push -- --target practice
 pnpm apps-script:deployments
 pnpm apps-script:open
 pnpm apps-script:smoke-test -- --check
@@ -221,26 +221,29 @@ Web App deployment type 應由 Apps Script UI 建立或更新：`Deploy` -> `New
 1. 執行 `pnpm apps-script:login`，用有目標 Sheet / Apps Script 權限的 Google 帳號登入 clasp。
 2. 到 <https://script.google.com/home/usersettings>，確認同一個 Google 帳號已啟用 Apps Script API。
 3. 打開正式 Sheet，從功能列選 `擴充功能` -> `Apps Script`。這一步打開的專案才是 Sheet UI 會使用的 bound script。
-4. 在 Apps Script 編輯器的 Project Settings 複製 Script ID。
-5. 回 repo 執行 `pnpm apps-script:bind -- <script-id>`，建立本機 `apps-script/.clasp.json`。
-6. 執行 `pnpm apps-script:status`，確認 tracked files 包含 `appsscript.json`、Apps Script `.js` source、`GeneratedConfig.js`、`ReviewPanel.html` 與 `ReviewWebApp.html`。
+4. 在 Apps Script 編輯器的 Project Settings 複製 Script ID，確認 `config/project.json` 的 `googleSheets.appsScriptId` 已是這份 ID。
+5. 回 repo 執行 `pnpm apps-script:status`，wrapper 會用正式表 target 重建本機 `apps-script/.clasp.json`，並列出 clasp 看到的檔案狀態。
+6. 確認 tracked files 包含 `appsscript.json`、Apps Script `.js` source、`GeneratedConfig.js`、`ReviewPanel.html` 與 `ReviewWebApp.html`。
 7. 執行 `pnpm apps-script:push`。
 8. 回正式 Sheet 重新整理，確認出現 `SITCON Photo Finder` 選單。
 9. 若要建立或更新 Web App deployment，到 Apps Script UI 選 `Deploy` -> `New deployment` 或管理既有 deployment，deployment type 必須選 `Web app`。設定 `Execute as` 為使用者本人、`Who has access` 為任何已登入 Google 帳號後部署，並複製 Web App URL。
 
-練習用試算表也照同一套流程部署，但它應使用從練習表 `擴充功能` -> `Apps Script` 開啟的另一個 Script ID。不要把正式表的 `.clasp.json` 直接拿去推練習表，也不要把練習表當成正式資料來源；練習表 ID 與資料重置流程記錄在 `docs/sheets-sync-workflow.md`，一般整理者應直接使用固定練習表，不需要自行 clone repo 或執行 CLI。
+練習用試算表也照同一套流程部署，但它應使用從練習表 `擴充功能` -> `Apps Script` 開啟的另一個 Script ID。正式表與練習表的 Script ID 可分別記錄在 `config/project.json` 的 `googleSheets.appsScriptId` 與 `googleSheets.practiceAppsScriptId`；維護者換電腦時可直接使用 `pnpm apps-script:push` 推正式表，或用 `pnpm apps-script:push -- --target practice` 推練習表，不需要再次從介面抄寫 ID。不要把練習表當成正式資料來源；練習表 ID、練習表 Apps Script ID 與資料重置流程記錄在 `docs/sheets-sync-workflow.md`，一般整理者應直接使用固定練習表，不需要自行 clone repo 或執行 CLI。
 
 ### 綁定 Sheet UI 的 Apps Script 專案
 
-維護者應從正式 Sheet 的 `擴充功能` -> `Apps Script` 打開該 Sheet 綁定的 Apps Script 專案，再到 Apps Script 編輯器的 Project Settings 複製 Script ID，然後產生本機 `.clasp.json`：
+維護者應從正式 Sheet 的 `擴充功能` -> `Apps Script` 打開該 Sheet 綁定的 Apps Script 專案，再到 Apps Script 編輯器的 Project Settings 複製 Script ID，並確認 `config/project.json` 已記錄對應 ID。日常 `push`、`status`、`open` 與 `deployments` 會依 target 重建本機 `.clasp.json`；正式表是預設 target，練習表必須明確指定：
 
 ```bash
-pnpm apps-script:bind -- <script-id>
+pnpm apps-script:push
+pnpm apps-script:push -- --target practice
 ```
 
-綁定後可用 `pnpm apps-script:status` 檢查連線。若需要用 clasp clone 檢查既有專案，請只在暫存目錄操作，不要讓 clone 覆蓋 repo source；正式 source 以 repo 版本為準。
+`pnpm apps-script:bind -- <script-id>` 仍可作為低階手動工具使用，但一般交接流程不應依賴既有 `.clasp.json`。固定正式表與練習表的 Script ID 應記錄在 `config/project.json`。
 
-不要用 clasp create 作為正式綁定的主要路徑。若從 Sheet 功能列 `擴充功能` -> `Apps Script` 打開的是空白專案，仍應複製那份空白專案的 Script ID，使用 `pnpm apps-script:bind -- <script-id>` 後再 push repo source。這樣 Sheet UI 和 repo 推送目標才會是同一份 bound script。
+可用 `pnpm apps-script:status` 或 `pnpm apps-script:status -- --target practice` 檢查連線。若需要用 clasp clone 檢查既有專案，請只在暫存目錄操作，不要讓 clone 覆蓋 repo source；正式 source 以 repo 版本為準。
+
+不要用 clasp create 作為正式綁定的主要路徑。若從 Sheet 功能列 `擴充功能` -> `Apps Script` 打開的是空白專案，仍應複製那份空白專案的 Script ID，寫入 `config/project.json` 後再 push repo source。這樣 Sheet UI 和 repo 推送目標才會是同一份 bound script。
 
 ### 推送與驗收
 
@@ -250,7 +253,20 @@ pnpm apps-script:bind -- <script-id>
 pnpm apps-script:push
 ```
 
-`apps-script:push` 會依序執行 `pnpm apps-script:build-config`、`pnpm data:validate` 與 clasp push。如果只想檢查本機與遠端差異，使用 `pnpm apps-script:status`。
+`apps-script:push` 會依序執行 `pnpm apps-script:build-config`、`pnpm data:validate` 與 clasp push。它推送的是 `apps-script/` 內的 Apps Script source 與 `GeneratedConfig.js`，不會把 `fixtures/`、`tmp/sheets-practice/` 或任何 Sheets 資料列寫進 Google Sheets。如果只想檢查本機 Apps Script source 與遠端差異，使用 `pnpm apps-script:status`。
+
+練習表推送需明確指定 target：
+
+```bash
+pnpm apps-script:push -- --target practice
+```
+
+若要手動追加或刪除 Apps Script validation smoke-test rows，寫入模式必須明確指定 `--target` 或 `--spreadsheet-id`，避免測試列誤寫到正式表：
+
+```bash
+pnpm apps-script:smoke-test -- --append --target practice --write
+pnpm apps-script:smoke-test -- --delete --target practice --write
+```
 
 推送後到正式或測試 Sheet 重新整理頁面，依序檢查：
 
@@ -327,21 +343,21 @@ Google Sheets 中可提供以下選單：
 
 ### 驗證邊界 smoke test
 
-若需要驗證 Sheet-bound Apps Script 和 repo validation 的基本 parity，可用 repo 指令追加一組明確標記的錯誤列。預設為 dry-run，必須加上 `--write` 才會修改正式 Sheet：
+若需要驗證 Sheet-bound Apps Script 和 repo validation 的基本 parity，可用 repo 指令追加一組明確標記的錯誤列。預設為 dry-run；真正寫入或刪除時，必須同時加上 `--write` 與明確 target 或 spreadsheet id：
 
 ```bash
 pnpm apps-script:smoke-test -- --append
-pnpm apps-script:smoke-test -- --append --write
+pnpm apps-script:smoke-test -- --append --target practice --write
 pnpm apps-script:smoke-test -- --check
 ```
 
-這組測試列會使用 `__apps_script_validation_test_manual_` 開頭的 `photo_id`，並在 `curation_notes` 標記 `APP_SCRIPT_VALIDATION_SMOKE_TEST_DELETE_ME`。追加後在 Sheet 執行 `檢查全部照片`，`validation_report` 應看到多值重複、未知 taxonomy、單值 taxonomy 錯誤、boolean 錯誤、URL 錯誤、`reviewed` 缺欄位與 `approved` 缺欄位。
+這組測試列會使用 `__apps_script_validation_test_manual_` 開頭的 `photo_id`，並在 `curation_notes` 標記 `APP_SCRIPT_VALIDATION_SMOKE_TEST_DELETE_ME`。追加後在 Sheet 執行 `檢查全部照片`，`validation_report` 應看到多值重複、未知 taxonomy、單值 taxonomy 錯誤、boolean 錯誤、URL 錯誤與 `reviewed` 缺欄位。
 
 測完後刪除測試列：
 
 ```bash
 pnpm apps-script:smoke-test -- --delete
-pnpm apps-script:smoke-test -- --delete --write
+pnpm apps-script:smoke-test -- --delete --target practice --write
 pnpm apps-script:smoke-test -- --check
 ```
 

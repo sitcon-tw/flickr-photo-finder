@@ -131,7 +131,7 @@ pnpm sheets:sync-guide
 pnpm sheets:sync-guide -- --write
 ```
 
-練習用試算表應是一份 SITCON 管理的固定 Google Sheets。建立方式是由有 Drive 權限的人先建立空白試算表，把 service account 加為 Editor，將 spreadsheet ID 填入 `config/project.json` 的 `googleSheets.practiceSpreadsheetId`。repo 不自動管理 Google Drive 分享權限。
+練習用試算表應是一份 SITCON 管理的固定 Google Sheets。建立方式是由有 Drive 權限的人先建立空白試算表，把 service account 加為 Editor，將 spreadsheet ID 填入 `config/project.json` 的 `googleSheets.practiceSpreadsheetId`。正式表與練習表若已建立 Sheet-bound Apps Script 專案，可分別將 Script ID 填入同一份設定的 `googleSheets.appsScriptId` 與 `googleSheets.practiceAppsScriptId`，讓維護者換電腦時能重建本機 `clasp` 綁定。repo 不自動管理 Google Drive 分享權限，也不保存個人 Google credential 或 clasp token。
 
 維護者要重置練習資料時，先匯出正式資料，再 dry-run 檢查練習表同步計畫：
 
@@ -154,7 +154,7 @@ pnpm sheets:practice:sync -- --write
 pnpm sheets:practice:build
 ```
 
-若要在練習用試算表中重現 `SITCON Photo Finder` 選單與右側整理面板，還需要從該練習表的 `擴充功能` -> `Apps Script` 開啟 bound script，依 `docs/apps-script-maintenance-design.md` 綁定並 push repo Apps Script source。正式表與練習表應綁到各自的 Sheet-bound Apps Script 專案，不共用 `.clasp.json`。
+若要在練習用試算表中重現 `SITCON Photo Finder` 選單與右側整理面板，還需要從該練習表的 `擴充功能` -> `Apps Script` 開啟 bound script，依 `docs/apps-script-maintenance-design.md` push repo Apps Script source。若 `config/project.json` 已有 `googleSheets.practiceAppsScriptId`，新環境可用 `pnpm apps-script:push -- --target practice` 推送練習表。正式表是預設 target，可用 `pnpm apps-script:push`；練習表必須明確指定 `--target practice`。本機 `.clasp.json` 只是 wrapper 依 target 產生的暫存綁定，不是推送目標的真理來源。
 
 ## 套用 schema header 遷移
 
@@ -729,7 +729,7 @@ service account key 是敏感 credential，不能 commit，也不應放在 `tmp/
 | 透過官方 SDK 寫入 Sheets | 需要 `GOOGLE_APPLICATION_CREDENTIALS` 與目標 Sheets 編輯權限 | SDK 寫入工具的 preflight、dry-run、confirmed write 與寫入後讀回驗證都通過 | 可能是環境變數未傳入、credential scope、Sheets 權限、tab/header 或資料格式問題，應依工具錯誤分類處理。 |
 | 驗證正式資料格式 | 不需要寫入權限；需要能取得 Sheets 匯出的 CSV | `pnpm data:validate -- --photos <csv> --albums <csv> --import-batches <csv>` | 代表匯出資料和 repo schema 不一致，或匯出檔不是預期格式。 |
 | 檢查 intake run artifact | 不需要 Google 授權 | `pnpm intake:validate -- --run-dir <dir>` | 代表本次匯入產物內部不一致，套用前應先修正。 |
-| 部署 Apps Script | 需要 `pnpm dlx @google/clasp` 可用、Google 帳號有 script 權限，且該帳號已在 Apps Script settings 啟用 API；本機 `.clasp.json` 必須綁到從目標 Sheet `擴充功能` -> `Apps Script` 開啟的 Script ID | `pnpm apps-script:push` 成功，且從 Sheet UI 開啟的 Apps Script 專案顯示更新 | clasp、Apps Script API settings、Script ID 綁定或 Google 帳號授權問題，不代表 repo schema 錯。 |
+| 部署 Apps Script | 需要 `pnpm dlx @google/clasp` 可用、Google 帳號有 script 權限，且該帳號已在 Apps Script settings 啟用 API；正式表用 `pnpm apps-script:push`，練習表用 `pnpm apps-script:push -- --target practice`，wrapper 會依 target 產生本機 `.clasp.json` | 指定 target 的 push 成功，且從對應 Sheet UI 開啟的 Apps Script 專案顯示更新 | clasp、Apps Script API settings、Script ID 綁定或 Google 帳號授權問題，不代表 repo schema 錯。 |
 
 `sheets:check` 是公開讀取檢查，不是權限檢查。它只能回答「這份公開 Sheets 目前看起來是否適合初始化」，不能保證某個人或某個工具有寫入權限。
 

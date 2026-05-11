@@ -1,5 +1,5 @@
 import { createSheetsService, explainGoogleSheetsError, quoteSheetName } from "../lib/sheets/google-sheets-client.mjs";
-import { googleSheetsSpreadsheetId } from "../lib/core/project-config.mjs";
+import { defaultGoogleTarget, resolveGoogleTarget } from "../lib/core/google-targets.mjs";
 import { photoHeaders } from "../lib/core/photo-schema.mjs";
 
 const sheetName = "photos";
@@ -19,7 +19,8 @@ Options:
   --delete               Delete smoke-test rows for the selected run.
   --run-id <id>          Stable identifier in generated photo_id values. Default: ${defaultRunId}.
   --all                  With --check or --delete, match all smoke-test rows regardless of run id.
-  --spreadsheet-id <id>  Google Sheets spreadsheet ID. Default: config/project.json googleSheets.spreadsheetId.
+  --target <name>        Google Sheets target: production or practice. Check and dry-run default to production.
+  --spreadsheet-id <id>  Custom Google Sheets spreadsheet ID. Cannot be combined with --target.
   --write                Apply append/delete. Without this flag those commands only perform a dry-run.
   --help, -h             Show this help.
 
@@ -37,7 +38,9 @@ function parseArgs(argv) {
     all: false,
     help: false,
     runId: defaultRunId,
-    spreadsheetId: googleSheetsSpreadsheetId,
+    spreadsheetId: "",
+    spreadsheetSource: "",
+    target: "",
     write: false,
   };
 
@@ -55,8 +58,14 @@ function parseArgs(argv) {
     } else if (arg === "--run-id") {
       options.runId = args[index + 1] ?? "";
       index += 1;
+    } else if (arg === "--target") {
+      options.target = args[index + 1] ?? "";
+      index += 1;
+    } else if (arg.startsWith("--target=")) {
+      options.target = arg.slice("--target=".length);
     } else if (arg === "--spreadsheet-id") {
       options.spreadsheetId = args[index + 1] ?? "";
+      options.spreadsheetSource = "custom";
       index += 1;
     } else if (arg === "--write") {
       options.write = true;
@@ -69,8 +78,23 @@ function parseArgs(argv) {
     if (!options.action) {
       throw new Error("Choose an action: --append, --check, or --delete");
     }
+    if (options.action === "check" && options.write) {
+      throw new Error("--write cannot be used with --check");
+    }
+    if (options.target && options.spreadsheetId) {
+      throw new Error("Use either --target or --spreadsheet-id, not both");
+    }
+    if (options.write && !options.target && options.spreadsheetSource !== "custom") {
+      throw new Error("Write mode requires an explicit --target production|practice or --spreadsheet-id");
+    }
     if (!options.spreadsheetId) {
-      throw new Error("Set googleSheets.spreadsheetId in config/project.json or pass --spreadsheet-id");
+      const targetConfig = resolveGoogleTarget(options.target || defaultGoogleTarget, { requireSpreadsheetId: true });
+      options.spreadsheetId = targetConfig.spreadsheetId;
+      options.spreadsheetSource = targetConfig.target;
+      options.target = targetConfig.target;
+    }
+    if (!options.spreadsheetId) {
+      throw new Error("Set the target spreadsheet ID in config/project.json or pass --spreadsheet-id");
     }
     if (!options.all && !/^[A-Za-z0-9_-]+$/.test(options.runId)) {
       throw new Error("--run-id may only contain letters, numbers, underscores, and hyphens");
@@ -220,6 +244,11 @@ function printMatches(matches) {
   }
 }
 
+function printTarget(options) {
+  console.log(`Target: ${options.spreadsheetSource}`);
+  console.log(`Spreadsheet ID: ${options.spreadsheetId}`);
+}
+
 async function main() {
   const options = parseArgs(process.argv);
   if (options.help) {
@@ -228,6 +257,7 @@ async function main() {
   }
 
   const sheets = await createSheetsService();
+  printTarget(options);
   const rows = await readPhotosRows(sheets, options.spreadsheetId);
   const prefix = makePrefix(options);
   const matches = findSmokeTestRows(rows, prefix);

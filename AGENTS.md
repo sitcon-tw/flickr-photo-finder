@@ -88,7 +88,7 @@ The main goal is not to replace Flickr. The repository should keep a practical i
 - `photos` is the public photo index. Public CSV/JSON exports are transport formats with the same fields, not an additional filtered table.
 - Album intake should start from the SITCON Flickr album catalog discovered by tools. Users should choose which discovered album to process instead of manually supplying album URLs as the primary workflow.
 - GitHub Pages should be deployed through a GitHub Actions artifact, not by publishing the whole repository root.
-- Apps Script should be deployed through `clasp`. Keep Apps Script source in the repo, but do not commit personal clasp credentials, Google API credentials, or tokens.
+- Apps Script should be deployed through `clasp`. Keep Apps Script source in the repo, but do not commit personal clasp credentials, Google API credentials, or tokens. `config/project.json` may record fixed Sheet-bound Apps Script IDs because they are identifiers for rebuilding local binding, not credentials. Apps Script push/status/open/deployments should resolve their target from repo config; production is the default target, and practice must be explicit.
 - Treat `data/sponsorship-items.json` as a fixed snapshot. SITCON 2026 CFS has ended, so do not build auto-sync behavior for that data.
 - Future CFS versions should be introduced explicitly as new or replacement versioned data, not by assuming the 2026 snapshot keeps changing.
 - `sponsorship_items` should align with CFS item names. Do not invent a parallel sponsorship item vocabulary unless the documents explain why.

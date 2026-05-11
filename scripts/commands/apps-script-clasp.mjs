@@ -2,6 +2,7 @@ import { existsSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { defaultGoogleTarget, resolveGoogleTarget } from "../lib/core/google-targets.mjs";
 
 const repoRoot = resolve(fileURLToPath(new URL("../..", import.meta.url)));
 const appsScriptDir = resolve(repoRoot, "apps-script");
@@ -14,11 +15,14 @@ function printUsage() {
 Commands:
   apps-script:login   Sign in to clasp with the current Google account.
   apps-script:bind    Create apps-script/.clasp.json for the Sheet-bound script ID.
-  apps-script:status  Show local/remote clasp file status.
-  apps-script:push    Rebuild generated config, validate data, then clasp push.
+                      Usage: pnpm apps-script:bind -- <script-id>
+                      Or:    pnpm apps-script:bind -- --target production
+                      Or:    pnpm apps-script:bind -- --target practice
+  apps-script:status  Show local/remote clasp file status. Default target: production.
+  apps-script:push    Rebuild generated config, validate data, then clasp push. Default target: production.
   apps-script:deployments
-                      List Apps Script deployments.
-  apps-script:open    Open the bound Apps Script project.
+                      List Apps Script deployments. Default target: production.
+  apps-script:open    Open the bound Apps Script project. Default target: production.
 
 Configured defaults:
   rootDir: apps-script
@@ -54,30 +58,74 @@ function printAppsScriptApiPrerequisite() {
 
 function requireScriptId(value) {
   if (typeof value !== "string" || value.trim() === "") {
-    throw new Error("Usage: pnpm apps-script:bind -- <script-id>. Open the Sheet, then Extensions > Apps Script > Project Settings to copy the Sheet-bound Script ID.");
+    throw new Error("Usage: pnpm apps-script:bind -- <script-id>, pnpm apps-script:bind -- --target production, or pnpm apps-script:bind -- --target practice. Open the Sheet, then Extensions > Apps Script > Project Settings to copy the Sheet-bound Script ID.");
   }
   return value.trim();
-}
-
-function requireLocalClaspConfig() {
-  if (!existsSync(localClaspConfigPath)) {
-    throw new Error("apps-script/.clasp.json is missing. Open the Sheet, then Extensions > Apps Script > Project Settings, copy the Script ID, and run pnpm apps-script:bind -- <script-id>.");
-  }
 }
 
 function commandLogin() {
   runClasp(["login"]);
 }
 
-function commandBind(scriptId) {
+function parseBindArgs(argv) {
+  const args = argv.filter((arg) => arg !== "--");
+  const options = {
+    scriptId: "",
+    target: "",
+  };
+
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+    if (arg === "--target") {
+      options.target = args[index + 1] ?? "";
+      index += 1;
+    } else if (arg.startsWith("--target=")) {
+      options.target = arg.slice("--target=".length);
+    } else if (!options.scriptId) {
+      options.scriptId = arg;
+    } else {
+      throw new Error(`Unknown apps-script:bind argument: ${arg}`);
+    }
+  }
+
+  if (options.target && options.scriptId) {
+    throw new Error("Use either a direct script ID or --target, not both.");
+  }
+  if (options.target) {
+    const targetConfig = resolveGoogleTarget(options.target, { requireAppsScriptId: true });
+    options.scriptId = targetConfig.appsScriptId;
+  }
+
+  return options;
+}
+
+function parseTargetArgs(argv) {
+  const args = argv.filter((arg) => arg !== "--");
+  const options = {
+    target: defaultGoogleTarget,
+  };
+
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+    if (arg === "--target") {
+      options.target = args[index + 1] ?? "";
+      index += 1;
+    } else if (arg.startsWith("--target=")) {
+      options.target = arg.slice("--target=".length);
+    } else {
+      throw new Error(`Unknown Apps Script target option: ${arg}`);
+    }
+  }
+
+  return resolveGoogleTarget(options.target, { requireAppsScriptId: true });
+}
+
+function commandBind(argv) {
+  const { scriptId } = parseBindArgs(argv);
   if (existsSync(localClaspConfigPath)) {
     throw new Error("apps-script/.clasp.json already exists. Refusing to overwrite the local clasp binding.");
   }
   writeLocalClaspConfig(requireScriptId(scriptId));
-}
-
-function firstCommandArgument() {
-  return process.argv.slice(3).find((value) => value !== "--");
 }
 
 function writeLocalClaspConfig(scriptId) {
@@ -86,28 +134,42 @@ function writeLocalClaspConfig(scriptId) {
   console.log("Created apps-script/.clasp.json. This local binding file is ignored by git.");
 }
 
-function commandStatus() {
-  requireLocalClaspConfig();
+function writeTargetClaspConfig(targetConfig) {
+  const content = `${JSON.stringify({ scriptId: targetConfig.appsScriptId, rootDir: "." }, null, 2)}\n`;
+  writeFileSync(localClaspConfigPath, content);
+}
+
+function prepareTargetBinding(argv) {
+  const targetConfig = parseTargetArgs(argv);
+  writeTargetClaspConfig(targetConfig);
+  console.log(`Target: ${targetConfig.target}`);
+  console.log(`Script ID: ${targetConfig.appsScriptId}`);
+  console.log("Local binding: apps-script/.clasp.json");
+  return targetConfig;
+}
+
+function commandStatus(argv) {
+  prepareTargetBinding(argv);
   printAppsScriptApiPrerequisite();
   runClasp(["status"], { cwd: appsScriptDir });
 }
 
-function commandPush() {
-  requireLocalClaspConfig();
+function commandPush(argv) {
+  prepareTargetBinding(argv);
   run("pnpm", ["apps-script:build-config"]);
   run("pnpm", ["data:validate"]);
   printAppsScriptApiPrerequisite();
   runClasp(["push"], { cwd: appsScriptDir });
 }
 
-function commandDeployments() {
-  requireLocalClaspConfig();
+function commandDeployments(argv) {
+  prepareTargetBinding(argv);
   printAppsScriptApiPrerequisite();
   runClasp(["deployments"], { cwd: appsScriptDir });
 }
 
-function commandOpen() {
-  requireLocalClaspConfig();
+function commandOpen(argv) {
+  prepareTargetBinding(argv);
   printAppsScriptApiPrerequisite();
   runClasp(["open"], { cwd: appsScriptDir });
 }
@@ -120,15 +182,15 @@ try {
   } else if (command === "login") {
     commandLogin();
   } else if (command === "bind") {
-    commandBind(firstCommandArgument());
+    commandBind(process.argv.slice(3));
   } else if (command === "status") {
-    commandStatus();
+    commandStatus(process.argv.slice(3));
   } else if (command === "push") {
-    commandPush();
+    commandPush(process.argv.slice(3));
   } else if (command === "deployments") {
-    commandDeployments();
+    commandDeployments(process.argv.slice(3));
   } else if (command === "open") {
-    commandOpen();
+    commandOpen(process.argv.slice(3));
   } else {
     printUsage();
     throw new Error(`Unknown Apps Script clasp command: ${command}`);
