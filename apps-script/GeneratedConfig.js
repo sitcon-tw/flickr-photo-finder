@@ -2,7 +2,7 @@
 var SITCON_PHOTO_FINDER_CONFIG = {
   "generatedAt": "not recorded in committed source",
   "schemaVersion": "2026-1.0.0",
-  "taxonomyVersion": "sha256:4ee45762f300",
+  "taxonomyVersion": "sha256:5ca75fa79824",
   "sponsorshipItemsVersion": "sha256:e33bfe6034e1",
   "sponsorshipItemsSnapshotNote": "SITCON 2026 CFS has ended. Treat this file as a fixed snapshot; future CFS versions should replace or extend it explicitly instead of being automatically synced.",
   "photosSheetName": "photos",
@@ -241,7 +241,7 @@ var SITCON_PHOTO_FINDER_CONFIG = {
       "required": false,
       "multiValue": true,
       "taxonomyKey": "",
-      "descriptionZh": "素材包，例如志工招募、贊助提案、網站視覺。"
+      "descriptionZh": "素材包，例如志工招募、贊助提案、網站橫幅。"
     },
     {
       "name": "curation_notes",
@@ -314,7 +314,7 @@ var SITCON_PHOTO_FINDER_CONFIG = {
     ],
     "recommended_uses": [
       "社群貼文",
-      "網站 hero",
+      "網站橫幅",
       "志工招募",
       "投稿宣傳",
       "報名宣傳",
@@ -438,7 +438,7 @@ var SITCON_PHOTO_FINDER_CONFIG = {
       },
       "recommended_uses": {
         "社群貼文": "社群貼文",
-        "網站 hero": "網站視覺",
+        "網站橫幅": "網站橫幅",
         "志工招募": "志工招募",
         "投稿宣傳": "投稿宣傳",
         "報名宣傳": "報名宣傳",
@@ -714,8 +714,8 @@ var SITCON_PHOTO_FINDER_CONFIG = {
       },
       {
         "taxonomy_key": "recommended_uses",
-        "value": "網站 hero",
-        "label_zh": "網站視覺",
+        "value": "網站橫幅",
+        "label_zh": "網站橫幅",
         "order": "2"
       },
       {

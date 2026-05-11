@@ -182,6 +182,7 @@ pnpm sheets:check
 pnpm sheets:export
 pnpm sheets:init
 pnpm sheets:migrate-headers
+pnpm sheets:migrate-field-value -- --sheet photos --field recommended_uses --from <old-value> --to <new-value>
 pnpm sheets:practice:build
 pnpm sheets:practice:sync
 pnpm sheets:sync-guide

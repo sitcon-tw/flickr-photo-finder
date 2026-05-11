@@ -83,7 +83,7 @@ pnpm sheets:apply-ai-updates -- --run-dir tmp/ai-runs/<run-id>
 - `pnpm ai:validate` 通過。
 - 優點：
   - 25 張都有主要欄位候選值。
-  - `recommended_uses` 比前一輪更有變化，包含 `講者宣傳`、`簡報`、`新聞稿`、`志工招募`、`網站 hero`、`贊助成果報告`。
+  - `recommended_uses` 比前一輪更有變化，包含 `講者宣傳`、`簡報`、`新聞稿`、`志工招募`、`網站橫幅`、`贊助成果報告`。
   - 對 `has_negative_space` 與 `safe_crop` 有積極判斷。
 - 主要問題：
   - `safe_crop = 1:1` 出現在每張照片，明顯過度樂觀。
@@ -655,8 +655,8 @@ pnpm eval:search -- --run-dir <attempt-dir> --top 5
 
 初步觀察：
 
-- Claude 的 `visual_description` 對「有留白可放字的網站 hero 照片」和「適合社群貼文的青春感合照」有明顯補充效果，能讓 taxonomy-only 找不到或排序較後的照片進入 combined top results。
-- Gemini 的 `visual_description` 也能讓部分照片進入搜尋結果，例如志工招募、hero、講者宣傳查詢，但描述偏短，排序提升多半只是補基本線索。
+- Claude 的 `visual_description` 對「有留白可放字的網站橫幅照片」和「適合社群貼文的青春感合照」有明顯補充效果，能讓 taxonomy-only 找不到或排序較後的照片進入 combined top results。
+- Gemini 的 `visual_description` 也能讓部分照片進入搜尋結果，例如志工招募、網站橫幅、講者宣傳查詢，但描述偏短，排序提升多半只是補基本線索。
 - GPT 的 description lift 最少，這和它的 `visual_description` 較短一致。
 - 在部分查詢中，structured taxonomy 欄位本身權重過強，`visual_description` 只能微調排序，無法修正 `recommended_uses` 或 `has_negative_space` 一旦填錯造成的錯誤高分。
 
@@ -732,7 +732,7 @@ r3 和 r2 相比有明顯改善：
 - 若要挑一輪作為人工抽查基底，優先 Claude，因為描述與 reason 最有資訊量，且有 confidence。
 - 若只需要快速 baseline 或測試流程速度，可用 GPT，但不應期待它補足長尾搜尋細節。
 - Gemini 本輪先作為負面/風險案例保存，重點不是「完全不可用」，而是要記錄 repetition loop、無 confidence、orientation reason 模板化與人數矛盾。
-- 下一步應抽查比較報表中的 10 到 15 張跨活動代表照片，特別看：人數為 0 的矛盾照片、合作攤位贊助欄位、hero 留白、food/object 主體、以及 `subject_type = text_signage` / `screen` 的邊界。
+- 下一步應抽查比較報表中的 10 到 15 張跨活動代表照片，特別看：人數為 0 的矛盾照片、合作攤位贊助欄位、網站橫幅留白、food/object 主體、以及 `subject_type = text_signage` / `screen` 的邊界。
 
 ## 目前已知容易失準的欄位
 
@@ -746,7 +746,7 @@ r3 和 r2 相比有明顯改善：
 
 ### `recommended_uses`
 
-若 `活動回顧` 或 `社群貼文` 過度集中，取圖時區辨度會下降。模型應優先提出能反映工作情境的用途，例如 `講者宣傳`、`網站 hero`、`志工招募`、`新聞稿`、`贊助成果報告`，但也要避免沒有根據的用途推論。`活動回顧` 應保留給能代表流程、重要場面、互動狀態、活動成果或現場特色的照片，不應只因照片來自活動相簿就使用。
+若 `活動回顧` 或 `社群貼文` 過度集中，取圖時區辨度會下降。模型應優先提出能反映工作情境的用途，例如 `講者宣傳`、`網站橫幅`、`志工招募`、`新聞稿`、`贊助成果報告`，但也要避免沒有根據的用途推論。`活動回顧` 應保留給能代表流程、重要場面、互動狀態、活動成果或現場特色的照片，不應只因照片來自活動相簿就使用。
 
 ### `priority_level`
 

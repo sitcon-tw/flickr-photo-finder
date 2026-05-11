@@ -61,6 +61,7 @@
     "sheets:export": "node scripts/commands/export-sheets.mjs",
     "sheets:init": "node scripts/commands/init-sheets.mjs",
     "sheets:migrate-headers": "node scripts/commands/migrate-sheets-headers.mjs",
+    "sheets:migrate-field-value": "node scripts/commands/migrate-sheets-field-value.mjs",
     "sheets:practice:build": "node scripts/commands/build-practice-sheet.mjs",
     "sheets:practice:sync": "node scripts/commands/sync-practice-sheet.mjs",
     "sheets:sync-guide": "node scripts/commands/sync-sheets-guide.mjs",

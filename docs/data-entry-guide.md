@@ -20,7 +20,7 @@
 6. 若資料經過 repo 工具、CSV 匯出或同步流程，執行 `pnpm data:validate`。
 7. 若驗證失敗，先修正欄位或標籤；若是標籤字典不足，再提出 taxonomy 調整。
 
-第一批資料不追求完整收錄 Flickr。請優先整理高機率被籌備團隊重複使用的照片，例如社群宣傳、贊助提案、網站視覺、新聞稿、志工招募、活動回顧會用到的照片。
+第一批資料不追求完整收錄 Flickr。請優先整理高機率被籌備團隊重複使用的照片，例如社群宣傳、贊助提案、網站橫幅、新聞稿、志工招募、活動回顧會用到的照片。
 
 ## 技術匯入入口
 
@@ -56,11 +56,11 @@ SITCON Flickr 上的照片擁有者是 SITCON，但攝影師 credit 會放在 Fl
 | `subject_type` | 照片第一眼主要視覺主體，只能單選 `people`、`object`、`food`、`text_signage`、`screen` 或 `space`。不要拿來描述人數規模或活動場景。 |
 | `scene_tags` | 活動情境或可見場景元素，例如攤位、會眾、舞台、工作人員、合照、指標、場地、螢幕、頒獎、兒童。 |
 | `mood_tags` | 照片帶來的感受，例如熱鬧、專注、友善、青春感、幕後感。 |
-| `recommended_uses` | 適合的工作用途，例如社群貼文、網站視覺、志工招募、贊助提案。 |
+| `recommended_uses` | 適合的工作用途，例如社群貼文、網站橫幅、志工招募、贊助提案。 |
 | `visual_description` | 1 到 2 句中立描述照片可見內容，例如人物動作、物件位置、畫面文字與空間關係。這不是 reviewed 必填，但能補足自然語言找圖。 |
 | `public_use_status` | 不確定就用 `needs_review`。不要為了讓資料漂亮而標成 `approved`。 |
 | `priority_level` | 推薦使用優先度，不是客觀照片品質。 |
-| `collections` | 素材包，例如志工招募、贊助提案、網站視覺、活動回顧。 |
+| `collections` | 素材包，例如志工招募、贊助提案、網站橫幅、活動回顧。 |
 | `curation_notes` | 可公開閱讀的整理脈絡、注意事項或使用建議。不要寫敏感內部資訊。 |
 
 `reviewed` 完整度由 `data/photo-schema.json` 的 `reviewed_required_fields` 定義，並由 `pnpm data:validate` 檢查。不要在這份指南另外維護欄位清單；若規則改變，請先更新 schema。`public_use_status = approved` 不會讓 `photographer` 或 `license` 變成必填，缺值時只代表實際對外使用前仍要回 Flickr 原頁確認來源脈絡。

@@ -388,7 +388,7 @@ function buildReviewNotes(items) {
     notes.push("每張照片都有 `mood_tags` 候選值；請確認模型是否把情緒標籤當成必填分類。普通紀錄照可以省略。");
   } else if (itemCount >= lowMoodCoverageMinimumItems && moodCount / itemCount < lowMoodCoverageThreshold) {
     notes.push(
-      `只有 ${moodCount}/${itemCount} 張照片提出 \`mood_tags\`（${formatPercent(moodCount / itemCount)}）；若本批包含適合社群宣傳、招募、網站視覺或情緒找圖的照片，請抽查模型是否過度保守。`,
+      `只有 ${moodCount}/${itemCount} 張照片提出 \`mood_tags\`（${formatPercent(moodCount / itemCount)}）；若本批包含適合社群宣傳、招募、網站橫幅或情緒找圖的照片，請抽查模型是否過度保守。`,
     );
   } else if (itemCount > 0 && moodCount / itemCount >= concentrationThreshold) {
     notes.push(
