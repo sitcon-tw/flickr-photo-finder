@@ -774,6 +774,53 @@ r3 和 r2 相比有明顯改善：
 
 整體判斷：GPT 5.5 xhigh 搭配平行 shard 已經足以支援數千張照片的一小時級初標工作，但專案真正要精進的不是「再讓模型多標一點」，而是把大批次工作變成可恢復、可追溯、可抽查、可 dry-run 的正式資料流程。
 
+### 全量重跑觀察：7718 張、6 worker、GPT 5.5 medium
+
+後續又執行一次更接近正式重跑的全量工作包：`ai-prepare-bulk-relabel-all-2026-05-11`。本次處理 7718 張照片，操作者紀錄總耗時 2h 06m 05s，過程中主要使用 6 個 worker，worker 主要模型為 GPT 5.5 medium。以牆鐘時間計算，平均約 0.98 秒處理一張照片；這不是單張模型推論時間，而是包含分片執行、worker 回收補位、局部修正、合併、validator 與 review 的端到端互動時間。
+
+本輪採用標準 shard workspace：`/tmp/ai-labeling-shards/ai-prepare-bulk-relabel-all-2026-05-11/inputs` 與 `outputs`，共 58 個 shard。前 57 個 shard 多為 133 張，最後一個 shard 為 134 張。正式寫回前仍只在 `/tmp` 產生暫存合併 proposal：`/tmp/ai-labeling-shard-validation/bulk-relabel-all-metadata-proposals.json`，沒有寫回 Google Sheets，也沒有把 review artifacts 寫入正式 run 目錄。
+
+最終整批 validator 通過：
+
+- proposal items：7718。
+- `pnpm ai:validate -- --run-dir tmp/ai-runs-local/ai-prepare-bulk-relabel-all-2026-05-11 --proposals /tmp/ai-labeling-shard-validation/bulk-relabel-all-metadata-proposals.json` 通過。
+- validator 只留下 16 組 `visual_description` near-duplicate warning，主要集中在連拍、相似合照或高度重複的活動場景。
+- `pnpm ai:review` 產生 63542 筆 planned updates，review warnings 26。
+
+本輪欄位覆蓋如下：
+
+| layer / field | 覆蓋 |
+| --- | ---: |
+| baseline 欄位：`people_count`、`subject_type`、`orientation`、`has_negative_space`、`visual_description`、`curation_status` | 7718/7718 |
+| `scene_tags` | 7718/7718 |
+| `mood_tags` | 5683/7718 |
+| `recommended_uses` | 3259/7718 |
+| `public_use_status` | 306/7718 |
+| `safe_crop` | 146/7718 |
+| `sponsorship_items` / `sponsorship_tags` | 60/7718 |
+| `priority_level` | 2/7718 |
+| `confidence` | 0 |
+
+這輪和前兩個大型 run 的最大差異是：`scene_tags` 最後被補到 100%。但這不是模型自然一開始就完整做到，而是全體覆蓋檢查後發現 73 張缺 `scene_tags`，分布在 11 個 shard，才再依 `visual_description`、`subject_type`、`people_count` 與可見畫面補齊。這點很重要：只跑每個 shard 的 validator 不足以代表 AI 入口要求已滿足；`scene_tags` 若在 AI 初標階段被視為必填，就需要 merge 前的跨 shard coverage gate，而不是只靠 review summary 的提醒。
+
+本輪也暴露出幾個可修正的品質問題：
+
+- shard-54 有 4 張 `visual_description` 因為沒有踩到 validator 認定的具體視覺詞而失敗。實際內容包含冰櫃、冰品、背板與跑步姿勢，但描述需要補入前景、背景、文字標示、人物動作等更明確詞彙。這表示 `visual_description` validator 雖然粗糙，但仍能有效攔下不夠可搜尋的描述。
+- 早期 shard 有 0 人照片 reason 使用「畫面可辨識約 0 人」但同句提到人物、人群或人像照片，造成 review focus 噪音。後續把沒有可辨識真人的 reason 正規化為「畫面沒有可辨識人物」，review focus 從 56 張降到 22 張。
+- 剩下 22 張 `people_count = 0` 的 focus 多屬邊界案例，例如空拍機、攝影機、相機手部特寫、線上活動虛擬角色、螢幕中的角色或模糊人物。這些不一定是錯，但應保留給人工抽查，不應由工具自動改成人數大於 0。
+- review 仍提示部分相簿或 shard 的 scene tag density 高，例如 Hour of Code、工人合照、線上活動與合作攤位。這多半反映相簿內容本身高度一致，但仍應作為抽查入口，避免整段 worker 過度套用同一標籤。
+- GPT 5.5 medium 本輪仍沒有提供 `confidence`。對正式審核而言，這代表人工排序少了一個訊號；若未來需要大量回寫，confidence 仍應列為 prompt / contract 的改善目標。
+
+操作上，6 worker 是可行的，而且對 7718 張照片能把時間壓到兩小時級。但真正的瓶頸已經不只是 worker 數量，而是後段品質閘門與大型 artifact 產生。整批 `ai:review` 會產生 19MB 等級的 diff 與 6 萬多筆 update plan，執行時間明顯長於單 shard review。未來工具應考慮：
+
+- 在 shard merge 前內建全體 coverage check：總照片數、跨 shard duplicate、missing / extra photo_id、必填欄位、`scene_tags` 覆蓋率。
+- 在 `ai:review` 或 shard merge 中加入「本次 AI 入口要求」概念，讓 `scene_tags` 這種 AI 階段任務必填欄位能被明確 gate，而不是只靠 Sheets reviewed completeness。
+- 大型 review artifact 應分層產生：先 summary / warnings，再按需產生完整 diff / update CSV，避免操作者只是想看品質卻被大型 diff 產生時間卡住。
+- Worker prompt 應明確要求「逐張看圖、不使用既有 proposal、scene_tags 必填」，但仍要有 merge 後的程式檢查，因為人類或 worker 回報的「必填都有」不等於跨 shard 全體真的完整。
+- 對 `people_count = 0` 的 reason 可以在 prompt 或 post-check 中標準化，要求明確寫「沒有可辨識人物」或「只有螢幕/海報/虛擬角色/模糊局部」，以降低人工 review 噪音。
+
+整體判斷：GPT 5.5 medium 搭配 6 worker 已足以支援 7718 張照片的全量初標生產，但「可完成」不等於「可直接寫回」。本輪最可靠的是 baseline 欄位、`scene_tags`、`visual_description` 與部分 `mood_tags` / `recommended_uses`；高風險欄位仍是 `people_count` 邊界、`recommended_uses` 主觀用途、`public_use_status`、`safe_crop` 與缺少 confidence。這批成果可以作為正式回寫前的候選基底，但應先保留 `/tmp` 合併 proposal 與 review artifacts，讓人類依 review focus 抽查後再決定是否寫入 run 目錄與 Google Sheets。
+
 ### 本輪採用建議
 
 - 不建議任何一輪直接全量寫回 Sheets。
