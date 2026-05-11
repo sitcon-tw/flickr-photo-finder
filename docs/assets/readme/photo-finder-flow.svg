@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760" role="img" aria-labelledby="title desc">
   <title id="title">SITCON Flickr Photo Finder 的角色定位</title>
-  <desc id="desc">Flickr 是照片來源，Google Sheets 是正式照片索引；這個專案提供資料規則、匯入工具、AI 輔助與使用維護介面，讓公開搜尋前端與常用 AI 助手讀同一份索引。</desc>
+  <desc id="desc">Flickr 是照片來源，正式照片索引放在 Google Sheets；這個專案提供資料規則、匯入工具、AI 輔助與使用維護介面，讓公開搜尋前端與常用 AI 助手讀同一份索引。</desc>
   <defs>
     <style>
       .bg { fill: #f5f6f8; }
@@ -30,7 +30,7 @@
 
   <rect class="bg" width="1200" height="760"/>
   <text class="title" x="70" y="72">這個專案如何支撐照片索引</text>
-  <text class="subtitle" x="70" y="108">照片留在 Flickr，正式索引放在 Google Sheets；專案提供規則、工具與介面，讓不同角色用同一份資料找圖與維護。</text>
+  <text class="subtitle" x="70" y="108">照片留在 Flickr，正式照片索引放在 Google Sheets；專案提供規則、工具與介面，讓不同角色用同一份資料找圖與維護。</text>
 
   <g transform="translate(70 156)">
     <rect class="source" x="0" y="190" width="190" height="116" rx="18"/>
@@ -39,15 +39,15 @@
     <text class="body" x="32" y="288">原始相簿來源</text>
 
     <rect class="hub" x="470" y="164" width="260" height="168" rx="22"/>
-    <text class="hub-label" x="518" y="214">Google Sheets</text>
-    <text class="hub-label" x="518" y="246">正式照片索引</text>
+    <text class="hub-label" x="518" y="214">正式照片索引</text>
+    <text class="hub-label" x="518" y="246">Google Sheets</text>
     <text class="body" x="518" y="280">志工整理、審核與協作</text>
     <text class="body" x="518" y="306">公開搜尋與 AI 都讀這份資料</text>
 
     <rect class="use" x="870" y="78" width="220" height="112" rx="18"/>
     <text class="label" x="910" y="122">公開搜尋前端</text>
-    <text class="body" x="910" y="154">依社群、網站、贊助</text>
-    <text class="body" x="910" y="178">等工作情境找圖</text>
+    <text class="body" x="910" y="154">依社群、活動回顧</text>
+    <text class="body" x="910" y="178">贊助成果、新聞稿找圖</text>
 
     <rect class="use" x="870" y="224" width="220" height="112" rx="18"/>
     <text class="label" x="910" y="268">常用 AI 助手</text>

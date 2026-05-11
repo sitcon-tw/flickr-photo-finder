@@ -27,7 +27,7 @@
   <rect class="panel" x="58" y="46" width="1084" height="628" rx="18"/>
   <rect class="header" x="58" y="46" width="1084" height="86" rx="18"/>
   <rect class="header" x="58" y="100" width="1084" height="32"/>
-  <text class="header-text" x="92" y="92">正式照片索引放在 Google Sheets</text>
+  <text class="header-text" x="92" y="92">正式照片索引（Google Sheets）</text>
   <text class="caption" x="92" y="158">每一列是一張 Flickr 照片。欄位不是為了整理得漂亮，而是讓工作需求真的找得到。</text>
 
   <g transform="translate(92 194)">
@@ -83,7 +83,7 @@
 
     <rect class="tag" x="18" y="170" width="82" height="32" rx="16"/>
     <text class="tag-text" x="34" y="192">5524...</text>
-    <text class="body-text" x="138" y="180">網站 hero</text>
+    <text class="body-text" x="138" y="180">新聞稿</text>
     <text class="body-text" x="138" y="208">簡報</text>
     <text class="body-text" x="280" y="180">舞台</text>
     <text class="body-text" x="280" y="208">背板</text>
@@ -106,13 +106,14 @@
 
     <rect class="tag" x="18" y="262" width="82" height="32" rx="16"/>
     <text class="tag-text" x="34" y="284">5525...</text>
-    <text class="body-text" x="138" y="272">志工招募</text>
-    <text class="body-text" x="138" y="300">社群介紹</text>
-    <text class="body-text" x="280" y="272">工作人員</text>
-    <text class="body-text" x="280" y="300">攝影</text>
+    <text class="body-text" x="138" y="272">贊助成果</text>
+    <text class="body-text" x="138" y="300">活動回顧</text>
+    <text class="body-text" x="280" y="272">攤位</text>
+    <text class="body-text" x="280" y="300">會眾</text>
     <text class="body-text" x="430" y="287">橫式</text>
     <text class="body-text" x="560" y="287">少</text>
-    <text class="body-text" x="680" y="287">幕後價值</text>
+    <text class="body-text" x="680" y="272">品牌露出</text>
+    <text class="body-text" x="680" y="300">會眾互動</text>
     <rect class="tag-amber" x="850" y="264" width="102" height="32" rx="16"/>
     <text class="tag-text" x="866" y="286">unreviewed</text>
     <text class="body-text" x="1000" y="287">Flickr</text>
