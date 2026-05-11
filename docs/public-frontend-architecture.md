@@ -152,6 +152,7 @@ artifact 不應包含：
 - credential、token 或任何需要交接但不應公開的設定。
 
 前端檔案應使用相對路徑，避免專案頁部署在 `https://<org>.github.io/<repo>/` 時因絕對路徑失效。
+HTML metadata 則需要 crawler 在執行 JavaScript 前就能讀到，因此 `pnpm finder:build` 會依 `config/project.json` 的 `frontend.metadata` 產生 `<title>`、description、canonical、Open Graph 與 Twitter card tags。`frontend.metadata.siteUrl` 應填正式對外發布網址，例如 `https://sitcon.org/flickr-photo-finder/`；`frontend.metadata.imagePath` 目前指向 artifact 內的 `assets/og-image.png`，讓分享預覽可以使用 1200x630 的正式活動照片拼貼。
 
 目前 repo 內的 `.github/workflows/pages.yml` 會在 pull request 執行 build/check，並在 `master` push 或手動觸發時部署：
 

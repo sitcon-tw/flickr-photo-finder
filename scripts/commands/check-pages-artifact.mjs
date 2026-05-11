@@ -56,6 +56,19 @@ async function assertIncludes(path, text, label) {
   return content;
 }
 
+async function assertPngDimensions(path, expectedWidth, expectedHeight) {
+  const buffer = await readFile(path);
+  const pngSignature = "89504e470d0a1a0a";
+  if (buffer.subarray(0, 8).toString("hex") !== pngSignature) {
+    throw new Error(`${path} is not a PNG file`);
+  }
+  const width = buffer.readUInt32BE(16);
+  const height = buffer.readUInt32BE(20);
+  if (width !== expectedWidth || height !== expectedHeight) {
+    throw new Error(`${path} must be ${expectedWidth}x${expectedHeight}, got ${width}x${height}`);
+  }
+}
+
 async function main() {
   const options = parseArgs(process.argv);
   if (options.help) {
@@ -65,6 +78,7 @@ async function main() {
 
   const requiredFiles = [
     ".nojekyll",
+    "assets/og-image.png",
     "config.js",
     "config/project.json",
     "data-utils.js",
@@ -81,8 +95,31 @@ async function main() {
     await assertFile(join(options.artifactDir, file));
   }
 
-  await assertIncludes(join(options.artifactDir, "index.html"), "./styles.css", "styles.css");
-  await assertIncludes(join(options.artifactDir, "index.html"), "./main.js", "main.js");
+  const indexHtml = await assertIncludes(join(options.artifactDir, "index.html"), "./styles.css", "styles.css");
+  if (!indexHtml.includes("./main.js")) {
+    throw new Error("index.html does not reference main.js");
+  }
+  const requiredMetadata = [
+    'name="description"',
+    'rel="canonical"',
+    'property="og:title"',
+    'property="og:description"',
+    'property="og:url"',
+    'property="og:image"',
+    'property="og:image:width" content="1200"',
+    'property="og:image:height" content="630"',
+    'name="twitter:card" content="summary_large_image"',
+    'name="twitter:image"',
+  ];
+  for (const metadataTag of requiredMetadata) {
+    if (!indexHtml.includes(metadataTag)) {
+      throw new Error(`index.html is missing ${metadataTag}`);
+    }
+  }
+  if (!/property="og:image" content="https:\/\/[^"]+\/assets\/og-image\.png"/.test(indexHtml)) {
+    throw new Error("index.html og:image must point at an absolute HTTPS URL for assets/og-image.png");
+  }
+  await assertPngDimensions(join(options.artifactDir, "assets/og-image.png"), 1200, 630);
   await assertIncludes(join(options.artifactDir, "main.js"), "./data-utils.js", "data-utils.js");
   await assertIncludes(join(options.artifactDir, "main.js"), "./task-modes.js", "task-modes.js");
   const config = await assertIncludes(join(options.artifactDir, "config.js"), "photosCsvUrl", "photosCsvUrl");

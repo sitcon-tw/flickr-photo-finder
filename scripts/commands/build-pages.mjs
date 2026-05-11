@@ -1,7 +1,7 @@
-import { copyFile, mkdir, rm, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { googleSheetsSpreadsheetId } from "../lib/core/project-config.mjs";
+import { googleSheetsSpreadsheetId, projectConfig } from "../lib/core/project-config.mjs";
 
 export const defaultOutputDir = "tmp/pages";
 
@@ -84,6 +84,80 @@ export const dataSources = {
   await writeFile(join(outputDir, "config.js"), content);
 }
 
+function escapeHtmlAttribute(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function normalizeSiteUrl(value) {
+  const rawValue = String(value ?? "").trim();
+  if (!rawValue) {
+    return "";
+  }
+  const siteUrl = new URL(rawValue).toString();
+  return siteUrl.endsWith("/") ? siteUrl : `${siteUrl}/`;
+}
+
+function absoluteMetadataUrl(siteUrl, path) {
+  if (!siteUrl) {
+    return "";
+  }
+  return new URL(String(path ?? "").trim() || ".", siteUrl).toString();
+}
+
+function renderMetadataHtml() {
+  const title = String(projectConfig.frontend?.appTitle ?? "Flickr Photo Finder").trim();
+  const metadata = projectConfig.frontend?.metadata ?? {};
+  const description = String(metadata.description ?? "SITCON 公開照片索引，依任務、內容與整理狀態快速找圖。").trim();
+  const siteUrl = normalizeSiteUrl(metadata.siteUrl);
+  const imageUrl = absoluteMetadataUrl(siteUrl, metadata.imagePath ?? "./assets/og-image.png");
+  const imageAlt = String(metadata.imageAlt ?? `${title} 分享預覽圖`).trim();
+
+  const tags = [
+    `<title>${escapeHtmlAttribute(title)}</title>`,
+    `<meta name="description" content="${escapeHtmlAttribute(description)}" />`,
+    siteUrl ? `<link rel="canonical" href="${escapeHtmlAttribute(siteUrl)}" />` : "",
+    `<meta property="og:locale" content="zh_TW" />`,
+    `<meta property="og:site_name" content="${escapeHtmlAttribute(title)}" />`,
+    `<meta property="og:type" content="website" />`,
+    `<meta property="og:title" content="${escapeHtmlAttribute(title)}" />`,
+    `<meta property="og:description" content="${escapeHtmlAttribute(description)}" />`,
+    siteUrl ? `<meta property="og:url" content="${escapeHtmlAttribute(siteUrl)}" />` : "",
+    imageUrl ? `<meta property="og:image" content="${escapeHtmlAttribute(imageUrl)}" />` : "",
+    imageUrl ? `<meta property="og:image:type" content="image/png" />` : "",
+    imageUrl ? `<meta property="og:image:width" content="1200" />` : "",
+    imageUrl ? `<meta property="og:image:height" content="630" />` : "",
+    imageUrl ? `<meta property="og:image:alt" content="${escapeHtmlAttribute(imageAlt)}" />` : "",
+    imageUrl ? `<meta name="twitter:card" content="summary_large_image" />` : `<meta name="twitter:card" content="summary" />`,
+    `<meta name="twitter:title" content="${escapeHtmlAttribute(title)}" />`,
+    `<meta name="twitter:description" content="${escapeHtmlAttribute(description)}" />`,
+    imageUrl ? `<meta name="twitter:image" content="${escapeHtmlAttribute(imageUrl)}" />` : "",
+    imageUrl ? `<meta name="twitter:image:alt" content="${escapeHtmlAttribute(imageAlt)}" />` : "",
+  ];
+
+  return tags.filter(Boolean).map((tag) => `    ${tag}`).join("\n");
+}
+
+async function writeIndexHtml(outputDir) {
+  const source = await readFile("app/index.html", "utf8");
+  const startMarker = "    <!-- app-metadata:start -->";
+  const endMarker = "    <!-- app-metadata:end -->";
+  const startIndex = source.indexOf(startMarker);
+  const endIndex = source.indexOf(endMarker);
+
+  if (startIndex === -1 || endIndex === -1 || endIndex <= startIndex) {
+    throw new Error("app/index.html must contain app-metadata markers");
+  }
+
+  const before = source.slice(0, startIndex);
+  const after = source.slice(endIndex + endMarker.length);
+  const metadataHtml = renderMetadataHtml();
+  await writeFile(join(outputDir, "index.html"), `${before}${startMarker}\n${metadataHtml}\n${endMarker}${after}`);
+}
+
 export async function buildPagesArtifact({
   outputDir = defaultOutputDir,
   photosCsvUrl = "",
@@ -100,11 +174,12 @@ export async function buildPagesArtifact({
 
   await rm(outputDir, { recursive: true, force: true });
   await mkdir(outputDir, { recursive: true });
-  await copyIntoArtifact("app/index.html", outputDir, "index.html");
+  await writeIndexHtml(outputDir);
   await copyIntoArtifact("app/main.js", outputDir, "main.js");
   await copyIntoArtifact("app/data-utils.js", outputDir, "data-utils.js");
   await copyIntoArtifact("app/task-modes.js", outputDir, "task-modes.js");
   await copyIntoArtifact("app/styles.css", outputDir, "styles.css");
+  await copyIntoArtifact("app/assets/og-image.png", outputDir, "assets/og-image.png");
   await copyIntoArtifact("config/project.json", outputDir);
   await copyIntoArtifact("data/photo-schema.json", outputDir);
   await copyIntoArtifact("data/search-aliases.json", outputDir);

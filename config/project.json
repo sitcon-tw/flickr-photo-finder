@@ -16,6 +16,12 @@
     "sourceLinkLabel": "Flickr",
     "repositoryLinkLabel": "GitHub 專案",
     "repositoryLinkTitle": "了解專案細節或回報問題",
+    "metadata": {
+      "description": "SITCON 公開照片索引，依任務、內容與整理狀態快速找圖。",
+      "siteUrl": "https://sitcon.org/flickr-photo-finder/",
+      "imagePath": "./assets/og-image.png",
+      "imageAlt": "SITCON 活動照片拼貼與 Photo Finder 標題"
+    },
     "ga4MeasurementId": "G-ZQ49HXBJ2P",
     "ga4PropertyId": ""
   },
