@@ -61,7 +61,7 @@
 - `pnpm sheets:apply-init`，透過官方 Google Sheets API SDK dry-run 初始化套用計畫；加上 `--write` 才會建立缺少 tabs 並寫入初始化資料。
 - `pnpm sheets:migrate-headers`，透過官方 Google Sheets API SDK dry-run 安全 header 遷移；加上 `--write` 才會插入 repo schema 新增的缺少欄位。
 - `pnpm sheets:migrate-field-value -- --sheet photos --field recommended_uses --from "網站 hero" --to "網站橫幅"`，透過官方 Google Sheets API SDK dry-run 精確遷移固定表格欄位值；加上 `--write` 才會更新 cells，並在寫入後讀回驗證。
-- `pnpm sheets:practice:build`，從 `tmp/sheets-export/` 的正式匯出資料切出練習用試算表資料包，預設輸出到 `tmp/sheets-practice/`。
+- `pnpm sheets:practice:build`，從 `tmp/sheets-export/` 的正式匯出資料切出練習用試算表資料包，預設輸出到 `tmp/sheets-practice/`；練習資料的 `photos.curation_notes` 會改寫成教學提示。
 - `pnpm sheets:practice:sync`，以官方 Google Sheets API SDK dry-run 重置固定練習用試算表；加上 `--write` 才會寫入，且會拒絕寫到正式照片索引。
 - `pnpm sheets:sync-guide`，透過官方 Google Sheets API SDK dry-run 同步 `使用說明` 分頁；加上 `--write` 才會建立或更新這張人類入口分頁。
 - `pnpm sheets:sync-taxonomy`，透過官方 Google Sheets API SDK dry-run 同步 `taxonomy` 輔助表；加上 `--write` 才會以 repo taxonomy 重寫 tab，並驗證 `label_zh` 不為空白。

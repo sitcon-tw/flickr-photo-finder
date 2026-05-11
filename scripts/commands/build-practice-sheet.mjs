@@ -89,6 +89,130 @@ function rowsToCsv(headers, rows) {
   ].join("\n")}\n`;
 }
 
+function getCell(row, fieldName) {
+  const index = photoHeaders.indexOf(fieldName);
+  return index >= 0 ? String(row[index] ?? "") : "";
+}
+
+function setCell(row, fieldName, value) {
+  const index = photoHeaders.indexOf(fieldName);
+  if (index < 0) {
+    throw new Error(`photo schema is missing expected field: ${fieldName}`);
+  }
+  row[index] = value;
+}
+
+function hasAnyListValue(row, fieldName) {
+  return parseSemicolonList(getCell(row, fieldName)).length > 0;
+}
+
+const practiceCaseRequirements = [
+  {
+    key: "layout",
+    matches: (row) =>
+      getCell(row, "orientation") === "landscape" ||
+      getCell(row, "has_negative_space") === "true" ||
+      hasAnyListValue(row, "safe_crop"),
+  },
+  {
+    key: "sponsor",
+    matches: (row) => hasAnyListValue(row, "sponsorship_items") || hasAnyListValue(row, "sponsorship_tags"),
+  },
+  {
+    key: "ai-review",
+    matches: (row) => ["ai_labeled", "unreviewed"].includes(getCell(row, "curation_status")),
+  },
+  {
+    key: "people-scene",
+    matches: (row) =>
+      getCell(row, "people_count") !== "" ||
+      getCell(row, "subject_type") !== "" ||
+      hasAnyListValue(row, "scene_tags"),
+  },
+  {
+    key: "use-mood",
+    matches: (row) => hasAnyListValue(row, "mood_tags") || hasAnyListValue(row, "recommended_uses"),
+  },
+];
+
+function rowIdentity(row) {
+  return getCell(row, "photo_id") || row.join("\u0000");
+}
+
+function ensurePracticeCoverage(selectedRows, sourceRows) {
+  const selected = [...selectedRows];
+  const selectedIds = new Set(selected.map(rowIdentity));
+  let replacementOffset = 0;
+
+  for (const requirement of practiceCaseRequirements) {
+    if (selected.some(requirement.matches)) {
+      continue;
+    }
+
+    const candidate = sourceRows.find((row) => requirement.matches(row) && !selectedIds.has(rowIdentity(row)));
+    if (!candidate) {
+      continue;
+    }
+
+    const replacementIndex = Math.max(selected.length - 1 - replacementOffset, 0);
+    selectedIds.delete(rowIdentity(selected[replacementIndex]));
+    selected[replacementIndex] = candidate;
+    selectedIds.add(rowIdentity(candidate));
+    replacementOffset += 1;
+  }
+
+  return selected;
+}
+
+function practiceNoteCandidates(row) {
+  const candidates = [];
+  const orientation = getCell(row, "orientation");
+  const hasNegativeSpace = getCell(row, "has_negative_space");
+  const peopleCount = getCell(row, "people_count");
+  const subjectType = getCell(row, "subject_type");
+  const curationStatus = getCell(row, "curation_status");
+
+  if (orientation === "landscape" || hasNegativeSpace === "true" || hasAnyListValue(row, "safe_crop")) {
+    candidates.push("判斷網站橫幅、留白與裁切比例。請先看主體、臉部、文字與重要物件是否會被裁掉，再填 safe_crop。");
+  }
+
+  if (hasAnyListValue(row, "sponsorship_items") || hasAnyListValue(row, "sponsorship_tags")) {
+    candidates.push("贊助欄位要分清楚：sponsorship_items 是贊助品項，sponsorship_tags 是照片能證明的贊助價值。");
+  }
+
+  if (curationStatus === "ai_labeled" || curationStatus === "unreviewed") {
+    candidates.push("AI 初標只是候選。請用人審重新判斷，沒有明確用途時 recommended_uses 可以留空。");
+  }
+
+  if (peopleCount !== "" || subjectType || hasAnyListValue(row, "scene_tags")) {
+    candidates.push("先估可辨識人數，再用 subject_type 描述第一眼主體，用 scene_tags 補活動情境。");
+  }
+
+  if (hasAnyListValue(row, "mood_tags") || hasAnyListValue(row, "recommended_uses")) {
+    candidates.push("用途與氛圍分開判斷：mood_tags 是照片帶來的感受，recommended_uses 則要對應明確工作情境。");
+  }
+
+  candidates.push("先寫中立 visual_description，再判斷用途。只描述畫面可見內容，不確定的欄位可以留空。");
+  return candidates;
+}
+
+function practiceNoteForRow(row, rowIndex) {
+  if (hasAnyListValue(row, "sponsorship_items") || hasAnyListValue(row, "sponsorship_tags")) {
+    return "練習提示：贊助欄位要分清楚：sponsorship_items 是贊助品項，sponsorship_tags 是照片能證明的贊助價值。";
+  }
+
+  const candidates = practiceNoteCandidates(row);
+  return `練習提示：${candidates[rowIndex % candidates.length]}`;
+}
+
+function withPracticeCurationNotes(photoRows) {
+  return photoRows.map((row, index) => {
+    const nextRow = [...row];
+    setCell(nextRow, "curation_notes", practiceNoteForRow(nextRow, index));
+    return nextRow;
+  });
+}
+
 async function readTableCsv(path, expectedHeaders) {
   const text = await readFile(path, "utf8");
   const rows = parseCsv(text);
@@ -222,7 +346,9 @@ async function main() {
     readFile(sponsorshipItemsPath, "utf8"),
   ]);
 
-  const photoRows = pickDistributedRows(sourcePhotoRows, options.limit);
+  const photoRows = withPracticeCurationNotes(
+    ensurePracticeCoverage(pickDistributedRows(sourcePhotoRows, options.limit), sourcePhotoRows),
+  );
   const albumRows = matchingAlbumRows(sourceAlbumRows, albumIdsFromPhotos(photoRows));
   const taxonomy = JSON.parse(taxonomyText);
   const sponsorshipItems = JSON.parse(sponsorshipItemsText);
@@ -258,7 +384,7 @@ async function main() {
       { name: "taxonomy", path: paths.taxonomy, source: taxonomyPath },
       { name: "sponsorship_items", path: paths.sponsorshipItems, source: "data/sponsorship-items.json" },
     ],
-    note: "Practice spreadsheet data. It is generated from exported formal Sheets rows for editor training and should not be treated as a second formal photo index.",
+    note: "Practice spreadsheet data. It is generated from exported formal Sheets rows for editor training and should not be treated as a second formal photo index. photos.curation_notes is overwritten with practice-only training prompts.",
   };
   await writeFile(paths.manifest, `${JSON.stringify(manifest, null, 2)}\n`);
 

@@ -146,7 +146,7 @@ pnpm sheets:practice:sync
 pnpm sheets:practice:sync -- --write
 ```
 
-`sheets:practice:sync` 會從 `tmp/sheets-export/` 切出少量真實照片、相關相簿列、空白 `import_batches`、repo 目前的 `taxonomy` 與 `sponsorship_items`，輸出到 `tmp/sheets-practice/`，再重寫固定練習表並同步練習表自己的 `使用說明`。它會拒絕把正式 `spreadsheetId` 當成練習表目標。
+`sheets:practice:sync` 會從 `tmp/sheets-export/` 切出少量真實照片、相關相簿列、空白 `import_batches`、repo 目前的 `taxonomy` 與 `sponsorship_items`，輸出到 `tmp/sheets-practice/`，再重寫固定練習表並同步練習表自己的 `使用說明`。練習資料的 `photos.curation_notes` 會被改寫成 `練習提示：...`，用來提醒整理者本列的判斷重點；它不是正式照片備註。工具會拒絕把正式 `spreadsheetId` 當成練習表目標。
 
 若只要產生本機練習資料包、不寫入 Google Sheets，可以使用：
 
