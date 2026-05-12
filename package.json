@@ -69,6 +69,7 @@
     "sheets:migrate-field-value": "node scripts/commands/migrate-sheets-field-value.mjs",
     "sheets:practice:build": "node scripts/commands/build-practice-sheet.mjs",
     "sheets:practice:sync": "node scripts/commands/sync-practice-sheet.mjs",
+    "sheets:report": "node scripts/commands/report-sheets-data-quality.mjs",
     "sheets:sync-guide": "node scripts/commands/sync-sheets-guide.mjs",
     "sheets:sync-taxonomy": "node scripts/commands/sync-taxonomy.mjs",
     "analytics:dimensions:check": "node scripts/commands/sync-ga4-custom-dimensions.mjs",

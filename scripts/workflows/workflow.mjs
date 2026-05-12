@@ -659,6 +659,7 @@ async function runSheetsTools() {
     ["sheets:apply-init", "dry-run 套用初始化 CSV"],
     ["sheets:migrate-headers", "dry-run 安全 header 遷移"],
     ["sheets:export", "匯出正式 Sheets 工作快取"],
+    ["sheets:report", "從正式匯出快取產生資料品質報表"],
     ["sheets:practice:build", "產生練習用試算表資料包"],
     ["sheets:practice:sync", "dry-run 重置固定練習用試算表"],
     ["sheets:sync-guide", "dry-run 同步使用說明分頁"],

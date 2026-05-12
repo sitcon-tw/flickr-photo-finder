@@ -202,6 +202,35 @@ pnpm sheets:sync-taxonomy -- --write
 
 Apps Script 的 `更新欄位選項` 也會用部署時的 `GeneratedConfig.js` 同步 `taxonomy` tab。CLI 適合在正式 Sheet 上做明確 dry-run / write 與讀回驗證；Apps Script refresh 適合在 Sheet UI 內套用欄位提示、下拉選單、`taxonomy` 與 `schema_meta`。
 
+## 正式資料品質報表
+
+維護者需要快速掌握正式照片索引健康度時，先匯出正式資料，再產生唯讀報表：
+
+```bash
+pnpm sheets:export
+pnpm sheets:report
+```
+
+`sheets:report` 預設讀 `tmp/sheets-export/photos.csv` 與 `tmp/sheets-export/albums.csv`，不寫入 Google Sheets，也不把 repo fixture 當正式資料。報表會用 `ERROR` / `WARNING` / `INFO` 標示風險等級，包含照片總數、`curation_status` / `public_use_status` 分布、必要欄位空白、AI 待人工 review、相簿 `last_processed_at` 狀態、`album_ids` 參照狀態，以及 `sponsorship_items` / `sponsorship_tags` 覆蓋率。
+
+若同一個執行環境已設定 `GOOGLE_APPLICATION_CREDENTIALS`，且 service account 對正式表有讀取權限，也可以直接讀正式表：
+
+```bash
+pnpm sheets:report -- --source sheets
+```
+
+建議使用時機：
+
+- 每次大量 `intake` 或 AI 初標回寫 dry-run / write 後，先看報表再安排人工整理。
+- 例行檢查正式表是否累積太多 `ai_labeled`、未處理相簿或公開使用風險。
+- 準備公開素材、贊助提案、網站視覺或新聞稿前，先用 `WARNING` 項目決定要補哪些欄位。
+
+後續處理方式：
+
+- `ERROR` 通常代表 schema 必填或資料一致性問題，應先修正資料或匯入工具，再重新匯出與報表。
+- `WARNING` 代表正式使用前需要人工判斷，例如 AI 候選尚未 review、`approved` 缺授權/署名、相簿脈絡不足或贊助欄位不一致。
+- `INFO` 是盤點訊號，用來安排整理優先順序，不一定需要立即修正。
+
 ## 相簿工作流程
 
 建議流程：
