@@ -9,6 +9,7 @@ import {
   sortPhotos,
   uniqueSearchTokens,
 } from "../app/search-sort.js";
+import { decodeUrlState, encodeUrlState } from "../app/url-state.js";
 
 const socialTask = {
   id: "social",
@@ -154,5 +155,40 @@ describe("Pages search/sort pure logic", () => {
     assert.match(prompt, /有留白的講者/);
     assert.match(prompt, /方向: 橫式/);
     assert.match(prompt, /不要自行推測/);
+  });
+
+  it("round-trips URL state without default noise", () => {
+    const params = encodeUrlState({
+      taskMode: "hero",
+      search: " 講者 ",
+      sort: "recommended",
+      album: "id:123",
+      selectedPhotoIds: new Set(["100", "200"]),
+    });
+
+    assert.equal(params.get("sort"), null);
+    assert.equal(params.get("q"), "講者");
+    assert.equal(params.get("selected"), "100,200");
+    assert.deepEqual(decodeUrlState(params), {
+      taskMode: "hero",
+      search: "講者",
+      sort: "",
+      album: "id:123",
+      use: "",
+      mood: "",
+      scene: "",
+      peopleCount: "",
+      subjectType: "",
+      orientation: "",
+      negativeSpace: "",
+      safeCrop: "",
+      sponsorshipTag: "",
+      sponsorshipItem: "",
+      publicStatus: "",
+      priority: "",
+      curationStatus: "",
+      collection: "",
+      selectedPhotoIds: ["100", "200"],
+    });
   });
 });

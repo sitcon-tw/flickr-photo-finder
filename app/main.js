@@ -21,6 +21,7 @@ import {
   textMatches,
   uniqueSearchTokens,
 } from "./search-sort.js";
+import { decodeUrlState, encodeUrlState } from "./url-state.js";
 import {
   discoverHistorySize,
   discoverWindowSize,
@@ -1592,37 +1593,29 @@ function resetFilters() {
   render({ resetPage: true, source: "filter" });
 }
 
-function urlValue(key, value) {
-  return value ? [[key, value]] : [];
-}
-
 function syncUrlState() {
   const url = new URL(window.location.href);
-  const params = new URLSearchParams();
-  for (const [key, value] of [
-    ...urlValue("task", state.taskMode !== "all" ? state.taskMode : ""),
-    ...urlValue("q", controls.search.value.trim()),
-    ...urlValue("sort", controls.sort.value !== "recommended" ? controls.sort.value : ""),
-    ...urlValue("album", controls.album.value),
-    ...urlValue("use", controls.use.value),
-    ...urlValue("mood", controls.mood.value),
-    ...urlValue("scene", controls.scene.value),
-    ...urlValue("people", controls.peopleCount.value),
-    ...urlValue("subject", controls.subjectType.value),
-    ...urlValue("orientation", controls.orientation.value),
-    ...urlValue("negative", controls.negativeSpace.value),
-    ...urlValue("crop", controls.safeCrop.value),
-    ...urlValue("sponsorTag", controls.sponsorshipTag.value),
-    ...urlValue("sponsorItem", controls.sponsorshipItem.value.trim()),
-    ...urlValue("public", controls.publicStatus.value),
-    ...urlValue("priority", controls.priority.value),
-    ...urlValue("curation", controls.curationStatus.value),
-    ...urlValue("collection", controls.collection.value),
-    ...urlValue("selected", [...state.selectedPhotoIds].join(",")),
-  ]) {
-    params.set(key, value);
-  }
-  url.search = params.toString();
+  url.search = encodeUrlState({
+    taskMode: state.taskMode,
+    search: controls.search.value,
+    sort: controls.sort.value,
+    album: controls.album.value,
+    use: controls.use.value,
+    mood: controls.mood.value,
+    scene: controls.scene.value,
+    peopleCount: controls.peopleCount.value,
+    subjectType: controls.subjectType.value,
+    orientation: controls.orientation.value,
+    negativeSpace: controls.negativeSpace.value,
+    safeCrop: controls.safeCrop.value,
+    sponsorshipTag: controls.sponsorshipTag.value,
+    sponsorshipItem: controls.sponsorshipItem.value,
+    publicStatus: controls.publicStatus.value,
+    priority: controls.priority.value,
+    curationStatus: controls.curationStatus.value,
+    collection: controls.collection.value,
+    selectedPhotoIds: state.selectedPhotoIds,
+  }).toString();
   window.history.replaceState(null, "", url);
 }
 
@@ -1633,29 +1626,28 @@ function setControlValue(control, value) {
 }
 
 function applyUrlState() {
-  const params = new URLSearchParams(window.location.search);
-  const task = params.get("task");
-  if (taskModes.some((mode) => mode.id === task)) {
-    state.taskMode = task;
+  const urlState = decodeUrlState(new URLSearchParams(window.location.search));
+  if (taskModes.some((mode) => mode.id === urlState.taskMode)) {
+    state.taskMode = urlState.taskMode;
   }
-  controls.search.value = params.get("q") ?? "";
-  setControlValue(controls.sort, params.get("sort") ?? "");
-  setControlValue(controls.album, params.get("album") ?? "");
-  setControlValue(controls.use, params.get("use") ?? "");
-  setControlValue(controls.mood, params.get("mood") ?? "");
-  setControlValue(controls.scene, params.get("scene") ?? "");
-  setControlValue(controls.peopleCount, params.get("people") ?? "");
-  setControlValue(controls.subjectType, params.get("subject") ?? "");
-  setControlValue(controls.orientation, params.get("orientation") ?? "");
-  setControlValue(controls.negativeSpace, params.get("negative") ?? "");
-  setControlValue(controls.safeCrop, params.get("crop") ?? "");
-  setControlValue(controls.sponsorshipTag, params.get("sponsorTag") ?? "");
-  controls.sponsorshipItem.value = params.get("sponsorItem") ?? "";
-  setControlValue(controls.publicStatus, params.get("public") ?? "");
-  setControlValue(controls.priority, params.get("priority") ?? "");
-  setControlValue(controls.curationStatus, params.get("curation") ?? "");
-  setControlValue(controls.collection, params.get("collection") ?? "");
-  for (const photoId of (params.get("selected") ?? "").split(",").filter(Boolean)) {
+  controls.search.value = urlState.search;
+  setControlValue(controls.sort, urlState.sort);
+  setControlValue(controls.album, urlState.album);
+  setControlValue(controls.use, urlState.use);
+  setControlValue(controls.mood, urlState.mood);
+  setControlValue(controls.scene, urlState.scene);
+  setControlValue(controls.peopleCount, urlState.peopleCount);
+  setControlValue(controls.subjectType, urlState.subjectType);
+  setControlValue(controls.orientation, urlState.orientation);
+  setControlValue(controls.negativeSpace, urlState.negativeSpace);
+  setControlValue(controls.safeCrop, urlState.safeCrop);
+  setControlValue(controls.sponsorshipTag, urlState.sponsorshipTag);
+  controls.sponsorshipItem.value = urlState.sponsorshipItem;
+  setControlValue(controls.publicStatus, urlState.publicStatus);
+  setControlValue(controls.priority, urlState.priority);
+  setControlValue(controls.curationStatus, urlState.curationStatus);
+  setControlValue(controls.collection, urlState.collection);
+  for (const photoId of urlState.selectedPhotoIds) {
     state.selectedPhotoIds.add(photoId);
   }
   syncEnhancedSelects();
