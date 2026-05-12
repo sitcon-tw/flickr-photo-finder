@@ -43,12 +43,11 @@ Drive 或瀏覽器 UI 仍可用於人工建立、分享或管理 spreadsheet 這
 - 要求維護者手動貼 CSV 到 Sheets：可作緊急人工處理，但不適合作為可交接 workflow。
 - Apps Script 執行全部寫入：適合 Sheets-side 輔助，但不適合大量 intake、AI apply 與 repo-driven validation。
 
-## 重新評估條件
+## 維護邊界
 
-出現以下情況時，可以重新評估寫入技術，但仍需保留 tab-level dry-run、write 與 read-back verification：
+寫入工具可以持續改善，但仍需保留 tab-level dry-run、write 與 read-back verification：
 
 - Google Sheets API 限制使目前 SDK 工具無法可靠操作需要的資料量。
-- 專案離開 Google Sheets-first，改由正式資料庫或 API 成為權威來源。
 - SITCON 組織提供更正式的資料同步平台，能同等表達 tab、range、schema 與驗證語意。
 
 ## 相關文件

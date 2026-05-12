@@ -29,7 +29,7 @@
 | 我要維護 Sheets 同步或練習表 | `docs/sheets-sync-workflow.md` | 先確認正式表、練習表、service account 與 dry-run/write 邊界。 |
 | 我要檢查正式 Sheets 資料健康度 | `pnpm sheets:report` | 先用 `pnpm sheets:export` 更新 `tmp/sheets-export/`；風險分級與後續處理看 `docs/sheets-sync-workflow.md`。 |
 | 我要管理 GA4 事件與 custom dimensions | `docs/frontend-analytics-design.md` | 後台權限與 Admin API 操作看 `docs/ga4-operations.md`。 |
-| 我要理解架構決策背景與重新評估條件 | `docs/adr/README.md` | ADR 只記錄決策脈絡、取捨與重新評估條件；目前架構總覽仍看 `docs/project-architecture.md`。 |
+| 我要理解架構決策背景與維護邊界 | `docs/adr/README.md` | ADR 只記錄決策脈絡、取捨與維護邊界；目前架構總覽仍看 `docs/project-architecture.md`。 |
 
 ## 真理來源
 
@@ -67,7 +67,7 @@
 | 固定練習用 Apps Script ID | `config/project.json` 的 `googleSheets.practiceAppsScriptId` | 這是練習表的 Sheet-bound Apps Script 專案 ID，供維護者重建本機 `clasp` 綁定；它不是 Google credential、OAuth token 或部署權限。 |
 | 練習用試算表資料包 | `tmp/sheets-practice/*.csv` | 從正式匯出資料切出的小樣本，供維護者重置固定練習表；可刪除，不 commit，不是第二份正式資料庫。 |
 | 專案角色與資料流 | `docs/project-architecture.md` | 若架構改變，先更新架構總覽，再同步相關文件。 |
-| 架構決策脈絡與重新評估條件 | `docs/adr/README.md` | ADR 不取代架構總覽或 runbook；用來理解已採用決策的背景、取捨與何時該重新評估。 |
+| 架構決策脈絡與維護邊界 | `docs/adr/README.md` | ADR 不取代架構總覽或 runbook；用來理解已採用決策的背景、取捨與長期維護方式。 |
 
 ## 共用字串歸屬
 
@@ -175,6 +175,6 @@
 - `field-design-reflection.md`: 根據多輪真實 AI 初標結果回頭檢視欄位、taxonomy、prompt 設計，以及不導入人臉辨識與自動人名標註等產品邊界。
 - `data-entry-guide.md`: 人工整理照片資料的判斷流程。
 - `photo-fields-reference.md`: 欄位速查；欄位清單仍以 `data/photo-schema.json` 為準。
-- `database-collaboration-strategy.md`: Sheets-first 協作、公開資料邊界與未來遷移判斷。
+- `database-collaboration-strategy.md`: Sheets-first 協作、公開資料邊界與長期維護方式。
 - `agent-maintenance-guide.md`: agent 與技術志工維護注意事項。
-- `adr/`: 架構決策紀錄，說明重要決策的背景、取捨、目前狀態與重新評估條件。
+- `adr/`: 架構決策紀錄，說明重要決策的背景、取捨、目前狀態與維護邊界。

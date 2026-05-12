@@ -1,12 +1,12 @@
 # 架構決策紀錄
 
-這個目錄記錄已經影響專案形狀的架構決策。ADR 不取代 `docs/project-architecture.md`、各 workflow runbook 或 `data/*.json` 真理來源；它只補上「當時為什麼這樣選、接受了哪些取捨、什麼情況下要重新評估」。
+這個目錄記錄已經影響專案形狀的架構決策。ADR 不取代 `docs/project-architecture.md`、各 workflow runbook 或 `data/*.json` 真理來源；它只補上「當時為什麼這樣選、接受了哪些取捨、如何維持這個決策的邊界」。
 
 ## 閱讀方式
 
 - 需要理解目前完整資料流時，先讀 `docs/project-architecture.md`。
 - 需要操作或維護某條流程時，回到 `docs/README.md` 選對 runbook。
-- 需要知道某個架構選擇為什麼存在、有哪些替代方案與重新評估條件時，再讀這裡。
+- 需要知道某個架構選擇為什麼存在、接受了哪些取捨與維護邊界時，再讀這裡。
 
 ## 狀態
 

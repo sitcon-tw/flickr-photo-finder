@@ -128,9 +128,9 @@ flowchart LR
 - 原圖檔案。
 - 私人授權資訊或不該公開的內部資料。
 
-## 1.0 現況與演進邊界
+## 現況與演進邊界
 
-目前 1.0 的成果展現不是導入正式後台或 PostgreSQL，而是讓以下流程穩定成立：
+目前的成果重點是讓以下 Sheets-first 流程穩定成立：
 
 1. 技術志工或 agent 能從 SITCON Flickr 盤點目前有哪些相簿。
 2. 使用者能從已盤點的相簿清單選擇本次要處理哪一本。
@@ -142,4 +142,4 @@ flowchart LR
 
 目前專案已支援相簿盤點、相簿選擇、intake run 產生、Sheets 初始化與匯入 dry-run/write、AI 初標 prepare/review/report/apply、公開搜尋前端 artifact build/check，以及 Apps Script 維護輔助 source。GitHub Pages 部署已走 GitHub Actions artifact；Apps Script source 可透過 `clasp` 部署到 Sheet-bound script，但實際綁定與部署仍需由有目標 Sheet / Apps Script 權限的維護者執行。最新可用指令、低階工具與改善項目請以 `docs/README.md` 的「目前狀態」為準。
 
-未來發展仍應優先延伸這個架構：改善公開搜尋體驗、Sheets 內維護輔助、AI 初標審核與資料品質檢查。只有當 Google Sheets-first 架構無法合理處理權限分層、非公開欄位、審核歷程、多人衝突或查詢效能時，才重新評估正式資料庫或後台；這不是目前 1.0 的專案目標。
+未來發展仍應延伸這個架構：改善公開搜尋體驗、Sheets 內維護輔助、AI 初標審核與資料品質檢查。若資料量或搜尋體驗帶來壓力，應優先改善公開前端的載入、索引、分片、快取與排序策略，正式資料權威仍維持在 Google Sheets。

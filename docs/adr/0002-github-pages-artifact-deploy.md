@@ -44,11 +44,10 @@ GitHub Pages 應透過 GitHub Actions 產生乾淨 artifact 後部署：
 - GitHub Actions 用 service account 匯出靜態資料：可作未來選項，但 1.0 先避免 GitHub Secrets 與部署時資料快照同步問題。
 - 前端直接使用 Google Sheets API：會引入 API key、OAuth、quota 與前端 credential 管理問題。
 
-## 重新評估條件
+## 維護邊界
 
-出現以下情況時，可以重新評估 artifact 內容或資料讀取方式，但不應降低公開唯讀與無 secret 的邊界：
+公開前端資料載入方式可以持續優化，但不應降低公開唯讀與無 secret 的邊界：
 
-- 公開 CSV 體積或 CORS 行為讓瀏覽器直接讀取不再可靠。
 - 需要 build-time 搜尋索引、分頁 JSON 或快取策略。
 - GitHub Pages artifact 部署限制無法滿足正式上線需求。
 - 需要多個公開前端環境，且 artifact 內容需要更明確的環境切分。

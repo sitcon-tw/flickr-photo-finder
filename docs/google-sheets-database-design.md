@@ -226,9 +226,9 @@ Google Sheets 應盡量提供以下保護：
 - 避免用顏色或註解承載資料語意。
 - 發生誤刪、誤排序、誤貼格式時，優先使用 Google Sheets 版本紀錄復原。
 
-## 遷移性
+## 工具讀取穩定性
 
-這個 Sheets 設計應保留未來改用其他資料層的可能性，但 1.0 目標仍是維持 Google Sheets-first。
+這個 Sheets 設計應讓 repo CLI、Apps Script、GitHub Pages、AI 工作包與公開匯出穩定讀取同一套資料語意。
 
 因此：
 
