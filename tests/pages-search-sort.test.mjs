@@ -5,6 +5,7 @@ import { candidateMarkdown, selectedPhotos } from "../app/candidates.js";
 import { activeFilterEntries, albumFilterOptions } from "../app/controls.js";
 import { buildOptionLabelMaps, createSearchTokenBuilder, normalizePhotoRows } from "../app/data-loader.js";
 import { photoTitle, sheetRowLink } from "../app/photo-render.js";
+import { resultContextText } from "../app/result-render.js";
 import {
   buildSearchText,
   filterAndSortPhotos,
@@ -313,5 +314,21 @@ describe("Pages search/sort pure logic", () => {
 
     assert.equal(photoTitle(item), "SITCON stage photo");
     assert.equal(link, "https://docs.google.com/spreadsheets/d/sheet-1/edit?gid=7#gid=7&range=A42");
+  });
+
+  it("describes result context from sort mode and active filters", () => {
+    const text = resultContextText({
+      photos: [photo({ photo_id: "1" })],
+      filtered: [photo({ photo_id: "1" })],
+      controls: { sort: { value: "discover" } },
+      activeTask: () => socialTask,
+      activeFilterEntries: () => [
+        ["task", "任務", "社群貼文"],
+        ["scene", "場景", "交流"],
+      ],
+    });
+
+    assert.match(text, /探索更多排序/);
+    assert.match(text, /已套用：場景 交流/);
   });
 });

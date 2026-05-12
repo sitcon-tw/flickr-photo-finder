@@ -32,8 +32,13 @@ import {
   sheetRowLink as buildSheetRowLink,
 } from "./photo-render.js";
 import {
-  filterAndSortPhotos,
-} from "./search-sort.js";
+  renderActiveFilters,
+  renderEmpty,
+  resultContextText,
+  updateLoadMore,
+  updateTaskButtons,
+} from "./result-render.js";
+import { filterAndSortPhotos } from "./search-sort.js";
 import { decodeUrlState, encodeUrlState } from "./url-state.js";
 import {
   discoverHistorySize,
@@ -287,82 +292,6 @@ function clearFilter(key) {
   render({ resetPage: true, source: "filter" });
 }
 
-function renderActiveFilters() {
-  const entries = activeFilterEntries();
-  elements.activeFilters.replaceChildren();
-  if (entries.length === 0) {
-    const empty = document.createElement("span");
-    empty.className = "filter-chip muted-chip";
-    empty.textContent = "未套用條件";
-    elements.activeFilters.append(empty);
-    return;
-  }
-
-  for (const [key, label, value] of entries) {
-    const chip = document.createElement("button");
-    chip.type = "button";
-    chip.className = "filter-chip";
-    chip.dataset.filterKey = key;
-    chip.textContent = `${label}: ${value} ×`;
-    elements.activeFilters.append(chip);
-  }
-}
-
-function sortContextText() {
-  const task = activeTask();
-  const taskPrefix = task.id === "all" ? "全部照片" : `「${task.label}」情境`;
-  if (controls.sort.value === "discover") {
-    return `以${taskPrefix}探索更多排序，分散年份、活動、相簿與素材包來源`;
-  }
-  if (controls.sort.value === "newest") {
-    return "以年份新到舊排序";
-  }
-  if (controls.sort.value === "oldest") {
-    return "以年份舊到新排序";
-  }
-  if (controls.sort.value === "people-desc") {
-    return "以人數多到少排序";
-  }
-  if (controls.sort.value === "people-asc") {
-    return "以人數少到多排序";
-  }
-  return task.id === "all" ? "以推薦排序" : `以「${task.label}」情境推薦排序`;
-}
-
-function resultContextText(filtered) {
-  if (photos.length === 0) {
-    return "尚未載入照片";
-  }
-  if (filtered.length === 0) {
-    return "目前條件沒有結果，可放寬整理狀態、任務條件或清除使用提醒。";
-  }
-  const filterText = activeFilterEntries()
-    .filter(([key]) => key !== "task")
-    .map(([, label, value]) => `${label} ${value}`)
-    .join(" / ");
-  return `${sortContextText()}，仍顯示符合篩選的照片。${filterText ? `已套用：${filterText}` : "未套用額外篩選。"}`;
-}
-
-function updateTaskButtons() {
-  for (const button of elements.taskModes.querySelectorAll(".task-mode")) {
-    button.classList.toggle("is-active", button.dataset.taskMode === state.taskMode);
-  }
-}
-
-function updateLoadMore(filtered) {
-  const renderedCount = Math.min(visibleCount, filtered.length);
-  const remaining = filtered.length - renderedCount;
-  elements.loadMorePanel.hidden = remaining <= 0 || filtered.length === 0;
-  elements.loadMoreSummary.textContent = `已顯示 ${renderedCount} 張，尚有 ${remaining} 張`;
-}
-
-function renderEmpty(text) {
-  const empty = document.createElement("div");
-  empty.className = "empty";
-  empty.textContent = text;
-  elements.grid.append(empty);
-}
-
 function render({ resetPage = false, preservePage = false, source = "" } = {}) {
   const filtered = filteredAndSortedPhotos();
   currentResults = filtered;
@@ -370,8 +299,8 @@ function render({ resetPage = false, preservePage = false, source = "" } = {}) {
     visibleCount = pageSize;
   }
 
-  updateTaskButtons();
-  renderActiveFilters();
+  updateTaskButtons({ elements, taskMode: state.taskMode });
+  renderActiveFilters({ elements, activeFilterEntries });
   renderCandidates({
     selectedPhotoIds: state.selectedPhotoIds,
     photos,
@@ -384,17 +313,17 @@ function render({ resetPage = false, preservePage = false, source = "" } = {}) {
   });
   elements.grid.replaceChildren();
   elements.summary.textContent = `${filtered.length} / ${photos.length} 張照片`;
-  elements.context.textContent = resultContextText(filtered);
+  elements.context.textContent = resultContextText({ photos, filtered, controls, activeTask, activeFilterEntries });
 
   if (photos.length === 0) {
-    renderEmpty("目前資料來源沒有照片資料");
-    updateLoadMore(filtered);
+    renderEmpty(elements.grid, "目前資料來源沒有照片資料");
+    updateLoadMore({ elements, visibleCount, filtered });
     return;
   }
 
   if (filtered.length === 0) {
-    renderEmpty("沒有符合條件的照片");
-    updateLoadMore(filtered);
+    renderEmpty(elements.grid, "沒有符合條件的照片");
+    updateLoadMore({ elements, visibleCount, filtered });
     maybeTrackZeroResults();
     syncUrlState();
     return;
@@ -405,7 +334,7 @@ function render({ resetPage = false, preservePage = false, source = "" } = {}) {
     fragment.append(renderPhoto(photo, index + 1, filtered.length));
   }
   elements.grid.append(fragment);
-  updateLoadMore(filtered);
+  updateLoadMore({ elements, visibleCount, filtered });
   syncUrlState();
 
   if (source) {

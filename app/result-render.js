@@ -1,0 +1,70 @@
+export function renderActiveFilters({ elements, activeFilterEntries }) {
+  const entries = activeFilterEntries();
+  elements.activeFilters.replaceChildren();
+  if (entries.length === 0) {
+    const empty = document.createElement("span");
+    empty.className = "filter-chip muted-chip";
+    empty.textContent = "未套用條件";
+    elements.activeFilters.append(empty);
+    return;
+  }
+
+  for (const [key, label, value] of entries) {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "filter-chip";
+    chip.dataset.filterKey = key;
+    chip.textContent = `${label}: ${value} ×`;
+    elements.activeFilters.append(chip);
+  }
+}
+
+export function resultContextText({ photos, filtered, controls, activeTask, activeFilterEntries }) {
+  if (photos.length === 0) {
+    return "尚未載入照片";
+  }
+  if (filtered.length === 0) {
+    return "目前條件沒有結果，可放寬整理狀態、任務條件或清除使用提醒。";
+  }
+
+  const task = activeTask();
+  const taskPrefix = task.id === "all" ? "全部照片" : `「${task.label}」情境`;
+  let sortText = task.id === "all" ? "以推薦排序" : `以「${task.label}」情境推薦排序`;
+  if (controls.sort.value === "discover") {
+    sortText = `以${taskPrefix}探索更多排序，分散年份、活動、相簿與素材包來源`;
+  } else if (controls.sort.value === "newest") {
+    sortText = "以年份新到舊排序";
+  } else if (controls.sort.value === "oldest") {
+    sortText = "以年份舊到新排序";
+  } else if (controls.sort.value === "people-desc") {
+    sortText = "以人數多到少排序";
+  } else if (controls.sort.value === "people-asc") {
+    sortText = "以人數少到多排序";
+  }
+
+  const filterText = activeFilterEntries()
+    .filter(([key]) => key !== "task")
+    .map(([, label, value]) => `${label} ${value}`)
+    .join(" / ");
+  return `${sortText}，仍顯示符合篩選的照片。${filterText ? `已套用：${filterText}` : "未套用額外篩選。"}`;
+}
+
+export function updateTaskButtons({ elements, taskMode }) {
+  for (const button of elements.taskModes.querySelectorAll(".task-mode")) {
+    button.classList.toggle("is-active", button.dataset.taskMode === taskMode);
+  }
+}
+
+export function updateLoadMore({ elements, visibleCount, filtered }) {
+  const renderedCount = Math.min(visibleCount, filtered.length);
+  const remaining = filtered.length - renderedCount;
+  elements.loadMorePanel.hidden = remaining <= 0 || filtered.length === 0;
+  elements.loadMoreSummary.textContent = `已顯示 ${renderedCount} 張，尚有 ${remaining} 張`;
+}
+
+export function renderEmpty(grid, text) {
+  const empty = document.createElement("div");
+  empty.className = "empty";
+  empty.textContent = text;
+  grid.append(empty);
+}
