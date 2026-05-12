@@ -226,7 +226,7 @@ function toggleCandidate(photoId) {
     state.selectedPhotoIds.add(photoId);
     trackEvent("add_candidate", { photo_id: photoId, task_mode: state.taskMode, sort_mode: controls.sort.value });
   }
-  render({ preservePage: true, source: "candidate" });
+  render({ preservePage: true, preserveScroll: true, source: "candidate" });
 }
 
 async function copyCandidateList() {
@@ -257,7 +257,7 @@ async function copyCandidateList() {
 function clearCandidates() {
   state.selectedPhotoIds.clear();
   state.promotedPhotoIds.clear();
-  render({ preservePage: true, source: "candidate" });
+  render({ preservePage: true, preserveScroll: true, source: "candidate" });
 }
 
 function currentAiAssistantPrompt() {
@@ -305,7 +305,14 @@ function clearFilter(key) {
   render({ resetPage: true, source: "filter" });
 }
 
-function render({ resetPage = false, preservePage = false, source = "" } = {}) {
+function render({ resetPage = false, preservePage = false, preserveScroll = false, source = "" } = {}) {
+  const scrollX = window.scrollX;
+  const scrollY = window.scrollY;
+  const restoreScroll = () => {
+    if (preserveScroll) {
+      window.requestAnimationFrame(() => window.scrollTo(scrollX, scrollY));
+    }
+  };
   const filtered = filteredAndSortedPhotos();
   currentResults = filtered;
   if (resetPage || (!preservePage && visibleCount <= 0)) {
@@ -331,6 +338,7 @@ function render({ resetPage = false, preservePage = false, source = "" } = {}) {
   if (photos.length === 0) {
     renderEmpty(elements.grid, "目前資料來源沒有照片資料");
     updateLoadMore({ elements, visibleCount, filtered });
+    restoreScroll();
     return;
   }
 
@@ -339,6 +347,7 @@ function render({ resetPage = false, preservePage = false, source = "" } = {}) {
     updateLoadMore({ elements, visibleCount, filtered });
     maybeTrackZeroResults();
     syncUrlState();
+    restoreScroll();
     return;
   }
 
@@ -353,6 +362,8 @@ function render({ resetPage = false, preservePage = false, source = "" } = {}) {
   if (source) {
     scheduleResultsTracking(source);
   }
+
+  restoreScroll();
 }
 
 function maybeTrackZeroResults() {
