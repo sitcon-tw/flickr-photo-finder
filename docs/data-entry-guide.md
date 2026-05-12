@@ -123,6 +123,8 @@ Google Sheets、CSV、AI proposal 與 repo 工具儲存的是 taxonomy raw value
 
 如果不確定，請用 `needs_review`。
 
+不要為了提升搜尋方便，把可識別個人的人名、負面描述、敏感身份或未確認角色寫進 `curation_notes`、`visual_description` 或其他公開欄位。若某張照片確實需要進入公開人物、講者或工作人員素材包，應由人類確認公開脈絡、用途與同意範圍後，再用明確的 `collections` 或其他經過設計的欄位處理；不要用 AI 看臉或外貌推論補上人物身份。
+
 ## 整理狀態與推薦優先度
 
 `curation_status` 代表這筆資料整理到什麼程度，不是照片品質評分。

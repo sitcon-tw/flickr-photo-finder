@@ -99,6 +99,8 @@ flowchart LR
 
 找圖結果不應只依 `reviewed` 篩掉其他照片。SITCON Flickr 照片量很大，`unreviewed` 與 `ai_labeled` 仍可用於探索，但必須在排序與提示上清楚標示。
 
+若需求是找特定公開人物、講者或工作人員照片，應優先用活動時間、相簿、公開議程資料、Flickr 原頁脈絡、`scene_tags = 講者 / 合照 / 工作人員`、`people_count`、`recommended_uses` 與人工確認的 `collections` 縮小範圍。專案不以人臉辨識、人物聚類或自動人名標註作為找圖入口；這是隱私、肖像權與社群信任邊界，不是目前缺少的搜尋功能。
+
 ## 部署流程
 
 公開前端與 Sheets 維護工具分開部署：

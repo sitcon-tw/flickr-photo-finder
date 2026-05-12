@@ -136,7 +136,7 @@
 - `ai-labeling-operator-guide.md`: AI 初標操作者與 repo 維護 agent 的 prepare-to-review、報表檢視與回寫前檢查指南；不是模型初標任務的主要 prompt。
 - `ai-labeling-contract.md`: AI 初標工作包的輸入、輸出、限制與驗證合約。
 - `ai-labeling-evaluation-notes.md`: AI 初標品質評估紀錄、常見失準欄位與工具化警訊候選。
-- `field-design-reflection.md`: 根據多輪真實 AI 初標結果回頭檢視欄位、taxonomy 與 prompt 設計。
+- `field-design-reflection.md`: 根據多輪真實 AI 初標結果回頭檢視欄位、taxonomy、prompt 設計，以及不導入人臉辨識與自動人名標註等產品邊界。
 - `data-entry-guide.md`: 人工整理照片資料的判斷流程。
 - `photo-fields-reference.md`: 欄位速查；欄位清單仍以 `data/photo-schema.json` 為準。
 - `database-collaboration-strategy.md`: Sheets-first 協作、公開資料邊界與未來遷移判斷。
