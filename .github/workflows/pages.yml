@@ -36,14 +36,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Validate data contracts
-        run: pnpm validate:data
-
-      - name: Build Pages artifact
-        run: pnpm pages:build -- --output-dir tmp/pages
-
-      - name: Check Pages artifact
-        run: pnpm pages:check -- --dir tmp/pages
+      - name: Run project checks
+        run: pnpm project:check
 
       - name: Setup Pages
         if: github.event_name != 'pull_request'

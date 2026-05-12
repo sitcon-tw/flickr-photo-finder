@@ -1,14 +1,111 @@
 import { spawnSync } from "node:child_process";
+import { readdir } from "node:fs/promises";
+import path from "node:path";
 
-const checks = [
-  ["data:validate", []],
-  ["eval:validate-fixtures", []],
-  ["finder:test", []],
+const syntaxRoots = [
+  { dir: "scripts/commands", extension: ".mjs" },
+  { dir: "scripts/lib", extension: ".mjs" },
+  { dir: "scripts/workflows", extension: ".mjs" },
+  { dir: "app", extension: ".js" },
+  { dir: "apps-script", extension: ".js" },
 ];
 
-for (const [script, args] of checks) {
-  const result = spawnSync("pnpm", [script, ...args], { stdio: "inherit" });
-  if (result.status !== 0) {
-    process.exit(result.status ?? 1);
+const checks = [
+  {
+    name: "JavaScript syntax",
+    run: checkSyntax,
+    next: "Fix the syntax error in the reported file, then rerun pnpm project:check.",
+  },
+  {
+    name: "Apps Script generated config sync",
+    command: "pnpm",
+    args: ["apps-script:build-config", "--", "--check"],
+    next: "Run pnpm apps-script:build-config and commit apps-script/GeneratedConfig.js if it changed.",
+  },
+  {
+    name: "Data validation",
+    command: "pnpm",
+    args: ["data:validate"],
+    next: "Fix the reported data/schema issue, then rerun pnpm data:validate.",
+  },
+  {
+    name: "AI fixture validation",
+    command: "pnpm",
+    args: ["eval:validate-fixtures"],
+    next: "Fix fixtures/ai-proposals or the validator, then rerun pnpm eval:validate-fixtures.",
+  },
+  {
+    name: "Finder unit tests",
+    command: "pnpm",
+    args: ["finder:test"],
+    next: "Fix the failing frontend logic test, then rerun pnpm finder:test.",
+  },
+  {
+    name: "Finder Pages build",
+    command: "pnpm",
+    args: ["finder:build"],
+    next: "Fix the Pages build error, then rerun pnpm finder:build.",
+  },
+  {
+    name: "Finder Pages artifact check",
+    command: "pnpm",
+    args: ["finder:check"],
+    next: "Run pnpm finder:build if the artifact is missing, or fix the artifact check error and rerun pnpm finder:check.",
+  },
+];
+
+async function collectFiles(dir, extension) {
+  const entries = await readdir(dir, { withFileTypes: true });
+  const files = [];
+
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...(await collectFiles(fullPath, extension)));
+      continue;
+    }
+
+    if (entry.isFile() && entry.name.endsWith(extension)) {
+      files.push(fullPath);
+    }
+  }
+
+  return files.sort();
+}
+
+function runCommand(command, args) {
+  const result = spawnSync(command, args, { stdio: "inherit" });
+  return result.status ?? 1;
+}
+
+async function checkSyntax() {
+  const files = (
+    await Promise.all(syntaxRoots.map(({ dir, extension }) => collectFiles(dir, extension)))
+  )
+    .flat()
+    .sort();
+
+  for (const file of files) {
+    const status = runCommand(process.execPath, ["--check", file]);
+    if (status !== 0) {
+      console.error(`Syntax check failed: node --check ${file}`);
+      return status;
+    }
+  }
+
+  console.log(`Checked JavaScript syntax for ${files.length} files.`);
+  return 0;
+}
+
+for (const check of checks) {
+  console.log(`\n==> ${check.name}`);
+  const status = check.run ? await check.run() : runCommand(check.command, check.args);
+
+  if (status !== 0) {
+    console.error(`\nProject check failed during: ${check.name}`);
+    console.error(`Next: ${check.next}`);
+    process.exit(status);
   }
 }
+
+console.log("\nProject check passed.");

@@ -102,9 +102,10 @@
 - `pnpm sheets:export`，透過官方 Google Sheets API SDK 匯出正式 Sheets 固定 tabs，供 validation 與 intake 流程使用。
 - `pnpm albums:list`，從正式 Sheets 匯出的 `albums.csv` 或 `--source sheets` 直接讀取正式 `albums` 工作表列出與篩選相簿，並可輸出 album id、JSON 或可直接執行的 intake 指令。
 - `pnpm albums:select`，從正式 Sheets 匯出的 `albums.csv` 或 `--source sheets` 直接讀取正式 `albums` 工作表互動式選擇單本相簿，並輸出 album id、JSON 或可直接執行的 intake 指令。
+- `pnpm project:check`，執行不需要 credential 的本機/CI 健康檢查，涵蓋 data validation、AI fixture validation、finder tests、Pages build/check、Apps Script generated config 同步檢查與主要 JavaScript syntax check。
 - `pnpm finder:build` / `pnpm finder:check`，產生並檢查 GitHub Pages artifact 到 `tmp/pages/`，部署版資料來源會讀公開 Google Sheets `photos` CSV。
 - `pnpm finder:test`，執行 GitHub Pages 前端可測試邏輯；目前涵蓋搜尋/排序、URL state、data-loader 正規化、controls filter entries、候選清單、照片卡連結、結果狀態文字與 AI 助手提示詞。
-- `pnpm apps-script:build-config`，從 repo schema、taxonomy 與 sponsorship items snapshot metadata 產生 Apps Script 使用的 `apps-script/GeneratedConfig.js`。
+- `pnpm apps-script:build-config`，從 repo schema、taxonomy 與 sponsorship items snapshot metadata 產生 Apps Script 使用的 `apps-script/GeneratedConfig.js`；`pnpm apps-script:build-config -- --check` 只檢查已提交檔案是否同步。
 - `pnpm apps-script:bind`、`pnpm apps-script:status`、`pnpm apps-script:push`、`pnpm apps-script:deployments`，包裝常用 clasp 綁定、推送與 deployment 查詢流程。正式表是預設 target，可直接用 `pnpm apps-script:push`；固定練習表需明確使用 `pnpm apps-script:push -- --target practice`。Web App deployment type 應從 Apps Script UI 建立或更新；第一次部署順序見 `docs/apps-script-maintenance-design.md`。
 - `pnpm albums:discover`，盤點 SITCON Flickr 公開相簿清單並輸出 CSV 預覽。
 - `pnpm albums:discover -- --write`，更新本機 `fixtures/albums.csv` fixture，供 demo、除錯或 fixture validation 使用。
