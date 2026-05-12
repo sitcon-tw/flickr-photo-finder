@@ -563,6 +563,15 @@ pnpm sheets:apply-ai-updates -- --run-dir tmp/ai-runs/<run-id> --write
 
 若 Sheets 已被其他志工修改，造成目前 cell 值和 plan 不一致，工具會阻擋寫入，避免覆蓋人工整理結果。
 
+若人類明確接受覆蓋既有 AI metadata，可在 dry-run 和 write 都加上 `--allow-current-mismatch`。大型批次可再加 `--summary-only`，只列出更新數量與 mismatch 數量，不列出每一格：
+
+```bash
+pnpm sheets:apply-ai-updates -- --run-dir tmp/ai-runs/<run-id> --allow-current-mismatch --summary-only
+pnpm sheets:apply-ai-updates -- --run-dir tmp/ai-runs/<run-id> --allow-current-mismatch --summary-only --write
+```
+
+這不應作為日常預設；它是給「確認要重跑並覆蓋既有 AI 初標」的操作使用。
+
 若人類重新觸發 AI 調整欄位，工具仍應提供可審核 diff，不應靜默覆蓋人工整理內容。
 
 ## 公開讀取流程

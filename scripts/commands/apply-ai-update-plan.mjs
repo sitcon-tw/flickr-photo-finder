@@ -16,6 +16,10 @@ Options:
   --spreadsheet-id <id> Google Sheets spreadsheet ID. Default: config/project.json googleSheets.spreadsheetId.
   --layers <list>       Comma-separated AI field layers to apply: baseline,recall,optional.
                         Default: baseline,recall,optional.
+  --allow-current-mismatch
+                        Continue when Sheets values no longer match plan current_value.
+                        Use only when intentionally overwriting existing AI metadata.
+  --summary-only        Print counts and blockers/mismatches, not every cell update.
   --write               Apply changes. Without this flag the command only performs a dry-run.
   --help, -h            Show this help.
 
@@ -34,6 +38,8 @@ function parseArgs(argv) {
     planPath: "",
     runDir: "",
     spreadsheetId: googleSheetsSpreadsheetId,
+    allowCurrentMismatch: false,
+    summaryOnly: false,
     write: false,
   };
 
@@ -53,6 +59,10 @@ function parseArgs(argv) {
     } else if (arg === "--layers") {
       options.layers = parseLayers(args[index + 1] ?? "");
       index += 1;
+    } else if (arg === "--allow-current-mismatch") {
+      options.allowCurrentMismatch = true;
+    } else if (arg === "--summary-only") {
+      options.summaryOnly = true;
     } else if (arg === "--write") {
       options.write = true;
     } else {
@@ -222,9 +232,10 @@ function filterPlanByLayers(plan, layers) {
   };
 }
 
-function buildCellPlan(plan, rows) {
+function buildCellPlan(plan, rows, { allowCurrentMismatch = false } = {}) {
   const { duplicateIds, map: photoRowsById } = buildPhotoRowMap(rows);
   const blockers = [];
+  const currentMismatches = [];
   const updates = [];
 
   for (const photoId of duplicateIds) {
@@ -245,10 +256,12 @@ function buildCellPlan(plan, rows) {
 
     const actualCurrentValue = rowInfo.row[columnIndex] ?? "";
     if (actualCurrentValue !== update.current_value) {
-      blockers.push(
-        `${update.photo_id}.${update.field}: current Sheets value "${actualCurrentValue}" does not match plan current_value "${update.current_value}"`,
-      );
-      continue;
+      const message = `${update.photo_id}.${update.field}: current Sheets value "${actualCurrentValue}" does not match plan current_value "${update.current_value}"`;
+      if (!allowCurrentMismatch) {
+        blockers.push(message);
+        continue;
+      }
+      currentMismatches.push(message);
     }
 
     updates.push({
@@ -261,22 +274,31 @@ function buildCellPlan(plan, rows) {
 
   return {
     blockers,
+    currentMismatches,
     layers: plan.layers ?? [],
     runId: plan.run_id,
     updates,
   };
 }
 
-function printPlan(cellPlan, { write }) {
+function printPlan(cellPlan, { summaryOnly, write }) {
   console.log(`Mode: ${write ? "write" : "dry-run"}`);
   console.log(`Run: ${cellPlan.runId}`);
   console.log(`Layers: ${cellPlan.layers.join(", ")}`);
   console.log(`- cell updates: ${cellPlan.updates.length}`);
-  for (const update of cellPlan.updates) {
-    console.log(`  - ${update.range}: ${update.photo_id}.${update.field} "${update.current_value}" -> "${update.proposed_value}"`);
+  if (cellPlan.currentMismatches.length > 0) {
+    console.log(`- current value mismatches allowed: ${cellPlan.currentMismatches.length}`);
+  }
+  if (!summaryOnly) {
+    for (const update of cellPlan.updates) {
+      console.log(`  - ${update.range}: ${update.photo_id}.${update.field} "${update.actual_current_value}" -> "${update.proposed_value}"`);
+    }
   }
   if (cellPlan.blockers.length > 0) {
     console.log(`Blocked: ${cellPlan.blockers.join("; ")}`);
+  }
+  if (cellPlan.currentMismatches.length > 0 && !summaryOnly) {
+    console.log(`Allowed current value mismatches: ${cellPlan.currentMismatches.join("; ")}`);
   }
 }
 
@@ -334,7 +356,7 @@ async function main() {
 
   const sheets = await createSheetsService();
   const rows = await readSheetRows(sheets, options.spreadsheetId);
-  const cellPlan = buildCellPlan(plan, rows);
+  const cellPlan = buildCellPlan(plan, rows, { allowCurrentMismatch: options.allowCurrentMismatch });
 
   console.log(`Spreadsheet: ${options.spreadsheetId}`);
   console.log(`Plan: ${options.planPath}`);
