@@ -16,12 +16,25 @@ import {
 const defaultProposalFile = "metadata-proposals.json";
 const repeatedVisualReasonThreshold = 5;
 const visualDescriptionMinLength = 20;
+const visualDescriptionShortWarningLength = 24;
+const visualDescriptionMaxRecommendedLength = 80;
 const visualDescriptionSimilarityThreshold = 0.75;
 const reasonTemplatePattern = /推測值|預設為|照片方向預設|圖片尺寸為|一般而言/;
 const nonVisualLanguagePattern = /推測|可能是|應該是|預設|通常|一般而言|如圖|如題|推測值|畫面尺寸為\s*\d+\s*x\s*\d+|圖片尺寸為\s*\d+\s*x\s*\d+/i;
+const tentativeVisualLanguagePattern = /似乎|看起來像|疑似|大概|約略|約為/;
+const nonVisiblePurposeLanguagePattern =
+  /適合|可用於|可作為|象徵|展現(?:出)?|代表(?:了)?|呈現(?:出)?.*(?:精神|氛圍|成果|價值)|宣傳|推廣/;
+const sponsorshipVisualLanguagePattern = /贊助|スポンサー|sponsor|Sponsor|品牌露出|廠商|Logo\s*牆|標誌牆/;
 const concreteVisualPattern =
   /桌|椅|旗|布條|背板|看板|投影|螢幕|講台|麥克風|相機|鏡頭|手機|筆電|餐點|茶點|炸雞|披薩|飲料|盤|碗|杯|袋|背包|證件|掛繩|手|臉|眼鏡|口罩|衣|帽|站|坐|拿|看|聽|交談|拍攝|排隊|合照|前景|背景|左側|右側|中央|桌上|牆面|白板|黑板|文字|標誌|logo|Logo|SITCON/;
 const visualEvidenceFields = new Set([...allowedAiFields].filter((field) => field !== "curation_status"));
+const visualDescriptionSearchTokenGroups = [
+  ["people", /人|人物|講者|學員|會眾|工作人員|志工|參與者|主持人|學生|小朋友|孩童|青年|男子|女子|攝影者/],
+  ["object", /桌|椅|旗|布條|背板|看板|投影|螢幕|講台|麥克風|相機|鏡頭|手機|筆電|餐點|茶點|炸雞|披薩|飲料|盤|碗|杯|袋|背包|證件|掛繩|海報|立牌|紙張|紙盒|線材/],
+  ["action", /站|坐|拿|看|聽|交談|說明|拍攝|排隊|合照|操作|書寫|指向|展示|討論|走|舉手|低頭|圍著/],
+  ["text", /文字|字樣|標誌|標示|logo|Logo|SITCON|投影片|白板|黑板|手寫|標題|看板/],
+  ["spatial", /前景|背景|左側|右側|中央|旁邊|前方|後方|桌上|牆面|門口|入口|走廊|教室|會場|舞台|攤位|戶外|室內/],
+];
 
 function printUsage() {
   console.log(`Usage:
@@ -215,13 +228,84 @@ function jaccardSimilarity(left, right) {
   return unionSize === 0 ? 0 : intersectionSize / unionSize;
 }
 
+function nonSpaceLength(value) {
+  return String(value).replace(/\s+/g, "").length;
+}
+
+function visualDescriptionSearchTokenGroupCount(value) {
+  return visualDescriptionSearchTokenGroups
+    .filter(([, pattern]) => pattern.test(value))
+    .length;
+}
+
+export function visualDescriptionQualityWarningsForItem(item) {
+  if (!isPlainObject(item) || typeof item.photo_id !== "string" || !isPlainObject(item.fields)) {
+    return [];
+  }
+  const proposal = item.fields.visual_description;
+  if (!isPlainObject(proposal) || typeof proposal.value !== "string" || !proposal.value.trim()) {
+    return [];
+  }
+
+  const warnings = [];
+  const value = proposal.value;
+  const length = nonSpaceLength(value);
+  if (length >= visualDescriptionMinLength && length < visualDescriptionShortWarningLength) {
+    warnings.push({
+      kind: "short",
+      message: `description is short but valid (${length} non-space characters)`,
+      photoId: item.photo_id,
+    });
+  }
+  if (length > visualDescriptionMaxRecommendedLength) {
+    warnings.push({
+      kind: "long",
+      message: `description is longer than ${visualDescriptionMaxRecommendedLength} non-space characters (${length})`,
+      photoId: item.photo_id,
+    });
+  }
+  if (tentativeVisualLanguagePattern.test(value)) {
+    warnings.push({
+      kind: "tentative",
+      message: "description uses tentative visual language that should be checked against the image",
+      photoId: item.photo_id,
+    });
+  }
+  if (nonVisiblePurposeLanguagePattern.test(value)) {
+    warnings.push({
+      kind: "non-visible-purpose",
+      message: "description may include purpose, interpretation, or promotional language instead of visible details",
+      photoId: item.photo_id,
+    });
+  }
+  if (visualDescriptionSearchTokenGroupCount(value) < 2) {
+    warnings.push({
+      kind: "weak-search-tokens",
+      message: "description has limited searchable visual token variety",
+      photoId: item.photo_id,
+    });
+  }
+  if (
+    sponsorshipVisualLanguagePattern.test(value)
+    && (!Array.isArray(item.fields.sponsorship_items?.value) || item.fields.sponsorship_items.value.length === 0)
+    && (!Array.isArray(item.fields.sponsorship_tags?.value) || item.fields.sponsorship_tags.value.length === 0)
+  ) {
+    warnings.push({
+      kind: "unsupported-sponsorship",
+      message: "description mentions sponsorship or brand context without sponsorship_items or sponsorship_tags",
+      photoId: item.photo_id,
+    });
+  }
+  return warnings;
+}
+
 function validateVisualDescription(photoId, value, errors) {
   if (typeof value !== "string" || !value.trim()) {
     errors.push(formatFieldError(photoId, "visual_description", "value must be a non-empty string"));
     return;
   }
-  const normalized = value.replace(/\s+/g, "");
-  if (normalized.length < visualDescriptionMinLength) {
+  const length = nonSpaceLength(value);
+  if (length < visualDescriptionMinLength) {
     errors.push(
       formatFieldError(
         photoId,
@@ -246,6 +330,37 @@ function validateVisualDescription(photoId, value, errors) {
         "visual_description",
         "value should include concrete visible details such as objects, actions, text, positions, or spatial relationships",
       ),
+    );
+  }
+}
+
+function validateBatchVisualDescriptionQuality(proposals, warnings) {
+  if (!Array.isArray(proposals.items)) {
+    return;
+  }
+
+  const byKind = new Map();
+  for (const item of proposals.items) {
+    for (const warning of visualDescriptionQualityWarningsForItem(item)) {
+      const photoIds = byKind.get(warning.kind) ?? [];
+      photoIds.push(warning.photoId);
+      byKind.set(warning.kind, photoIds);
+    }
+  }
+
+  const labels = new Map([
+    ["short", "short-but-valid descriptions"],
+    ["long", "overly long descriptions"],
+    ["tentative", "tentative visual language"],
+    ["non-visible-purpose", "purpose or interpretation language"],
+    ["weak-search-tokens", "limited searchable visual token variety"],
+    ["unsupported-sponsorship", "sponsorship language without sponsorship fields"],
+  ]);
+  for (const [kind, photoIds] of byKind.entries()) {
+    const sampleIds = photoIds.slice(0, 10).join(", ");
+    const suffix = photoIds.length > 10 ? ", ..." : "";
+    warnings.push(
+      `visual_description: ${labels.get(kind) ?? kind} for ${photoIds.length} photos (${sampleIds}${suffix})`,
     );
   }
 }
@@ -537,10 +652,11 @@ export async function validateAiProposals(options) {
           errors.push(`${item.photo_id}: duplicate proposal item`);
         }
         seenProposalIds.add(item.photo_id);
+      }
+      validateProposalItem(item, { fieldSchemas, photoIds, taxonomy }, errors);
     }
-    validateProposalItem(item, { fieldSchemas, photoIds, taxonomy }, errors);
-  }
     validateBatchReasonQuality(proposals, warnings);
+    validateBatchVisualDescriptionQuality(proposals, warnings);
     validateBaselineCoverage(proposals, warnings);
   }
 

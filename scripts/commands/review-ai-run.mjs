@@ -7,7 +7,7 @@ import { aiBaselineFields, aiOptionalFields, aiRecallFields } from "../lib/core/
 import { buildPlan } from "./plan-ai-updates.mjs";
 import { renderDiff } from "./render-ai-diff.mjs";
 import { fieldLabel, formatDisplayValue, formatStoredValue } from "../lib/core/metadata-display.mjs";
-import { validateAiProposals } from "./validate-ai-proposals.mjs";
+import { validateAiProposals, visualDescriptionQualityWarningsForItem } from "./validate-ai-proposals.mjs";
 
 const defaultProposalFile = "metadata-proposals.json";
 const defaultSummaryFile = "metadata-review-summary.md";
@@ -500,6 +500,12 @@ function publicUseRiskItems(items) {
   });
 }
 
+function visualDescriptionQualityItems(items, kind) {
+  return items.filter((item) =>
+    visualDescriptionQualityWarningsForItem(item).some((warning) => warning.kind === kind),
+  );
+}
+
 function pushFocusRows(rows, seen, issue, items, field, maxRows = 8) {
   for (const item of items.slice(0, maxRows)) {
     const key = `${issue}\0${item.photo_id}\0${field}`;
@@ -637,6 +643,18 @@ function buildReviewFocusRows(items) {
   const zeroPeopleContradictions = items.filter(isZeroPeopleContradiction);
   pushFocusRows(rows, seen, "people_count = 0 但有人物線索", zeroPeopleContradictions, "people_count");
 
+  const visualQualityFocus = [
+    ["short", "visual_description 偏短，可能缺少搜尋細節"],
+    ["long", "visual_description 過長，可能混入說明文字"],
+    ["tentative", "visual_description 有推測語氣"],
+    ["non-visible-purpose", "visual_description 可能混入用途或詮釋"],
+    ["unsupported-sponsorship", "visual_description 提到贊助但缺少贊助欄位支撐"],
+    ["weak-search-tokens", "visual_description 可搜尋視覺詞偏少"],
+  ];
+  for (const [kind, issue] of visualQualityFocus) {
+    pushFocusRows(rows, seen, issue, visualDescriptionQualityItems(items, kind), "visual_description", 3);
+  }
+
   pushFocusRows(
     rows,
     seen,
@@ -741,6 +759,12 @@ function buildReviewNotes(items, { sceneQaRows = [] } = {}) {
   );
   const zeroPeopleContradictions = items.filter(isZeroPeopleContradiction);
   const longEnglishTextItems = items.filter((item) => asciiWordPattern.test(allHumanText(item)));
+  const visualDescriptionQualityCounts = new Map();
+  for (const item of items) {
+    for (const warning of visualDescriptionQualityWarningsForItem(item)) {
+      visualDescriptionQualityCounts.set(warning.kind, (visualDescriptionQualityCounts.get(warning.kind) ?? 0) + 1);
+    }
+  }
   const { confidenceCounts, perfectCount, total } = confidenceStats(items);
   const confidenceRows = confidenceByFieldRows(items);
   const confidenceCoveredFields = confidenceRows.filter((row) => Number(row[2]) > 0).length;
@@ -885,6 +909,20 @@ function buildReviewNotes(items, { sceneQaRows = [] } = {}) {
     notes.push(
       `有 ${longEnglishTextItems.length} 張照片的 reason 或 \`visual_description\` 出現較長英文段落：${photoIdList(longEnglishTextItems)}。除非是在引用照片中可見文字，否則應改用台灣慣用繁體中文。`,
     );
+  }
+  const visualDescriptionQualityLabels = new Map([
+    ["short", "`visual_description` 偏短，可能缺少可搜尋細節"],
+    ["long", "`visual_description` 過長，可能混入說明文字"],
+    ["tentative", "`visual_description` 使用推測語氣"],
+    ["non-visible-purpose", "`visual_description` 可能混入用途、詮釋或宣傳語言"],
+    ["weak-search-tokens", "`visual_description` 的可搜尋視覺詞種類偏少"],
+    ["unsupported-sponsorship", "`visual_description` 提到贊助或品牌脈絡，但缺少 `sponsorship_items` 或 `sponsorship_tags` 支撐"],
+  ]);
+  for (const [kind, label] of visualDescriptionQualityLabels.entries()) {
+    const count = visualDescriptionQualityCounts.get(kind) ?? 0;
+    if (count > 0) {
+      notes.push(`有 ${count} 張照片的 ${label}；這是 review warning，不代表格式錯誤，請抽查 Review Focus 或完整 diff。`);
+    }
   }
 
   return notes;

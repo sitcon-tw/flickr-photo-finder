@@ -1,0 +1,40 @@
+{
+  "proposal_version": 1,
+  "run_id": "fixture-warning-tentative-visual-description",
+  "created_at": "2026-05-13T00:00:00.000Z",
+  "producer": {
+    "type": "ai",
+    "name": "fixture"
+  },
+  "items": [
+    {
+      "photo_id": "94000000003",
+      "fields": {
+        "people_count": {
+          "value": 3,
+          "reason": "畫面可辨識 3 人坐在桌邊。"
+        },
+        "subject_type": {
+          "value": "people",
+          "reason": "主要視覺主體是坐在桌邊看筆電的人。"
+        },
+        "orientation": {
+          "value": "landscape",
+          "reason": "畫面為橫式構圖。"
+        },
+        "has_negative_space": {
+          "value": false,
+          "reason": "人物、桌面與筆電佔據主要畫面。"
+        },
+        "visual_description": {
+          "value": "幾名參與者坐在桌邊看著筆電，旁邊有紙張與水杯，似乎正在討論操作步驟。",
+          "reason": "描述包含可見人物、筆電、紙張與桌面物件。"
+        },
+        "curation_status": {
+          "value": "ai_labeled",
+          "reason": "已根據照片可見內容提出 AI 初標候選。"
+        }
+      }
+    }
+  ]
+}

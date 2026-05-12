@@ -1,0 +1,40 @@
+{
+  "proposal_version": 1,
+  "run_id": "fixture-warning-short-visual-description",
+  "created_at": "2026-05-13T00:00:00.000Z",
+  "producer": {
+    "type": "ai",
+    "name": "fixture"
+  },
+  "items": [
+    {
+      "photo_id": "94000000001",
+      "fields": {
+        "people_count": {
+          "value": 1,
+          "reason": "畫面可辨識 1 人，講者站在投影幕旁說明。"
+        },
+        "subject_type": {
+          "value": "people",
+          "reason": "主要視覺主體是站在投影幕旁的講者。"
+        },
+        "orientation": {
+          "value": "landscape",
+          "reason": "畫面寬度大於高度，主要內容水平展開。"
+        },
+        "has_negative_space": {
+          "value": false,
+          "reason": "投影幕、講者與桌面物件佔滿主要畫面。"
+        },
+        "visual_description": {
+          "value": "講者站在投影幕旁說明，桌上有筆電與麥克風線材。",
+          "reason": "描述包含可見人物、投影幕與桌面物件。"
+        },
+        "curation_status": {
+          "value": "ai_labeled",
+          "reason": "已根據照片可見內容提出 AI 初標候選。"
+        }
+      }
+    }
+  ]
+}
