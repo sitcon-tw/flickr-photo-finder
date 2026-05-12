@@ -155,6 +155,15 @@ AI 初標流程不負責把資料推進到 `reviewed`。`curation_status = revie
 
 `curation_notes` 是公開整理備註欄位，只適合記錄可公開閱讀的整理脈絡、注意事項或使用建議。若某段內容只適合內部討論，就不應寫進這個欄位。
 
+repo validation 與 Apps Script 會對公開文字欄位做敏感內容 warning，例如 email、電話、私人 Google Drive/Docs 連結、Slack/Discord 私人頻道、內部字眼與疑似 token。這些 warning 初期不是 hard fail，目的是提醒整理者重新判斷內容是否真的適合進入公開索引。
+
+人工判斷時請採保守原則：
+
+- 若內容只是內部協作、credential、token、未公開文件、私人頻道或不適合公開的聯絡資訊，應移除或改寫。
+- 若內容本來就是照片中清楚可見的公開文字、公開活動頁資訊或必要的公開來源脈絡，可以保留，但應確認描述方式不額外擴散敏感內容。
+- 若不確定是否可公開，先改寫成不含原文的整理提醒，並透過 SITCON 既有權責流程確認。
+- 不要為了討論 warning，把疑似敏感原文複製到 issue、PR、commit message、文件或 AI 對話摘要。
+
 ### 已寫入不適合公開內容時
 
 若發現 Google Sheets、公開匯出或 repo fixture 中已經出現不適合公開的內容，應優先降低擴散，而不是把敏感文字複製到更多地方。

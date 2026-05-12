@@ -94,13 +94,13 @@ Apps Script 後端驗證與 sidebar 即時提示應共用 `data/validation-messa
 - `photos` 全表。
 - `photos` 公開讀取格式。
 
-錯誤訊息應以人類可理解方式呈現，例如「`scene_tags` 包含未知值：XXX」而不是只顯示程式錯誤。驗證結果會同時顯示在 alert，並寫入 `validation_report` 工作表，方便處理大量錯誤。
+錯誤訊息應以人類可理解方式呈現，例如「`scene_tags` 包含未知值：XXX」而不是只顯示程式錯誤。驗證結果會同時顯示在 alert，並寫入 `validation_report` 工作表，方便處理大量錯誤與公開欄位 warning。warning 不會阻擋儲存，但整理者仍應確認是否要移除或改寫公開欄位中的 email、電話、私人文件連結、內部字眼或疑似 token。
 
 ### 檢查 reviewed 完整度
 
 Apps Script 應依 `data/photo-schema.json` 的 `reviewed_required_fields` 提醒完成審核前必須補齊的欄位。
 
-不要在 Apps Script 中另寫一份永久分歧的規則，也不要在文件中重複維護欄位清單。`public_use_status = approved` 不額外要求 `photographer` 或 `license` 必填；這兩個欄位缺值時代表實際使用前仍需要回 Flickr 原頁確認來源脈絡。
+不要在 Apps Script 中另寫一份永久分歧的規則，也不要在文件中重複維護欄位清單。公開欄位敏感內容 warning 的規則來源是 `data/public-sensitive-content-rules.json`，由 `apps-script/GeneratedConfig.js` 帶入 Apps Script。`public_use_status = approved` 不額外要求 `photographer` 或 `license` 必填；這兩個欄位缺值時代表實際使用前仍需要回 Flickr 原頁確認來源脈絡。
 
 sidebar 的 `完成審核並下一張` 會使用 `reviewed_required_fields` 作為門檻。這組門檻應只阻擋最基礎可搜尋 metadata 的缺漏；`recommended_uses`、`public_use_status`、`priority_level`、`mood_tags` 等需要更多情境或主觀判斷的欄位，不應讓整理者無法完成基礎審核。
 

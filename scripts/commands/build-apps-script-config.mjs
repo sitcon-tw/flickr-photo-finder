@@ -31,6 +31,7 @@ async function buildContent() {
   const schema = await readJson("data/photo-schema.json");
   const taxonomy = await readJson("data/tag-taxonomy.json");
   const sponsorshipItems = await readJson("data/sponsorship-items.json");
+  const publicSensitiveContentRules = await readJson("data/public-sensitive-content-rules.json");
   const validationMessages = await readJson("data/validation-messages.json");
   const photosTable = schema.tables.photos;
 
@@ -47,6 +48,7 @@ async function buildContent() {
     fields: photosTable.fields.map(fieldForAppsScript),
     reviewedRequiredFields: photosTable.reviewed_required_fields ?? [],
     taxonomy,
+    publicSensitiveContentRules,
     taxonomySheet: {
       headers: taxonomyHeaders,
       rows: taxonomyRows(taxonomy),

@@ -3,6 +3,10 @@ import { URL } from "node:url";
 import { parseCsv, parseSemicolonList } from "../lib/core/csv-utils.mjs";
 import "../lib/core/project-config.mjs";
 import {
+  publicSensitiveContentWarnings,
+  validatePublicSensitiveContentRules,
+} from "../lib/core/public-content-warnings.mjs";
+import {
   aiBaselineFields,
   aiOptionalFields,
   aiRecallFields,
@@ -29,6 +33,8 @@ Options:
   --albums <path>             Albums CSV path. Default: fixtures/albums.csv.
   --import-batches <path>     Import batches CSV path. Default: fixtures/import-batches.csv.
   --search-aliases <path>     Search aliases JSON path. Default: data/search-aliases.json.
+  --public-sensitive-content-rules <path>
+                              Public field warning rules JSON path. Default: data/public-sensitive-content-rules.json.
   --taxonomy <path>           Tag taxonomy JSON path. Default: data/tag-taxonomy.json.
   --validation-messages <path> Validation messages JSON path. Default: data/validation-messages.json.
   --sponsorship-items <path>  Sponsorship items JSON path. Default: data/sponsorship-items.json.
@@ -43,6 +49,7 @@ function parseArgs(argv) {
     albums: "fixtures/albums.csv",
     importBatches: "fixtures/import-batches.csv",
     photos: "fixtures/photos.csv",
+    publicSensitiveContentRules: "data/public-sensitive-content-rules.json",
     searchAliases: "data/search-aliases.json",
     taxonomy: "data/tag-taxonomy.json",
     validationMessages: "data/validation-messages.json",
@@ -63,6 +70,9 @@ function parseArgs(argv) {
       index += 1;
     } else if (arg === "--photos") {
       paths.photos = args[index + 1] ?? "";
+      index += 1;
+    } else if (arg === "--public-sensitive-content-rules") {
+      paths.publicSensitiveContentRules = args[index + 1] ?? "";
       index += 1;
     } else if (arg === "--search-aliases") {
       paths.searchAliases = args[index + 1] ?? "";
@@ -85,6 +95,7 @@ function parseArgs(argv) {
     albums: "--albums",
     importBatches: "--import-batches",
     photos: "--photos",
+    publicSensitiveContentRules: "--public-sensitive-content-rules",
     searchAliases: "--search-aliases",
     sponsorshipItems: "--sponsorship-items",
     taxonomy: "--taxonomy",
@@ -103,9 +114,14 @@ function parseArgs(argv) {
 const paths = parseArgs(process.argv);
 
 const errors = [];
+const warnings = [];
 
 function addError(message) {
   errors.push(message);
+}
+
+function addWarning(message) {
+  warnings.push(message);
 }
 
 function isValidUrl(value) {
@@ -312,6 +328,22 @@ function validateSearchAliases(searchAliases, taxonomy) {
   }
 }
 
+function validatePublicSensitiveRules(publicSensitiveContentRules) {
+  for (const error of validatePublicSensitiveContentRules(
+    publicSensitiveContentRules,
+    paths.publicSensitiveContentRules,
+  )) {
+    addError(error);
+  }
+
+  const knownPhotoFields = new Set(photoHeaders);
+  for (const fieldName of publicSensitiveContentRules.public_text_fields ?? []) {
+    if (!knownPhotoFields.has(fieldName)) {
+      addError(`${paths.publicSensitiveContentRules}: public_text_fields contains unknown photo field "${fieldName}"`);
+    }
+  }
+}
+
 function validateValidationMessages(validationMessages) {
   if (!validationMessages || typeof validationMessages !== "object" || Array.isArray(validationMessages)) {
     addError(`${paths.validationMessages}: root must be an object`);
@@ -405,7 +437,7 @@ function validatePhotoSchemaAiLayers() {
   }
 }
 
-function validatePhotoRow(row, rowNumber, taxonomy) {
+function validatePhotoRow(row, rowNumber, taxonomy, publicSensitiveContentRules) {
   const photo = Object.fromEntries(photoHeaders.map((header, index) => [header, row[index] ?? ""]));
 
   if (row.length !== photoHeaders.length) {
@@ -462,6 +494,13 @@ function validatePhotoRow(row, rowNumber, taxonomy) {
   }
 
   validateReviewedPhotoRow(photo, rowNumber);
+  validatePublicSensitivePhotoRow(photo, rowNumber, publicSensitiveContentRules);
+}
+
+function validatePublicSensitivePhotoRow(photo, rowNumber, publicSensitiveContentRules) {
+  for (const warning of publicSensitiveContentWarnings(photo, publicSensitiveContentRules)) {
+    addWarning(`${formatRow(rowNumber, warning.fieldName)} ${warning.message}`);
+  }
 }
 
 function validateReviewedPhotoRow(photo, rowNumber) {
@@ -653,10 +692,11 @@ function validateUniqueImportBatchFields(importBatchRows) {
   });
 }
 
-const [albumsText, importBatchesText, photosText, searchAliasesText, taxonomyText, validationMessagesText, sponsorshipItemsText] = await Promise.all([
+const [albumsText, importBatchesText, photosText, publicSensitiveContentRulesText, searchAliasesText, taxonomyText, validationMessagesText, sponsorshipItemsText] = await Promise.all([
   readFile(paths.albums, "utf8"),
   readFile(paths.importBatches, "utf8"),
   readFile(paths.photos, "utf8"),
+  readFile(paths.publicSensitiveContentRules, "utf8"),
   readFile(paths.searchAliases, "utf8"),
   readFile(paths.taxonomy, "utf8"),
   readFile(paths.validationMessages, "utf8"),
@@ -664,6 +704,7 @@ const [albumsText, importBatchesText, photosText, searchAliasesText, taxonomyTex
 ]);
 
 const searchAliases = JSON.parse(searchAliasesText);
+const publicSensitiveContentRules = JSON.parse(publicSensitiveContentRulesText);
 const taxonomy = JSON.parse(taxonomyText);
 const validationMessages = JSON.parse(validationMessagesText);
 const sponsorshipItems = JSON.parse(sponsorshipItemsText);
@@ -702,13 +743,21 @@ if (rows.length === 0) {
   validateHeaders(paths.photos, headers, photoHeaders);
   validateTaxonomy(taxonomy, sponsorshipItems);
   validatePhotoSchemaAiLayers();
+  validatePublicSensitiveRules(publicSensitiveContentRules);
   validateSearchAliases(searchAliases, taxonomy);
   validateValidationMessages(validationMessages);
   validateUniquePhotoFields(photoRows);
 
   photoRows.forEach((row, index) => {
-    validatePhotoRow(row, index + 2, taxonomy);
+    validatePhotoRow(row, index + 2, taxonomy, publicSensitiveContentRules);
   });
+}
+
+if (warnings.length > 0) {
+  console.warn(`Data validation warnings (${warnings.length}):`);
+  for (const warning of warnings) {
+    console.warn(`- ${warning}`);
+  }
 }
 
 if (errors.length > 0) {

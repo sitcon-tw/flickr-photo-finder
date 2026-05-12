@@ -1,0 +1,55 @@
+{
+  "public_text_fields": [
+    "album_title",
+    "event_name",
+    "photographer",
+    "license",
+    "visual_description",
+    "collections",
+    "curation_notes"
+  ],
+  "rules": [
+    {
+      "id": "email",
+      "label_zh": "email 位址",
+      "pattern": "[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}",
+      "flags": "i"
+    },
+    {
+      "id": "phone",
+      "label_zh": "疑似電話號碼",
+      "pattern": "(?:^|[^0-9])(?:(?:電話|手機|聯絡|tel|phone|mobile)[:：\\s]*)?(?:\\+?886[-\\s]?)?(?:0?9\\d{2}[-\\s]?\\d{3}[-\\s]?\\d{3}|0[2-8][-\\s]?\\d{3,4}[-\\s]?\\d{4}|\\(0[2-8]\\)\\s?\\d{3,4}[-\\s]?\\d{4})(?=$|[^0-9])",
+      "flags": ""
+    },
+    {
+      "id": "private_google_link",
+      "label_zh": "疑似私人 Google Drive/Docs 連結",
+      "pattern": "https?://(?:docs|drive)\\.google\\.com/\\S+",
+      "flags": "i"
+    },
+    {
+      "id": "private_chat_link",
+      "label_zh": "疑似 Slack/Discord 私人頻道連結",
+      "pattern": "https?://\\S*(?:slack\\.com/archives|discord(?:app)?\\.com/channels|discord\\.gg)/\\S+",
+      "flags": "i"
+    },
+    {
+      "id": "internal_terms",
+      "label_zh": "內部或不公開字眼",
+      "pattern": "(?:內部|不公開|不要公開|暫勿公開|不外流|機密|confidential|internal only|private)",
+      "flags": "i"
+    },
+    {
+      "id": "token_keyword",
+      "label_zh": "敏感憑證相關字眼",
+      "pattern": "(?:api[_ -]?key|access[_ -]?token|refresh[_ -]?token|secret)",
+      "flags": "i"
+    },
+    {
+      "id": "token_value",
+      "label_zh": "疑似 token、secret 或 API key 值",
+      "pattern": "(?:bearer\\s+[A-Za-z0-9._~+/=-]{16,}|sk-[A-Za-z0-9_-]{20,}|ghp_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,})",
+      "flags": "i"
+    }
+  ]
+}
