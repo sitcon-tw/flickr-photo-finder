@@ -136,6 +136,7 @@ async function prepareAiShards(options) {
   const proposalsDir = join(outputDir, "outputs");
   const mergedProposalPath = join(outputDir, "metadata-proposals.json");
   const shardManifestPath = join(outputDir, "shard-manifest.json");
+  const shardExecutionLogPath = join(outputDir, "shard-execution-log.json");
   const shardCount = options.shards || Math.max(1, Math.ceil(photos.length / options.maxPhotosPerShard));
 
   await Promise.all([
@@ -144,6 +145,7 @@ async function prepareAiShards(options) {
     rm(proposalsDir, { force: true, recursive: true }),
     rm(mergedProposalPath, { force: true }),
     rm(shardManifestPath, { force: true }),
+    rm(shardExecutionLogPath, { force: true }),
   ]);
 
   await Promise.all([
@@ -197,6 +199,35 @@ async function prepareAiShards(options) {
     source_photo_count: photos.length,
   };
   await writeFile(shardManifestPath, `${JSON.stringify(shardManifest, null, 2)}\n`);
+  const shardExecutionLog = {
+    version: 1,
+    created_at: new Date().toISOString(),
+    run_dir: runDir,
+    run_id: manifest.run_id,
+    shard_dir: outputDir,
+    shards: shards.map((shard) => ({
+      agent_name: "",
+      completed_at: "",
+      duration_ms: null,
+      input_path: shard.input_path,
+      model_name: "",
+      notes: "",
+      output_item_count: null,
+      output_path: shard.output_path,
+      output_sha256: "",
+      photo_count: shard.count,
+      repair_count: 0,
+      retry_count: 0,
+      shard: shard.shard,
+      started_at: "",
+      status: "pending",
+      validate_status: "unknown",
+      worker_prompt_path: shard.worker_prompt_path,
+    })),
+    source_photo_count: photos.length,
+    updated_at: new Date().toISOString(),
+  };
+  await writeFile(shardExecutionLogPath, `${JSON.stringify(shardExecutionLog, null, 2)}\n`);
 
   return {
     inputDir,
@@ -204,6 +235,7 @@ async function prepareAiShards(options) {
     proposalsDir,
     runId: manifest.run_id,
     shardCount,
+    shardExecutionLogPath,
     shardManifestPath,
     sourcePhotoCount: photos.length,
   };
@@ -224,6 +256,7 @@ async function main() {
   console.log(`- inputs: ${result.inputDir}`);
   console.log(`- expected outputs: ${result.proposalsDir}`);
   console.log(`- shard manifest: ${result.shardManifestPath}`);
+  console.log(`- execution log: ${result.shardExecutionLogPath}`);
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {

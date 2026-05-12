@@ -1,6 +1,8 @@
 {
   "version": 1,
   "description_zh": "跨活動 AI 初標抽樣計畫。這份計畫用來建立本機測試工作包，檢查欄位、taxonomy、prompt 與 validator 是否能涵蓋 SITCON 多元活動照片；它不是正式照片資料，也不會寫入 Google Sheets。",
+  "sample_profile": "cross-activity challenge sample; not a statistically representative random sample",
+  "seed": "none; deterministic even-spacing by album order",
   "selection_strategy": "每本相簿依 Flickr 相簿照片順序做等距抽樣，保留相簿開頭、中段與結尾的場景差異。",
   "default_sample_count": 4,
   "albums": [

@@ -1,9 +1,11 @@
+import { createHash } from "node:crypto";
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const defaultProposalFile = "metadata-proposals.json";
 const defaultTempRoot = "/tmp/ai-labeling-shards";
+const executionLogFile = "shard-execution-log.json";
 
 function printUsage() {
   console.log(`Usage:
@@ -87,6 +89,10 @@ async function readJson(path) {
   }
 }
 
+function sha256Text(value) {
+  return createHash("sha256").update(value).digest("hex");
+}
+
 function isPlainObject(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -133,6 +139,37 @@ async function readShardItems(paths) {
     }
   }
   return items;
+}
+
+async function updateExecutionLog({ outputPath, paths, shardDir }) {
+  const logPath = join(shardDir, executionLogFile);
+  const log = await maybeReadJson(logPath);
+  if (!log || !Array.isArray(log.shards)) {
+    return { logPath: "", updated: false };
+  }
+
+  const now = new Date().toISOString();
+  for (const path of paths) {
+    const text = await readFile(path, "utf8");
+    const payload = JSON.parse(text);
+    const items = itemsFromShardPayload(payload, path);
+    const entry = log.shards.find((shard) => shard.output_path === path);
+    if (!entry) {
+      continue;
+    }
+    entry.output_item_count = items.length;
+    entry.output_sha256 = sha256Text(text);
+    if (!entry.status || entry.status === "pending" || entry.status === "running") {
+      entry.status = "completed";
+    }
+  }
+  const mergedText = await readFile(outputPath, "utf8");
+  log.merged_at = now;
+  log.merged_output_path = outputPath;
+  log.merged_output_sha256 = sha256Text(mergedText);
+  log.updated_at = now;
+  await writeFile(logPath, `${JSON.stringify(log, null, 2)}\n`);
+  return { logPath, updated: true };
 }
 
 function validateMergedItems({ allowMissing, itemsWithSource, photos }) {
@@ -211,6 +248,7 @@ async function mergeAiShards(options) {
 
   await mkdir(dirname(outputPath), { recursive: true });
   await writeFile(outputPath, serialized);
+  const executionLog = await updateExecutionLog({ outputPath, paths, shardDir });
 
   let runOutputPath = "";
   if (options.writeRun) {
@@ -224,6 +262,8 @@ async function mergeAiShards(options) {
     runId: manifest.run_id,
     runOutputPath,
     shardCount: paths.length,
+    shardExecutionLogPath: executionLog.logPath,
+    shardExecutionLogUpdated: executionLog.updated,
   };
 }
 
@@ -241,6 +281,9 @@ async function main() {
   console.log(`- proposal items: ${result.itemCount}`);
   if (result.runOutputPath) {
     console.log(`- run proposal: ${result.runOutputPath}`);
+  }
+  if (result.shardExecutionLogUpdated) {
+    console.log(`- execution log updated: ${result.shardExecutionLogPath}`);
   }
 }
 

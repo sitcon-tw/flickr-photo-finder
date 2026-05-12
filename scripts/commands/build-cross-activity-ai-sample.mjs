@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { readAlbumCatalog } from "../lib/flickr/album-catalog.mjs";
@@ -105,6 +106,14 @@ function defaultRunId() {
 
 async function readJson(path) {
   return JSON.parse(await readFile(path, "utf8"));
+}
+
+async function readText(path) {
+  return readFile(path, "utf8");
+}
+
+function sha256Text(value) {
+  return createHash("sha256").update(value).digest("hex");
 }
 
 async function readCsvRecords(path, headers) {
@@ -239,6 +248,7 @@ async function main() {
   const sampleDir = join(options.workDir, runId);
   const photosCsvPath = join(sampleDir, "photos.csv");
   const summaryPath = join(sampleDir, "summary.json");
+  const planText = await readText(options.planPath);
 
   await mkdir(sampleDir, { recursive: true });
 
@@ -316,8 +326,39 @@ async function main() {
     runId,
   });
 
+  const selectionManifest = {
+    version: 1,
+    ai_run_dir: join(options.outputDir, runId),
+    album_distribution: summary.albums.map((album) => ({
+      album_id: album.album_id,
+      album_title: album.album_title,
+      category: album.category,
+      selected_photo_count: album.selected_photo_ids.length,
+      source: album.source,
+    })),
+    created_at: summary.created_at,
+    plan_path: options.planPath,
+    plan_sha256: sha256Text(planText),
+    sample_csv: photosCsvPath,
+    sample_profile: plan.sample_profile ?? "cross-activity challenge sample",
+    seed: plan.seed ?? "none; deterministic even-spacing by album order",
+    selected_photo_count: summary.selected_photo_count,
+    selection_algorithm: "per-album even spacing over Flickr album photo order",
+    selection_strategy: summary.selection_strategy,
+    source_distribution: summary.albums.map((album) => ({
+      album_id: album.album_id,
+      category: album.category,
+      focus_zh: album.focus_zh,
+      previously_evaluated: album.previously_evaluated,
+      requested_sample_count: album.requested_sample_count,
+    })),
+  };
+  const selectionManifestPath = join(options.outputDir, runId, "selection-manifest.json");
+  await writeFile(selectionManifestPath, `${JSON.stringify(selectionManifest, null, 2)}\n`);
+
   console.log(`Cross-activity sample ready: ${join(options.outputDir, runId)}`);
   console.log(`- sample summary: ${summaryPath}`);
+  console.log(`- selection manifest: ${selectionManifestPath}`);
   console.log(`- sample photos CSV: ${photosCsvPath}`);
   console.log("- next: give each model ai-labeling-prompt.md and the run directory. Models should write metadata-proposals.json only; for large runs, use ai:shard:prepare / ai:shard:merge under /tmp before comparing results with ai:review and ai:report.");
 }

@@ -35,6 +35,7 @@
     "ai:prepare": "node scripts/commands/prepare-ai-run.mjs",
     "ai:report": "node scripts/commands/build-ai-report.mjs",
     "ai:review": "node scripts/commands/review-ai-run.mjs",
+    "ai:shard:log": "node scripts/commands/log-ai-shard.mjs",
     "ai:shard:merge": "node scripts/commands/merge-ai-shards.mjs",
     "ai:shard:prepare": "node scripts/commands/prepare-ai-shards.mjs",
     "ai:validate": "node scripts/commands/validate-ai-proposals.mjs",

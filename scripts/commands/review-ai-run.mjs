@@ -11,6 +11,7 @@ import { validateAiProposals } from "./validate-ai-proposals.mjs";
 
 const defaultProposalFile = "metadata-proposals.json";
 const defaultSummaryFile = "metadata-review-summary.md";
+const shardExecutionLogFile = "shard-execution-log.json";
 
 const distributionFields = [
   "priority_level",
@@ -433,6 +434,8 @@ async function buildShardMap(runDir, runId) {
 async function inspectShardArtifacts(runDir, runId) {
   const standardDir = join("/tmp/ai-labeling-shards", runId);
   const runShardDir = join(runDir, "proposal-shards");
+  const executionLogPath = join(standardDir, shardExecutionLogFile);
+  const executionLog = await readJsonIfExists(executionLogPath);
   const standardInputs = (await listFilesIfExists(join(standardDir, "inputs"))).filter((filename) => /^shard-\d+-input\.json$/.test(filename));
   const standardOutputs = (await listFilesIfExists(join(standardDir, "outputs"))).filter((filename) => /^shard-\d+-proposals\.json$/.test(filename));
   const runInputs = (await listFilesIfExists(runShardDir)).filter((filename) => /^shard-\d+-input\.json$/.test(filename));
@@ -451,7 +454,18 @@ async function inspectShardArtifacts(runDir, runId) {
     warnings.push(`run 內 proposal-shards input/output 數不一致：${runInputs.length} inputs, ${runOutputs.length} outputs。正式 proposal 仍以 root metadata-proposals.json 為準。`);
   }
 
-  return { rows, warnings };
+  const executionShards = Array.isArray(executionLog?.shards) ? executionLog.shards : [];
+  const executionSummary = executionShards.length > 0
+    ? {
+        completed: executionShards.filter((shard) => shard.status === "completed").length,
+        logPath: executionLogPath,
+        repairs: executionShards.reduce((sum, shard) => sum + Number(shard.repair_count || 0), 0),
+        retries: executionShards.reduce((sum, shard) => sum + Number(shard.retry_count || 0), 0),
+        shards: executionShards.length,
+      }
+    : null;
+
+  return { executionSummary, rows, warnings };
 }
 
 function isZeroPeopleContradiction(item) {
@@ -1076,6 +1090,9 @@ async function reviewAiRun(options) {
     ["photos source", manifest.photos_source ?? ""],
     ["image link mode", manifest.image_link_mode ?? ""],
     ["source runs", Array.isArray(manifest.source_runs) ? String(manifest.source_runs.length) : ""],
+    ["shard execution log", shardInspection.executionSummary?.logPath ?? ""],
+    ["shard execution completed", shardInspection.executionSummary ? `${shardInspection.executionSummary.completed}/${shardInspection.executionSummary.shards}` : ""],
+    ["shard retries / repairs", shardInspection.executionSummary ? `${shardInspection.executionSummary.retries}/${shardInspection.executionSummary.repairs}` : ""],
   ].filter(([, value]) => String(value ?? "").trim());
   const notes = [
     ...buildPromptVersionNotes(manifest),

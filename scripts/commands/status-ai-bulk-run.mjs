@@ -4,6 +4,7 @@ import { basename, join, resolve } from "node:path";
 const defaultProposalFile = "metadata-proposals.json";
 const defaultReviewSummaryFile = "metadata-review-summary.md";
 const defaultTempRoot = "/tmp/ai-labeling-shards";
+const executionLogFile = "shard-execution-log.json";
 
 function printUsage() {
   console.log(`Usage:
@@ -95,6 +96,28 @@ function shardIdFromPath(path) {
   return basename(path).match(/shard-(\d+)/)?.[1] ?? "";
 }
 
+function countValues(values) {
+  const counts = new Map();
+  for (const value of values) {
+    counts.set(value || "unknown", (counts.get(value || "unknown") ?? 0) + 1);
+  }
+  return Object.fromEntries([...counts.entries()].sort((left, right) => String(left[0]).localeCompare(String(right[0]))));
+}
+
+function summarizeExecutionLog(log) {
+  const shards = Array.isArray(log?.shards) ? log.shards : [];
+  return {
+    completed_shards: shards.filter((shard) => shard.status === "completed").length,
+    logged_shards: shards.length,
+    merged_output_path: log?.merged_output_path ?? "",
+    merged_output_sha256: log?.merged_output_sha256 ?? "",
+    repair_count: shards.reduce((sum, shard) => sum + Number(shard.repair_count || 0), 0),
+    retry_count: shards.reduce((sum, shard) => sum + Number(shard.retry_count || 0), 0),
+    status_counts: countValues(shards.map((shard) => shard.status)),
+    validate_status_counts: countValues(shards.map((shard) => shard.validate_status)),
+  };
+}
+
 async function inspectBulkStatus(options) {
   const runDir = resolve(options.runDir);
   const [manifest, photos] = await Promise.all([
@@ -104,6 +127,8 @@ async function inspectBulkStatus(options) {
   const runId = manifest.run_id || basename(runDir);
   const shardDir = resolve(options.shardDir || join(defaultTempRoot, runId));
   const shardManifest = await readJsonIfExists(join(shardDir, "shard-manifest.json"));
+  const shardExecutionLogPath = join(shardDir, executionLogFile);
+  const shardExecutionLog = await readJsonIfExists(shardExecutionLogPath);
   const shardEntries = Array.isArray(shardManifest?.shards) ? shardManifest.shards : [];
 
   const inputFiles = shardEntries.length > 0
@@ -144,6 +169,9 @@ async function inspectBulkStatus(options) {
     run_dir: runDir,
     run_id: runId,
     shard_dir: shardDir,
+    shard_execution_log_exists: Boolean(shardExecutionLog),
+    shard_execution_log_path: shardExecutionLogPath,
+    shard_execution_log_summary: summarizeExecutionLog(shardExecutionLog),
     shard_manifest_exists: Boolean(shardManifest),
     shard_merged_proposal_exists: Boolean(shardMergedProposal),
     shard_merged_proposal_items: Array.isArray(shardMergedProposal?.items) ? shardMergedProposal.items.length : 0,
@@ -158,6 +186,11 @@ function printStatus(status) {
   console.log(`- image link mode: ${status.image_link_mode || "(unknown)"}`);
   console.log(`- shard workspace: ${status.shard_dir}`);
   console.log(`- shard manifest: ${status.shard_manifest_exists ? "yes" : "no"}`);
+  console.log(`- shard execution log: ${status.shard_execution_log_exists ? "yes" : "no"}`);
+  if (status.shard_execution_log_exists) {
+    console.log(`- shard execution status: ${JSON.stringify(status.shard_execution_log_summary.status_counts)}`);
+    console.log(`- shard retries/repairs: ${status.shard_execution_log_summary.retry_count}/${status.shard_execution_log_summary.repair_count}`);
+  }
   console.log(`- shard inputs: ${status.input_shards}`);
   console.log(`- shard outputs: ${status.existing_outputs}/${status.expected_outputs}`);
   console.log(`- merged shard proposal: ${status.shard_merged_proposal_exists ? `${status.shard_merged_proposal_items} item(s)` : "missing"}`);
