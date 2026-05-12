@@ -120,6 +120,7 @@ async function main() {
     "data/tag-taxonomy.json",
     "index.html",
     "main.js",
+    "overview-render.js",
     "search-sort.js",
     "styles.css",
     "task-modes.js",
@@ -164,6 +165,8 @@ async function main() {
   await assertIncludes(join(options.artifactDir, "main.js"), "./data-loader.js", "data-loader.js");
   await assertIncludes(join(options.artifactDir, "data-loader.js"), "./data-utils.js", "data-utils.js");
   await assertIncludes(join(options.artifactDir, "data-loader.js"), "./search-sort.js", "search-sort.js");
+  await assertIncludes(join(options.artifactDir, "main.js"), "./overview-render.js", "overview-render.js");
+  await assertIncludes(join(options.artifactDir, "overview-render.js"), "./search-sort.js", "search-sort.js");
   await assertIncludes(join(options.artifactDir, "main.js"), "./search-sort.js", "search-sort.js");
   await assertIncludes(join(options.artifactDir, "main.js"), "./task-modes.js", "task-modes.js");
   await assertIncludes(join(options.artifactDir, "main.js"), "./url-state.js", "url-state.js");
