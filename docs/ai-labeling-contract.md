@@ -167,7 +167,7 @@ pnpm ai:review -- --run-dir tmp/ai-runs/<run-id> --proposals /tmp/ai-labeling-sh
 - 同一個 `photo_id` 只能出現一次。
 - `fields` 是 object，key 是建議調整的欄位名稱。
 - 每個欄位 proposal 必須包含 `value` 和非空白 `reason`。
-- `confidence` 可省略；若提供，必須是 `0` 到 `1` 的數字。
+- `confidence` 可省略；若提供，必須是 `0` 到 `1` 的數字。它只是輔助人工審核的相對信心，不是模型品質分數；若模型選擇提供，應盡量在同一類欄位穩定覆蓋，避免只對少數欄位零散填寫而讓排序產生誤導。
 
 ## 可輸出欄位與 AI 分層
 
@@ -254,6 +254,6 @@ AI 應遵守以下限制：
 
 產生 `metadata-proposals.json` 後，後續工具會驗證 proposal，並產生 `metadata-review-summary.md`、`metadata-diff.md`、`metadata-update-plan.json` 與 `metadata-update-plan.csv`。具體操作指令由操作者依 `docs/ai-labeling-operator-guide.md` 執行。
 
-驗證 warning 代表 proposal 格式和 AI 責任邊界可接受，但仍有批次品質疑慮需要人工判斷；warning 不等於一定要退回模型重跑。唯讀 HTML 報表、`visual_description` 搜尋增益比較與 Sheets dry-run 都是操作者後續流程，不是模型初標任務的一部分。
+驗證 warning 代表 proposal 格式和 AI 責任邊界可接受，但仍有批次品質疑慮需要人工判斷；warning 不等於一定要退回模型重跑。`ai:review` 可能產生 Review Focus、Balanced Review Sample、confidence-by-field 摘要與公開使用風險抽查提示。唯讀 HTML 報表、跨 attempt 分歧比較、`visual_description` 搜尋增益比較與 Sheets dry-run 都是操作者後續流程，不是模型初標任務的一部分。
 
 正式 review 不在 AI run 目錄中完成。AI run 最多把資料推進到 `ai_labeled`；`reviewed` 應回到 Google Sheets，由具有編輯權限的志工們協作檢查、修正並補齊必要欄位後再更新。

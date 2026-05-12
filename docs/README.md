@@ -86,12 +86,12 @@
 - `pnpm eval:attempt -- --from <dir> --model <name> --round <number>`，從既有 AI run 建立可重複使用同一輸入的模型/輪次 attempt，圖片預設以 symlink 或 hardlink 共用。
 - `pnpm ai:review -- --run-dir <dir>`，檢查 AI 候選 `metadata-proposals.json`，並一次產生 `metadata-review-summary.md`、`metadata-diff.md`、`metadata-update-plan.json` 與 CSV；大型 run summary 會附 artifact provenance、AI layer coverage 與 scene QA。
 - `pnpm ai:validate -- --run-dir <dir>`，只檢查 AI 候選 `metadata-proposals.json` 是否符合 schema、taxonomy 與人工 review 邊界。
-- `pnpm ai:shard:prepare -- --run-dir <dir>` / `pnpm ai:shard:merge -- --run-dir <dir>`，大型 AI run 的分片準備與暫存合併工具。預設使用 `/tmp/ai-labeling-shards/<run-id>/`，避免多 agent 在正式 run 目錄反覆寫中間檔。
+- `pnpm ai:shard:prepare -- --run-dir <dir>` / `pnpm ai:shard:log -- --run-dir <dir> --shard <id>` / `pnpm ai:shard:merge -- --run-dir <dir>`，大型 AI run 的分片準備、執行紀錄與暫存合併工具。預設使用 `/tmp/ai-labeling-shards/<run-id>/`，避免多 agent 在正式 run 目錄反覆寫中間檔，並保留 shard 狀態、模型、耗時、retry/repair 與 output hash。
 - `pnpm ai:bulk:status -- --run-dir <dir>`，檢查大型 AI run 的 root proposal、shard workspace、暫存合併結果與 review summary 狀態，不修改檔案。
 - `pnpm eval:validate-fixtures`，檢查 AI proposal valid/invalid 範例是否仍符合目前 validator 邊界。
 - `pnpm ai:diff -- --run-dir <dir>`，只將已驗證的 AI 候選 metadata 轉成 `metadata-diff.md`，供人類審核，不寫入 Sheets。
 - `pnpm ai:plan -- --run-dir <dir>`，只將已驗證的 AI 候選 metadata 轉成 `metadata-update-plan.json` 與 CSV，作為後續 dry-run 更新工具輸入，不寫入 Sheets；可用 `--layers baseline,recall,optional` 分階段產生計畫。
-- `pnpm ai:report -- --run <dir>` 或 `pnpm ai:report -- --runs <dir> <dir>`，產生單次檢視或多模型/多輪比較用的 AI 初標唯讀靜態 HTML 報表。
+- `pnpm ai:report -- --run <dir>` 或 `pnpm ai:report -- --runs <dir> <dir>`，產生單次檢視或多模型/多輪比較用的 AI 初標唯讀靜態 HTML 報表；多 run 模式會標出高分歧、outlier、public-use 單獨標示與疑似圖像對齊問題。
 - `pnpm eval:search -- --run-dir <dir>`，在 proposal 寫回前離線比較 taxonomy-only baseline 與 taxonomy + `visual_description` 的搜尋排序差異，用來驗證描述欄位是否有實際找圖增益。
 - `pnpm sheets:apply-ai-updates -- --run-dir <dir>`，對 AI metadata 更新計畫執行 Sheets dry-run；加上 `--write` 才會更新 cells，且會檢查 current value 避免覆蓋人工變更。若人類明確接受覆蓋既有 AI metadata，可在 dry-run 和 write 都加上 `--allow-current-mismatch`，大型批次可加 `--summary-only` 減少輸出。
 - AI 初標候選 metadata 已可經由 `ai:prepare`、`ai:review`、`ai:report`、人工檢查與 `sheets:apply-ai-updates` dry-run/write 寫回 `photos` 主表；這只是候選 metadata 回寫，不代表照片已人工 review。多模型、跨活動或搜尋增益評估另由 `eval:attempt`、`eval:sample` 與 `eval:search` 處理。

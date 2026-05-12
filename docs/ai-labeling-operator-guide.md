@@ -54,7 +54,7 @@ pnpm ai:prepare -- --photo-ids PHOTO_ID --image-size original
 pnpm eval:sample
 ```
 
-這會讀取 `data/ai-cross-activity-sample-plan.json`，從多本 SITCON Flickr 相簿依相簿順序等距抽樣，產生 `tmp/ai-samples/<run-id>/photos.csv` 與 `tmp/ai-runs/<run-id>/`。這份資料集只用於本機 AI 初標測試，不代表正式 Sheets 資料，也不會寫入 Google Sheets。
+這會讀取 `data/ai-cross-activity-sample-plan.json`，從多本 SITCON Flickr 相簿依相簿順序等距抽樣，產生 `tmp/ai-samples/<run-id>/photos.csv`、`tmp/ai-samples/<run-id>/summary.json`、`tmp/ai-runs/<run-id>/selection-manifest.json` 與 `tmp/ai-runs/<run-id>/`。這份資料集只用於本機 AI 初標測試，不代表正式 Sheets 資料，也不會寫入 Google Sheets。`selection-manifest.json` 會保存 selection rule、plan hash、sample profile、seed/algorithm 與相簿分布，讓後續比較能知道樣本是 challenge sample 還是隨機代表樣本。
 
 跨活動抽樣預設只用 `fixtures/photos.csv` 重用少量已知 metadata，其他照片 metadata 會即時從 Flickr 取得。若要刻意沿用正式 Sheets 匯出中的既有欄位值，可以加上 `--photos tmp/sheets-export/photos.csv`，但該檔案必須先和目前 schema 同步。
 
@@ -112,8 +112,18 @@ pnpm ai:shard:prepare -- --run-dir tmp/ai-runs/<run-id>
 - `inputs/shard-XX-input.json`: 每個 agent 的照片清單與圖片路徑。
 - `worker-prompts/shard-XX.md`: 可交給該 agent 的分片任務提示。
 - `outputs/shard-XX-proposals.json`: 該 agent 應寫入的分片 proposal array 目標位置。
+- `shard-execution-log.json`: 每個 shard 的執行紀錄，初始包含 shard id、input/output path、photo count 與 pending 狀態。
 
-`ai:shard:prepare` 會清掉該 workspace 中前一次產生的 inputs、worker prompts、outputs 與暫存 merged proposal，避免誤用舊分片結果。
+`ai:shard:prepare` 會清掉該 workspace 中前一次產生的 inputs、worker prompts、outputs、execution log 與暫存 merged proposal，避免誤用舊分片結果。
+
+若要比較平行化成效，worker 開始或完成時可更新 execution log：
+
+```bash
+pnpm ai:shard:log -- --run-dir tmp/ai-runs/<run-id> --shard 03 --agent-name codex-worker-03 --model-name gpt-5.5 --mark-started
+pnpm ai:shard:log -- --run-dir tmp/ai-runs/<run-id> --shard 03 --mark-completed --validate-status passed --add-repair
+```
+
+這個紀錄只描述操作歷程，不會驗證 proposal 或修改正式 run。`ai:shard:merge` 會再把每個 output 的 item count、sha256 與 merged proposal hash 補回 execution log。
 
 大型 run 中途可隨時查狀態：
 
@@ -121,7 +131,7 @@ pnpm ai:shard:prepare -- --run-dir tmp/ai-runs/<run-id>
 pnpm ai:bulk:status -- --run-dir tmp/ai-runs/<run-id>
 ```
 
-它會檢查 root run、shard manifest、分片輸入、分片輸出、暫存合併 proposal、正式 root proposal 與 review summary 是否過期，並提示下一個低階指令。這個狀態檢查不修改檔案。
+它會檢查 root run、shard manifest、shard execution log、分片輸入、分片輸出、暫存合併 proposal、正式 root proposal 與 review summary 是否過期，並提示下一個低階指令。這個狀態檢查不修改檔案。
 
 分工前先挑 2 張照片走 smoke test：產生小 proposal、用 `pnpm ai:validate -- --run-dir <run-dir> --proposals <path>` 驗證、再用 `pnpm ai:review -- --run-dir <run-dir> --proposals <path> --output-dir <tmp-dir>` 確認 review artifacts 不會寫入正式 run 目錄。確認後再平行處理全部 shard。
 
@@ -158,7 +168,7 @@ pnpm ai:review -- --run-dir tmp/ai-runs/<run-id>
 - 產生 `metadata-update-plan.json` 與 `metadata-update-plan.csv`，列出後續可能回寫的欄位值。
 - 產生 `metadata-review-summary.md`，整理欄位覆蓋率、常見值分布、批次層級警訊、優先抽查照片與下一步指令。
 
-大型或分片 run 的 summary 會額外顯示 `Artifact Provenance`、`Layer Coverage` 與 `Scene QA`。`Artifact Provenance` 用來確認 final proposals 來源、hash、圖片連結模式與 shard artifacts；`Layer Coverage` 用 schema 分層看 baseline、recall、optional 覆蓋率；`Scene QA` 用整體、相簿與分片層級檢查 `scene_tags` 是否低召回、過度集中或平均過密。
+大型或分片 run 的 summary 會額外顯示 `Artifact Provenance`、`Layer Coverage`、`Scene QA`、`Balanced Review Sample` 與 `Confidence By Field`。`Artifact Provenance` 用來確認 final proposals 來源、hash、圖片連結模式、shard artifacts 與 execution log 摘要；`Layer Coverage` 用 schema 分層看 baseline、recall、optional 覆蓋率；`Scene QA` 用整體、相簿與分片層級檢查 `scene_tags` 是否低召回、過度集中或平均過密；`Balanced Review Sample` 會混合 review focus、shard 抽樣、主體邊界、高風險 optional 欄位與 deterministic random，避免只看工具已知警訊；`Confidence By Field` 用來檢查信心分數是否只集中在少數欄位。
 
 `ai:review` 終端輸出的 `Next:` 與 `metadata-review-summary.md` 的 `## Next Commands` 是這段流程的主要交接提示。若新增報表、比較、搜尋實驗或回寫前檢查工具，應同步更新這兩個地方。
 
@@ -170,7 +180,7 @@ pnpm ai:review -- --run-dir tmp/ai-runs/<run-id>
 
 若失敗，請根據錯誤訊息修正 `metadata-proposals.json`，不要改 `photos.json` 或正式 Sheets。
 
-若通過但輸出 review warnings，代表格式與責任邊界可接受，但仍有批次品質疑慮需要人工判斷；例如相同 `public_use_status` reason 在多張照片重複，可能是模型套模板，也可能是同一活動情境下合理的共同限制。`metadata-review-summary.md` 的 `Review Focus` 會依 warning 挑出第一批建議抽查的照片，操作者應先看這段，再決定是否需要打開完整 diff、HTML report 或 update CSV。
+若通過但輸出 review warnings，代表格式與責任邊界可接受，但仍有批次品質疑慮需要人工判斷；例如相同 `public_use_status` reason 在多張照片重複，可能是模型套模板，也可能是同一活動情境下合理的共同限制。`metadata-review-summary.md` 的 `Review Focus` 會依 warning 挑出第一批建議抽查的照片，`Balanced Review Sample` 則補上非 warning 的抽查入口。操作者應先看這兩段，再決定是否需要打開完整 diff、HTML report 或 update CSV。
 
 常見錯誤：
 
@@ -201,7 +211,7 @@ pnpm ai:report -- --runs tmp/ai-runs/<attempt-a> tmp/ai-runs/<attempt-b> tmp/ai-
 
 這會產生 `tmp/ai-reports/<timestamp>/index.html`。報表是唯讀靜態 HTML；單一 run 會以每張照片為單位呈現縮圖、欄位覆蓋率與各 proposal 細節，多個 run 會並排顯示 value、reason、confidence、validator 狀態與差異。它不修改 proposal，也不寫入 Sheets。
 
-若 `ai:review` 已產生 `Review Focus`，HTML report 會讀取該抽查清單，並在摘要顯示需抽查項數，也可用狀態篩選切到「需優先抽查」。這是人工檢視 warning 的主要入口；不需要先手動從 summary 複製 photo_id 搜尋。報表也能依相簿、shard、AI field layer、欄位與 focus issue 篩選，適合大型分片 run 檢查某個 agent 或某一層欄位是否系統性漏標。若 `metadata-review-summary.md` 比 `metadata-proposals.json` 舊，report 會提示先重新執行 `pnpm ai:review`，避免使用過期抽查清單。多 run/attempt 報表也會檢查 `prompt_template_sha256` 是否一致，以及是否和目前 repo prompt 相同；若不一致或缺少紀錄，應先釐清 prompt 版本差異再解讀模型比較。
+若 `ai:review` 已產生 `Review Focus`，HTML report 會讀取該抽查清單，並在摘要顯示需抽查項數，也可用狀態篩選切到「需優先抽查」。這是人工檢視 warning 的主要入口；不需要先手動從 summary 複製 photo_id 搜尋。報表也能依相簿、shard、AI field layer、欄位與 focus issue 篩選，適合大型分片 run 檢查某個 agent 或某一層欄位是否系統性漏標。多 run/attempt 報表會額外列出 `people_count` 大差距、`subject_type` 不一致、majority/outlier、`safe_crop` / `recommended_uses` / `public_use_status` 高分歧，以及由人數極端分歧、全模型主體不同或描述 outlier 組成的「疑似錯圖」弱訊號。這些訊號不能判定誰對，只是把值得人工對圖的照片往前排。若 `metadata-review-summary.md` 比 `metadata-proposals.json` 舊，report 會提示先重新執行 `pnpm ai:review`，避免使用過期抽查清單。多 run/attempt 報表也會檢查 `prompt_template_sha256` 是否一致，以及是否和目前 repo prompt 相同；若不一致或缺少紀錄，應先釐清 prompt 版本差異再解讀模型比較。
 
 若這次要驗證 `visual_description` 對自然語言找圖是否真的有幫助，可在寫回 Sheets 前跑離線搜尋比較：
 
@@ -323,6 +333,8 @@ pnpm sheets:apply-ai-updates -- --run-dir tmp/ai-runs/<run-id> --allow-current-m
 - `0.5` 到 `0.6`：可作為候選，但需要人類特別確認。
 
 低於 `0.5` 的內容通常應省略，除非操作者明確要求保留弱訊號。
+
+若模型提供 `confidence`，不要求每個欄位必填，但應避免只在少數欄位零散出現。`ai:review` 的 `Confidence By Field` 會顯示每欄 proposal 數、confidence 覆蓋率、平均值與 `confidence = 1` 次數；未校準或覆蓋不穩定的 confidence 不應直接拿來排序。
 
 ## 回歸測試
 
