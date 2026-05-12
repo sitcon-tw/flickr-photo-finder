@@ -173,8 +173,16 @@
               <p id="candidateSummary">0 張候選</p>
             </div>
             <div id="candidateList" class="candidate-list"></div>
+            <label class="candidate-copy-template">
+              <span>複製用途</span>
+              <select id="candidateCopyTemplateSelect">
+                <option value="im">IM 討論版</option>
+                <option value="collaboration">協作檢查版</option>
+                <option value="flickr_urls">純 Flickr URL</option>
+              </select>
+            </label>
             <div class="candidate-actions">
-              <button id="copyCandidatesButton" type="button">複製清單</button>
+              <button id="copyCandidatesButton" class="candidate-copy-button" type="button">複製</button>
               <button id="clearCandidatesButton" type="button">清空</button>
             </div>
           </section>

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { buildAiAssistantPrompt } from "../app/ai-assistant.js";
-import { candidateMarkdown, selectedPhotos } from "../app/candidates.js";
+import { candidateCopyText, candidateMarkdown, selectedPhotos } from "../app/candidates.js";
 import { activeFilterEntries, albumFilterOptions } from "../app/controls.js";
 import { buildOptionLabelMaps, createSearchTokenBuilder, normalizePhotoRows } from "../app/data-loader.js";
 import { photoTitle, sheetRowLink } from "../app/photo-render.js";
@@ -213,6 +213,54 @@ describe("Pages search/sort pure logic", () => {
     assert.equal(selected.length, 1);
     assert.match(markdown, /SITCON 2025/);
     assert.match(markdown, /Finder: https:\/\/finder\.test\/#photo-200/);
+  });
+
+  it("builds purpose-specific candidate copy text", () => {
+    const items = [
+      photo({
+        photo_id: "100",
+        event_name: "SITCON 2026",
+        photo_url: "https://www.flickr.com/photos/sitcon/100",
+        curation_status: "ai_labeled",
+        public_use_status: "needs_review",
+        _sheet_row_number: 28,
+      }),
+      photo({
+        photo_id: "200",
+        event_name: "SITCON 2025",
+        photo_url: "https://www.flickr.com/photos/sitcon/200",
+        curation_status: "reviewed",
+        public_use_status: "",
+        _sheet_row_number: 29,
+      }),
+    ];
+    const helpers = {
+      photoTitle: (item) => item.event_name,
+      finderLink: (item) => `https://finder.test/#photo-${item.photo_id}`,
+      candidateListLink: () => "https://finder.test/?selected=100%2C200",
+      sheetRowLink: (item) => `https://sheet.test/A${item._sheet_row_number}`,
+      labelFor: (_field, value) => value,
+    };
+
+    const imText = candidateCopyText(items, helpers, "im");
+    assert.match(imText, /^候選照片:/);
+    assert.match(imText, /1\. https:\/\/www\.flickr\.com\/photos\/sitcon\/100/);
+    assert.match(imText, /2\. https:\/\/www\.flickr\.com\/photos\/sitcon\/200/);
+    assert.match(imText, /提醒: needs_review/);
+    assert.doesNotMatch(imText, /SITCON 2026/);
+    assert.doesNotMatch(imText, /Sheets:/);
+    assert.doesNotMatch(imText, /Finder 清單:/);
+
+    const collaborationText = candidateCopyText(items, helpers, "collaboration");
+    assert.match(collaborationText, /Finder 清單: https:\/\/finder\.test\/\?selected=100%2C200/);
+    assert.match(collaborationText, /Sheets: https:\/\/sheet\.test\/A28/);
+    assert.match(collaborationText, /整理: ai_labeled \/ 使用提醒: needs_review/);
+
+    const urlText = candidateCopyText(items, helpers, "flickr_urls");
+    assert.equal(
+      urlText,
+      "https://www.flickr.com/photos/sitcon/100\nhttps://www.flickr.com/photos/sitcon/200",
+    );
   });
 
   it("normalizes CSV photo rows with schema list fields and search text", () => {

@@ -28,6 +28,7 @@ export function queryControls() {
     reset: document.querySelector("#resetButton"),
     loadMore: document.querySelector("#loadMoreButton"),
     copyCandidates: document.querySelector("#copyCandidatesButton"),
+    candidateCopyTemplate: document.querySelector("#candidateCopyTemplateSelect"),
     clearCandidates: document.querySelector("#clearCandidatesButton"),
     copyAiAssistantPrompt: document.querySelector("#copyAiAssistantPromptButton"),
   };
