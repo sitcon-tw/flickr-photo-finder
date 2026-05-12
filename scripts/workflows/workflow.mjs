@@ -655,6 +655,7 @@ async function runSheetsTools() {
   const choices = [
     ["sheets:init", "產生初始化 CSV，不連線"],
     ["sheets:check", "檢查公開 Sheets 初始化覆蓋風險"],
+    ["sheets:onboarding:check", "只讀檢查正式/練習表 onboarding 鏈"],
     ["sheets:apply-init", "dry-run 套用初始化 CSV"],
     ["sheets:migrate-headers", "dry-run 安全 header 遷移"],
     ["sheets:export", "匯出正式 Sheets 工作快取"],

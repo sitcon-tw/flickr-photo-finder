@@ -91,6 +91,7 @@
 - `pnpm data:validate`，檢查 sample/export data、schema 與 taxonomy。
 - `pnpm sheets:init`，產生建立正式 Google Sheets 起點所需的初始 CSV。
 - `pnpm sheets:check`，只讀檢查公開 Google Sheets 固定 tabs 的 header 與初始化覆蓋風險。
+- `pnpm sheets:onboarding:check`，使用 Google Sheets API 只讀檢查正式表 `使用說明`、固定練習表連結、練習表回連正式表，以及 practice/formal spreadsheet ID 是否混用。
 - `pnpm sheets:apply-init`，透過官方 Google Sheets API SDK dry-run 初始化套用計畫；加上 `--write` 才會建立缺少 tabs 並寫入初始化資料。
 - `pnpm sheets:migrate-headers`，透過官方 Google Sheets API SDK dry-run 安全 header 遷移；加上 `--write` 才會插入 repo schema 新增的缺少欄位。
 - `pnpm sheets:migrate-field-value -- --sheet photos --field recommended_uses --from <old-value> --to <new-value>`，透過官方 Google Sheets API SDK dry-run 精確遷移固定表格欄位值；加上 `--write` 才會更新 cells，並在寫入後讀回驗證。

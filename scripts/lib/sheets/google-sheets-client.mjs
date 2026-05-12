@@ -1,6 +1,7 @@
 import { google } from "googleapis";
 
 export const sheetsReadWriteScopes = ["https://www.googleapis.com/auth/spreadsheets"];
+export const sheetsReadonlyScopes = ["https://www.googleapis.com/auth/spreadsheets.readonly"];
 
 function maskCredentialPath(path) {
   if (!path) {

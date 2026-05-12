@@ -82,6 +82,14 @@ pnpm sheets:check
 
 `sheets:check` 只讀取固定 tabs 的公開 CSV export，檢查 header 是否符合預期，以及 tab 是否已經有資料。若任何 tab 已有資料、header 不符合預期，或無法讀取，工具會回報初始化覆蓋風險。
 
+若要檢查整理者 onboarding 鏈是否完整，使用 Google Sheets API 的只讀檢查：
+
+```bash
+pnpm sheets:onboarding:check
+```
+
+這個檢查需要 `GOOGLE_APPLICATION_CREDENTIALS` 指向對正式表與固定練習表有讀取權限的 service account credential。它不寫入資料，會確認 `config/project.json` 的 `googleSheets.practiceSpreadsheetId` 不等於正式 `googleSheets.spreadsheetId`、正式表 `使用說明` 有固定練習表連結、練習表 `使用說明` 回連正式表，且兩邊內容符合 repo 目前產生的 onboarding 文案。若失敗，依訊息重新執行 `pnpm sheets:sync-guide -- --write` 或 `pnpm sheets:sync-guide -- --target practice --write` 修復後，再重跑檢查。
+
 確認沒有覆蓋風險後，正式 Sheets 表格寫入的主要技術選擇是官方 Google Sheets API SDK。repo 工具負責產生可檢查資料、schema、validation、風險檢查、dry-run 與寫入後驗證；不再把 Google Drive 檔案匯入當成主要 Sheets 寫入流程。
 
 若維護者已在同一個執行環境設定 `GOOGLE_APPLICATION_CREDENTIALS`，且該 service account 對目標 Sheets 具有編輯權限，可以使用 SDK 寫入工具 dry-run 初始化套用計畫：
@@ -726,6 +734,7 @@ service account key 是敏感 credential，不能 commit，也不應放在 `tmp/
 | --- | --- | --- | --- |
 | 產生初始化 CSV | 不需要 Google 授權 | `pnpm sheets:init` 通過並產生 `tmp/sheets-init/` | repo 工具或本機環境有問題，不代表 Sheets 權限有問題。 |
 | 讀取公開 Sheets 狀態 | 不需要寫入權限；需要 Sheets 已公開可讀 | `pnpm sheets:check` 能讀固定 tabs 並回報狀態 | 可能是 Sheets 尚未公開、tab 不存在、網路受限或 ID 錯誤，不代表寫入權限不足。 |
+| 檢查 Sheets onboarding 鏈 | 需要 `GOOGLE_APPLICATION_CREDENTIALS` 與正式表、練習表讀取權限 | `pnpm sheets:onboarding:check` 通過 | 正式表 `使用說明` 應連到固定練習表；練習表 `使用說明` 應連回正式表；practice spreadsheet ID 不可等於正式 spreadsheet ID。 |
 | 匯出正式 Sheets 工作 CSV | 需要 `GOOGLE_APPLICATION_CREDENTIALS` 與目標 Sheets 讀取權限 | `pnpm sheets:export` 產生 `tmp/sheets-export/*.csv` 並檢查 header | 可能是環境變數未傳入、credential scope、Sheets 權限、tab/header 或網路問題。 |
 | 套用初始化 CSV | 需要 `GOOGLE_APPLICATION_CREDENTIALS` 與目標 Sheets 編輯權限 | `pnpm sheets:apply-init` dry-run 通過，人工確認後執行 `pnpm sheets:apply-init -- --write`，寫入後讀回驗證通過 | 可能是環境變數未傳入、credential scope、Sheets 權限、tab/header 或資料格式問題，應依工具錯誤分類處理。 |
 | 套用 header 遷移 | 需要 `GOOGLE_APPLICATION_CREDENTIALS` 與目標 Sheets 編輯權限 | `pnpm sheets:migrate-headers` dry-run 通過，人工確認後執行 `pnpm sheets:migrate-headers -- --write`，寫入後讀回驗證通過 | 只支援新增缺少欄位；若 header 有未知欄位、改名或順序不相容，工具會阻擋。 |

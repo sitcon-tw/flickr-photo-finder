@@ -62,6 +62,7 @@
     "sheets:apply-intake": "node scripts/commands/apply-intake-run.mjs",
     "sheets:apply-ai-updates": "node scripts/commands/apply-ai-update-plan.mjs",
     "sheets:check": "node scripts/commands/check-sheets.mjs",
+    "sheets:onboarding:check": "node scripts/commands/check-sheets-onboarding.mjs",
     "sheets:export": "node scripts/commands/export-sheets.mjs",
     "sheets:init": "node scripts/commands/init-sheets.mjs",
     "sheets:migrate-headers": "node scripts/commands/migrate-sheets-headers.mjs",
