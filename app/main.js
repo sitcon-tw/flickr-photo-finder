@@ -1,6 +1,16 @@
 import { dataSources, projectConfigUrl } from "./config.js";
 import { parseCsv, parseList } from "./data-utils.js";
 import {
+  buildSearchText,
+  filterAndSortPhotos,
+  isFilled,
+  normalizeText,
+  numericValue,
+  scoreOverlap,
+  textMatches,
+  uniqueSearchTokens,
+} from "./search-sort.js";
+import {
   discoverHistorySize,
   discoverWindowSize,
   pageSize,
@@ -300,7 +310,7 @@ function toObjects(rows, schema) {
         photo[field] = "";
       }
     }
-    photo.search_text = buildSearchText(photo);
+    photo.search_text = buildSearchText(photo, { searchTokensForField });
     return photo;
   });
 }
@@ -336,18 +346,8 @@ function labelFor(fieldName, value) {
   return optionLabels(fieldName).get(value) ?? value;
 }
 
-function valueAliases(fieldName, value) {
-  const normalized = String(value ?? "").trim();
-  return normalized ? searchAliases[fieldName]?.[normalized] ?? [] : [];
-}
-
 function searchTokensForField(fieldName, value) {
-  const normalized = String(value ?? "").trim();
-  if (!normalized) {
-    return [];
-  }
-  const label = labelFor(fieldName, normalized);
-  return [...new Set([normalized, label, ...valueAliases(fieldName, normalized)].filter(Boolean))];
+  return uniqueSearchTokens(fieldName, value, optionLabels(fieldName), searchAliases);
 }
 
 function fillSelect(select, label, values) {
@@ -701,282 +701,39 @@ function setupFilters(taxonomy) {
   setupAutocompleteInput(controls.sponsorshipItem, taxonomy.sponsorship_items ?? []);
 }
 
-function normalizeText(value) {
-  return String(value ?? "")
-    .trim()
-    .toLowerCase();
-}
-
-function derivedSearchTokens(photo) {
-  return [
-    ...searchTokensForField("has_negative_space", photo.has_negative_space),
-    ...searchTokensForField("orientation", photo.orientation),
-    ...searchTokensForField("public_use_status", photo.public_use_status),
-    ...searchTokensForField("priority_level", photo.priority_level),
-    ...searchTokensForField("curation_status", photo.curation_status),
-    ...(photo.safe_crop ?? []).flatMap((value) => searchTokensForField("safe_crop", value)),
-  ];
-}
-
-function buildSearchText(photo) {
-  return [
-    photo.photo_id,
-    photo.photo_url,
-    ...photo.album_ids,
-    photo.album_title,
-    photo.event_name,
-    photo.event_year,
-    photo.people_count,
-    ...searchTokensForField("subject_type", photo.subject_type),
-    photo.photographer,
-    photo.license,
-    photo.visual_description,
-    photo.curation_notes,
-    ...photo.scene_tags,
-    ...photo.mood_tags,
-    ...photo.recommended_uses,
-    ...photo.sponsorship_items,
-    ...photo.sponsorship_tags,
-    ...photo.collections,
-    ...derivedSearchTokens(photo),
-  ]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
-}
-
-function queryAlternatives(term) {
-  const aliases = new Map([
-    ["可放字", ["可放字", "留白", "negative space"]],
-    ["放字", ["可放字", "留白", "negative space"]],
-    ["留白", ["留白", "可放字", "negative space"]],
-    ["網站橫幅", ["網站橫幅", "網頁橫幅", "橫幅", "背景素材"]],
-    ["版面背景", ["版面背景", "背景素材", "橫幅", "網站橫幅"]],
-    ["logo", ["logo", "品牌露出", "背板"]],
-    ["品牌", ["品牌", "品牌露出", "贊助成果佐證"]],
-    ["社群感", ["社群感", "社群介紹", "交流感", "友善"]],
-    ["友善交流", ["友善", "交流感", "交流"]],
-    ["舞台講者", ["舞台", "講者", "新聞稿", "簡報"]],
-    ["志工", ["志工", "志工招募", "工作人員", "幕後感"]],
-    ["正式", ["正式", "專業", "新聞稿", "簡報"]],
-  ]);
-  return aliases.get(term) ?? [term];
-}
-
-function textMatches(photo, query) {
-  const normalized = normalizeText(query);
-  if (!normalized) {
-    return true;
-  }
-
-  const terms = normalized.split(/\s+/).filter(Boolean);
-  return terms.every((term) => queryAlternatives(term).some((alternative) => photo.search_text.includes(alternative)));
-}
-
-function hasListValue(photo, field, value) {
-  return !value || photo[field].includes(value);
-}
-
-function valuePartiallyMatchesList(photo, field, query) {
-  const normalized = normalizeText(query);
-  if (!normalized) {
-    return true;
-  }
-  return photo[field].some((value) => normalizeText(value).includes(normalized));
-}
-
-function matchesAlbum(photo, value) {
-  if (!value) {
-    return true;
-  }
-  if (value.startsWith("id:")) {
-    return photo.album_ids.includes(value.slice(3));
-  }
-  if (value.startsWith("title:")) {
-    return photo.album_title === value.slice(6);
-  }
-  return photo.album_ids.includes(value) || photo.album_title === value;
-}
-
-function matchesPeopleCount(photo, value) {
-  if (!value) {
-    return true;
-  }
-
-  const normalized = String(photo.people_count ?? "").trim();
-  if (value === "unknown") {
-    return normalized === "";
-  }
-
-  if (!/^(0|[1-9]\d*)$/.test(normalized)) {
-    return false;
-  }
-
-  const count = Number(normalized);
-  if (value === "21+") {
-    return count >= 21;
-  }
-
-  if (value.includes("-")) {
-    const [min, max] = value.split("-").map(Number);
-    return count >= min && count <= max;
-  }
-
-  return count === Number(value);
-}
-
-function matchesFilters(photo) {
-  return (
-    textMatches(photo, controls.search.value) &&
-    matchesAlbum(photo, controls.album.value) &&
-    hasListValue(photo, "recommended_uses", controls.use.value) &&
-    hasListValue(photo, "mood_tags", controls.mood.value) &&
-    hasListValue(photo, "scene_tags", controls.scene.value) &&
-    matchesPeopleCount(photo, controls.peopleCount.value) &&
-    (!controls.subjectType.value || photo.subject_type === controls.subjectType.value) &&
-    (!controls.orientation.value || photo.orientation === controls.orientation.value) &&
-    (!controls.negativeSpace.value || photo.has_negative_space === controls.negativeSpace.value) &&
-    hasListValue(photo, "safe_crop", controls.safeCrop.value) &&
-    hasListValue(photo, "sponsorship_tags", controls.sponsorshipTag.value) &&
-    valuePartiallyMatchesList(photo, "sponsorship_items", controls.sponsorshipItem.value) &&
-    hasListValue(photo, "collections", controls.collection.value) &&
-    (!controls.publicStatus.value || photo.public_use_status === controls.publicStatus.value) &&
-    (!controls.priority.value || photo.priority_level === controls.priority.value) &&
-    (!controls.curationStatus.value || photo.curation_status === controls.curationStatus.value)
-  );
-}
-
 function activeTask() {
   return taskModes.find((task) => task.id === state.taskMode) ?? taskModes[0];
 }
 
-function numericValue(value) {
-  const normalized = String(value ?? "").trim();
-  return /^(0|[1-9]\d*)$/.test(normalized) ? Number(normalized) : null;
-}
-
-function scoreOverlap(photoValues, taskValues, weight) {
-  if (!taskValues?.length) {
-    return 0;
-  }
-  const values = Array.isArray(photoValues) ? photoValues : [photoValues].filter(Boolean);
-  return values.some((value) => taskValues.includes(value)) ? weight : 0;
-}
-
-function photoScore(photo) {
-  const task = activeTask();
-  const publicScore = { approved: 0, needs_review: -10, avoid: -160 };
-  const curationScore = { reviewed: 60, ai_labeled: 25, unreviewed: 0 };
-  const priorityScore = { high: 80, normal: 25, low: -10 };
-
-  let score = 0;
-  score += publicScore[photo.public_use_status] ?? 0;
-  score += curationScore[photo.curation_status] ?? 0;
-  score += priorityScore[photo.priority_level] ?? 0;
-  score += isFilled(photo.image_preview_url) ? 10 : -50;
-
-  score += scoreOverlap(photo.recommended_uses, task.recommendedUses, 150);
-  score += scoreOverlap(photo.mood_tags, task.moods, 45);
-  score += scoreOverlap(photo.scene_tags, task.scenes, 45);
-  score += scoreOverlap(photo.sponsorship_tags, task.sponsorshipTags, 65);
-  score += scoreOverlap(photo.orientation, task.orientations, 35);
-  score += scoreOverlap(photo.safe_crop, task.safeCrops, 35);
-  if (task.prefersNegativeSpace && photo.has_negative_space === "true") {
-    score += 35;
-  }
-
-  return score;
-}
-
-function compareRecommended(left, right) {
-  return (
-    photoScore(right) - photoScore(left) ||
-    (numericValue(right.event_year) ?? 0) - (numericValue(left.event_year) ?? 0) ||
-    String(left.photo_id).localeCompare(String(right.photo_id), "zh-Hant-TW")
-  );
-}
-
-function overlaps(leftValues, rightValues) {
-  const left = Array.isArray(leftValues) ? leftValues.filter(Boolean) : [leftValues].filter(Boolean);
-  const right = Array.isArray(rightValues) ? rightValues.filter(Boolean) : [rightValues].filter(Boolean);
-  return left.some((value) => right.includes(value));
-}
-
-function discoveryPenalty(photo, recentPhotos, windowOffset) {
-  let penalty = windowOffset * 4;
-  for (const recentPhoto of recentPhotos) {
-    if (photo.event_name && photo.event_name === recentPhoto.event_name) {
-      penalty += 18;
-    }
-    if (photo.event_year && photo.event_year === recentPhoto.event_year) {
-      penalty += 6;
-    }
-    if (overlaps(photo.album_ids, recentPhoto.album_ids)) {
-      penalty += 14;
-    }
-    if (overlaps(photo.collections, recentPhoto.collections)) {
-      penalty += 10;
-    }
-  }
-  return penalty;
-}
-
-function sortForDiscovery(items) {
-  const remaining = [...items].sort(compareRecommended);
-  const selected = [];
-
-  while (remaining.length > 0) {
-    const recentPhotos = selected.slice(-discoverHistorySize);
-    const windowLength = Math.min(discoverWindowSize, remaining.length);
-    let bestOffset = 0;
-    let bestPenalty = Number.POSITIVE_INFINITY;
-
-    for (let offset = 0; offset < windowLength; offset += 1) {
-      const penalty = discoveryPenalty(remaining[offset], recentPhotos, offset);
-      if (penalty < bestPenalty) {
-        bestPenalty = penalty;
-        bestOffset = offset;
-      }
-    }
-
-    selected.push(remaining.splice(bestOffset, 1)[0]);
-  }
-
-  return selected;
-}
-
-function sortPhotos(items) {
-  const sort = controls.sort.value;
-  if (sort === "discover") {
-    return sortForDiscovery(items);
-  }
-
-  return [...items].sort((left, right) => {
-    if (sort === "newest" || sort === "oldest") {
-      const leftYear = numericValue(left.event_year) ?? 0;
-      const rightYear = numericValue(right.event_year) ?? 0;
-      return sort === "newest" ? rightYear - leftYear : leftYear - rightYear;
-    }
-
-    if (sort === "people-desc" || sort === "people-asc") {
-      const leftCount = numericValue(left.people_count) ?? -1;
-      const rightCount = numericValue(right.people_count) ?? -1;
-      return sort === "people-desc" ? rightCount - leftCount : leftCount - rightCount;
-    }
-
-    return compareRecommended(left, right);
-  });
+function currentPhotoFilters() {
+  return {
+    search: controls.search.value,
+    album: controls.album.value,
+    recommendedUse: controls.use.value,
+    mood: controls.mood.value,
+    scene: controls.scene.value,
+    peopleCount: controls.peopleCount.value,
+    subjectType: controls.subjectType.value,
+    orientation: controls.orientation.value,
+    negativeSpace: controls.negativeSpace.value,
+    safeCrop: controls.safeCrop.value,
+    sponsorshipTag: controls.sponsorshipTag.value,
+    sponsorshipItem: controls.sponsorshipItem.value,
+    publicStatus: controls.publicStatus.value,
+    priority: controls.priority.value,
+    curationStatus: controls.curationStatus.value,
+    collection: controls.collection.value,
+  };
 }
 
 function filteredAndSortedPhotos() {
-  return sortPhotos(photos.filter(matchesFilters));
-}
-
-function isFilled(value) {
-  if (Array.isArray(value)) {
-    return value.length > 0;
-  }
-  return String(value ?? "").trim() !== "";
+  return filterAndSortPhotos(photos, {
+    filters: currentPhotoFilters(),
+    sortMode: controls.sort.value,
+    task: activeTask(),
+    discoverHistorySize,
+    discoverWindowSize,
+  });
 }
 
 function countFilled(fieldName) {

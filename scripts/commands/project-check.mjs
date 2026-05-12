@@ -3,6 +3,7 @@ import { spawnSync } from "node:child_process";
 const checks = [
   ["data:validate", []],
   ["eval:validate-fixtures", []],
+  ["finder:test", []],
 ];
 
 for (const [script, args] of checks) {

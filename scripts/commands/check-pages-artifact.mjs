@@ -115,6 +115,7 @@ async function main() {
     "data/tag-taxonomy.json",
     "index.html",
     "main.js",
+    "search-sort.js",
     "styles.css",
     "task-modes.js",
   ];
@@ -149,6 +150,7 @@ async function main() {
   }
   await assertPngDimensions(join(options.artifactDir, "assets/og-image.png"), 1200, 630);
   await assertIncludes(join(options.artifactDir, "main.js"), "./data-utils.js", "data-utils.js");
+  await assertIncludes(join(options.artifactDir, "main.js"), "./search-sort.js", "search-sort.js");
   await assertIncludes(join(options.artifactDir, "main.js"), "./task-modes.js", "task-modes.js");
   const config = await assertIncludes(join(options.artifactDir, "config.js"), "photosCsvUrl", "photosCsvUrl");
   if (!config.includes("schemaJsonUrl") || !config.includes("searchAliasesJsonUrl") || !config.includes("taxonomyJsonUrl")) {
