@@ -336,29 +336,14 @@ function compactLabelParts(parts) {
     });
 }
 
-function inferYear(...values) {
-  for (const value of values) {
-    const match = String(value ?? "").match(/(20\d{2})/);
-    if (match) {
-      return match[1];
-    }
-  }
-  return "";
-}
-
-function albumOptionFromPhoto(photo, value) {
-  const albumTitle = String(photo.album_title ?? "").trim();
-  const eventName = String(photo.event_name ?? "").trim();
-  const explicitYear = String(photo.event_year ?? "").trim();
-  const year = explicitYear || inferYear(eventName, albumTitle);
-  const titleAlreadyHasYear = year && (albumTitle.includes(year) || eventName.includes(year));
-  const labelParts = compactLabelParts([titleAlreadyHasYear ? "" : year, eventName, albumTitle]);
+function albumOptionFromRecord(record, value) {
+  const labelParts = compactLabelParts([record.event_year, record.event_name, record.album_title]);
   const label = labelParts.join(" · ") || value;
-  const specificity = labelParts.length + (year ? 1 : 0) + (eventName ? 1 : 0) + (albumTitle ? 1 : 0);
-  return { value, label, year, specificity };
+  const specificity = labelParts.length + (record.event_year ? 1 : 0) + (record.event_name ? 1 : 0) + (record.album_title ? 1 : 0);
+  return { value, label, specificity };
 }
 
-export function albumFilterOptions(photos) {
+export function albumFilterOptions(photos, albums = []) {
   const options = new Map();
   for (const photo of photos) {
     for (const albumId of photo.album_ids) {
@@ -367,7 +352,7 @@ export function albumFilterOptions(photos) {
         continue;
       }
       const key = `id:${id}`;
-      const next = albumOptionFromPhoto(photo, key);
+      const next = albumOptionFromRecord(photo, key);
       const current = options.get(key);
       if (!current || next.specificity > current.specificity || next.label.length > current.label.length) {
         options.set(key, next);
@@ -376,21 +361,30 @@ export function albumFilterOptions(photos) {
 
     if (photo.album_ids.length === 0 && photo.album_title) {
       const key = `title:${photo.album_title}`;
-      options.set(key, albumOptionFromPhoto(photo, key));
+      options.set(key, albumOptionFromRecord(photo, key));
     }
   }
 
-  return [...options.values()]
-    .sort((left, right) => {
-      const leftYear = Number(left.year) || 0;
-      const rightYear = Number(right.year) || 0;
-      return (
-        rightYear - leftYear ||
-        left.label.localeCompare(right.label, "zh-Hant-TW") ||
-        left.value.localeCompare(right.value, "zh-Hant-TW")
-      );
-    })
-    .map(({ value, label }) => ({ value, label }));
+  const orderedOptions = [];
+  const usedKeys = new Set();
+  for (const album of albums) {
+    const albumId = String(album.album_id ?? "").trim();
+    const key = albumId ? `id:${albumId}` : "";
+    if (!key || !options.has(key)) {
+      continue;
+    }
+    const option = albumOptionFromRecord(album, key);
+    orderedOptions.push({ value: key, label: option.label });
+    usedKeys.add(key);
+  }
+
+  for (const [key, option] of options) {
+    if (!usedKeys.has(key)) {
+      orderedOptions.push({ value: option.value, label: option.label });
+    }
+  }
+
+  return orderedOptions;
 }
 
 export function setupTaskModes(container, taskModes) {
@@ -405,8 +399,8 @@ export function setupTaskModes(container, taskModes) {
   }
 }
 
-export function setupFilters({ controls, elements, taxonomy, photos, peopleCountFilters, optionLabels, uniqueSorted }) {
-  fillSelectOptions(controls.album, "全部活動/相簿", albumFilterOptions(photos));
+export function setupFilters({ controls, elements, taxonomy, photos, albums, peopleCountFilters, optionLabels, uniqueSorted }) {
+  fillSelectOptions(controls.album, "全部活動/相簿", albumFilterOptions(photos, albums));
   fillSelect(controls.use, "全部用途", taxonomy.recommended_uses ?? []);
   fillSelect(controls.mood, "全部氛圍", taxonomy.mood_tags ?? []);
   fillSelect(controls.scene, "全部場景", taxonomy.scene_tags ?? []);

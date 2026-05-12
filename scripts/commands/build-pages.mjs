@@ -12,6 +12,7 @@ function printUsage() {
 Options:
   --output-dir <path>     Directory for the GitHub Pages artifact. Default: tmp/pages.
   --spreadsheet-id <id>   Google Sheets spreadsheet ID. Default: config/project.json googleSheets.spreadsheetId.
+  --albums-csv-url <url>  Override the public albums CSV URL.
   --photos-csv-url <url>  Override the public photos CSV URL.
   --help, -h              Show this help.
 
@@ -24,6 +25,7 @@ function parseArgs(argv) {
   const options = {
     help: false,
     outputDir: defaultOutputDir,
+    albumsCsvUrl: "",
     photosCsvUrl: "",
     spreadsheetId: googleSheetsSpreadsheetId,
   };
@@ -37,6 +39,9 @@ function parseArgs(argv) {
       index += 1;
     } else if (arg === "--spreadsheet-id") {
       options.spreadsheetId = args[index + 1] ?? "";
+      index += 1;
+    } else if (arg === "--albums-csv-url") {
+      options.albumsCsvUrl = args[index + 1] ?? "";
       index += 1;
     } else if (arg === "--photos-csv-url") {
       options.photosCsvUrl = args[index + 1] ?? "";
@@ -71,10 +76,11 @@ async function copyIntoArtifact(sourcePath, outputDir, targetPath = sourcePath) 
   await copyFile(sourcePath, destination);
 }
 
-async function writePagesConfig(outputDir, photosCsvUrl) {
+async function writePagesConfig(outputDir, { albumsCsvUrl, photosCsvUrl }) {
   const content = `export const projectConfigUrl = "./config/project.json";
 
 export const dataSources = {
+  albumsCsvUrl: ${JSON.stringify(albumsCsvUrl)},
   photosCsvUrl: ${JSON.stringify(photosCsvUrl)},
   schemaJsonUrl: "./data/photo-schema.json",
   searchAliasesJsonUrl: "./data/search-aliases.json",
@@ -160,6 +166,7 @@ async function writeIndexHtml(outputDir) {
 
 export async function buildPagesArtifact({
   outputDir = defaultOutputDir,
+  albumsCsvUrl = "",
   photosCsvUrl = "",
   spreadsheetId = googleSheetsSpreadsheetId,
 } = {}) {
@@ -170,6 +177,7 @@ export async function buildPagesArtifact({
     throw new Error("Set googleSheets.spreadsheetId in config/project.json, pass --spreadsheet-id, or pass --photos-csv-url");
   }
 
+  const resolvedAlbumsCsvUrl = albumsCsvUrl || (spreadsheetId ? googleSheetsCsvUrl(spreadsheetId, "albums") : "");
   const resolvedPhotosCsvUrl = photosCsvUrl || googleSheetsCsvUrl(spreadsheetId, "photos");
 
   await rm(outputDir, { recursive: true, force: true });
@@ -194,11 +202,12 @@ export async function buildPagesArtifact({
   await copyIntoArtifact("data/photo-schema.json", outputDir);
   await copyIntoArtifact("data/search-aliases.json", outputDir);
   await copyIntoArtifact("data/tag-taxonomy.json", outputDir);
-  await writePagesConfig(outputDir, resolvedPhotosCsvUrl);
+  await writePagesConfig(outputDir, { albumsCsvUrl: resolvedAlbumsCsvUrl, photosCsvUrl: resolvedPhotosCsvUrl });
   await writeFile(join(outputDir, ".nojekyll"), "");
 
   return {
     outputDir,
+    albumsCsvUrl: resolvedAlbumsCsvUrl,
     photosCsvUrl: resolvedPhotosCsvUrl,
   };
 }
@@ -213,6 +222,7 @@ async function main() {
   const result = await buildPagesArtifact(options);
 
   console.log(`GitHub Pages artifact written to ${result.outputDir}`);
+  console.log(`Albums CSV URL: ${result.albumsCsvUrl || "(none)"}`);
   console.log(`Photos CSV URL: ${result.photosCsvUrl}`);
 }
 

@@ -333,10 +333,11 @@ select {
   position: absolute;
   z-index: 40;
   top: calc(100% + 4px);
-  right: 0;
   left: 0;
   display: grid;
   gap: 6px;
+  width: min(520px, calc(100vw - 32px));
+  max-width: calc(100vw - 32px);
   padding: 6px;
   border: 1px solid var(--line-strong);
   border-radius: 6px;

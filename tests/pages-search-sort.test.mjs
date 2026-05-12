@@ -337,7 +337,7 @@ describe("Pages search/sort pure logic", () => {
     assert.match(options[0].label, /主議程/);
   });
 
-  it("sorts album filter options by inferred year and keeps labels recognizable", () => {
+  it("orders album filter options by the album catalog order", () => {
     const options = albumFilterOptions([
       photo({ album_ids: ["2025-day4"], album_title: "SITCON Camp 2025 Day 4", event_year: "" }),
       photo({ album_ids: ["2026-bof"], album_title: "SITCON 2026 負一籌＋BoF", event_year: "" }),
@@ -346,14 +346,18 @@ describe("Pages search/sort pure logic", () => {
         album_title: "這是一個非常非常長的活動相簿名稱，包含很多描述但仍然應該保留完整可搜尋文字",
         event_year: "",
       }),
+    ], [
+      { album_id: "long", album_title: "這是一個非常非常長的活動相簿名稱，包含很多描述但仍然應該保留完整可搜尋文字" },
+      { album_id: "2025-day4", album_title: "SITCON Camp 2025 Day 4" },
+      { album_id: "2026-bof", album_title: "SITCON 2026 負一籌＋BoF" },
     ]);
 
     assert.deepEqual(
       options.map((option) => option.value),
-      ["id:2026-bof", "id:2025-day4", "id:long"],
+      ["id:long", "id:2025-day4", "id:2026-bof"],
     );
-    assert.equal(options[0].label, "SITCON 2026 負一籌＋BoF");
-    assert.match(options[2].label, /非常非常長/);
+    assert.match(options[0].label, /非常非常長/);
+    assert.equal(options[2].label, "SITCON 2026 負一籌＋BoF");
   });
 
   it("shapes active filter entries for AI prompts and filter chips", () => {

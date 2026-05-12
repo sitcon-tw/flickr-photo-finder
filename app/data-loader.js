@@ -45,8 +45,15 @@ export function normalizePhotoRows(rows, schema, searchTokensForField) {
   });
 }
 
+export function normalizeAlbumRows(rows) {
+  const [headers = [], ...dataRows] = rows;
+  return dataRows.map((row) => Object.fromEntries(headers.map((header, columnIndex) => [header, row[columnIndex] ?? ""])));
+}
+
 export async function loadFinderData({ dataSources, projectConfigUrl }) {
-  const [photosResponse, schemaResponse, taxonomyResponse, searchAliasesResponse, projectConfigResponse] = await Promise.all([
+  const albumsRequest = dataSources.albumsCsvUrl ? fetch(dataSources.albumsCsvUrl) : Promise.resolve(null);
+  const [albumsResponse, photosResponse, schemaResponse, taxonomyResponse, searchAliasesResponse, projectConfigResponse] = await Promise.all([
+    albumsRequest,
     fetch(dataSources.photosCsvUrl),
     fetch(dataSources.schemaJsonUrl),
     fetch(dataSources.taxonomyJsonUrl),
@@ -54,11 +61,19 @@ export async function loadFinderData({ dataSources, projectConfigUrl }) {
     fetch(projectConfigUrl),
   ]);
 
-  if (!photosResponse.ok || !schemaResponse.ok || !taxonomyResponse.ok || !searchAliasesResponse.ok || !projectConfigResponse.ok) {
+  if (
+    (albumsResponse && !albumsResponse.ok) ||
+    !photosResponse.ok ||
+    !schemaResponse.ok ||
+    !taxonomyResponse.ok ||
+    !searchAliasesResponse.ok ||
+    !projectConfigResponse.ok
+  ) {
     throw new Error("資料載入失敗");
   }
 
-  const [photosText, photoSchema, taxonomy, searchAliases, projectConfig] = await Promise.all([
+  const [albumsText, photosText, photoSchema, taxonomy, searchAliases, projectConfig] = await Promise.all([
+    albumsResponse ? albumsResponse.text() : "",
     photosResponse.text(),
     schemaResponse.json(),
     taxonomyResponse.json(),
@@ -74,6 +89,7 @@ export async function loadFinderData({ dataSources, projectConfigUrl }) {
     taxonomy,
     optionLabelMaps,
     searchTokensForField,
+    albums: albumsText ? normalizeAlbumRows(parseCsv(albumsText)) : [],
     photos: normalizePhotoRows(parseCsv(photosText), photoSchema, searchTokensForField),
   };
 }
