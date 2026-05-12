@@ -1548,8 +1548,9 @@ function renderPhoto(photo, resultRank, resultCount) {
   appendDetail(details, "描述", photo.visual_description);
   appendDetail(details, "備註", photo.curation_notes);
 
-  candidateButton.textContent = selected ? "移出候選" : "加入候選";
+  candidateButton.textContent = "候選";
   candidateButton.title = selected ? "從候選清單移出這張照片" : "加入候選清單";
+  candidateButton.setAttribute("aria-label", selected ? "從候選清單移出這張照片" : "加入候選清單");
   candidateButton.setAttribute("aria-pressed", selected ? "true" : "false");
   candidateButton.classList.toggle("is-selected", selected);
   candidateButton.addEventListener("click", () => {
