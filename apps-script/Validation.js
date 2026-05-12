@@ -52,8 +52,35 @@ function validateRow_(row, rowNumber) {
   if (values.curation_status === "reviewed") {
     errors.push(...validateRequiredFieldGroup_(values, config.reviewedRequiredFields, rowNumber));
   }
+  errors.push(...validatePublicSensitiveContent_(values, rowNumber));
 
   return errors;
+}
+
+function validatePublicSensitiveContent_(values, rowNumber) {
+  const rulesConfig = getConfig_().publicSensitiveContentRules || {};
+  const fields = rulesConfig.public_text_fields || [];
+  const rules = rulesConfig.rules || [];
+  const warnings = [];
+
+  fields.forEach((fieldName) => {
+    const value = normalizeText_(values[fieldName]);
+    if (!value) {
+      return;
+    }
+    rules.forEach((rule) => {
+      const pattern = new RegExp(rule.pattern, rule.flags || "");
+      if (pattern.test(value)) {
+        warnings.push(formatWarning_(
+          rowNumber,
+          fieldName,
+          `${fieldName} 是公開欄位，含有 ${rule.label_zh}，請確認是否應移除或改寫。`,
+        ));
+      }
+    });
+  });
+
+  return warnings;
 }
 
 function validateFieldValue_(field, value, rowNumber) {
@@ -138,24 +165,38 @@ function isBlank_(value) {
 }
 
 function formatError_(rowNumber, fieldName, message) {
-  return { rowNumber, fieldName, message };
+  return { rowNumber, fieldName, message, severity: "error" };
 }
 
-function showValidationResult_(errors, target) {
+function formatWarning_(rowNumber, fieldName, message) {
+  return { rowNumber, fieldName, message, severity: "warning" };
+}
+
+function isWarningIssue_(issue) {
+  return issue && issue.severity === "warning";
+}
+
+function blockingValidationIssues_(issues) {
+  return issues.filter((issue) => !isWarningIssue_(issue));
+}
+
+function showValidationResult_(issues, target) {
   const ui = SpreadsheetApp.getUi();
-  writeValidationReport_(target, errors);
-  if (errors.length === 0) {
+  writeValidationReport_(target, issues);
+  const blockingIssues = blockingValidationIssues_(issues);
+  const warnings = issues.filter(isWarningIssue_);
+  if (issues.length === 0) {
     ui.alert(`${target} 檢查通過。\n\n已更新 ${PHOTO_FINDER_VALIDATION_REPORT_SHEET_NAME}。`);
     return;
   }
 
-  const shownErrors = errors.slice(0, PHOTO_FINDER_MAX_ERRORS);
-  const suffix = errors.length > shownErrors.length ? `\n...另有 ${errors.length - shownErrors.length} 個錯誤。` : "";
+  const shownIssues = issues.slice(0, PHOTO_FINDER_MAX_ERRORS);
+  const suffix = issues.length > shownIssues.length ? `\n...另有 ${issues.length - shownIssues.length} 個問題。` : "";
   ui.alert(
     [
-      `${target} 檢查發現 ${errors.length} 個問題：`,
+      `${target} 檢查發現 ${blockingIssues.length} 個錯誤、${warnings.length} 個警示：`,
       "",
-      shownErrors.map(formatValidationError_).join("\n"),
+      shownIssues.map(formatValidationError_).join("\n"),
       suffix,
       "",
       `完整結果已寫入 ${PHOTO_FINDER_VALIDATION_REPORT_SHEET_NAME}。`,
@@ -163,7 +204,7 @@ function showValidationResult_(errors, target) {
   );
 }
 
-function writeValidationReport_(target, errors) {
+function writeValidationReport_(target, issues) {
   const spreadsheet = SpreadsheetApp.getActive();
   let sheet = spreadsheet.getSheetByName(PHOTO_FINDER_VALIDATION_REPORT_SHEET_NAME);
   if (!sheet) {
@@ -171,14 +212,14 @@ function writeValidationReport_(target, errors) {
   }
 
   const checkedAt = new Date().toISOString();
-  const rows = errors.length > 0
-    ? errors.map((error) => [
+  const rows = issues.length > 0
+    ? issues.map((issue) => [
         checkedAt,
         target,
-        "failed",
-        error.rowNumber || "",
-        error.fieldName || "",
-        error.message || formatValidationError_(error),
+        isWarningIssue_(issue) ? "warning" : "failed",
+        issue.rowNumber || "",
+        issue.fieldName || "",
+        issue.message || formatValidationError_(issue),
       ])
     : [[checkedAt, target, "passed", "", "", "檢查通過"]];
 
@@ -190,12 +231,12 @@ function writeValidationReport_(target, errors) {
 }
 
 function formatValidationError_(error) {
+  const prefix = isWarningIssue_(error) ? "警示：" : "";
   if (error.rowNumber) {
-    return `第 ${error.rowNumber} 列 ${error.fieldName}: ${error.message}`;
+    return `${prefix}第 ${error.rowNumber} 列 ${error.fieldName}: ${error.message}`;
   }
   if (error.fieldName) {
-    return `${error.fieldName}: ${error.message}`;
+    return `${prefix}${error.fieldName}: ${error.message}`;
   }
-  return normalizeText_(error.message || error);
+  return `${prefix}${normalizeText_(error.message || error)}`;
 }
-

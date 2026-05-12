@@ -81,14 +81,15 @@ function saveReviewPhotoAtRow_(sheet, rowNumber, values) {
     return currentRow[index];
   });
 
-  const errors = validateRow_(nextRow, rowNumber);
-  writeValidationReport_(`第 ${rowNumber} 列`, errors);
+  const issues = validateRow_(nextRow, rowNumber);
+  const errors = blockingValidationIssues_(issues);
+  writeValidationReport_(`第 ${rowNumber} 列`, issues);
   if (errors.length > 0) {
-    return buildReviewPanelStateFromRow_(nextRow, rowNumber, errors);
+    return buildReviewPanelStateFromRow_(nextRow, rowNumber, issues);
   }
 
   writePhotoRow_(sheet, rowNumber, nextRow);
-  return buildReviewPanelState_(sheet, rowNumber, errors);
+  return buildReviewPanelState_(sheet, rowNumber, issues);
 }
 
 function getActivePhotoRowNumber_(sheet) {
@@ -110,9 +111,10 @@ function buildReviewPanelState_(sheet, rowNumber, providedErrors) {
 function buildReviewPanelStateFromRow_(row, rowNumber, providedErrors) {
   const config = getConfig_();
   const record = rowToRecord_(row);
-  const errors = providedErrors || validateRow_(row, rowNumber);
+  const issues = providedErrors || validateRow_(row, rowNumber);
   return {
-    errors,
+    errors: blockingValidationIssues_(issues),
+    warnings: issues.filter(isWarningIssue_),
     fields: getReviewPanelFields_(),
     record,
     reviewedRequiredFields: config.reviewedRequiredFields || [],
@@ -158,4 +160,3 @@ function formatOptionForNote_(fieldName, value) {
   const label = labelForOption_(fieldName, value);
   return label === value ? value : `${value} = ${label}`;
 }
-
