@@ -23,3 +23,4 @@
 | [0003](0003-ai-candidate-only.md) | Accepted | AI 只產生人類可審核候選 metadata，不直接完成 review 或批准公開使用。 |
 | [0004](0004-sponsorship-items-snapshot.md) | Accepted | SITCON 2026 CFS 贊助品項作為固定 snapshot，不自動同步遠端來源。 |
 | [0005](0005-no-drive-file-transfer-for-sheets-tables.md) | Accepted | repo CLI 不用 Google Drive file transfer 表達 Sheets table semantics。 |
+| [0006](0006-dependabot-version-updates.md) | Accepted | 使用 Dependabot 追蹤 pnpm 專案的 Node dependency 與 GitHub Actions 版本更新。 |
