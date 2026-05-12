@@ -119,6 +119,16 @@ node --check app/main.js
 
 依實際更動範圍選擇需要檢查的檔案，不需要每次全部重跑。
 
+更動 GitHub Pages 前端時，先讀 `docs/public-frontend-architecture.md` 的模組邊界。若改到搜尋、篩選、排序、URL state、候選清單或 AI 助手提示詞，至少執行：
+
+```bash
+pnpm finder:test
+pnpm finder:build
+pnpm finder:check
+```
+
+前端純邏輯應優先放在可測試模組，例如 `app/search-sort.js` 或 `app/url-state.js`，避免在 `app/main.js` 直接讀 DOM 控制項後混入 domain logic。
+
 ## 文件優先順序
 
 新 agent 接手時，最少必讀：

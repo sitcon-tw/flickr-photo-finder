@@ -111,6 +111,19 @@ https://docs.google.com/spreadsheets/d/<spreadsheetId>/gviz/tq?tqx=out:csv&sheet
 
 前端可以讀公開資料 URL，但不能使用任何需要保密的 token、API key 或 OAuth credential。
 
+## 前端模組邊界
+
+公開前端維持原生 ES modules，不導入 bundler 或成熟前端 framework。目前的拆分原則是 Functional Core / Imperative Shell：
+
+- `app/search-sort.js` 是可測試純函式核心，負責 search text、篩選、scoring、推薦排序與探索排序；不得直接讀 DOM 或全域控制項。
+- `app/url-state.js` 負責 URL query encode/decode；selected ids、filters 與 sort deep link 行為應先在這裡調整。
+- `app/analytics.js` 負責 GA4 setup、事件參數整理、搜尋字串清理與結果追蹤去重；前端其他模組只呼叫 `trackEvent` 或傳入 snapshot。
+- `app/ai-assistant.js` 負責 AI 助手提示詞與事件參數的純資料組裝，不處理 clipboard 或 DOM。
+- `app/candidates.js` 負責候選清單資料選取、markdown 與候選清單 DOM render；不改變搜尋或排序結果。
+- `app/main.js` 保留 bootstrap、DOM controls、資料載入、主照片卡 render 與事件 wiring。後續若繼續拆分，優先抽出 data-loader、render 與 controls，不要在同一 PR 重寫 UI 或改排序權重。
+
+新增前端模組時，需同步 `scripts/commands/build-pages.mjs` 與 `scripts/commands/check-pages-artifact.mjs`，確保 GitHub Pages artifact 包含新檔案。可測試的純邏輯應加入 `pnpm finder:test`，並納入 `pnpm project:check`。
+
 公開前端右上角的外部連結由 `config/project.json` 控制。除了 Flickr 來源連結，也應提供 GitHub 專案連結，讓使用者能回到 repo 了解專案細節或回報問題。
 
 公開前端除了照片卡片搜尋，也應提供索引概覽，協助維護者快速判斷目前索引整理成效。概覽應優先使用 `data/photo-schema.json` 與 `data/tag-taxonomy.json` 理解欄位與必要規則，例如整理狀態、使用提醒、人數標記、reviewed 必要欄位完整度與贊助欄位覆蓋率，不應在前端另外維護一份欄位規則或 raw value 翻譯表。前端顯示文字應使用 `data/tag-taxonomy.json` 的 `option_labels`，但篩選值、URL 參數與資料比對仍使用 raw value。

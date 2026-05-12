@@ -22,7 +22,7 @@
 
 | 任務 | 先從這裡開始 | 補讀或邊界提醒 |
 | --- | --- | --- |
-| 我要修改公開前端 | `docs/public-frontend-architecture.md` | 先確認正式資料來源、本機 fixture/export 模式、artifact build/check 與 GitHub Pages 部署邊界。 |
+| 我要修改公開前端 | `docs/public-frontend-architecture.md` | 先確認正式資料來源、本機 fixture/export 模式、前端模組邊界、artifact build/check 與 GitHub Pages 部署邊界。 |
 | 我要修改 Apps Script | `docs/apps-script-maintenance-design.md` | 先確認 clasp 綁定、target、GeneratedConfig、Sheets-side validation 與練習表/正式表邊界。 |
 | 我要修改 taxonomy 或欄位 schema | `真理來源` 與 `共用字串歸屬` | 實際 source 是 `data/tag-taxonomy.json` 與 `data/photo-schema.json`；改完需依影響範圍同步 Apps Script、前端或 validation，並執行 `pnpm data:validate`。 |
 | 我要部署或檢查 Pages artifact | `pnpm workflow -- --task pages-build` | workflow 是日常入口；低階檢查可用 `pnpm finder:build` 後接 `pnpm finder:check`。 |
@@ -100,6 +100,7 @@
 - `pnpm albums:list`，從正式 Sheets 匯出的 `albums.csv` 或 `--source sheets` 直接讀取正式 `albums` 工作表列出與篩選相簿，並可輸出 album id、JSON 或可直接執行的 intake 指令。
 - `pnpm albums:select`，從正式 Sheets 匯出的 `albums.csv` 或 `--source sheets` 直接讀取正式 `albums` 工作表互動式選擇單本相簿，並輸出 album id、JSON 或可直接執行的 intake 指令。
 - `pnpm finder:build` / `pnpm finder:check`，產生並檢查 GitHub Pages artifact 到 `tmp/pages/`，部署版資料來源會讀公開 Google Sheets `photos` CSV。
+- `pnpm finder:test`，執行 GitHub Pages 前端純邏輯測試；目前涵蓋搜尋/排序、URL state、候選清單與 AI 助手提示詞。
 - `pnpm apps-script:build-config`，從 repo schema、taxonomy 與 sponsorship items snapshot metadata 產生 Apps Script 使用的 `apps-script/GeneratedConfig.js`。
 - `pnpm apps-script:bind`、`pnpm apps-script:status`、`pnpm apps-script:push`、`pnpm apps-script:deployments`，包裝常用 clasp 綁定、推送與 deployment 查詢流程。正式表是預設 target，可直接用 `pnpm apps-script:push`；固定練習表需明確使用 `pnpm apps-script:push -- --target practice`。Web App deployment type 應從 Apps Script UI 建立或更新；第一次部署順序見 `docs/apps-script-maintenance-design.md`。
 - `pnpm albums:discover`，盤點 SITCON Flickr 公開相簿清單並輸出 CSV 預覽。
