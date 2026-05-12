@@ -27,6 +27,7 @@
 | 我要修改 taxonomy 或欄位 schema | `真理來源` 與 `共用字串歸屬` | 實際 source 是 `data/tag-taxonomy.json` 與 `data/photo-schema.json`；改完需依影響範圍同步 Apps Script、前端或 validation，並執行 `pnpm data:validate`。 |
 | 我要部署或檢查 Pages artifact | `pnpm workflow -- --task pages-build` | workflow 是日常入口；低階檢查可用 `pnpm finder:build` 後接 `pnpm finder:check`。 |
 | 我要維護 Sheets 同步或練習表 | `docs/sheets-sync-workflow.md` | 先確認正式表、練習表、service account 與 dry-run/write 邊界。 |
+| 我要檢查正式 Sheets 資料健康度 | `pnpm sheets:report` | 先用 `pnpm sheets:export` 更新 `tmp/sheets-export/`；風險分級與後續處理看 `docs/sheets-sync-workflow.md`。 |
 | 我要管理 GA4 事件與 custom dimensions | `docs/frontend-analytics-design.md` | 後台權限與 Admin API 操作看 `docs/ga4-operations.md`。 |
 | 我要理解架構決策背景與重新評估條件 | `docs/adr/README.md` | ADR 只記錄決策脈絡、取捨與重新評估條件；目前架構總覽仍看 `docs/project-architecture.md`。 |
 
@@ -100,6 +101,7 @@
 - `pnpm sheets:sync-guide`，透過官方 Google Sheets API SDK dry-run 同步 `使用說明` 分頁；加上 `--write` 才會建立或更新這張人類入口分頁。
 - `pnpm sheets:sync-taxonomy`，透過官方 Google Sheets API SDK dry-run 同步 `taxonomy` 輔助表；加上 `--write` 才會以 repo taxonomy 重寫 tab，並驗證 `label_zh` 不為空白。
 - `pnpm sheets:export`，透過官方 Google Sheets API SDK 匯出正式 Sheets 固定 tabs，供 validation 與 intake 流程使用。
+- `pnpm sheets:report`，唯讀產生正式 Sheets 資料品質報表；預設讀 `tmp/sheets-export/photos.csv` 與 `tmp/sheets-export/albums.csv`，也可用 `--source sheets` 直接從正式表讀取。報表會列出照片數、整理/公開使用狀態分布、缺欄位風險、AI 待 review、相簿處理狀態與贊助覆蓋率。
 - `pnpm albums:list`，從正式 Sheets 匯出的 `albums.csv` 或 `--source sheets` 直接讀取正式 `albums` 工作表列出與篩選相簿，並可輸出 album id、JSON 或可直接執行的 intake 指令。
 - `pnpm albums:select`，從正式 Sheets 匯出的 `albums.csv` 或 `--source sheets` 直接讀取正式 `albums` 工作表互動式選擇單本相簿，並輸出 album id、JSON 或可直接執行的 intake 指令。
 - `pnpm project:check`，執行不需要 credential 的本機/CI 健康檢查，涵蓋 data validation、AI fixture validation、finder tests、Pages build/check、Apps Script generated config 同步檢查與主要 JavaScript syntax check。

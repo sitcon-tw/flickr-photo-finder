@@ -141,6 +141,7 @@ pnpm sheets:migrate-headers
 pnpm sheets:migrate-field-value -- --sheet photos --field recommended_uses --from <old-value> --to <new-value>
 pnpm sheets:practice:build
 pnpm sheets:practice:sync
+pnpm sheets:report
 pnpm sheets:sync-guide
 pnpm sheets:sync-taxonomy
 pnpm data:validate
