@@ -178,6 +178,7 @@ export async function buildPagesArtifact({
   await copyIntoArtifact("app/analytics.js", outputDir, "analytics.js");
   await copyIntoArtifact("app/ai-assistant.js", outputDir, "ai-assistant.js");
   await copyIntoArtifact("app/candidates.js", outputDir, "candidates.js");
+  await copyIntoArtifact("app/controls.js", outputDir, "controls.js");
   await copyIntoArtifact("app/data-loader.js", outputDir, "data-loader.js");
   await copyIntoArtifact("app/data-utils.js", outputDir, "data-utils.js");
   await copyIntoArtifact("app/main.js", outputDir, "main.js");

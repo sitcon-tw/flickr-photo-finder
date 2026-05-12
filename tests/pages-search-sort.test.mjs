@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { buildAiAssistantPrompt } from "../app/ai-assistant.js";
 import { candidateMarkdown, selectedPhotos } from "../app/candidates.js";
+import { activeFilterEntries, albumFilterOptions } from "../app/controls.js";
 import { buildOptionLabelMaps, createSearchTokenBuilder, normalizePhotoRows } from "../app/data-loader.js";
 import {
   buildSearchText,
@@ -244,5 +245,53 @@ describe("Pages search/sort pure logic", () => {
     assert.equal(normalized[0].missing_field, "");
     assert.equal(normalized[0]._sheet_row_number, 2);
     assert.match(normalized[0].search_text, /negative space/);
+  });
+
+  it("builds album filter options from ids and title fallbacks", () => {
+    const options = albumFilterOptions([
+      photo({ album_ids: ["a1"], album_title: "主議程", event_year: "2026", event_name: "SITCON" }),
+      photo({ album_ids: [], album_title: "工作人員側拍", event_year: "2025", event_name: "SITCON" }),
+    ]);
+
+    assert.deepEqual(
+      options.map((option) => option.value),
+      ["title:工作人員側拍", "id:a1"],
+    );
+    assert.match(options[1].label, /2026/);
+    assert.match(options[1].label, /主議程/);
+  });
+
+  it("shapes active filter entries for AI prompts and filter chips", () => {
+    const select = (value, text) => ({ value, selectedOptions: [{ textContent: text }] });
+    const entries = activeFilterEntries({
+      state: { taskMode: "social" },
+      activeTask: socialTask,
+      controls: {
+        search: { value: "  講者  " },
+        album: select("id:1", "SITCON 2026"),
+        use: select("", ""),
+        mood: select("", ""),
+        scene: select("交流", "交流"),
+        peopleCount: select("", ""),
+        subjectType: select("", ""),
+        orientation: select("", ""),
+        negativeSpace: select("", ""),
+        safeCrop: select("", ""),
+        sponsorshipTag: select("", ""),
+        publicStatus: select("", ""),
+        priority: select("", ""),
+        curationStatus: select("", ""),
+        collection: select("", ""),
+        sponsorshipItem: { value: "攤位" },
+      },
+    });
+
+    assert.deepEqual(entries, [
+      ["task", "任務", "社群貼文"],
+      ["search", "搜尋", "講者"],
+      ["album", "活動/相簿", "SITCON 2026"],
+      ["scene", "場景", "交流"],
+      ["sponsorshipItem", "贊助品項", "攤位"],
+    ]);
   });
 });

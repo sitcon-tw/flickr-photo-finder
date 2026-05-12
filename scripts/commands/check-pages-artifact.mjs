@@ -112,6 +112,7 @@ async function main() {
     "candidates.js",
     "config.js",
     "config/project.json",
+    "controls.js",
     "data-loader.js",
     "data-utils.js",
     "data/photo-schema.json",
@@ -157,6 +158,9 @@ async function main() {
   await assertIncludes(join(options.artifactDir, "main.js"), "./ai-assistant.js", "ai-assistant.js");
   await assertIncludes(join(options.artifactDir, "main.js"), "./analytics.js", "analytics.js");
   await assertIncludes(join(options.artifactDir, "main.js"), "./candidates.js", "candidates.js");
+  await assertIncludes(join(options.artifactDir, "main.js"), "./controls.js", "controls.js");
+  await assertIncludes(join(options.artifactDir, "controls.js"), "./analytics.js", "analytics.js");
+  await assertIncludes(join(options.artifactDir, "controls.js"), "./search-sort.js", "search-sort.js");
   await assertIncludes(join(options.artifactDir, "main.js"), "./data-loader.js", "data-loader.js");
   await assertIncludes(join(options.artifactDir, "data-loader.js"), "./data-utils.js", "data-utils.js");
   await assertIncludes(join(options.artifactDir, "data-loader.js"), "./search-sort.js", "search-sort.js");
