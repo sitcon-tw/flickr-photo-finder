@@ -821,13 +821,129 @@ r3 和 r2 相比有明顯改善：
 
 整體判斷：GPT 5.5 medium 搭配 6 worker 已足以支援 7718 張照片的全量初標生產，但「可完成」不等於「可直接寫回」。本輪最可靠的是 baseline 欄位、`scene_tags`、`visual_description` 與部分 `mood_tags` / `recommended_uses`；高風險欄位仍是 `people_count` 邊界、`recommended_uses` 主觀用途、`public_use_status`、`safe_crop` 與缺少 confidence。這批成果可以作為正式回寫前的候選基底，但應先保留 `/tmp` 合併 proposal 與 review artifacts，讓人類依 review focus 抽查後再決定是否寫入 run 目錄與 Google Sheets。
 
+## 2026-05-10 cross-activity 43 張平行化三模型 attempt
+
+本輪以同一批 cross-activity sample 建立三個 attempt，目標是同時觀察新版 prompt 下的模型輸出差異，以及不同 agent 執行環境的平行化能力：
+
+```bash
+tmp/ai-runs/ai-cross-activity-sample-2026-05-10-attempt-gpt-r2-cross-activity-parallel
+tmp/ai-runs/ai-cross-activity-sample-2026-05-10-attempt-gemini-r2-cross-activity-parallel
+tmp/ai-runs/ai-cross-activity-sample-2026-05-10-attempt-claude-r2-cross-activity-parallel
+```
+
+三個 attempt 都包含 43 張照片，且 `manifest.json` 的 `prompt_template_sha256` 相同：
+
+```text
+c5635d130e3adb74ebe7ae68a3d9f90c55f35eb661c204f61227cf4e687cbf8b
+```
+
+因此這輪比早期 prompt 不一致的測試更適合做本輪橫向比較。不過這仍是 43 張 challenge sample，不是完整模型排名，也不能單獨推導某模型的永久能力。
+
+本節的證據邊界如下：
+
+- 可由目前工作站 artifact 驗證：三個 `manifest.json` / `attempt.json`、三份 `metadata-proposals.json`、43 個 proposal items、同一 prompt hash、重新執行 `pnpm ai:review -- --output-dir /tmp/ai-eval-research/<model>` 後的 review summary 與欄位覆蓋。
+- 來自操作者或執行 agent 回報：牆鐘耗時、agent / worker 數、Codex thread limit、Gemini 修補歷程、Claude shard failure 0，以及 GPT 5.5 medium / Gemini 3.1 Pro Preview / Claude Code Opus 4.7 這些完整執行環境名稱。
+- `/tmp/ai-eval-research/*` 和 `/tmp/ai-labeling-shards/*` 是本機暫存觀察資料，不是 git 版本永久保存的 artifact；未來重查時應以當時 run 目錄與可重建的 review summary 為準。
+
+### 彙整數字
+
+| attempt | 執行環境紀錄 | proposals | planned updates | review notes | 平行化摘要 |
+| --- | --- | ---: | ---: | ---: | --- |
+| GPT 5.5 medium / Codex | 25m 35s | 43 | 430 | 3 | 嘗試一次開 11 worker，平台實際上限 6；後續以完成一個補一個跑完 11 shard。 |
+| Gemini CLI `gemini-3.1-pro-preview` | 約 10 分鐘 | 43 | 390 | 5 | 10 個 shard 同步啟動；合併後發現部分 `visual_description` 缺 reason 或過度抽象，再平行修補後通過。 |
+| Claude Code Opus 4.7 | 約 6m 11s | 43 | 366 | 1 | 15 個 agent 單次 spawn，43 張每 agent 2 到 3 張；shard 失敗 0，validate 通過。 |
+
+`review notes` 是 `metadata-review-summary.md` 中 Review Notes 的提醒數量，不是整體品質分數。Gemini 的錯圖級問題多半是人工抽查發現，沒有完全反映在 notes count；Claude notes 最少也不代表 optional 欄位最完整。
+
+欄位覆蓋差異如下：
+
+| field | GPT | Gemini | Claude |
+| --- | ---: | ---: | ---: |
+| baseline 欄位：`people_count`、`subject_type`、`orientation`、`has_negative_space`、`visual_description`、`curation_status` | 43 | 43 | 43 |
+| `scene_tags` | 40 | 41 | 42 |
+| `mood_tags` | 38 | 41 | 32 |
+| `recommended_uses` | 33 | 18 | 11 |
+| `safe_crop` | 41 | 28 | 15 |
+| `public_use_status` | 6 | 0 | 1 |
+| `sponsorship_items` / `sponsorship_tags` | 6 / 7 | 2 / 2 | 3 / 4 |
+| `priority_level` | 1 | 0 | 0 |
+| confidence 欄位數 | 0 | 0 | 52 |
+
+`visual_description` 長度與欄位密度也有明顯差異。下表的長度是字元數，不是人工語意上的詞數：
+
+| attempt | 平均欄位數 / item | `visual_description` 平均字元數 | 最短 / 最長 |
+| --- | ---: | ---: | ---: |
+| GPT | 10.0 | 58 | 41 / 110 |
+| Gemini | 9.1 | 45 | 31 / 57 |
+| Claude | 8.5 | 104 | 59 / 196 |
+
+三模型在同一張照片上的分歧也很高，尤其是需要判斷語意的欄位：
+
+| field | 三者完全相同 | 兩者相同、一者不同 | 三者都不同 |
+| --- | ---: | ---: | ---: |
+| `people_count` | 5 | 26 | 12 |
+| `subject_type` | 31 | 9 | 3 |
+| `orientation` | 38 | 5 | 0 |
+| `has_negative_space` | 24 | 19 | 0 |
+| `scene_tags` | 2 | 10 | 31 |
+| `mood_tags` | 2 | 18 | 23 |
+| `recommended_uses` | 7 | 21 | 15 |
+| `safe_crop` | 3 | 19 | 21 |
+| `public_use_status` | 37 | 6 | 0 |
+| `sponsorship_items` | 35 | 7 | 1 |
+| `sponsorship_tags` | 34 | 8 | 1 |
+
+### Review notes 與欄位策略
+
+GPT 的策略最積極，planned updates 也最多。它幾乎每張都給 `safe_crop`，`recommended_uses` 覆蓋 33/43，並且提出 6 張 `public_use_status = needs_review`。這讓可用候選值最多，也讓公開使用風險召回率相對高；抽查中可見兒童臉部、名牌或 QR code 類型的提醒。不過它也帶來人工審核成本：`recommended_uses = 活動回顧` 出現在 26/43 張，`safe_crop = 16:9` 出現 38 次，且所有候選值都沒有 confidence。review note 也提示 `54476968062` 為 `people_count = 0` 但文字中仍有人物相關線索，需要人工確認。
+
+Gemini 的覆蓋率介於 GPT 與 Claude 之間，但這個 r2 parallel attempt 的輸出最不穩定。目前資料能證明 final proposal 有多張錯圖級失準，但不能排除 agent 圖片開啟、shard 工作流或輸出對齊問題；因此這裡不應直接推論為模型本體能力。它在 `mood_tags` 上非常積極，41/43 張都有 mood，且 `專注` 出現 21 次，因此觸發 mood 過度覆蓋警訊。它沒有 `public_use_status` 和 confidence。代表抽查中還看到更嚴重的對圖問題：例如 `55246322689` 實際是 4 人站在 OpenCulture Foundation 攤位後合照，但 Gemini 寫成講廳大合照並估 100 人；`54477810096` 實際是兩人在藍牆前互動，Gemini 寫成帆布袋特寫並標 `people_count = 0`；`52366000893` 實際是錄音室螢幕與麥克風空景，Gemini 寫成三人圍坐錄音。這類錯誤不是單純欄位保守或積極，而是有跨圖或錯圖描述風險。
+
+Claude 的策略最保守，planned updates 最少，review note 也最少。它的 `visual_description` 最長，通常包含可見文字、物件位置與構圖細節，且有 52 個欄位提供 confidence，對人工排序可能有幫助；但其中多數集中在 `people_count`，不是所有欄位都有校準過的把握度。代價是 optional 欄位較少：`recommended_uses` 只有 11 張、`safe_crop` 15 張、`public_use_status` 1 張。代表抽查中，Claude 對物件照與錄音室畫面的描述最接近可搜尋語料，例如 `54478007919` 能列出 LINE TECH FRESH、Klick&Klack 文宣、Attendee 卡片與掛繩；`52366000893` 能描述 About SITCON、Code of Conduct、音訊編輯軟體與桌面麥克風。
+
+### 代表抽查觀察
+
+這次抽查 12 張跨活動照片，重點放在人數矛盾、贊助欄位、食物 / 物件 / 螢幕主體、導覽與錄音等邊界。這是 failure-focused / challenge sample，不是 random sample；它適合找風險與反例，不適合直接計算整體精準度。
+
+- `55246322689` 攤位合照：GPT 與 Claude 都判為 4 人攤位合照，且能辨識 OpenCulture Foundation；Gemini 明顯寫成另一張大合照。GPT 額外提出 `會場攤位`、`攤位曝光`、`品牌露出`，可作候選但需人工確認是否為贊助脈絡；Claude 較保守，只給一般活動回顧。
+- `54847451413` 單人低頭操作物件：GPT / Claude 都判 1 人，Claude 給 `工作人員`；Gemini 寫成講者在白板前對聽眾發言並估 5 人，是錯圖或強烈幻覺。
+- `54476968062` 紀念吊飾物件照：GPT / Claude 都判 0 人物件照；Gemini 寫成攤位排隊領物並估 4 人。這張也顯示 review 的「0 人但 reason 提人物」警訊不一定代表 GPT / Claude 值錯，而是工具對「沒有出現人臉或人體」這類 reason 文字仍會保守提示。
+- `54478007919` 桌面文宣與掛繩：GPT / Claude 都判 0 人物件照並提出贊助相關候選；Claude 的 `visual_description` 對可見文字最完整。Gemini 寫成 T-shirt 整理攤位，和圖片內容不符。
+- `54476973647` 背板前自拍：GPT / Claude 都抓到背板與自拍；Gemini 寫成導覽人員向群眾解說，場景不符。
+- `54478096543` 導覽說明：三者都判為人物場景，但 Gemini 寫成 20 多人在捷運驗票閘門前合照，和實際持麥克風導覽不符。GPT / Claude 都能抓到「我是導遊」紙牌與小旗。
+- `52366000893` 錄音室螢幕空景：GPT / Claude 都判 0 人、`screen`、`錄音` / `螢幕`；Gemini 寫成三人圍坐錄音，和畫面不符。
+- `53897968092` 頒獎合影：GPT / Claude 都標 `頒獎`、`合照` 並判 4 人；Gemini 寫成 5 人圍桌討論，錯圖。
+- `54476983947` 走廊飲料與指標：GPT 判為茶點，Claude 判為物件 / 場佈 / 指標；兩者都有可審核依據。Gemini 寫成享用咖啡廳點心，細節偏泛且人數偏低。
+- `54847512125` 披薩茶點：GPT / Claude 都判 `food` 與 `茶點`；Gemini 寫成會議室座位空景，和圖片內容不符。
+- `55250302941` 地板場佈：GPT / Claude 都判 3 人、`場佈` / `工作人員`；Gemini 寫成女性手持文宣微笑站立，和圖片內容不符。
+- `54477810096` 藍牆前人物互動：GPT / Claude 都判 2 人、偏社群 / 青春感；Gemini 寫成帆布袋特寫並標贊助，風險較高。
+
+抽查也顯示 GPT / Claude 不是沒有爭議：`55199363642` 中 Claude 把橫式舞台照標成 `portrait`；`55200504889` 中 GPT / Claude 都描述舞台與螢幕，但人數估計為 22 與 12；`54476983947` 的飲料長桌可被 GPT 判為 `food`，也可被 Claude 判為 `object` / `場佈`；`54978186735` 的綠色 SITCON 旗幟在 GPT / Claude 間也落在 `text_signage` 與 `object` 邊界。這些爭議代表 Claude 較可審核不等於所有欄位最準，GPT 高召回也不等於可直接採用。
+
+抽查結論是：Claude 的描述與欄位較保守，較適合作為文字描述初稿；GPT 的欄位較完整，適合產生更多候選，但 `recommended_uses`、`safe_crop`、贊助相關欄位需抽查；Gemini 雖然整體 validate 通過，但這個 attempt 有多張代表照片出現錯圖級描述，不應未修補回寫。
+
+### 平行化成效
+
+這輪把「模型能力」和「agent 平台平行能力」分開看會比較準確。
+
+牆鐘時間可以拆成幾個部分：平台併發與排隊、worker 冷啟動、每張圖片判讀、merge / validate / review、以及修補返工。這輪沒有完整 per-shard start/end log，因此不能把總耗時當成模型推論速度。
+
+Claude Code 在本次平台與 15 agent 條件下展現最好的平行槽位利用：15 個 agent 單次 spawn，43 張每個 agent 2 到 3 張，無 shard 失敗，總牆鐘約 6 分鐘。本輪顯示小批量照片若 agent 環境允許高併發，可以把人工等待時間壓到數分鐘級；但這仍是單次執行觀察，不是可泛化 benchmark。
+
+Gemini CLI 能同時啟動 10 個 sub-agent，但第一次合併後需要修補 `visual_description` reason 或抽象描述問題，總牆鐘約 10 分鐘。這代表平行化本身可行，但返工成本會吃掉一部分速度收益。更重要的是，validate 通過後仍可能有錯圖級內容，因此不能只用平行完成速度判斷品質。
+
+Codex / GPT 5.5 medium 在本次環境中實際 thread 上限為 6。嘗試一次開 11 個 worker 時，後 5 個被 thread limit 擋下，最後採用「完成一個補一個」跑完 11 shard，總耗時 25m 35s。這個結果不能單純解讀為模型較慢；它混合了平台併發限制、worker 冷啟動、等待補位、合併修補與 review 的互動成本。優點是過程可控，且最終 proposal 與正式 review artifacts 都在 run 目錄內完整產生。
+
+對 43 張這種小批次，過度切碎會讓每個 worker 重讀 schema、taxonomy、contract 與 prompt，token 成本和啟動 overhead 變高。Claude 15 shard 在該平台仍有速度優勢，但這不一定能外推到所有 agent 環境；Codex 目前更適合 6 worker 左右的穩定隊列。若照片量放大到 200 張以上，10 到 15 張 / shard 可以作為初始策略，再依 shard duration、修補率與錯圖抽查率調整；本輪不足以推導固定最佳粒度。
+
 ### 本輪採用建議
 
-- 不建議任何一輪直接全量寫回 Sheets。
-- 若要挑一輪作為人工抽查基底，優先 Claude，因為描述與 reason 最有資訊量，且有 confidence。
-- 若只需要快速 baseline 或測試流程速度，可用 GPT，但不應期待它補足長尾搜尋細節。
-- Gemini 本輪先作為負面/風險案例保存，重點不是「完全不可用」，而是要記錄 repetition loop、無 confidence、orientation reason 模板化與人數矛盾。
-- 下一步應抽查比較報表中的 10 到 15 張跨活動代表照片，特別看：人數為 0 的矛盾照片、合作攤位贊助欄位、網站橫幅留白、food/object 主體、以及 `subject_type = text_signage` / `screen` 的邊界。
+- 不建議直接把三者任何一份全量寫回 Sheets。
+- 若目標是挑人工修剪起點，Claude 較適合作為 `visual_description` 文字初稿；但 optional 欄位需用 GPT 補召回，且 Claude 仍要逐張檢查 orientation、people_count 與 public-use 風險。
+- 若目標是取得更高召回的候選欄位，可把 GPT 當補充來源，特別是 `public_use_status`、`recommended_uses`、`safe_crop` 與 sponsorship 候選；但這些欄位不應無抽查回寫。
+- Gemini 這個 r2 parallel attempt 應視為「平行化可行但輸出對齊風險高」的案例。validate 通過只能證明格式與基本合約成立，不能保證逐張圖像對齊正確；未來若要再評估 Gemini，應保留更完整的 shard log 與隨機抽查樣本。
+- 後續工具若要支援多模型比較，應把三類資訊一起呈現：平行化執行紀錄、review summary 統計、代表抽查照片。單看 planned updates、review notes 數或耗時都會誤導。
+- 若要把這類比較升級成品質排名，下一步需要人工 gold label，或至少採用 random sample 加 failure-focused sample 的雙軌抽查，並分欄位估算錯圖率、false positive 與 confidence calibration。
 
 ## 目前已知容易失準的欄位
 
