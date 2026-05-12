@@ -274,16 +274,38 @@ export function sortPhotos(items, { sortMode = "recommended", task = {}, discove
   });
 }
 
+export function prioritizeSelectedPhotos(items, selectedPhotoIds = []) {
+  const selectedOrder = new Map([...selectedPhotoIds].map((photoId, index) => [String(photoId), index]));
+  if (selectedOrder.size === 0) {
+    return items;
+  }
+  return [...items].sort((left, right) => {
+    const leftOrder = selectedOrder.get(String(left.photo_id));
+    const rightOrder = selectedOrder.get(String(right.photo_id));
+    if (leftOrder === undefined && rightOrder === undefined) {
+      return 0;
+    }
+    if (leftOrder === undefined) {
+      return 1;
+    }
+    if (rightOrder === undefined) {
+      return -1;
+    }
+    return leftOrder - rightOrder;
+  });
+}
+
 export function filterAndSortPhotos(
   photos,
-  { filters = {}, sortMode = "recommended", task = {}, discoverHistorySize = 12, discoverWindowSize = 24 } = {},
+  { filters = {}, sortMode = "recommended", task = {}, discoverHistorySize = 12, discoverWindowSize = 24, selectedPhotoIds = [] } = {},
 ) {
-  return sortPhotos(photos.filter((photo) => matchesFilters(photo, filters)), {
+  const sorted = sortPhotos(photos.filter((photo) => matchesFilters(photo, filters)), {
     sortMode,
     task,
     discoverHistorySize,
     discoverWindowSize,
   });
+  return prioritizeSelectedPhotos(sorted, selectedPhotoIds);
 }
 
 export function uniqueSearchTokens(fieldName, value, optionLabels = new Map(), searchAliases = {}) {

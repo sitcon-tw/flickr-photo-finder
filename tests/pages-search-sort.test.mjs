@@ -10,6 +10,7 @@ import {
   buildSearchText,
   filterAndSortPhotos,
   photoScore,
+  prioritizeSelectedPhotos,
   sortForDiscovery,
   sortPhotos,
   uniqueSearchTokens,
@@ -112,6 +113,31 @@ describe("Pages search/sort pure logic", () => {
     const results = sortPhotos([generic, taskMatch], { task: socialTask });
 
     assert.equal(results[0].photo_id, "task-match");
+  });
+
+  it("promotes selected photos in selected URL order after sorting", () => {
+    const firstSelected = withSearchText(photo({ photo_id: "selected-1", priority_level: "low" }));
+    const secondSelected = withSearchText(photo({ photo_id: "selected-2", priority_level: "low" }));
+    const strongerMatch = withSearchText(photo({ photo_id: "stronger", priority_level: "high" }));
+    const results = filterAndSortPhotos([strongerMatch, secondSelected, firstSelected], {
+      task: socialTask,
+      selectedPhotoIds: ["selected-1", "selected-2"],
+    });
+
+    assert.deepEqual(
+      results.map((item) => item.photo_id),
+      ["selected-1", "selected-2", "stronger"],
+    );
+  });
+
+  it("keeps selected prioritization stable for non-selected photos", () => {
+    const items = [photo({ photo_id: "a" }), photo({ photo_id: "b" }), photo({ photo_id: "c" })];
+    const results = prioritizeSelectedPhotos(items, ["c"]);
+
+    assert.deepEqual(
+      results.map((item) => item.photo_id),
+      ["c", "a", "b"],
+    );
   });
 
   it("spreads discovery results across event and collection sources", () => {

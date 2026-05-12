@@ -66,6 +66,7 @@ let searchTokensForField = () => [];
 const state = {
   taskMode: "all",
   selectedPhotoIds: new Set(),
+  promotedPhotoIds: new Set(),
   lastTrackedZeroState: "",
 };
 
@@ -183,6 +184,7 @@ function filteredAndSortedPhotos() {
     task: activeTask(),
     discoverHistorySize,
     discoverWindowSize,
+    selectedPhotoIds: state.promotedPhotoIds,
   });
 }
 
@@ -218,12 +220,13 @@ function renderPhoto(photo, resultRank, resultCount) {
 function toggleCandidate(photoId) {
   if (state.selectedPhotoIds.has(photoId)) {
     state.selectedPhotoIds.delete(photoId);
+    state.promotedPhotoIds.delete(photoId);
     trackEvent("remove_candidate", { photo_id: photoId, task_mode: state.taskMode, sort_mode: controls.sort.value });
   } else {
     state.selectedPhotoIds.add(photoId);
     trackEvent("add_candidate", { photo_id: photoId, task_mode: state.taskMode, sort_mode: controls.sort.value });
   }
-  render({ preservePage: true, source: "candidate" });
+  render({ preservePage: true, preserveScroll: true, source: "candidate" });
 }
 
 async function copyCandidateList() {
@@ -253,7 +256,8 @@ async function copyCandidateList() {
 
 function clearCandidates() {
   state.selectedPhotoIds.clear();
-  render({ preservePage: true, source: "candidate" });
+  state.promotedPhotoIds.clear();
+  render({ preservePage: true, preserveScroll: true, source: "candidate" });
 }
 
 function currentAiAssistantPrompt() {
@@ -301,7 +305,14 @@ function clearFilter(key) {
   render({ resetPage: true, source: "filter" });
 }
 
-function render({ resetPage = false, preservePage = false, source = "" } = {}) {
+function render({ resetPage = false, preservePage = false, preserveScroll = false, source = "" } = {}) {
+  const scrollX = window.scrollX;
+  const scrollY = window.scrollY;
+  const restoreScroll = () => {
+    if (preserveScroll) {
+      window.requestAnimationFrame(() => window.scrollTo(scrollX, scrollY));
+    }
+  };
   const filtered = filteredAndSortedPhotos();
   currentResults = filtered;
   if (resetPage || (!preservePage && visibleCount <= 0)) {
@@ -327,6 +338,7 @@ function render({ resetPage = false, preservePage = false, source = "" } = {}) {
   if (photos.length === 0) {
     renderEmpty(elements.grid, "目前資料來源沒有照片資料");
     updateLoadMore({ elements, visibleCount, filtered });
+    restoreScroll();
     return;
   }
 
@@ -335,6 +347,7 @@ function render({ resetPage = false, preservePage = false, source = "" } = {}) {
     updateLoadMore({ elements, visibleCount, filtered });
     maybeTrackZeroResults();
     syncUrlState();
+    restoreScroll();
     return;
   }
 
@@ -349,6 +362,8 @@ function render({ resetPage = false, preservePage = false, source = "" } = {}) {
   if (source) {
     scheduleResultsTracking(source);
   }
+
+  restoreScroll();
 }
 
 function maybeTrackZeroResults() {
@@ -443,6 +458,7 @@ function applyUrlState() {
   setControlValue(controls.collection, urlState.collection);
   for (const photoId of urlState.selectedPhotoIds) {
     state.selectedPhotoIds.add(photoId);
+    state.promotedPhotoIds.add(photoId);
   }
   syncEnhancedSelects();
 }
