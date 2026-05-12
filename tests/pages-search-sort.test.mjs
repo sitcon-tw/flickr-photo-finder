@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { buildAiAssistantPrompt } from "../app/ai-assistant.js";
+import { candidateMarkdown, selectedPhotos } from "../app/candidates.js";
 import {
   buildSearchText,
   filterAndSortPhotos,
@@ -190,5 +191,23 @@ describe("Pages search/sort pure logic", () => {
       collection: "",
       selectedPhotoIds: ["100", "200"],
     });
+  });
+
+  it("builds candidate markdown from selected photos", () => {
+    const items = [
+      photo({ photo_id: "100", event_name: "SITCON 2026", public_use_status: "needs_review" }),
+      photo({ photo_id: "200", event_name: "SITCON 2025" }),
+    ];
+    const selected = selectedPhotos(new Set(["200"]), items);
+    const markdown = candidateMarkdown(selected[0], {
+      photoTitle: (item) => item.event_name,
+      finderLink: (item) => `https://finder.test/#photo-${item.photo_id}`,
+      sheetRowLink: () => "https://sheet.test/",
+      labelFor: (_field, value) => value,
+    });
+
+    assert.equal(selected.length, 1);
+    assert.match(markdown, /SITCON 2025/);
+    assert.match(markdown, /Finder: https:\/\/finder\.test\/#photo-200/);
   });
 });

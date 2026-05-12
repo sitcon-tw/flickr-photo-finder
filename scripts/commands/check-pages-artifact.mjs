@@ -109,6 +109,7 @@ async function main() {
     "assets/og-image.png",
     "ai-assistant.js",
     "analytics.js",
+    "candidates.js",
     "config.js",
     "config/project.json",
     "data-utils.js",
@@ -154,6 +155,7 @@ async function main() {
   await assertPngDimensions(join(options.artifactDir, "assets/og-image.png"), 1200, 630);
   await assertIncludes(join(options.artifactDir, "main.js"), "./ai-assistant.js", "ai-assistant.js");
   await assertIncludes(join(options.artifactDir, "main.js"), "./analytics.js", "analytics.js");
+  await assertIncludes(join(options.artifactDir, "main.js"), "./candidates.js", "candidates.js");
   await assertIncludes(join(options.artifactDir, "main.js"), "./data-utils.js", "data-utils.js");
   await assertIncludes(join(options.artifactDir, "main.js"), "./search-sort.js", "search-sort.js");
   await assertIncludes(join(options.artifactDir, "main.js"), "./task-modes.js", "task-modes.js");

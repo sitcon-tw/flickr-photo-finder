@@ -9,6 +9,7 @@ import {
   trackEvent,
 } from "./analytics.js";
 import { aiAssistantEventParams, buildAiAssistantPrompt } from "./ai-assistant.js";
+import { candidateMarkdown, renderCandidates, selectedPhotos } from "./candidates.js";
 import { dataSources, projectConfigUrl } from "./config.js";
 import { parseCsv, parseList } from "./data-utils.js";
 import {
@@ -1250,81 +1251,6 @@ function renderPhoto(photo, resultRank, resultCount) {
   return card;
 }
 
-function selectedPhotos() {
-  return [...state.selectedPhotoIds]
-    .map((photoId) => photos.find((photo) => photo.photo_id === photoId))
-    .filter(Boolean);
-}
-
-function candidateMarkdown(photo) {
-  const publicStatus = photo.public_use_status ? labelFor("public_use_status", photo.public_use_status) : "未填";
-  const curationStatus = photo.curation_status ? labelFor("curation_status", photo.curation_status) : "未填";
-  const rowLink = sheetRowLink(photo) || "未設定";
-
-  return `- ${photoTitle(photo)} (${photo.photo_id})
-  - Finder: ${finderLink(photo)}
-  - Sheets: ${rowLink}
-  - Flickr: ${photo.photo_url}
-  - 縮圖: ${photo.image_preview_url || "未填"}
-  - 整理: ${curationStatus}
-  - 使用提醒: ${publicStatus}`;
-}
-
-function renderCandidates() {
-  const candidates = selectedPhotos();
-  elements.candidateSummary.textContent = `${candidates.length} 張候選`;
-  controls.copyCandidates.disabled = candidates.length === 0;
-  controls.clearCandidates.disabled = candidates.length === 0;
-  elements.candidateList.replaceChildren();
-
-  if (candidates.length === 0) {
-    const empty = document.createElement("p");
-    empty.className = "candidate-empty";
-    empty.textContent = "尚無候選照片";
-    elements.candidateList.append(empty);
-    return;
-  }
-
-  for (const photo of candidates) {
-    const item = document.createElement("article");
-    item.className = "candidate-item";
-    const thumbnail = document.createElement("a");
-    thumbnail.className = "candidate-thumb";
-    thumbnail.href = finderLink(photo);
-    if (photo.image_preview_url) {
-      const image = document.createElement("img");
-      image.src = photo.image_preview_url;
-      image.alt = photoTitle(photo);
-      image.loading = "lazy";
-      image.decoding = "async";
-      thumbnail.append(image);
-    } else {
-      thumbnail.textContent = photo.photo_id;
-    }
-    const body = document.createElement("div");
-    body.className = "candidate-body";
-    const title = document.createElement("a");
-    title.href = finderLink(photo);
-    title.textContent = photoTitle(photo);
-    const meta = document.createElement("p");
-    meta.textContent = [
-      photo.event_year,
-      photo.curation_status ? labelFor("curation_status", photo.curation_status) : "整理未填",
-      photo.public_use_status ? labelFor("public_use_status", photo.public_use_status) : "",
-      photo.recommended_uses.slice(0, 2).join("、"),
-    ]
-      .filter(Boolean)
-      .join(" / ");
-    body.append(title, meta);
-    const remove = document.createElement("button");
-    remove.type = "button";
-    remove.textContent = "移除";
-    remove.addEventListener("click", () => toggleCandidate(photo.photo_id));
-    item.append(thumbnail, body, remove);
-    elements.candidateList.append(item);
-  }
-}
-
 function toggleCandidate(photoId) {
   if (state.selectedPhotoIds.has(photoId)) {
     state.selectedPhotoIds.delete(photoId);
@@ -1337,7 +1263,9 @@ function toggleCandidate(photoId) {
 }
 
 async function copyCandidateList() {
-  const text = selectedPhotos().map(candidateMarkdown).join("\n\n");
+  const text = selectedPhotos(state.selectedPhotoIds, photos)
+    .map((photo) => candidateMarkdown(photo, { photoTitle, finderLink, sheetRowLink, labelFor }))
+    .join("\n\n");
   if (!text) {
     return;
   }
@@ -1525,7 +1453,16 @@ function render({ resetPage = false, preservePage = false, source = "" } = {}) {
 
   updateTaskButtons();
   renderActiveFilters();
-  renderCandidates();
+  renderCandidates({
+    selectedPhotoIds: state.selectedPhotoIds,
+    photos,
+    elements,
+    controls,
+    photoTitle,
+    finderLink,
+    labelFor,
+    toggleCandidate,
+  });
   elements.grid.replaceChildren();
   elements.summary.textContent = `${filtered.length} / ${photos.length} 張照片`;
   elements.context.textContent = resultContextText(filtered);
