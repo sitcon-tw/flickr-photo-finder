@@ -765,13 +765,31 @@ select {
   border-radius: 8px;
   background: var(--panel);
   box-shadow: var(--shadow);
+  transition:
+    border-color 140ms ease,
+    box-shadow 140ms ease,
+    transform 140ms ease;
+}
+
+.photo-card:hover,
+.photo-card:focus-within {
+  border-color: var(--line-strong);
+  box-shadow: 0 8px 22px rgb(15 23 42 / 12%);
+}
+
+.photo-card:focus-within {
+  box-shadow:
+    0 8px 22px rgb(15 23 42 / 12%),
+    var(--focus);
 }
 
 .photo-link {
   position: relative;
   display: block;
   aspect-ratio: 4 / 3;
+  overflow: hidden;
   background: #e9eef3;
+  color: #fff;
 }
 
 .photo-link img {
@@ -779,6 +797,48 @@ select {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  transition: transform 180ms ease;
+}
+
+.photo-link::after {
+  position: absolute;
+  inset: auto 0 0;
+  height: 42%;
+  background: linear-gradient(to top, rgb(15 23 42 / 58%), rgb(15 23 42 / 0%));
+  content: "";
+  pointer-events: none;
+}
+
+.photo-link-hint {
+  position: absolute;
+  z-index: 1;
+  right: 10px;
+  bottom: 10px;
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  max-width: calc(100% - 20px);
+  padding: 0 9px;
+  border: 1px solid rgb(255 255 255 / 68%);
+  border-radius: 6px;
+  background: rgb(15 23 42 / 74%);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+}
+
+.photo-link:hover img,
+.photo-link:focus-visible img {
+  transform: scale(1.025);
+}
+
+.photo-link:hover .photo-link-hint,
+.photo-link:focus-visible .photo-link-hint {
+  background: var(--accent-strong);
+  border-color: #fff;
 }
 
 .photo-body {

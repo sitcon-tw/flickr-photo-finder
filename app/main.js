@@ -1353,6 +1353,18 @@ function trackImageSizeDownload(photo, imageSize, resultRank, resultCount) {
   });
 }
 
+function trackOpenFlickr(photo, resultRank, resultCount) {
+  trackEvent("select_content", {
+    content_type: "photo",
+    content_id: photo.photo_id,
+    ...photoEventParams(photo, resultRank, resultCount),
+  });
+  trackEvent("open_flickr_source", {
+    photo_id: photo.photo_id,
+    ...photoEventParams(photo, resultRank, resultCount),
+  });
+}
+
 function statusBadges(photo) {
   const badges = [];
   if (photo.public_use_status === "avoid") {
@@ -1489,17 +1501,16 @@ function renderPhoto(photo, resultRank, resultCount) {
   const selected = state.selectedPhotoIds.has(photo.photo_id);
 
   card.id = photoAnchorId(photo.photo_id);
-  link.href = photo.photo_url;
-  link.addEventListener("click", () => {
-    trackEvent("select_content", {
-      content_type: "photo",
-      content_id: photo.photo_id,
-      ...photoEventParams(photo, resultRank, resultCount),
-    });
-    trackEvent("open_flickr_source", {
-      photo_id: photo.photo_id,
-      ...photoEventParams(photo, resultRank, resultCount),
-    });
+  const openFlickrLabel = `開啟 Flickr 原頁：${photoTitle(photo)}`;
+  setActionLink(link, photo.photo_url);
+  link.setAttribute("aria-label", openFlickrLabel);
+  link.title = openFlickrLabel;
+  link.addEventListener("click", (event) => {
+    if (!photo.photo_url) {
+      event.preventDefault();
+      return;
+    }
+    trackOpenFlickr(photo, resultRank, resultCount);
   });
 
   image.src = photo.image_preview_url;
@@ -1538,11 +1549,14 @@ function renderPhoto(photo, resultRank, resultCount) {
   appendDetail(details, "備註", photo.curation_notes);
 
   candidateButton.textContent = selected ? "移出候選" : "加入候選";
+  candidateButton.title = selected ? "從候選清單移出這張照片" : "加入候選清單";
+  candidateButton.setAttribute("aria-pressed", selected ? "true" : "false");
   candidateButton.classList.toggle("is-selected", selected);
   candidateButton.addEventListener("click", () => {
     toggleCandidate(photo.photo_id);
   });
 
+  downloadLargeButton.title = "直接下載 Flickr large-1024 圖片";
   setActionButton(downloadLargeButton, Boolean(largeUrl));
   downloadLargeButton.addEventListener("click", async () => {
     if (!largeUrl) {
@@ -1565,6 +1579,7 @@ function renderPhoto(photo, resultRank, resultCount) {
     }
   });
   setActionLink(originalImageLink, originalUrl);
+  originalImageLink.title = "開啟 Flickr 原始尺寸頁";
   originalImageLink.addEventListener("click", (event) => {
     if (!originalUrl) {
       event.preventDefault();
@@ -1573,8 +1588,10 @@ function renderPhoto(photo, resultRank, resultCount) {
     trackImageSizeOpen(photo, "original", resultRank, resultCount);
   });
   setActionLink(sheetRowLinkElement, sheetRowLink(photo));
+  sheetRowLinkElement.title = "開啟 Google Sheets 中的這一列";
 
   copyFlickrLinkButton.disabled = !photo.photo_url;
+  copyFlickrLinkButton.title = "複製 Flickr 原始照片頁連結";
   copyFlickrLinkButton.addEventListener("click", async () => {
     try {
       const copied = await copyUrlToClipboard(photo.photo_url, copyFlickrLinkButton);
@@ -1589,6 +1606,7 @@ function renderPhoto(photo, resultRank, resultCount) {
     }
   });
 
+  copyFinderLinkButton.title = "複製 Finder 中這張照片的 deep link";
   copyFinderLinkButton.addEventListener("click", async () => {
     try {
       const copied = await copyUrlToClipboard(finderLink(photo), copyFinderLinkButton);
