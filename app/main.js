@@ -8,6 +8,7 @@ import {
   setupAnalytics,
   trackEvent,
 } from "./analytics.js";
+import { aiAssistantEventParams, buildAiAssistantPrompt } from "./ai-assistant.js";
 import { dataSources, projectConfigUrl } from "./config.js";
 import { parseCsv, parseList } from "./data-utils.js";
 import {
@@ -1363,47 +1364,21 @@ function selectedOptionText(select) {
   return select.selectedOptions[0]?.textContent ?? select.value;
 }
 
-function aiAssistantHasFilters() {
-  return activeFilterEntries().some(([key]) => key !== "task" && key !== "search");
-}
-
-function aiAssistantEventParams() {
-  return {
-    task_mode: state.taskMode,
-    has_search_term: Boolean(sanitizeSearchTerm(controls.search.value)),
-    has_filters: aiAssistantHasFilters(),
-  };
-}
-
 function currentAiAssistantPrompt() {
-  const sheetUrl = photosSheetUrl() || "請貼上正式 Google Sheets 連結";
-  const searchTerm = sanitizeSearchTerm(controls.search.value);
-  const filterText = activeFilterEntries()
-    .filter(([key]) => key !== "task" && key !== "search")
-    .map(([, label, value]) => `${label}: ${value}`)
-    .join("；");
-  const needText = searchTerm || "請在這裡描述想找的畫面、用途、比例、情緒或限制。";
+  return buildAiAssistantPrompt({
+    sheetUrl: photosSheetUrl(),
+    taskLabel: activeTask().label,
+    searchValue: controls.search.value,
+    filterEntries: activeFilterEntries(),
+  });
+}
 
-  return `請讀取這份 Google Sheets 的 photos 工作表：
-${sheetUrl}
-
-協助我找 SITCON Flickr 照片。
-任務情境：${activeTask().label}
-我的需求：${needText}
-目前已知條件：${filterText || "無，請先用自然語言探索。"}
-
-如果你無法直接讀取 Google Sheets，請先告訴我，並請我提供 photos CSV。
-
-請不要只找 reviewed 照片；ai_labeled 和 unreviewed 也可以列為候選，但請標示整理狀態。public_use_status 是整理提醒，不是 Flickr 是否公開；avoid 預設不要推薦。
-
-每個候選請提供：
-- photo_id
-- photo_url
-- 為什麼符合需求
-- curation_status
-- public_use_status
-
-請不要自行推測缺少的攝影師、授權、活動身份或照片外脈絡。`;
+function currentAiAssistantEventParams() {
+  return aiAssistantEventParams({
+    taskMode: state.taskMode,
+    searchValue: controls.search.value,
+    filterEntries: activeFilterEntries(),
+  });
 }
 
 async function copyAiAssistantPrompt() {
@@ -1411,7 +1386,7 @@ async function copyAiAssistantPrompt() {
     const copied = await copyTextToClipboard(currentAiAssistantPrompt());
     if (copied) {
       setTemporaryButtonText(controls.copyAiAssistantPrompt, "已複製");
-      trackEvent("copy_ai_assistant_prompt", aiAssistantEventParams());
+      trackEvent("copy_ai_assistant_prompt", currentAiAssistantEventParams());
     }
   } catch {
     setTemporaryButtonText(controls.copyAiAssistantPrompt, "複製失敗");
@@ -1788,7 +1763,7 @@ controls.copyCandidates.addEventListener("click", copyCandidateList);
 controls.clearCandidates.addEventListener("click", clearCandidates);
 controls.copyAiAssistantPrompt.addEventListener("click", copyAiAssistantPrompt);
 elements.aiAssistantSheetLink.addEventListener("click", () => {
-  trackEvent("open_sheets_for_ai_assistant", aiAssistantEventParams());
+  trackEvent("open_sheets_for_ai_assistant", currentAiAssistantEventParams());
 });
 window.addEventListener("hashchange", revealPhotoFromHash);
 

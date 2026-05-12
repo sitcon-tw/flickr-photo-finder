@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { buildAiAssistantPrompt } from "../app/ai-assistant.js";
 import {
   buildSearchText,
   filterAndSortPhotos,
@@ -136,5 +137,22 @@ describe("Pages search/sort pure logic", () => {
       results.map((result) => result.photo_id),
       ["space"],
     );
+  });
+
+  it("builds AI assistant prompts from explicit finder state", () => {
+    const prompt = buildAiAssistantPrompt({
+      sheetUrl: "https://docs.google.com/spreadsheets/d/example/edit",
+      taskLabel: "網站橫幅",
+      searchValue: "有留白的講者",
+      filterEntries: [
+        ["task", "任務", "網站橫幅"],
+        ["orientation", "方向", "橫式"],
+      ],
+    });
+
+    assert.match(prompt, /網站橫幅/);
+    assert.match(prompt, /有留白的講者/);
+    assert.match(prompt, /方向: 橫式/);
+    assert.match(prompt, /不要自行推測/);
   });
 });
