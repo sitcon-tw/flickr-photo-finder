@@ -25,8 +25,12 @@ const distributionFields = [
 
 const peopleSceneValues = new Set(["講者", "會眾", "工作人員", "合照", "交流", "攝影"]);
 const peopleReasonPattern = /人|會眾|講者|合照|志工|參與者|工作人員/;
-const noPeopleReasonPattern = /沒有人|無人|未見.*(?:人物|人影|真人)|未看到.*(?:人物|人影|真人)|沒有可辨識人物|沒有可見人物|沒有可辨識的人|沒有人物|無可辨識人物|沒有.*人物|無.*人物|不可辨識.*(?:人物|人影)|(?:人形|人物|角色).*(?:插圖|圖案|標誌|海報|看板|螢幕)|(?:插圖|圖案|標誌|海報|看板|螢幕).*(?:人形|人物|角色)/;
+const noPeopleReasonPattern = /沒有人|無人|沒有任何人|未見.*(?:人物|人影|真人|人臉|人體)|未看到.*(?:人物|人影|真人|人臉|人體)|沒有(?:出現)?(?:可辨識)?(?:的)?(?:人物|人影|真人|人臉|人體)|沒有.*(?:人物|人影|真人|人臉|人體)|無(?:可辨識)?(?:的)?(?:人物|人影|真人|人臉|人體)|不可辨識.*(?:人物|人影|真人)|未計入真人|非真人|(?:人形|人物|角色).*(?:插圖|圖案|標誌|海報|看板|螢幕|包裝|文宣)|(?:插圖|圖案|標誌|海報|看板|螢幕|包裝|文宣).*(?:人形|人物|角色)/;
+const publicUseRiskPattern = /兒童|小朋友|孩童|清晰.*(?:臉|面部)|清楚.*(?:臉|面部)|名牌|姓名|全名|聯絡資訊|email|e-mail|電話|QR\s*code|QR碼|QRCode|識別證|證件|工作證|胸牌/i;
 const concentrationThreshold = 0.9;
+const smallRunMinimumItems = 20;
+const smallRunMaximumItems = 60;
+const smallRunConcentrationThreshold = 0.8;
 const genericUseThresholds = new Map([
   ["活動回顧", 0.45],
   ["社群貼文", 0.5],
@@ -49,6 +53,7 @@ const highSceneDensityThreshold = 2.5;
 const runTagConcentrationThreshold = 0.4;
 const scopeTagConcentrationThreshold = 0.8;
 const reviewFocusMaxRows = 25;
+const balancedSampleMaxRows = 40;
 const asciiWordPattern = /[A-Za-z][A-Za-z0-9'_-]{2,}(?:\s+[A-Za-z][A-Za-z0-9'_-]{2,}){4,}/;
 
 function printUsage() {
@@ -320,6 +325,27 @@ function confidenceStats(items) {
   };
 }
 
+function confidenceByFieldRows(items) {
+  const fields = fieldCounts(items).map(({ field }) => field);
+  return fields.map((field) => {
+    const proposals = items.map((item) => item.fields[field]).filter(Boolean);
+    const confidences = proposals
+      .map((proposal) => proposal.confidence)
+      .filter((value) => typeof value === "number");
+    const average = confidences.length > 0
+      ? confidences.reduce((sum, value) => sum + value, 0) / confidences.length
+      : 0;
+    return [
+      fieldLabel(field, { includeRaw: true }),
+      proposals.length,
+      confidences.length,
+      proposals.length > 0 ? formatPercent(confidences.length / proposals.length) : "0%",
+      confidences.length > 0 ? average.toFixed(2) : "",
+      confidences.filter((value) => value === 1).length,
+    ];
+  });
+}
+
 function mostCommonValue(items, field) {
   const counts = countValues(items.flatMap((item) => valuesForField(item, field)));
   return counts[0] ?? { count: 0, value: "" };
@@ -355,6 +381,16 @@ function proposalHumanText(proposal) {
 
 function photoIdList(items) {
   return items.map((item) => item.photo_id).join(", ");
+}
+
+function stableRank(seed, photoId) {
+  return createHash("sha256").update(`${seed}\0${photoId}`).digest("hex");
+}
+
+function stableSample(items, count, seed) {
+  return [...items]
+    .sort((left, right) => stableRank(seed, left.photo_id).localeCompare(stableRank(seed, right.photo_id)))
+    .slice(0, count);
 }
 
 async function readShardInputsFromDir(inputDir) {
@@ -436,6 +472,20 @@ function proposalValue(item, field) {
   return item.fields[field]?.value ?? "";
 }
 
+function firstExistingField(item, fields) {
+  return fields.find((field) => item.fields[field]) ?? Object.keys(item.fields)[0] ?? "";
+}
+
+function publicUseRiskItems(items) {
+  return items.filter((item) => {
+    if (["needs_review", "avoid"].includes(item.fields.public_use_status?.value)) {
+      return false;
+    }
+    const hasChildScene = valuesForField(item, "scene_tags").includes("兒童");
+    return hasChildScene || publicUseRiskPattern.test(allHumanText(item));
+  });
+}
+
 function pushFocusRows(rows, seen, issue, items, field, maxRows = 8) {
   for (const item of items.slice(0, maxRows)) {
     const key = `${issue}\0${item.photo_id}\0${field}`;
@@ -451,6 +501,30 @@ function pushFocusRows(rows, seen, issue, items, field, maxRows = 8) {
       proposalReason(item, field),
     ]);
     if (rows.length >= reviewFocusMaxRows) {
+      return;
+    }
+  }
+}
+
+function pushSampleRows(rows, seen, source, items, preferredFields, maxRows = 8) {
+  for (const item of items.slice(0, maxRows)) {
+    const field = firstExistingField(item, preferredFields);
+    if (!field) {
+      continue;
+    }
+    const key = `${source}\0${item.photo_id}\0${field}`;
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    rows.push([
+      source,
+      item.photo_id,
+      fieldLabel(field, { includeRaw: true }),
+      formatDisplayValue(field, proposalValue(item, field), { includeRaw: true }),
+      proposalReason(item, field),
+    ]);
+    if (rows.length >= balancedSampleMaxRows) {
       return;
     }
   }
@@ -549,6 +623,14 @@ function buildReviewFocusRows(items) {
   const zeroPeopleContradictions = items.filter(isZeroPeopleContradiction);
   pushFocusRows(rows, seen, "people_count = 0 但有人物線索", zeroPeopleContradictions, "people_count");
 
+  pushFocusRows(
+    rows,
+    seen,
+    "可能需要 public_use_status 抽查",
+    publicUseRiskItems(items),
+    "public_use_status",
+  );
+
   const longEnglishTextItems = items.filter((item) => asciiWordPattern.test(allHumanText(item)));
   for (const item of longEnglishTextItems.slice(0, 8)) {
     const field = Object.entries(item.fields).find(([, proposal]) => asciiWordPattern.test(proposalHumanText(proposal)))?.[0]
@@ -560,6 +642,69 @@ function buildReviewFocusRows(items) {
   }
 
   return rows.slice(0, reviewFocusMaxRows);
+}
+
+function buildBalancedSampleRows(items, { focusRows = [], shardMap = new Map() } = {}) {
+  const rows = [];
+  const seen = new Set();
+  const byId = new Map(items.map((item) => [item.photo_id, item]));
+
+  const focusItems = focusRows
+    .map((row) => byId.get(row[1]))
+    .filter(Boolean);
+  pushSampleRows(rows, seen, "review focus", focusItems, ["scene_tags", "people_count", "safe_crop", "recommended_uses", "public_use_status"], 8);
+
+  if (shardMap.size > 0) {
+    const byShard = groupItemsBy(items, (item) => shardMap.get(item.photo_id) || "unknown");
+    for (const [shard, shardItems] of [...byShard.entries()].sort((left, right) => String(left[0]).localeCompare(String(right[0])))) {
+      const perShardCount = shardItems.length >= 20 ? 2 : 1;
+      pushSampleRows(
+        rows,
+        seen,
+        `shard sample: ${shard}`,
+        stableSample(shardItems, perShardCount, `balanced-shard-${shard}`),
+        ["visual_description", "subject_type", "scene_tags"],
+        perShardCount,
+      );
+      if (rows.length >= balancedSampleMaxRows) {
+        return rows;
+      }
+    }
+  }
+
+  const boundaryItems = items.filter((item) => ["food", "object", "screen", "text_signage"].includes(item.fields.subject_type?.value));
+  pushSampleRows(
+    rows,
+    seen,
+    "subject boundary",
+    stableSample(boundaryItems, 8, "balanced-subject-boundary"),
+    ["subject_type", "visual_description", "scene_tags"],
+  );
+
+  const riskItems = items.filter((item) =>
+    item.fields.public_use_status
+    || item.fields.safe_crop
+    || valuesForField(item, "sponsorship_items").length > 0
+    || valuesForField(item, "sponsorship_tags").length > 0
+    || publicUseRiskItems([item]).length > 0,
+  );
+  pushSampleRows(
+    rows,
+    seen,
+    "high-risk optional field",
+    stableSample(riskItems, 10, "balanced-risk-fields"),
+    ["public_use_status", "safe_crop", "sponsorship_items", "sponsorship_tags", "recommended_uses"],
+  );
+
+  pushSampleRows(
+    rows,
+    seen,
+    "deterministic random",
+    stableSample(items, 8, "balanced-random"),
+    ["visual_description", "people_count", "subject_type"],
+  );
+
+  return rows.slice(0, balancedSampleMaxRows);
 }
 
 function buildReviewNotes(items, { sceneQaRows = [] } = {}) {
@@ -583,6 +728,10 @@ function buildReviewNotes(items, { sceneQaRows = [] } = {}) {
   const zeroPeopleContradictions = items.filter(isZeroPeopleContradiction);
   const longEnglishTextItems = items.filter((item) => asciiWordPattern.test(allHumanText(item)));
   const { confidenceCounts, perfectCount, total } = confidenceStats(items);
+  const confidenceRows = confidenceByFieldRows(items);
+  const confidenceCoveredFields = confidenceRows.filter((row) => Number(row[2]) > 0).length;
+  const confidenceTotalFields = confidenceRows.length;
+  const publicRiskItems = publicUseRiskItems(items);
   const sceneCount = items.filter((item) => valuesForField(item, "scene_tags").length > 0).length;
 
   if (priorityCount === itemCount && itemCount > 0) {
@@ -593,6 +742,14 @@ function buildReviewNotes(items, { sceneQaRows = [] } = {}) {
   if (itemCount > 0 && mostCommonSafeCrop.count / itemCount >= concentrationThreshold) {
     notes.push(
       `\`safe_crop\` 的 \`${mostCommonSafeCrop.value}\` 出現在 ${mostCommonSafeCrop.count}/${itemCount} 張照片（${formatPercent(mostCommonSafeCrop.count / itemCount)}），請抽查是否過度套用。`,
+    );
+  } else if (
+    itemCount >= smallRunMinimumItems
+    && itemCount <= smallRunMaximumItems
+    && mostCommonSafeCrop.count / itemCount >= smallRunConcentrationThreshold
+  ) {
+    notes.push(
+      `小批次中 \`safe_crop\` 的 \`${mostCommonSafeCrop.value}\` 出現在 ${mostCommonSafeCrop.count}/${itemCount} 張照片（${formatPercent(mostCommonSafeCrop.count / itemCount)}）；這不一定是錯，但建議抽查是否把常見比例當成預設。`,
     );
   }
 
@@ -674,10 +831,20 @@ function buildReviewNotes(items, { sceneQaRows = [] } = {}) {
       `\`public_use_status = needs_review\` 出現在 ${needsReviewCount}/${itemCount} 張照片（${formatPercent(needsReviewCount / itemCount)}），可能被當成預設填空；請確認每張是否有具體公開使用疑慮。`,
     );
   }
+  if (publicRiskItems.length > 0) {
+    notes.push(
+      `有 ${publicRiskItems.length} 張照片出現兒童、名牌、姓名、QR code、識別證或清晰臉部等公開使用風險線索，但沒有 \`public_use_status = needs_review\` 或 \`avoid\`：${photoIdList(publicRiskItems)}。請人工抽查。`,
+    );
+  }
   if (total === 0) {
     notes.push("所有候選值都未提供 `confidence`；格式允許省略，但不利於人工排序與抽查。");
   } else if (perfectCount / total > 0.25) {
     notes.push("有偏多 `confidence = 1`，人數、用途與情緒欄位仍應人工抽查。");
+  }
+  if (total > 0 && confidenceCoveredFields > 0 && confidenceCoveredFields < confidenceTotalFields) {
+    notes.push(
+      `\`confidence\` 只出現在 ${confidenceCoveredFields}/${confidenceTotalFields} 個有 proposal 的欄位；若模型選擇提供信心分數，應盡量穩定覆蓋同一類欄位，否則不宜直接拿來排序。`,
+    );
   }
   const mostCommonConfidence = confidenceCounts[0];
   if (mostCommonConfidence && total > 0 && mostCommonConfidence.count / total >= concentrationThreshold) {
@@ -722,12 +889,13 @@ function buildPromptVersionNotes(manifest) {
   return [];
 }
 
-function renderSummary({ artifactRows, diffPath, layerRows, manifest, notes, outputDir, plan, proposals, runDir, sample, sceneQaRows, shardRows, summaryPath }) {
+function renderSummary({ artifactRows, diffPath, layerRows, manifest, notes, outputDir, plan, proposals, runDir, sample, sceneQaRows, shardMap, shardRows, summaryPath }) {
   const items = proposals.items;
   const fieldCountRows = fieldCounts(items).map(({ field, count }) => [
     fieldLabel(field, { includeRaw: true }),
     count,
   ]);
+  const confidenceRows = confidenceByFieldRows(items);
   const distributionTableRows = distributionFields.flatMap((field) =>
     distributionRows(items, field).map(([rowField, value, count]) => [
       fieldLabel(rowField, { includeRaw: true }),
@@ -736,6 +904,7 @@ function renderSummary({ artifactRows, diffPath, layerRows, manifest, notes, out
     ]),
   );
   const focusRows = buildReviewFocusRows(items);
+  const balancedSampleRows = buildBalancedSampleRows(items, { focusRows, shardMap });
   const promptTemplate = manifest.prompt_template_path || "unknown";
   const promptHash = manifest.prompt_template_sha256 ? manifest.prompt_template_sha256.slice(0, 12) : "unknown";
   const sampleRows = plan.updates.slice(0, sample).map((update) => [
@@ -775,6 +944,12 @@ function renderSummary({ artifactRows, diffPath, layerRows, manifest, notes, out
       ? table(["issue", "photo_id", "field", "proposed", "reason"], focusRows)
       : "No specific focus rows were generated from review warnings.",
     "",
+    "## Balanced Review Sample",
+    "",
+    balancedSampleRows.length > 0
+      ? table(["source", "photo_id", "field", "proposed", "reason"], balancedSampleRows)
+      : "No balanced review sample rows were generated.",
+    "",
     "## Artifact Provenance",
     "",
     artifactRows.length > 0
@@ -798,6 +973,12 @@ function renderSummary({ artifactRows, diffPath, layerRows, manifest, notes, out
     "## Field Coverage",
     "",
     table(["field", "proposal count"], fieldCountRows),
+    "",
+    "## Confidence By Field",
+    "",
+    confidenceRows.length > 0
+      ? table(["field", "proposal count", "confidence count", "coverage", "average", "confidence = 1"], confidenceRows)
+      : "No fields were proposed.",
     "",
     "## Value Distribution",
     "",
@@ -914,6 +1095,7 @@ async function reviewAiRun(options) {
     runDir: options.runDir,
     sample: options.sample,
     sceneQaRows,
+    shardMap,
     shardRows: shardInspection.rows,
     summaryPath: options.summaryPath,
   });
