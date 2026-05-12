@@ -183,6 +183,7 @@ export async function buildPagesArtifact({
   await copyIntoArtifact("app/data-utils.js", outputDir, "data-utils.js");
   await copyIntoArtifact("app/main.js", outputDir, "main.js");
   await copyIntoArtifact("app/overview-render.js", outputDir, "overview-render.js");
+  await copyIntoArtifact("app/photo-render.js", outputDir, "photo-render.js");
   await copyIntoArtifact("app/search-sort.js", outputDir, "search-sort.js");
   await copyIntoArtifact("app/task-modes.js", outputDir, "task-modes.js");
   await copyIntoArtifact("app/url-state.js", outputDir, "url-state.js");

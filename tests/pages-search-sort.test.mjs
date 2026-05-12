@@ -4,6 +4,7 @@ import { buildAiAssistantPrompt } from "../app/ai-assistant.js";
 import { candidateMarkdown, selectedPhotos } from "../app/candidates.js";
 import { activeFilterEntries, albumFilterOptions } from "../app/controls.js";
 import { buildOptionLabelMaps, createSearchTokenBuilder, normalizePhotoRows } from "../app/data-loader.js";
+import { photoTitle, sheetRowLink } from "../app/photo-render.js";
 import {
   buildSearchText,
   filterAndSortPhotos,
@@ -293,5 +294,24 @@ describe("Pages search/sort pure logic", () => {
       ["scene", "場景", "交流"],
       ["sponsorshipItem", "贊助品項", "攤位"],
     ]);
+  });
+
+  it("builds photo titles and Sheets row links for card actions", () => {
+    const item = photo({
+      photo_id: "123",
+      event_name: "",
+      album_title: "",
+      curation_notes: "Flickr title: SITCON stage photo.",
+      _sheet_row_number: 42,
+    });
+    const link = sheetRowLink(item, {
+      googleSheets: {
+        spreadsheetId: "sheet-1",
+        photosSheetGid: 7,
+      },
+    });
+
+    assert.equal(photoTitle(item), "SITCON stage photo");
+    assert.equal(link, "https://docs.google.com/spreadsheets/d/sheet-1/edit?gid=7#gid=7&range=A42");
   });
 });
