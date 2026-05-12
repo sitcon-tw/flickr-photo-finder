@@ -2,6 +2,7 @@ import { readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 
 const defaultArtifactDir = "tmp/pages";
+const buildHint = "Run pnpm finder:build first, then rerun pnpm finder:check.";
 
 function printUsage() {
   console.log(`Usage:
@@ -49,7 +50,7 @@ async function assertFile(path) {
     fileStat = await stat(path);
   } catch (error) {
     if (error.code === "ENOENT") {
-      throw new Error(`Missing required artifact file: ${path}`);
+      throw new Error(`Missing required artifact file: ${path}. ${buildHint}`);
     }
     throw error;
   }
@@ -64,7 +65,7 @@ async function assertArtifactDir(path) {
     dirStat = await stat(path);
   } catch (error) {
     if (error.code === "ENOENT") {
-      throw new Error(`Pages artifact directory not found: ${path}. Run pnpm finder:build first.`);
+      throw new Error(`Pages artifact directory not found: ${path}. ${buildHint}`);
     }
     throw error;
   }
