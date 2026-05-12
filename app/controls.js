@@ -68,7 +68,9 @@ function fillSelectOptions(select, label, options) {
   select.replaceChildren();
   select.append(new Option(label, ""));
   for (const option of options) {
-    select.append(new Option(option.label, option.value));
+    const element = new Option(option.label, option.value);
+    element.title = option.label;
+    select.append(element);
   }
 }
 
@@ -116,6 +118,7 @@ function renderEnhancedSelectOptions(control) {
     button.classList.toggle("is-selected", option.value === control.select.value);
     button.classList.toggle("is-empty", option.value === "");
     button.textContent = enhancedSelectOptionText(option);
+    button.title = enhancedSelectOptionText(option);
     fragment.append(button);
   }
 
@@ -333,32 +336,55 @@ function compactLabelParts(parts) {
     });
 }
 
-export function albumFilterOptions(photos) {
+function albumOptionFromRecord(record, value) {
+  const labelParts = compactLabelParts([record.event_year, record.event_name, record.album_title]);
+  const label = labelParts.join(" · ") || value;
+  const specificity = labelParts.length + (record.event_year ? 1 : 0) + (record.event_name ? 1 : 0) + (record.album_title ? 1 : 0);
+  return { value, label, specificity };
+}
+
+export function albumFilterOptions(photos, albums = []) {
   const options = new Map();
   for (const photo of photos) {
-    const labelParts = compactLabelParts([photo.event_year, photo.event_name, photo.album_title]);
-    const fallbackLabel = labelParts.join(" · ");
-
     for (const albumId of photo.album_ids) {
       const id = String(albumId ?? "").trim();
       if (!id) {
         continue;
       }
       const key = `id:${id}`;
-      const label = fallbackLabel || id;
+      const next = albumOptionFromRecord(photo, key);
       const current = options.get(key);
-      if (!current || label.length > current.label.length) {
-        options.set(key, { value: key, label });
+      if (!current || next.specificity > current.specificity || next.label.length > current.label.length) {
+        options.set(key, next);
       }
     }
 
     if (photo.album_ids.length === 0 && photo.album_title) {
       const key = `title:${photo.album_title}`;
-      options.set(key, { value: key, label: fallbackLabel || photo.album_title });
+      options.set(key, albumOptionFromRecord(photo, key));
     }
   }
 
-  return [...options.values()].sort((left, right) => left.label.localeCompare(right.label, "zh-Hant-TW"));
+  const orderedOptions = [];
+  const usedKeys = new Set();
+  for (const album of albums) {
+    const albumId = String(album.album_id ?? "").trim();
+    const key = albumId ? `id:${albumId}` : "";
+    if (!key || !options.has(key)) {
+      continue;
+    }
+    const option = albumOptionFromRecord(album, key);
+    orderedOptions.push({ value: key, label: option.label });
+    usedKeys.add(key);
+  }
+
+  for (const [key, option] of options) {
+    if (!usedKeys.has(key)) {
+      orderedOptions.push({ value: option.value, label: option.label });
+    }
+  }
+
+  return orderedOptions;
 }
 
 export function setupTaskModes(container, taskModes) {
@@ -373,8 +399,8 @@ export function setupTaskModes(container, taskModes) {
   }
 }
 
-export function setupFilters({ controls, elements, taxonomy, photos, peopleCountFilters, optionLabels, uniqueSorted }) {
-  fillSelectOptions(controls.album, "全部活動/相簿", albumFilterOptions(photos));
+export function setupFilters({ controls, elements, taxonomy, photos, albums, peopleCountFilters, optionLabels, uniqueSorted }) {
+  fillSelectOptions(controls.album, "全部活動/相簿", albumFilterOptions(photos, albums));
   fillSelect(controls.use, "全部用途", taxonomy.recommended_uses ?? []);
   fillSelect(controls.mood, "全部氛圍", taxonomy.mood_tags ?? []);
   fillSelect(controls.scene, "全部場景", taxonomy.scene_tags ?? []);

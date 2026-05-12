@@ -55,6 +55,7 @@ const elements = queryElements();
 bindControlDismissal();
 
 let photos = [];
+let albums = [];
 let photoSchema;
 let currentResults = [];
 let visibleCount = pageSize;
@@ -490,6 +491,7 @@ async function loadData() {
   photoSchema = loadedData.photoSchema;
   optionLabelMaps = loadedData.optionLabelMaps;
   searchTokensForField = loadedData.searchTokensForField;
+  albums = loadedData.albums;
   photos = loadedData.photos;
   setupTaskModes(elements.taskModes, taskModes);
   setupFilters({
@@ -497,6 +499,7 @@ async function loadData() {
     elements,
     taxonomy: loadedData.taxonomy,
     photos,
+    albums,
     peopleCountFilters,
     optionLabels,
     uniqueSorted,

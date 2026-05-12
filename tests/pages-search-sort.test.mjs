@@ -331,10 +331,33 @@ describe("Pages search/sort pure logic", () => {
 
     assert.deepEqual(
       options.map((option) => option.value),
-      ["title:工作人員側拍", "id:a1"],
+      ["id:a1", "title:工作人員側拍"],
     );
-    assert.match(options[1].label, /2026/);
-    assert.match(options[1].label, /主議程/);
+    assert.match(options[0].label, /2026/);
+    assert.match(options[0].label, /主議程/);
+  });
+
+  it("orders album filter options by the album catalog order", () => {
+    const options = albumFilterOptions([
+      photo({ album_ids: ["2025-day4"], album_title: "SITCON Camp 2025 Day 4", event_year: "" }),
+      photo({ album_ids: ["2026-bof"], album_title: "SITCON 2026 負一籌＋BoF", event_year: "" }),
+      photo({
+        album_ids: ["long"],
+        album_title: "這是一個非常非常長的活動相簿名稱，包含很多描述但仍然應該保留完整可搜尋文字",
+        event_year: "",
+      }),
+    ], [
+      { album_id: "long", album_title: "這是一個非常非常長的活動相簿名稱，包含很多描述但仍然應該保留完整可搜尋文字" },
+      { album_id: "2025-day4", album_title: "SITCON Camp 2025 Day 4" },
+      { album_id: "2026-bof", album_title: "SITCON 2026 負一籌＋BoF" },
+    ]);
+
+    assert.deepEqual(
+      options.map((option) => option.value),
+      ["id:long", "id:2025-day4", "id:2026-bof"],
+    );
+    assert.match(options[0].label, /非常非常長/);
+    assert.equal(options[2].label, "SITCON 2026 負一籌＋BoF");
   });
 
   it("shapes active filter entries for AI prompts and filter chips", () => {

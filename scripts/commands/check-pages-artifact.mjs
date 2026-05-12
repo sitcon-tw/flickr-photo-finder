@@ -177,8 +177,16 @@ async function main() {
   await assertIncludes(join(options.artifactDir, "main.js"), "./task-modes.js", "task-modes.js");
   await assertIncludes(join(options.artifactDir, "main.js"), "./url-state.js", "url-state.js");
   const config = await assertIncludes(join(options.artifactDir, "config.js"), "photosCsvUrl", "photosCsvUrl");
-  if (!config.includes("schemaJsonUrl") || !config.includes("searchAliasesJsonUrl") || !config.includes("taxonomyJsonUrl")) {
-    throw new Error("config.js must include schemaJsonUrl, searchAliasesJsonUrl, and taxonomyJsonUrl");
+  if (
+    !config.includes("albumsCsvUrl") ||
+    !config.includes("schemaJsonUrl") ||
+    !config.includes("searchAliasesJsonUrl") ||
+    !config.includes("taxonomyJsonUrl")
+  ) {
+    throw new Error("config.js must include albumsCsvUrl, schemaJsonUrl, searchAliasesJsonUrl, and taxonomyJsonUrl");
+  }
+  if (!/https:\/\/docs\.google\.com\/spreadsheets\/d\/[^/]+\/gviz\/tq/.test(config.match(/albumsCsvUrl: ([^,]+)/)?.[1] ?? "")) {
+    throw new Error("config.js does not appear to point albumsCsvUrl at a public Google Sheets CSV URL");
   }
   if (!/https:\/\/docs\.google\.com\/spreadsheets\/d\/[^/]+\/gviz\/tq/.test(config)) {
     throw new Error("config.js does not appear to point photosCsvUrl at a public Google Sheets CSV URL");
