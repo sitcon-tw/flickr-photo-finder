@@ -663,21 +663,37 @@ select {
   padding: 0 10px;
 }
 
+.candidate-copy-template {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.candidate-copy-template span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.candidate-copy-template select {
+  width: 100%;
+}
+
 .candidate-actions {
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 8px;
-  margin-top: 10px;
+  margin-top: 8px;
 }
 
-.candidate-actions button:first-child,
+.candidate-copy-button,
 .candidate-toggle-button {
   border-color: var(--accent);
   background: var(--accent);
   color: #fff;
 }
 
-.candidate-actions button:first-child:not(:disabled):hover,
+.candidate-copy-button:not(:disabled):hover,
 .candidate-toggle-button:not(:disabled):hover {
   border-color: var(--accent-strong);
   background: var(--accent-strong);

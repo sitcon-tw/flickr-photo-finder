@@ -9,7 +9,7 @@ import {
   trackEvent,
 } from "./analytics.js";
 import { aiAssistantEventParams, buildAiAssistantPrompt } from "./ai-assistant.js";
-import { candidateMarkdown, renderCandidates, selectedPhotos } from "./candidates.js";
+import { candidateCopyText, renderCandidates, selectedPhotos } from "./candidates.js";
 import { dataSources, projectConfigUrl } from "./config.js";
 import {
   activeFilterEntries as buildActiveFilterEntries,
@@ -194,6 +194,12 @@ function sheetRowLink(photo) {
   return buildSheetRowLink(photo, projectConfig);
 }
 
+function candidateListLink() {
+  const url = new URL(window.location.href);
+  url.hash = "";
+  return url.toString();
+}
+
 function renderPhoto(photo, resultRank, resultCount) {
   return renderPhotoCard(photo, resultRank, resultCount, {
     template: elements.template,
@@ -221,9 +227,12 @@ function toggleCandidate(photoId) {
 }
 
 async function copyCandidateList() {
-  const text = selectedPhotos(state.selectedPhotoIds, photos)
-    .map((photo) => candidateMarkdown(photo, { photoTitle, finderLink, sheetRowLink, labelFor }))
-    .join("\n\n");
+  const candidates = selectedPhotos(state.selectedPhotoIds, photos);
+  const text = candidateCopyText(
+    candidates,
+    { photoTitle, finderLink, candidateListLink, sheetRowLink, labelFor },
+    controls.candidateCopyTemplate.value,
+  );
   if (!text) {
     return;
   }
@@ -500,7 +509,7 @@ elements.taskModes.addEventListener("click", (event) => {
 });
 
 for (const [key, control] of Object.entries(controls)) {
-  if (["reset", "loadMore", "copyCandidates", "clearCandidates", "copyAiAssistantPrompt"].includes(key)) {
+  if (["reset", "loadMore", "copyCandidates", "clearCandidates", "candidateCopyTemplate", "copyAiAssistantPrompt"].includes(key)) {
     continue;
   }
   control.addEventListener("input", key === "search" ? scheduleSearchRender : () => render({ resetPage: true, source: "filter" }));

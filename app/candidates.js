@@ -6,6 +6,14 @@ export function selectedPhotos(selectedPhotoIds, photos) {
     .filter(Boolean);
 }
 
+function statusReminder(photo, { labelFor }) {
+  const publicStatus = String(photo.public_use_status ?? "").trim();
+  if (!["avoid", "needs_review"].includes(publicStatus)) {
+    return "";
+  }
+  return `提醒: ${labelFor("public_use_status", publicStatus)}`;
+}
+
 export function candidateMarkdown(photo, { photoTitle, finderLink, sheetRowLink, labelFor }) {
   const publicStatus = photo.public_use_status ? labelFor("public_use_status", photo.public_use_status) : "未填";
   const curationStatus = photo.curation_status ? labelFor("curation_status", photo.curation_status) : "未填";
@@ -18,6 +26,35 @@ export function candidateMarkdown(photo, { photoTitle, finderLink, sheetRowLink,
   - 縮圖: ${photo.image_preview_url || "未填"}
   - 整理: ${curationStatus}
   - 使用提醒: ${publicStatus}`;
+}
+
+export function candidateCopyText(candidates, { photoTitle, finderLink, candidateListLink, sheetRowLink, labelFor }, templateId) {
+  if (templateId === "collaboration") {
+    const listLink = candidateListLink();
+    const items = candidates
+      .map((photo, index) => {
+        const rowLink = sheetRowLink(photo) || "未設定";
+        const curationStatus = photo.curation_status ? labelFor("curation_status", photo.curation_status) : "未填";
+        const publicStatus = photo.public_use_status ? labelFor("public_use_status", photo.public_use_status) : "未填";
+        return `${index + 1}. ${photo.photo_url || finderLink(photo)}
+   Sheets: ${rowLink}
+   整理: ${curationStatus} / 使用提醒: ${publicStatus}`;
+      })
+      .join("\n\n");
+    return `候選照片:\nFinder 清單: ${listLink}\n\n${items}`;
+  }
+
+  if (templateId === "flickr_urls") {
+    return candidates.map((photo) => photo.photo_url).filter(Boolean).join("\n");
+  }
+
+  const items = candidates
+    .map((photo, index) => {
+      const reminder = statusReminder(photo, { labelFor });
+      return [`${index + 1}. ${photo.photo_url || finderLink(photo)}`, reminder ? `   ${reminder}` : ""].filter(Boolean).join("\n");
+    })
+    .join("\n");
+  return `候選照片:\n\n${items}`;
 }
 
 export function renderCandidates({
@@ -34,6 +71,7 @@ export function renderCandidates({
   elements.candidateSummary.textContent = `${candidates.length} 張候選`;
   controls.copyCandidates.disabled = candidates.length === 0;
   controls.clearCandidates.disabled = candidates.length === 0;
+  controls.candidateCopyTemplate.disabled = candidates.length === 0;
   elements.candidateList.replaceChildren();
 
   if (candidates.length === 0) {
