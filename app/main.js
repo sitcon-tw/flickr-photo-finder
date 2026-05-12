@@ -11,16 +11,14 @@ import {
 import { aiAssistantEventParams, buildAiAssistantPrompt } from "./ai-assistant.js";
 import { candidateMarkdown, renderCandidates, selectedPhotos } from "./candidates.js";
 import { dataSources, projectConfigUrl } from "./config.js";
-import { parseCsv, parseList } from "./data-utils.js";
+import { loadFinderData, optionLabelsFor } from "./data-loader.js";
 import {
-  buildSearchText,
   filterAndSortPhotos,
   isFilled,
   normalizeText,
   numericValue,
   scoreOverlap,
   textMatches,
-  uniqueSearchTokens,
 } from "./search-sort.js";
 import { decodeUrlState, encodeUrlState } from "./url-state.js";
 import {
@@ -83,13 +81,12 @@ const autocompleteInputs = new Map();
 
 let photos = [];
 let photoSchema;
-let listFields = [];
 let currentResults = [];
 let visibleCount = pageSize;
 let renderTimer = 0;
 let projectConfig = {};
 let optionLabelMaps = new Map();
-let searchAliases = {};
+let searchTokensForField = () => [];
 
 const state = {
   taskMode: "all",
@@ -165,58 +162,18 @@ function applyProjectConfig(config) {
   setupAnalytics(config);
 }
 
-function toObjects(rows, schema) {
-  const [headers, ...dataRows] = rows;
-  const fieldSet = new Set(schema.tables.photos.fields.map((field) => field.name));
-  return dataRows.map((row, index) => {
-    const photo = Object.fromEntries(headers.map((header, columnIndex) => [header, row[columnIndex] ?? ""]));
-    photo._sheet_row_number = index + 2;
-    for (const field of listFields) {
-      photo[field] = parseList(photo[field] ?? "");
-    }
-    for (const field of fieldSet) {
-      if (!(field in photo)) {
-        photo[field] = "";
-      }
-    }
-    photo.search_text = buildSearchText(photo, { searchTokensForField });
-    return photo;
-  });
-}
-
-function applySchema(schema) {
-  photoSchema = schema;
-  listFields = schema.tables.photos.fields
-    .filter((field) => field.multi_value)
-    .map((field) => field.name);
-}
-
 function uniqueSorted(values) {
   return [...new Set(values.filter(Boolean))].sort((left, right) =>
     left.localeCompare(right, "zh-Hant-TW"),
   );
 }
 
-function buildOptionLabelMaps(taxonomy) {
-  const labels = taxonomy.option_labels ?? {};
-  return new Map(
-    Object.entries(labels).map(([fieldName, fieldLabels]) => [
-      fieldName,
-      new Map(Object.entries(fieldLabels ?? {})),
-    ]),
-  );
-}
-
 function optionLabels(fieldName) {
-  return optionLabelMaps.get(fieldName) ?? new Map();
+  return optionLabelsFor(optionLabelMaps, fieldName);
 }
 
 function labelFor(fieldName, value) {
   return optionLabels(fieldName).get(value) ?? value;
-}
-
-function searchTokensForField(fieldName, value) {
-  return uniqueSearchTokens(fieldName, value, optionLabels(fieldName), searchAliases);
 }
 
 function fillSelect(select, label, values) {
@@ -1612,32 +1569,14 @@ function revealPhotoFromHash() {
 }
 
 async function loadData() {
-  const [photosResponse, schemaResponse, taxonomyResponse, searchAliasesResponse, projectConfigResponse] = await Promise.all([
-    fetch(dataSources.photosCsvUrl),
-    fetch(dataSources.schemaJsonUrl),
-    fetch(dataSources.taxonomyJsonUrl),
-    fetch(dataSources.searchAliasesJsonUrl),
-    fetch(projectConfigUrl),
-  ]);
-
-  if (!photosResponse.ok || !schemaResponse.ok || !taxonomyResponse.ok || !searchAliasesResponse.ok || !projectConfigResponse.ok) {
-    throw new Error("資料載入失敗");
-  }
-
-  const [photosText, schema, taxonomy, loadedSearchAliases, projectConfig] = await Promise.all([
-    photosResponse.text(),
-    schemaResponse.json(),
-    taxonomyResponse.json(),
-    searchAliasesResponse.json(),
-    projectConfigResponse.json(),
-  ]);
-  applyProjectConfig(projectConfig);
-  applySchema(schema);
-  optionLabelMaps = buildOptionLabelMaps(taxonomy);
-  searchAliases = loadedSearchAliases;
-  photos = toObjects(parseCsv(photosText), schema);
+  const loadedData = await loadFinderData({ dataSources, projectConfigUrl });
+  applyProjectConfig(loadedData.projectConfig);
+  photoSchema = loadedData.photoSchema;
+  optionLabelMaps = loadedData.optionLabelMaps;
+  searchTokensForField = loadedData.searchTokensForField;
+  photos = loadedData.photos;
   setupTaskModes();
-  setupFilters(taxonomy);
+  setupFilters(loadedData.taxonomy);
   applyUrlState();
   renderOverview();
   render({ resetPage: true });

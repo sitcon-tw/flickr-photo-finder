@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { buildAiAssistantPrompt } from "../app/ai-assistant.js";
 import { candidateMarkdown, selectedPhotos } from "../app/candidates.js";
+import { buildOptionLabelMaps, createSearchTokenBuilder, normalizePhotoRows } from "../app/data-loader.js";
 import {
   buildSearchText,
   filterAndSortPhotos,
@@ -209,5 +210,39 @@ describe("Pages search/sort pure logic", () => {
     assert.equal(selected.length, 1);
     assert.match(markdown, /SITCON 2025/);
     assert.match(markdown, /Finder: https:\/\/finder\.test\/#photo-200/);
+  });
+
+  it("normalizes CSV photo rows with schema list fields and search text", () => {
+    const schema = {
+      tables: {
+        photos: {
+          fields: [
+            { name: "photo_id" },
+            { name: "safe_crop", multi_value: true },
+            { name: "missing_field" },
+            { name: "has_negative_space" },
+          ],
+        },
+      },
+    };
+    const optionLabelMaps = buildOptionLabelMaps({
+      option_labels: {
+        has_negative_space: { true: "有留白" },
+      },
+    });
+    const searchTokensForField = createSearchTokenBuilder(optionLabelMaps, {
+      has_negative_space: { true: ["negative space"] },
+    });
+
+    const rows = [
+      ["photo_id", "safe_crop", "has_negative_space"],
+      ["row-1", "16:9;1:1", "true"],
+    ];
+    const normalized = normalizePhotoRows(rows, schema, searchTokensForField);
+
+    assert.deepEqual(normalized[0].safe_crop, ["16:9", "1:1"]);
+    assert.equal(normalized[0].missing_field, "");
+    assert.equal(normalized[0]._sheet_row_number, 2);
+    assert.match(normalized[0].search_text, /negative space/);
   });
 });
