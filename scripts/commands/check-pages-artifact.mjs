@@ -12,7 +12,9 @@ Options:
   --help, -h    Show this help.
 
 This command checks that the GitHub Pages artifact contains the files needed
-for the static frontend to load.`);
+for the static frontend to load.
+
+Usually run pnpm finder:build before this command so tmp/pages exists.`);
 }
 
 function parseArgs(argv) {
@@ -42,9 +44,33 @@ function parseArgs(argv) {
 }
 
 async function assertFile(path) {
-  const fileStat = await stat(path);
+  let fileStat;
+  try {
+    fileStat = await stat(path);
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      throw new Error(`Missing required artifact file: ${path}`);
+    }
+    throw error;
+  }
   if (!fileStat.isFile()) {
     throw new Error(`${path} is not a file`);
+  }
+}
+
+async function assertArtifactDir(path) {
+  let dirStat;
+  try {
+    dirStat = await stat(path);
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      throw new Error(`Pages artifact directory not found: ${path}. Run pnpm finder:build first.`);
+    }
+    throw error;
+  }
+
+  if (!dirStat.isDirectory()) {
+    throw new Error(`Pages artifact path is not a directory: ${path}`);
   }
 }
 
@@ -75,6 +101,8 @@ async function main() {
     printUsage();
     return;
   }
+
+  await assertArtifactDir(options.artifactDir);
 
   const requiredFiles = [
     ".nojekyll",
