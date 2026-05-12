@@ -52,6 +52,26 @@
 | 人類審核輸出格式 | `scripts/lib/core/metadata-display.mjs` | CLI diff、report、CSV 等人類輸出應共用這個 helper，機器 JSON plan 維持 raw value。 |
 | 單一畫面的操作文案 | 該畫面程式或文件 | 例如按鈕、空狀態與提示文字可留在當地；若跨兩個以上介面重複，應提升成共用來源。 |
 
+## 依任務入口
+
+若你已經知道想完成的工作，可以先從下表入口開始；需要背景脈絡時，再回到「依角色閱讀」與「文件分工」。
+
+| 想完成的任務 | 優先入口 |
+| --- | --- |
+| 找照片或用公開搜尋前端確認資料呈現 | `pnpm finder:dev` |
+| 整理或人工補齊照片欄位 | `docs/data-entry-guide.md` |
+| 匯入新的 Flickr 相簿 | `pnpm workflow -- --task album-intake` |
+| 盤點或挑選待處理相簿 | `pnpm albums:select` |
+| 執行 AI 初標準備 | `pnpm ai:prepare` |
+| 審核 AI 初標候選值 | `pnpm ai:review -- --run-dir <dir>` |
+| 比較 AI run 或產生唯讀報表 | `pnpm ai:report -- --run <dir>` |
+| 修改 GitHub Pages 前端 | `docs/public-frontend-architecture.md` |
+| 修改 Apps Script 維護工具 | `docs/apps-script-maintenance-design.md` |
+| 調整 taxonomy 或受控字彙 | `data/tag-taxonomy.json` |
+| 驗證 sample、schema 與 taxonomy | `pnpm data:validate` |
+| 建置並檢查 GitHub Pages artifact | `pnpm finder:build`，再執行 `pnpm finder:check` |
+| 部署或同步 Google Sheets 相關工具 | `docs/sheets-sync-workflow.md` |
+
 ## 目前狀態
 
 ### 目前可用
