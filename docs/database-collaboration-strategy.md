@@ -129,6 +129,8 @@ AI 初標流程不負責把資料推進到 `reviewed`。`curation_status = revie
 
 不另外拆分 AI 欄位是為了降低資料表複雜度；因此 `curation_status` 的語意必須清楚。`ai_labeled` 代表資料曾經由 AI 協助，但尚未完成人工確認。
 
+`ai_labeled` 可以是長期存在的中間狀態。照片量大時，不預期所有 AI 初標照片都會被人工 review 完畢；人工整理應優先處理高互動、高價值、需要公開使用判斷、或工具警訊指出風險較高的照片。若未來統計 AI proposal 的接受、修改或拒絕比例，該比例只能代表已被人工處理的 subset，不能外推為整批 AI 初標品質。
+
 `curation_status` 只描述資料是否經過人工確認，不描述推薦優先度。優先推薦由 `priority_level`、`collections` 或素材包判斷；不建議推薦使用由 `public_use_status = avoid` 判斷。
 
 外部 AI 如何解讀照片索引資料，記錄在 `docs/ai-readable-dataset.md`。

@@ -91,6 +91,8 @@ AI 只能作為資料匯入與整理輔助。
 7. 人類檢查後才用 `pnpm sheets:apply-ai-updates -- --run-dir <dir>` dry-run；確認後才可加上 `--write`。
 8. AI 協助過但尚未人工確認的資料應標成 `ai_labeled`。
 
+照片量大時，不預期所有 `ai_labeled` 照片都會被人工 review 完畢。Agent 不應把「清空 AI 待審佇列」當成預設目標；應優先協助建立抽查樣本、找出批次風險、整理高互動或高價值照片，並把任何接受率、修改率或拒絕率限定在實際被人類處理過的 subset。
+
 `ai:review` 的終端 `Next:` 與 `metadata-review-summary.md` 的 `## Next Commands` 是這段流程的主要交接介面。若新增 AI 檢視、比較或回寫前檢查工具，請同步更新 README、operator guide、contract、這兩個 Next 區塊，以及必要時的 `pnpm workflow` 提示。
 
 Agent 的 AI 初標工作不應把資料標成 `reviewed`。`curation_status = reviewed` 應該在 Google Sheets 中，由具有編輯權限的志工夥伴一起檢核、修正並補齊必要欄位後再更新。若公開使用判斷合適，再把 `public_use_status` 設為 `approved`。

@@ -20,6 +20,8 @@ AI 初標結果要能協助志工更快整理照片，但不能取代人工 revi
 - 是否避免把 `scene_tags`、`sponsorship_items`、`sponsorship_tags` 混用。
 - 是否保守處理 `public_use_status`，不把 AI 結果直接推成 `approved`。
 
+照片量大時，不預期所有 AI proposal 都會被人工 review 完畢，因此評估指標必須說清楚母體。`coverage` 可以看整批 proposal；`sample quality` 應來自隨機樣本、failure-focused sample、`Review Focus` 或 `Balanced Review Sample`；`adoption outcome` 只能用已被人類套用、修改、拒絕或推進到 `reviewed` 的 subset 計算。缺少 outcome 不代表該 proposal 錯誤或被拒絕，也不應把 subset acceptance rate 外推成整批品質。
+
 ## 建議評估流程
 
 每次模型完成 `metadata-proposals.json` 後，先執行：

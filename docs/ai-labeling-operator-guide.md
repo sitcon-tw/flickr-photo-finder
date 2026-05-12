@@ -170,6 +170,14 @@ pnpm ai:review -- --run-dir tmp/ai-runs/<run-id>
 
 大型或分片 run 的 summary 會額外顯示 `Artifact Provenance`、`Layer Coverage`、`Scene QA`、`Balanced Review Sample` 與 `Confidence By Field`。`Artifact Provenance` 用來確認 final proposals 來源、hash、圖片連結模式、shard artifacts 與 execution log 摘要；`Layer Coverage` 用 schema 分層看 baseline、recall、optional 覆蓋率；`Scene QA` 用整體、相簿與分片層級檢查 `scene_tags` 是否低召回、過度集中或平均過密；`Balanced Review Sample` 會混合 review focus、shard 抽樣、主體邊界、高風險 optional 欄位與 deterministic random，避免只看工具已知警訊；`Confidence By Field` 用來檢查信心分數是否只集中在少數欄位。
 
+照片量很大時，不預期每一張 `ai_labeled` 照片都會被人工 review 完畢。大型 run 的 review 目標是先建立可追溯的候選資料、找出批次品質風險，並產生足夠好的抽查入口；不要把「未全量 review」視為流程失敗。若未來新增 AI proposal outcome 報表，必須分開呈現三類指標：
+
+- Coverage：整批 proposal 的欄位覆蓋、缺漏與值分布。
+- Sample quality：`Review Focus`、`Balanced Review Sample`、高互動照片或人工挑選樣本中的錯誤、混淆與風險。
+- Adoption outcome：只有已被人類套用、修改、拒絕，或已在 Sheets 中推進到 `reviewed` 的 subset，才能計算接受、修改或拒絕比例。
+
+缺少 adoption outcome 只代表該照片尚未被人工處理，不代表 proposal 被拒絕，也不代表整個 AI run 尚未完成。報表文案應避免把 subset 的接受率說成整批 AI 初標品質。
+
 `ai:review` 終端輸出的 `Next:` 與 `metadata-review-summary.md` 的 `## Next Commands` 是這段流程的主要交接提示。若新增報表、比較、搜尋實驗或回寫前檢查工具，應同步更新這兩個地方。
 
 `metadata-review-summary.md` 頂部會列出本次使用的 prompt template path 與短 hash。舊 run 若顯示 `unknown`，代表當時尚未記錄 prompt 版本；比較結果時應把 prompt 版本視為未知因素。若 run 使用的 prompt hash 與目前 repo prompt 不同，`Review Notes` 會提示重新建立 run 或 attempt，避免把舊 prompt 結果當成新版 prompt 評估。

@@ -257,3 +257,5 @@ AI 應遵守以下限制：
 驗證 warning 代表 proposal 格式和 AI 責任邊界可接受，但仍有批次品質疑慮需要人工判斷；warning 不等於一定要退回模型重跑。`ai:review` 可能產生 Review Focus、Balanced Review Sample、confidence-by-field 摘要與公開使用風險抽查提示。唯讀 HTML 報表、跨 attempt 分歧比較、`visual_description` 搜尋增益比較與 Sheets dry-run 都是操作者後續流程，不是模型初標任務的一部分。
 
 正式 review 不在 AI run 目錄中完成。AI run 最多把資料推進到 `ai_labeled`；`reviewed` 應回到 Google Sheets，由具有編輯權限的志工們協作檢查、修正並補齊必要欄位後再更新。
+
+大型 AI run 不要求所有 proposal 都有最終人工 outcome。`metadata-proposals.json` 可能長期只被部分抽查、部分採用或部分回寫；沒有人工 outcome 的照片仍只是候選狀態，不應解讀為已拒絕、已接受或流程錯誤。任何 acceptance / review outcome 報表都應明確標示母體，例如全部 proposal、抽查樣本、已產生 update plan 的欄位、已寫回 Sheets 的欄位，或已被人工標成 `reviewed` 的照片。
