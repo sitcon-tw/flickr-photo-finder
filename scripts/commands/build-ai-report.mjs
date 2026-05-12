@@ -12,6 +12,12 @@ const updatePlanFile = "metadata-update-plan.json";
 
 const preferredFieldOrder = allowedAiFields;
 const watchFields = new Set(["scene_tags", "visual_description", "sponsorship_items", "sponsorship_tags", "public_use_status", "safe_crop"]);
+const disagreementWatchFields = new Set(["safe_crop", "recommended_uses", "public_use_status"]);
+const majorityOutlierFields = new Set(["people_count", "subject_type", "orientation"]);
+const largePeopleCountGap = 10;
+const extremePeopleCountGap = 20;
+const lowDescriptionOverlapThreshold = 0.08;
+const descriptionPairOverlapThreshold = 0.12;
 
 function printUsage() {
   console.log(`Usage:
@@ -187,6 +193,90 @@ function stableValue(value) {
     return JSON.stringify([...value].sort());
   }
   return JSON.stringify(value);
+}
+
+function displayValueKey(value) {
+  if (value === undefined) {
+    return "(missing)";
+  }
+  return stableValue(value);
+}
+
+function countStableValues(values) {
+  const counts = new Map();
+  for (const value of values) {
+    counts.set(value, (counts.get(value) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .sort((left, right) => right[1] - left[1] || String(left[0]).localeCompare(String(right[0]), "zh-Hant"))
+    .map(([value, count]) => ({ count, value }));
+}
+
+function fieldValue(attempt, field) {
+  const proposal = attempt.fields[field];
+  return proposal && Object.prototype.hasOwnProperty.call(proposal, "value") ? proposal.value : undefined;
+}
+
+function fieldValueKeys(attempts, field, { includeMissing = true } = {}) {
+  return attempts
+    .map((attempt, index) => ({
+      index,
+      key: displayValueKey(fieldValue(attempt, field)),
+      value: fieldValue(attempt, field),
+    }))
+    .filter((entry) => includeMissing || entry.value !== undefined);
+}
+
+function tokenizeText(value) {
+  return String(value ?? "")
+    .toLowerCase()
+    .match(/[a-z0-9]+|[\u3400-\u9fff]/g) ?? [];
+}
+
+function jaccardSimilarity(left, right) {
+  const leftSet = new Set(tokenizeText(left));
+  const rightSet = new Set(tokenizeText(right));
+  if (leftSet.size === 0 && rightSet.size === 0) {
+    return 1;
+  }
+  const intersection = [...leftSet].filter((token) => rightSet.has(token)).length;
+  const union = new Set([...leftSet, ...rightSet]).size;
+  return union > 0 ? intersection / union : 0;
+}
+
+function averagePairwiseTextSimilarity(values) {
+  const texts = values.filter((value) => typeof value === "string" && value.trim().length >= 20);
+  if (texts.length < 2) {
+    return 1;
+  }
+  let total = 0;
+  let pairs = 0;
+  for (let left = 0; left < texts.length; left += 1) {
+    for (let right = left + 1; right < texts.length; right += 1) {
+      total += jaccardSimilarity(texts[left], texts[right]);
+      pairs += 1;
+    }
+  }
+  return pairs > 0 ? total / pairs : 1;
+}
+
+function descriptionOutlierIndex(values) {
+  const texts = values.map((value) => (typeof value === "string" ? value.trim() : ""));
+  if (texts.length !== 3 || texts.some((text) => text.length < 20)) {
+    return -1;
+  }
+  const pairs = [
+    [0, 1, jaccardSimilarity(texts[0], texts[1])],
+    [0, 2, jaccardSimilarity(texts[0], texts[2])],
+    [1, 2, jaccardSimilarity(texts[1], texts[2])],
+  ];
+  const strongest = [...pairs].sort((left, right) => right[2] - left[2])[0];
+  if (!strongest || strongest[2] < descriptionPairOverlapThreshold) {
+    return -1;
+  }
+  const outlier = [0, 1, 2].find((index) => index !== strongest[0] && index !== strongest[1]);
+  const outlierSimilarities = pairs.filter((pair) => pair[0] === outlier || pair[1] === outlier).map((pair) => pair[2]);
+  return outlierSimilarities.every((value) => value < lowDescriptionOverlapThreshold) ? outlier : -1;
 }
 
 function parseMarkdownTableLine(line) {
@@ -428,36 +518,197 @@ function buildWarnings(runs) {
   return warnings;
 }
 
+function diagnosticKey(issue) {
+  return `${issue.type}\0${issue.field ?? ""}\0${issue.label}`;
+}
+
+function pushDiagnostic(issues, issue) {
+  const key = diagnosticKey(issue);
+  if (issues.some((existing) => diagnosticKey(existing) === key)) {
+    return;
+  }
+  issues.push(issue);
+}
+
+function buildPhotoDiagnostics(attempts, runLabels) {
+  const issues = [];
+  const peopleEntries = fieldValueKeys(attempts, "people_count", { includeMissing: false })
+    .filter((entry) => Number.isFinite(entry.value));
+  if (peopleEntries.length >= 2) {
+    const counts = peopleEntries.map((entry) => Number(entry.value));
+    const min = Math.min(...counts);
+    const max = Math.max(...counts);
+    const gap = max - min;
+    if (gap >= largePeopleCountGap) {
+      pushDiagnostic(issues, {
+        field: "people_count",
+        label: `people_count 差距 ${gap}`,
+        severity: gap >= extremePeopleCountGap ? "high" : "medium",
+        type: "people_count_gap",
+      });
+      if (gap >= extremePeopleCountGap) {
+        pushDiagnostic(issues, {
+          field: "people_count",
+          label: `人數極端分歧 ${gap}`,
+          severity: "high",
+          type: "image_alignment_suspect",
+        });
+      }
+    }
+  }
+
+  const subjectEntries = fieldValueKeys(attempts, "subject_type", { includeMissing: false });
+  const subjectValueCount = new Set(subjectEntries.map((entry) => entry.key)).size;
+  if (subjectValueCount > 1) {
+    pushDiagnostic(issues, {
+      field: "subject_type",
+      label: subjectValueCount >= Math.min(3, subjectEntries.length) ? "subject_type 全模型分歧" : "subject_type 不一致",
+      severity: subjectValueCount >= Math.min(3, subjectEntries.length) ? "high" : "medium",
+      type: "subject_type_disagreement",
+    });
+    if (subjectValueCount >= Math.min(3, subjectEntries.length)) {
+      pushDiagnostic(issues, {
+        field: "subject_type",
+        label: "subject_type 全模型不同",
+        severity: "high",
+        type: "image_alignment_suspect",
+      });
+    }
+  }
+
+  const publicUseEntries = fieldValueKeys(attempts, "public_use_status");
+  const publicUseFlagged = publicUseEntries.filter((entry) => ["needs_review", "avoid"].includes(entry.value));
+  if (publicUseFlagged.length === 1 && attempts.length >= 2) {
+    pushDiagnostic(issues, {
+      field: "public_use_status",
+      label: `${runLabels[publicUseFlagged[0].index]} 單獨標 public_use_status`,
+      severity: "high",
+      type: "public_use_single_flag",
+    });
+  }
+
+  for (const field of disagreementWatchFields) {
+    const entries = fieldValueKeys(attempts, field, { includeMissing: field === "public_use_status" });
+    const nonMissing = entries.filter((entry) => entry.value !== undefined);
+    const distinct = new Set(entries.map((entry) => entry.key));
+    const nonMissingDistinct = new Set(nonMissing.map((entry) => entry.key));
+    if (
+      (field === "public_use_status" && distinct.size >= Math.min(3, attempts.length))
+      || (field !== "public_use_status" && nonMissing.length >= 3 && nonMissingDistinct.size >= 3)
+    ) {
+      pushDiagnostic(issues, {
+        field,
+        label: `${field} 高分歧`,
+        severity: field === "public_use_status" ? "high" : "medium",
+        type: "field_high_disagreement",
+      });
+    }
+  }
+
+  for (const field of majorityOutlierFields) {
+    const entries = fieldValueKeys(attempts, field, { includeMissing: false });
+    const counts = countStableValues(entries.map((entry) => entry.key));
+    const majority = counts[0];
+    const outliers = counts.slice(1);
+    if (majority?.count >= 2 && outliers.length > 0 && outliers.reduce((sum, entry) => sum + entry.count, 0) === 1) {
+      const outlierKey = outliers[0].value;
+      const outlierEntry = entries.find((entry) => entry.key === outlierKey);
+      if (field === "people_count" && Math.abs(Number(outlierEntry?.value) - Number(JSON.parse(majority.value))) < 3) {
+        continue;
+      }
+      pushDiagnostic(issues, {
+        field,
+        label: `${runLabels[outlierEntry?.index ?? 0]} outlier`,
+        severity: field === "people_count" || field === "subject_type" ? "high" : "medium",
+        type: "majority_outlier",
+      });
+    }
+  }
+
+  const descriptions = attempts.map((attempt) => fieldValue(attempt, "visual_description"));
+  const descriptionOverlap = averagePairwiseTextSimilarity(descriptions);
+  const descriptionOutlier = descriptionOutlierIndex(descriptions);
+  const hasHighStructuralDisagreement = issues.some((issue) =>
+    ["people_count_gap", "subject_type_disagreement", "field_high_disagreement"].includes(issue.type)
+    && issue.severity === "high",
+  );
+  if (descriptionOutlier >= 0) {
+    pushDiagnostic(issues, {
+      field: "visual_description",
+      label: `${runLabels[descriptionOutlier]} 描述 outlier`,
+      severity: "high",
+      type: "image_alignment_suspect",
+    });
+  } else if (descriptionOverlap < lowDescriptionOverlapThreshold && hasHighStructuralDisagreement) {
+    pushDiagnostic(issues, {
+      field: "visual_description",
+      label: `描述重疊低 (${Math.round(descriptionOverlap * 100)}%)`,
+      severity: "high",
+      type: "image_alignment_suspect",
+    });
+  }
+
+  return issues;
+}
+
+function buildDiagnosticSummary(photos) {
+  const issueCounts = countStableValues(photos.flatMap((photo) => photo.diagnostics.map((issue) => issue.type)));
+  const topPhotos = photos
+    .filter((photo) => photo.diagnostics.length > 0)
+    .map((photo) => ({
+      album_title: photo.album_title,
+      issue_count: photo.diagnostics.length,
+      issues: photo.diagnostics.map((issue) => issue.label),
+      photo_id: photo.photo_id,
+      score: photo.diagnostics.reduce((sum, issue) => sum + (issue.severity === "high" ? 2 : 1), 0),
+    }))
+    .sort((left, right) => right.score - left.score || right.issue_count - left.issue_count || left.photo_id.localeCompare(right.photo_id))
+    .slice(0, 20);
+  return {
+    alignment_suspect_count: photos.filter((photo) => photo.diagnostics.some((issue) => issue.type === "image_alignment_suspect")).length,
+    high_disagreement_count: photos.filter((photo) => photo.diagnostics.some((issue) => ["high", "medium"].includes(issue.severity))).length,
+    issue_counts: issueCounts,
+    top_photos: topPhotos,
+  };
+}
+
 function buildReportData(runs, options) {
   const fieldSet = new Set(runs.flatMap((run) => [...run.fields]));
   const orderedFields = fieldOrder(fieldSet);
   const photoIds = uniquePhotoOrder(runs);
   const photoLookup = buildPhotoLookup(runs);
   const mode = options.mode === "auto" ? (runs.length === 1 ? "single" : "compare") : options.mode;
+  const runLabels = runs.map((run) => run.label);
 
   const photos = photoIds.map((photoId) => {
     const source = photoLookup.get(photoId);
     const photo = source?.photo ?? { photo_id: photoId };
+    const attempts = runs.map((run) => {
+      const item = run.itemsByPhotoId.get(photoId);
+      return {
+        fields: item?.fields ?? {},
+        focus: run.reviewFocus.filter((row) => row.photo_id === photoId),
+        has_photo: run.photoIds.has(photoId),
+        has_proposal: Boolean(item),
+        run_id: run.manifest.run_id || run.label,
+        shard: run.shardByPhotoId.get(photoId) || "",
+      };
+    });
+    const diagnostics = mode === "compare" ? buildPhotoDiagnostics(attempts, runLabels) : [];
     return {
       album_title: photo.album_title || "",
       curation_notes: photo.curation_notes || "",
+      diagnostics,
       image_src: source ? imageSourceFor(photo, source.runDir, options.outputDir) : "",
       photo_id: photoId,
       photo_url: photo.photo_url || "",
       preview_url: photo.image_preview_url || "",
-      attempts: runs.map((run) => {
-        const item = run.itemsByPhotoId.get(photoId);
-        return {
-          fields: item?.fields ?? {},
-          focus: run.reviewFocus.filter((row) => row.photo_id === photoId),
-          has_photo: run.photoIds.has(photoId),
-          has_proposal: Boolean(item),
-          run_id: run.manifest.run_id || run.label,
-          shard: run.shardByPhotoId.get(photoId) || "",
-        };
-      }),
+      attempts,
     };
   });
+  const diagnosticSummary = mode === "compare"
+    ? buildDiagnosticSummary(photos)
+    : { alignment_suspect_count: 0, high_disagreement_count: 0, issue_counts: [], top_photos: [] };
 
   return {
     attempts: runs.map((run) => ({
@@ -485,6 +736,7 @@ function buildReportData(runs, options) {
     field_layers: Object.fromEntries(orderedFields.map((field) => [field, aiFieldLayerName(field)])),
     fields: orderedFields,
     generated_at: new Date().toISOString(),
+    diagnostic_summary: diagnosticSummary,
     mode,
     option_labels: defaultMetadataDisplayContext.taxonomy.option_labels ?? {},
     photos,
@@ -541,7 +793,7 @@ function renderHtml(reportData) {
       font-size: 24px;
       letter-spacing: 0;
     }
-    .summary, .controls, .attempts, .warnings, .coverage {
+    .summary, .controls, .attempts, .warnings, .coverage, .diagnostic-pills {
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
@@ -597,6 +849,16 @@ function renderHtml(reportData) {
       border-radius: 6px;
       background: var(--accent-soft);
       color: var(--accent);
+      padding: 8px 10px;
+      font-size: 13px;
+      margin-bottom: 8px;
+      overflow-wrap: anywhere;
+    }
+    .diagnostic-row {
+      border: 1px solid #fdba74;
+      border-radius: 6px;
+      background: var(--warn-soft);
+      color: var(--warn);
       padding: 8px 10px;
       font-size: 13px;
       margin-bottom: 8px;
@@ -789,6 +1051,8 @@ function renderHtml(reportData) {
         <option value="diff">有差異</option>
         <option value="missing">有缺 proposal</option>
         <option value="focus">需優先抽查</option>
+        <option value="disagreement">高分歧</option>
+        <option value="alignment">疑似錯圖</option>
       </select>
       <label id="diff-toggle" class="toggle"><input id="only-diff-fields" type="checkbox"> 只顯示差異欄位</label>
     </section>
@@ -923,6 +1187,9 @@ function renderHtml(reportData) {
           parts.push(fieldLabel(field), valueText(field, proposal.value), proposal.reason || "", String(proposal.confidence ?? ""));
         }
       }
+      for (const diagnostic of photo.diagnostics || []) {
+        parts.push(diagnostic.label || "", diagnostic.type || "", diagnostic.field || "");
+      }
       return parts.join(" ").toLowerCase();
     }
 
@@ -942,6 +1209,12 @@ function renderHtml(reportData) {
         el("span", data.warnings.length ? "pill warn" : "pill good", data.warnings.length + " 個警訊"),
         el("span", focusCount ? "pill warn" : "pill good", "需抽查 " + focusCount + " 項"),
       );
+      if (!isSingleMode) {
+        summary.append(
+          el("span", data.diagnostic_summary?.high_disagreement_count ? "pill warn" : "pill good", "高分歧 " + (data.diagnostic_summary?.high_disagreement_count || 0) + " 張"),
+          el("span", data.diagnostic_summary?.alignment_suspect_count ? "pill bad" : "pill good", "疑似錯圖 " + (data.diagnostic_summary?.alignment_suspect_count || 0) + " 張"),
+        );
+      }
     }
 
     function renderAttemptPills() {
@@ -990,6 +1263,10 @@ function renderHtml(reportData) {
       warnings.replaceChildren();
       for (const warning of data.warnings) {
         warnings.append(el("div", "warning", warning));
+      }
+      if (!isSingleMode && (data.diagnostic_summary?.top_photos || []).length > 0) {
+        const top = data.diagnostic_summary.top_photos.slice(0, 8);
+        warnings.append(el("div", "warning", "多模型分歧最高：" + top.map((photo) => photo.photo_id + "（" + photo.issues.slice(0, 2).join("、") + "）").join("；")));
       }
       for (const attempt of data.attempts) {
         if (attempt.errors.length > 0) {
@@ -1050,7 +1327,7 @@ function renderHtml(reportData) {
 
       const statusOptions = isSingleMode
         ? [["all", "所有照片"], ["with-proposal", "有 proposal"], ["missing", "缺 proposal"], ["focus", "需優先抽查"]]
-        : [["all", "所有照片"], ["diff", "有差異"], ["missing", "有缺 proposal"], ["focus", "需優先抽查"]];
+        : [["all", "所有照片"], ["diff", "有差異"], ["missing", "有缺 proposal"], ["focus", "需優先抽查"], ["disagreement", "高分歧"], ["alignment", "疑似錯圖"]];
       if (!statusOptions.some(([value]) => value === state.status)) {
         state.status = "all";
       }
@@ -1093,6 +1370,13 @@ function renderHtml(reportData) {
       const shards = [...new Set(photo.attempts.map((attempt) => attempt.shard).filter(Boolean))];
       if (shards.length > 0) media.append(el("div", "meta", "shard: " + shards.join(", ")));
       if (photo.curation_notes) media.append(el("div", "meta", photo.curation_notes));
+      if ((photo.diagnostics || []).length > 0) {
+        const diagnosticLine = el("div", "diagnostic-pills");
+        for (const diagnostic of photo.diagnostics.slice(0, 4)) {
+          diagnosticLine.append(el("span", diagnostic.severity === "high" ? "pill bad" : "pill warn", diagnostic.label));
+        }
+        media.append(diagnosticLine);
+      }
       return media;
     }
 
@@ -1164,6 +1448,14 @@ function renderHtml(reportData) {
       );
 
       const comparison = el("div", "comparison");
+      if ((photo.diagnostics || []).length > 0) {
+        const diagnosticBox = el("div", "diagnostic-row");
+        diagnosticBox.textContent = "多模型分歧：" + photo.diagnostics
+          .slice(0, 5)
+          .map((issue) => issue.label + (issue.field ? " / " + fieldLabel(issue.field) : ""))
+          .join("；");
+        comparison.append(diagnosticBox);
+      }
       if (focusItems.length > 0) {
         const focusBox = el("div", "focus-row");
         focusBox.textContent = focusItems
@@ -1245,6 +1537,14 @@ function renderHtml(reportData) {
       return photo.attempts.some((attempt) => (attempt.focus || []).some((focus) => focus.issue === issue));
     }
 
+    function photoHasDiagnostic(photo) {
+      return (photo.diagnostics || []).length > 0;
+    }
+
+    function photoHasAlignmentSuspect(photo) {
+      return (photo.diagnostics || []).some((issue) => issue.type === "image_alignment_suspect");
+    }
+
     function photoHasShard(photo, shard) {
       return photo.attempts.some((attempt) => attempt.shard === shard);
     }
@@ -1267,6 +1567,8 @@ function renderHtml(reportData) {
         if (state.status === "diff" && !photoHasDiff(photo)) return false;
         if (state.status === "missing" && !photoHasMissingProposal(photo)) return false;
         if (state.status === "focus" && !photoHasFocus(photo)) return false;
+        if (state.status === "disagreement" && !photoHasDiagnostic(photo)) return false;
+        if (state.status === "alignment" && !photoHasAlignmentSuspect(photo)) return false;
         if (state.field !== "all" && !fieldsForPhoto(photo).includes(state.field)) return false;
         return true;
       });
