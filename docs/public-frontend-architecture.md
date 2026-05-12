@@ -120,7 +120,12 @@ https://docs.google.com/spreadsheets/d/<spreadsheetId>/gviz/tq?tqx=out:csv&sheet
 - `app/analytics.js` 負責 GA4 setup、事件參數整理、搜尋字串清理與結果追蹤去重；前端其他模組只呼叫 `trackEvent` 或傳入 snapshot。
 - `app/ai-assistant.js` 負責 AI 助手提示詞與事件參數的純資料組裝，不處理 clipboard 或 DOM。
 - `app/candidates.js` 負責候選清單資料選取、markdown 與候選清單 DOM render；不改變搜尋或排序結果。
-- `app/main.js` 保留 bootstrap、DOM controls、資料載入、主照片卡 render 與事件 wiring。後續若繼續拆分，優先抽出 data-loader、render 與 controls，不要在同一 PR 重寫 UI 或改排序權重。
+- `app/data-loader.js` 負責讀取 project config、schema、taxonomy、search aliases 與 `photos` CSV，並依 schema 正規化 list 欄位、sheet row number 與 `search_text`。
+- `app/controls.js` 負責查詢 DOM controls/elements、建立可搜尋 select/autocomplete、填入篩選選項、任務模式按鈕與 active filter entry。控制項狀態仍由 `main.js` 組合進 render loop。
+- `app/overview-render.js` 負責索引概覽統計與 DOM render；統計規則應從 `photoSchema`、`option_labels` 與照片資料推導。
+- `app/photo-render.js` 負責主照片卡、Flickr / Finder / Sheets 連結、圖片尺寸下載、狀態 badge、排序訊號與卡片內 action。它接受目前 task/search/sort state 與 callback，不自行讀全域控制項。
+- `app/result-render.js` 負責結果狀態文字、active filter chips、task mode active state、load-more panel 與 empty state。
+- `app/main.js` 保留 bootstrap、專案設定套用、state、URL state、資料載入順序、事件 wiring 與 render loop 組合。新增前端行為時，先判斷是否屬於上述模組；只有跨模組協調才留在 `main.js`。
 
 新增前端模組時，需同步 `scripts/commands/build-pages.mjs` 與 `scripts/commands/check-pages-artifact.mjs`，確保 GitHub Pages artifact 包含新檔案。可測試的純邏輯應加入 `pnpm finder:test`，並納入 `pnpm project:check`。
 

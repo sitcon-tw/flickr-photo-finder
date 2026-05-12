@@ -115,6 +115,11 @@ node --check scripts/commands/discover-albums.mjs
 node --check scripts/commands/add-photo.mjs
 node --check scripts/commands/add-album.mjs
 node --check app/main.js
+node --check app/data-loader.js
+node --check app/controls.js
+node --check app/photo-render.js
+node --check app/overview-render.js
+node --check app/result-render.js
 ```
 
 依實際更動範圍選擇需要檢查的檔案，不需要每次全部重跑。
@@ -127,7 +132,7 @@ pnpm finder:build
 pnpm finder:check
 ```
 
-前端純邏輯應優先放在可測試模組，例如 `app/search-sort.js` 或 `app/url-state.js`，避免在 `app/main.js` 直接讀 DOM 控制項後混入 domain logic。
+前端純邏輯應優先放在可測試模組，例如 `app/search-sort.js`、`app/url-state.js`、`app/data-loader.js` 或 `app/result-render.js`。DOM control 行為放在 `app/controls.js`，照片卡片 DOM 與 action 放在 `app/photo-render.js`。`app/main.js` 應維持 bootstrap、state、URL state、資料載入順序、事件 wiring 與 render loop 組合，避免再把 domain logic 或大型 DOM render 寫回主檔。
 
 ## 文件優先順序
 
