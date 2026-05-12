@@ -68,7 +68,9 @@ function fillSelectOptions(select, label, options) {
   select.replaceChildren();
   select.append(new Option(label, ""));
   for (const option of options) {
-    select.append(new Option(option.label, option.value));
+    const element = new Option(option.label, option.value);
+    element.title = option.label;
+    select.append(element);
   }
 }
 
@@ -116,6 +118,7 @@ function renderEnhancedSelectOptions(control) {
     button.classList.toggle("is-selected", option.value === control.select.value);
     button.classList.toggle("is-empty", option.value === "");
     button.textContent = enhancedSelectOptionText(option);
+    button.title = enhancedSelectOptionText(option);
     fragment.append(button);
   }
 
@@ -333,32 +336,61 @@ function compactLabelParts(parts) {
     });
 }
 
+function inferYear(...values) {
+  for (const value of values) {
+    const match = String(value ?? "").match(/(20\d{2})/);
+    if (match) {
+      return match[1];
+    }
+  }
+  return "";
+}
+
+function albumOptionFromPhoto(photo, value) {
+  const albumTitle = String(photo.album_title ?? "").trim();
+  const eventName = String(photo.event_name ?? "").trim();
+  const explicitYear = String(photo.event_year ?? "").trim();
+  const year = explicitYear || inferYear(eventName, albumTitle);
+  const titleAlreadyHasYear = year && (albumTitle.includes(year) || eventName.includes(year));
+  const labelParts = compactLabelParts([titleAlreadyHasYear ? "" : year, eventName, albumTitle]);
+  const label = labelParts.join(" · ") || value;
+  const specificity = labelParts.length + (year ? 1 : 0) + (eventName ? 1 : 0) + (albumTitle ? 1 : 0);
+  return { value, label, year, specificity };
+}
+
 export function albumFilterOptions(photos) {
   const options = new Map();
   for (const photo of photos) {
-    const labelParts = compactLabelParts([photo.event_year, photo.event_name, photo.album_title]);
-    const fallbackLabel = labelParts.join(" · ");
-
     for (const albumId of photo.album_ids) {
       const id = String(albumId ?? "").trim();
       if (!id) {
         continue;
       }
       const key = `id:${id}`;
-      const label = fallbackLabel || id;
+      const next = albumOptionFromPhoto(photo, key);
       const current = options.get(key);
-      if (!current || label.length > current.label.length) {
-        options.set(key, { value: key, label });
+      if (!current || next.specificity > current.specificity || next.label.length > current.label.length) {
+        options.set(key, next);
       }
     }
 
     if (photo.album_ids.length === 0 && photo.album_title) {
       const key = `title:${photo.album_title}`;
-      options.set(key, { value: key, label: fallbackLabel || photo.album_title });
+      options.set(key, albumOptionFromPhoto(photo, key));
     }
   }
 
-  return [...options.values()].sort((left, right) => left.label.localeCompare(right.label, "zh-Hant-TW"));
+  return [...options.values()]
+    .sort((left, right) => {
+      const leftYear = Number(left.year) || 0;
+      const rightYear = Number(right.year) || 0;
+      return (
+        rightYear - leftYear ||
+        left.label.localeCompare(right.label, "zh-Hant-TW") ||
+        left.value.localeCompare(right.value, "zh-Hant-TW")
+      );
+    })
+    .map(({ value, label }) => ({ value, label }));
 }
 
 export function setupTaskModes(container, taskModes) {

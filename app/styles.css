@@ -363,10 +363,13 @@ select {
 .enhanced-select-option {
   min-height: 32px;
   padding: 6px 8px;
+  overflow: hidden;
   border: 0;
   background: transparent;
   color: var(--text);
+  text-overflow: ellipsis;
   text-align: left;
+  white-space: nowrap;
 }
 
 .enhanced-select-option:hover,
