@@ -66,6 +66,7 @@ let searchTokensForField = () => [];
 const state = {
   taskMode: "all",
   selectedPhotoIds: new Set(),
+  promotedPhotoIds: new Set(),
   lastTrackedZeroState: "",
 };
 
@@ -183,6 +184,7 @@ function filteredAndSortedPhotos() {
     task: activeTask(),
     discoverHistorySize,
     discoverWindowSize,
+    selectedPhotoIds: state.promotedPhotoIds,
   });
 }
 
@@ -218,6 +220,7 @@ function renderPhoto(photo, resultRank, resultCount) {
 function toggleCandidate(photoId) {
   if (state.selectedPhotoIds.has(photoId)) {
     state.selectedPhotoIds.delete(photoId);
+    state.promotedPhotoIds.delete(photoId);
     trackEvent("remove_candidate", { photo_id: photoId, task_mode: state.taskMode, sort_mode: controls.sort.value });
   } else {
     state.selectedPhotoIds.add(photoId);
@@ -253,6 +256,7 @@ async function copyCandidateList() {
 
 function clearCandidates() {
   state.selectedPhotoIds.clear();
+  state.promotedPhotoIds.clear();
   render({ preservePage: true, source: "candidate" });
 }
 
@@ -443,6 +447,7 @@ function applyUrlState() {
   setControlValue(controls.collection, urlState.collection);
   for (const photoId of urlState.selectedPhotoIds) {
     state.selectedPhotoIds.add(photoId);
+    state.promotedPhotoIds.add(photoId);
   }
   syncEnhancedSelects();
 }
