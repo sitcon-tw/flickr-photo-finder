@@ -76,6 +76,7 @@ let optionLabelMaps = new Map();
 let searchTokensForField = () => [];
 let filterControlEventsBound = false;
 let activePreviewPhoto = null;
+let previewDragState = null;
 
 const state = {
   taskMode: "all",
@@ -200,6 +201,7 @@ function openCandidateSheet() {
 }
 
 function closePreview() {
+  resetPreviewDragState();
   elements.photoPreviewDialog.hidden = true;
   activePreviewPhoto = null;
   if (!elements.searchPanel.classList.contains("is-filter-open") && !elements.sidePanel.classList.contains("is-candidate-open")) {
@@ -208,11 +210,71 @@ function closePreview() {
 }
 
 function closeMobileOverlays() {
+  resetPreviewDragState();
   elements.searchPanel.classList.remove("is-filter-open");
   elements.sidePanel.classList.remove("is-candidate-open");
   elements.photoPreviewDialog.hidden = true;
   activePreviewPhoto = null;
   setModalOpen(false);
+}
+
+function isMobilePreviewSheet() {
+  return window.matchMedia("(max-width: 760px)").matches;
+}
+
+function resetPreviewDragState() {
+  previewDragState = null;
+  elements.photoPreviewDialog.style.transform = "";
+}
+
+function previewTouchFromList(touches, identifier) {
+  return Array.from(touches).find((touch) => touch.identifier === identifier) ?? null;
+}
+
+function onPreviewTouchStart(event) {
+  if (elements.photoPreviewDialog.hidden || !isMobilePreviewSheet() || event.touches.length !== 1) {
+    return;
+  }
+  const touch = event.touches[0];
+  previewDragState = {
+    touchId: touch.identifier,
+    startY: touch.clientY,
+    startScrollTop: elements.photoPreviewDialog.scrollTop,
+  };
+}
+
+function onPreviewTouchMove(event) {
+  if (!previewDragState) {
+    return;
+  }
+  const touch = previewTouchFromList(event.touches, previewDragState.touchId);
+  if (!touch) {
+    return;
+  }
+  const deltaY = touch.clientY - previewDragState.startY;
+  if (previewDragState.startScrollTop > 0 || deltaY <= 0) {
+    return;
+  }
+  event.preventDefault();
+  const dragOffset = Math.min(deltaY, 160);
+  elements.photoPreviewDialog.style.transform = `translateY(${Math.round(dragOffset)}px)`;
+}
+
+function onPreviewTouchEnd(event) {
+  if (!previewDragState) {
+    return;
+  }
+  const touch = previewTouchFromList(event.changedTouches, previewDragState.touchId);
+  if (!touch) {
+    resetPreviewDragState();
+    return;
+  }
+  const deltaY = touch.clientY - previewDragState.startY;
+  const shouldClose = previewDragState.startScrollTop <= 0 && deltaY >= 96;
+  resetPreviewDragState();
+  if (shouldClose) {
+    closePreview();
+  }
 }
 
 function currentFilterSnapshot() {
@@ -792,6 +854,10 @@ controls.mobileCandidate.addEventListener("click", openCandidateSheet);
 controls.closeFilterSheet.addEventListener("click", closeFilterSheet);
 controls.closeCandidateSheet.addEventListener("click", closeCandidateSheet);
 controls.closePreview.addEventListener("click", closePreview);
+elements.photoPreviewDialog.addEventListener("touchstart", onPreviewTouchStart, { passive: true });
+elements.photoPreviewDialog.addEventListener("touchmove", onPreviewTouchMove, { passive: false });
+elements.photoPreviewDialog.addEventListener("touchend", onPreviewTouchEnd);
+elements.photoPreviewDialog.addEventListener("touchcancel", onPreviewTouchEnd);
 controls.previewLarge.addEventListener("click", downloadPreviewLargeImage);
 controls.previewCandidate.addEventListener("click", () => {
   if (activePreviewPhoto) {
