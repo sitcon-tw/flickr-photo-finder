@@ -95,9 +95,11 @@ button {
   padding: 0 10px;
 }
 
-.filter-demo {
+.filter-grid {
   display: grid;
-  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+  align-items: end;
 }
 
 .filter-multi-select {
@@ -166,6 +168,58 @@ button {
 
 .filter-empty {
   margin: 8px;
+}
+
+.sort-select {
+  display: grid;
+  gap: 6px;
+}
+
+.sort-select > button {
+  justify-content: space-between;
+  width: 100%;
+  background: #fff;
+}
+
+[role="option"] {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+[role="option"][data-focused],
+[role="option"][data-selected] {
+  background: #e8f8fc;
+  color: #0f6f89;
+}
+
+.result-list {
+  display: grid;
+  gap: 8px;
+  margin: 16px 0;
+}
+
+.result-row {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid #d8deea;
+  border-radius: 8px;
+  background: #f7f8fb;
+}
+
+.result-row span {
+  color: #4d5a70;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.load-error {
+  color: #9b1c1c;
+  font-weight: 800;
 }
 
 .core-status {

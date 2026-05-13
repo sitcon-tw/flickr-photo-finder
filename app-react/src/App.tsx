@@ -1,33 +1,52 @@
-import { useEffect, useMemo, useState } from "react";
-import { Button, Input, Label, TextField } from "react-aria-components";
-import { FilterMultiSelect, type FilterOption } from "./components/FilterMultiSelect";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import { Button, Input, Label, ListBox, ListBoxItem, Popover, Select, SelectValue, TextField } from "react-aria-components";
+import { FilterMultiSelect } from "./components/FilterMultiSelect";
 import { SheetDialog } from "./components/SheetDialog";
 import { encodeFinderState, useFinderData, useInitialFinderState } from "./data";
-import { pageSize, taskModes } from "./finderCore";
+import type { FinderFilterKey, PhotoRecord } from "./domain";
+import { activePrimaryFilterDefinitions, filterOptionsForDefinition, updateFilter } from "./filters";
+import { discoverHistorySize, discoverWindowSize, filterAndSortPhotos, pageSize, taskModes } from "./finderCore";
 import "./styles.css";
 
 type SheetName = "filter" | "candidate" | "preview" | null;
-
-const sampleFilterOptions: FilterOption[] = [
-  { label: "橫式", value: "landscape" },
-  { label: "直式", value: "portrait" },
-  { label: "方形", value: "square" },
-  { label: "舞台講者", value: "stage-speaker" },
-  { label: "會眾互動", value: "audience-interaction" },
-  { label: "品牌露出", value: "brand-visibility" },
-];
 
 export function App() {
   const initialFinderState = useInitialFinderState();
   const finderData = useFinderData();
   const [finderState, setFinderState] = useState(initialFinderState);
   const [activeSheet, setActiveSheet] = useState<SheetName>(null);
-  const [sampleFilters, setSampleFilters] = useState<string[]>([]);
+  const deferredSearch = useDeferredValue(finderState.search);
   const selectedTask = useMemo(
     () => taskModes.find((task) => task.id === finderState.taskMode) ?? taskModes[0],
     [finderState.taskMode, finderData.status],
   );
   const loadedSummary = finderData.status === "ready" ? `${finderData.data.photos.length} 張照片 / ${finderData.data.albums.length} 個相簿` : "";
+  const primaryFilters = useMemo(() => activePrimaryFilterDefinitions(selectedTask), [selectedTask, finderData.status]);
+  const results = useMemo(() => {
+    if (finderData.status !== "ready") {
+      return [] as PhotoRecord[];
+    }
+    const filterAndSort = filterAndSortPhotos as (
+      photos: PhotoRecord[],
+      options: {
+        filters: Record<string, unknown>;
+        sortMode: string;
+        task: unknown;
+        discoverHistorySize: number;
+        discoverWindowSize: number;
+        selectedPhotoIds: string[];
+      },
+    ) => PhotoRecord[];
+    return filterAndSort(finderData.data.photos, {
+      filters: { ...finderState.filters, search: deferredSearch },
+      sortMode: finderState.sort,
+      task: selectedTask,
+      discoverHistorySize,
+      discoverWindowSize,
+      selectedPhotoIds: finderState.selectedPhotoIds,
+    }) as PhotoRecord[];
+  }, [deferredSearch, finderData, finderState.filters, finderState.selectedPhotoIds, finderState.sort, selectedTask]);
+  const visibleResults = results.slice(0, pageSize);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -79,26 +98,67 @@ export function App() {
           篩選
         </Button>
         <Button type="button" onPress={() => setActiveSheet("candidate")}>
-          候選 0
+          候選 {finderState.selectedPhotoIds.length}
         </Button>
       </section>
-      <section className="filter-demo" aria-label="React Aria 篩選選單">
-        <FilterMultiSelect
-          label="示範條件"
-          options={sampleFilterOptions}
-          selectedValues={sampleFilters}
-          onChange={setSampleFilters}
-        />
+      <section className="filter-grid" aria-label="主要篩選">
+        {finderData.status === "ready"
+          ? primaryFilters.map((definition) => {
+              const filterParam = (definition.filterParam ?? definition.key) as FinderFilterKey;
+              return (
+                <FilterMultiSelect
+                  key={definition.key}
+                  label={definition.label}
+                  options={filterOptionsForDefinition(finderData.data, definition)}
+                  selectedValues={finderState.filters[filterParam] ?? []}
+                  onChange={(values) =>
+                    setFinderState((current) => ({
+                      ...current,
+                      filters: updateFilter(current.filters, definition, values),
+                    }))
+                  }
+                />
+              );
+            })
+          : null}
+        <Select
+          className="sort-select"
+          selectedKey={finderState.sort}
+          onSelectionChange={(key) => setFinderState((current) => ({ ...current, sort: String(key) as typeof current.sort }))}
+        >
+          <Label>排序</Label>
+          <Button>
+            <SelectValue />
+          </Button>
+          <Popover className="filter-popover">
+            <ListBox>
+              <ListBoxItem id="recommended">推薦排序</ListBoxItem>
+              <ListBoxItem id="discover">探索更多</ListBoxItem>
+              <ListBoxItem id="newest">年份新到舊</ListBoxItem>
+              <ListBoxItem id="oldest">年份舊到新</ListBoxItem>
+              <ListBoxItem id="people-desc">人數多到少</ListBoxItem>
+              <ListBoxItem id="people-asc">人數少到多</ListBoxItem>
+            </ListBox>
+          </Popover>
+        </Select>
       </section>
 
       <section className="result-surface" aria-label="搜尋結果">
         <p>{selectedTask?.label ?? "全部照片"}排序情境</p>
-        <h2>React finder shell</h2>
+        <h2>{results.length} 張符合條件</h2>
         <p>
           Search value: <strong>{finderState.search || "未輸入"}</strong>
         </p>
         {finderData.status === "error" ? <p className="load-error">{finderData.message}</p> : null}
-        {finderData.status === "ready" ? <p>Loaded photos: {finderData.data.photos.length}</p> : null}
+        {finderData.status === "ready" ? <p>目前顯示前 {visibleResults.length} 張，後續會接完整照片卡片與載入更多。</p> : null}
+        <div className="result-list">
+          {visibleResults.slice(0, 12).map((photo) => (
+            <article className="result-row" key={photo.photo_id}>
+              <strong>{photo.event_name || photo.album_title || photo.photo_id}</strong>
+              <span>{photo.visual_description || photo.photo_url}</span>
+            </article>
+          ))}
+        </div>
         <Button type="button" onPress={() => setActiveSheet("preview")}>
           開啟預覽
         </Button>
@@ -109,7 +169,7 @@ export function App() {
           篩選
         </Button>
         <Button type="button" onPress={() => setActiveSheet("candidate")}>
-          候選 0
+          候選 {finderState.selectedPhotoIds.length}
         </Button>
       </div>
 

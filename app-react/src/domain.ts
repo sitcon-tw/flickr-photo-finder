@@ -69,6 +69,7 @@ export type TaskMode = {
   orientations?: string[];
   safeCrops?: string[];
   prefersNegativeSpace?: boolean;
+  primaryFilters?: string[];
 };
 
 export type FinderData = {

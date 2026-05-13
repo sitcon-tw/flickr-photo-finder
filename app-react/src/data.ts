@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   applySearchRegistry,
+  applyControlsRegistry,
   applyTaskModeRegistry,
   applyUrlStateRegistry,
   dataSources,
@@ -74,6 +75,7 @@ export function useFinderData(): FinderLoadState {
     async function loadData() {
       try {
         const loaded = (await loadFinderData({ dataSources, projectConfigUrl })) as FinderData;
+        applyControlsRegistry(loaded.interfaceRegistry);
         applyTaskModeRegistry(loaded.interfaceRegistry);
         applyUrlStateRegistry(loaded.interfaceRegistry);
         applySearchRegistry(loaded.interfaceRegistry);
