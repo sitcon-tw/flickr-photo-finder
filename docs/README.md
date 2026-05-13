@@ -45,6 +45,7 @@
 | 組織名稱、Flickr 帳號、GitHub 專案連結與前端標題 | `config/project.json` | SITCON 是此 repo 的預設實例；其他組織 fork 時應先改這份設定。 |
 | 公開 Google Sheets ID | `config/project.json` 的 `googleSheets.spreadsheetId` | 這份 Sheets 預期可公開讀取；寫入權限由 Google Drive/Sheets 管理。 |
 | GitHub Pages 前端資料流、本機資料來源與部署 artifact | `docs/public-frontend-architecture.md` | 前端現況 runbook；`pnpm finder:dev`、`pnpm finder:dev:fixture`、`pnpm finder:dev:export` 的差異以這份為準。 |
+| Pages React 遷移計畫 | `docs/public-frontend-react-migration-plan.md` | 完整遷移基準、可破壞舊契約、React cutover 能力與 commit plan。 |
 | 公開前端代理使用者研究 | `docs/public-frontend-agent-research.md` | 重構前的多角色代理研究快照；不等同真人訪談，也不是目前缺口清單。 |
 | 公開前端手機版代理研究 | `docs/public-frontend-mobile-research.md` | 針對 #5 手機版重設計的代理深訪與 owner 評估紀錄；不等同真人訪談或已完成 usability test。 |
 | 公開前端重構需求簡報 | `docs/public-frontend-redesign-brief.md` | GitHub Pages 前端重構的歷史需求基準與驗收 baseline；目前已完成多數 P0/P1。 |
@@ -171,6 +172,7 @@
 - `sheets-sync-workflow.md`: Sheets 與 repo 工具同步流程。
 - `apps-script-maintenance-design.md`: Apps Script 維護輔助與 `clasp` 部署原則。
 - `public-frontend-architecture.md`: GitHub Pages 唯讀前端資料流、本機開發資料來源與部署 artifact runbook。
+- `public-frontend-react-migration-plan.md`: Pages Finder 遷移到 React + TypeScript + React Aria 的產品基準、可破壞舊契約、commit plan 與驗收。
 - `public-frontend-agent-research.md`: 重構前的多角色代理使用者研究快照，整理任務脈絡、痛點、確認事實與推測；不是目前缺口清單。
 - `public-frontend-mobile-research.md`: #5 手機版重設計的代理深訪、owner 評估表、P0 範圍與驗收建議；不是真人訪談結果。
 - `public-frontend-redesign-brief.md`: GitHub Pages 前端重構的歷史需求基準與驗收標準；後續回歸或 P2 規劃可用來比對。
