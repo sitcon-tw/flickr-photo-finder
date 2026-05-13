@@ -23,7 +23,7 @@
 | 任務 | 先從這裡開始 | 補讀或邊界提醒 |
 | --- | --- | --- |
 | 我要修改公開前端 | `docs/public-frontend-architecture.md` | 先確認正式資料來源、本機 fixture/export 模式、前端模組邊界、artifact build/check 與 GitHub Pages 部署邊界。 |
-| 我要繼續 Pages React 遷移 | [GitHub issue #44](https://github.com/sitcon-tw/flickr-photo-finder/issues/44) | 先讀 tracking issue，再讀 ADR 0007 與 `docs/public-frontend-react-migration-plan.md`；不要依賴對話記憶或 prototype branch。 |
+| 我要繼續 Pages React 遷移 | [GitHub issue #44](https://github.com/sitcon-tw/flickr-photo-finder/issues/44) | 先讀 tracking issue，再讀 ADR 0007 與 `docs/public-frontend-react-migration-plan.md`；不要依賴對話記憶或封存 prototype tag。 |
 | 我要修改 Apps Script | `docs/apps-script-maintenance-design.md` | 先確認 clasp 綁定、target、GeneratedConfig、Sheets-side validation 與練習表/正式表邊界。 |
 | 我要修改 taxonomy 或欄位 schema | `真理來源` 與 `共用字串歸屬` | 實際 source 是 `data/tag-taxonomy.json` 與 `data/photo-schema.json`；改完需依影響範圍同步 Apps Script、前端或 validation，並執行 `pnpm data:validate`。 |
 | 我要修改 filter、task mode、URL key 或跨介面 field set | `docs/shared-value-governance.md` | Interface policy 來源是 `data/interface-registry.json`；改完需重新產生 Apps Script config 並執行 `pnpm shared-values:check`。 |
