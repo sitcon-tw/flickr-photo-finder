@@ -195,6 +195,7 @@ export async function buildPagesArtifact({
   await writeIndexHtml(outputDir);
   await copyIntoArtifact("app/analytics.js", outputDir, "analytics.js");
   await copyIntoArtifact("app/ai-assistant.js", outputDir, "ai-assistant.js");
+  await copyIntoArtifact("app/candidate-copy.js", outputDir, "candidate-copy.js");
   await copyIntoArtifact("app/candidates.js", outputDir, "candidates.js");
   await copyIntoArtifact("app/controls.js", outputDir, "controls.js");
   await copyIntoArtifact("app/data-loader.js", outputDir, "data-loader.js");
