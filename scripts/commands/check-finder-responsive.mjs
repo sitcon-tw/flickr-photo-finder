@@ -169,9 +169,38 @@ async function probe(url, viewport) {
     if (result.exceptionDetails) {
       throw new Error(result.exceptionDetails.text || "Responsive probe failed.");
     }
+    const interactionResult = await send("Runtime.evaluate", {
+      expression: `(() => {
+        const isVisibleElement = (element) => {
+          if (!element) return false;
+          const style = getComputedStyle(element);
+          const rect = element.getBoundingClientRect();
+          return style.display !== "none" && style.visibility !== "hidden" && rect.width > 0 && rect.height > 0;
+        };
+        const desktopFilterTrigger = [...document.querySelectorAll(".desktop-control-panel .filter-trigger")]
+          .find(isVisibleElement);
+        if (!desktopFilterTrigger) {
+          return { desktopFilterOpens: null };
+        }
+        desktopFilterTrigger.click();
+        return new Promise((resolve) => {
+          setTimeout(() => {
+            resolve({
+              desktopFilterOpens: [...document.querySelectorAll(".filter-popover")]
+                .some(isVisibleElement),
+            });
+          }, 180);
+        });
+      })()`,
+      awaitPromise: true,
+      returnByValue: true,
+    });
+    if (interactionResult.exceptionDetails) {
+      throw new Error(interactionResult.exceptionDetails.text || "Responsive interaction probe failed.");
+    }
     await browser.send("Target.closeTarget", { targetId: target.targetId });
     browser.close();
-    return result.result.value;
+    return { ...result.result.value, ...interactionResult.result.value };
   } finally {
     chrome.kill("SIGTERM");
     rmSync(userDataDir, { force: true, recursive: true });
@@ -196,6 +225,9 @@ function assertProbe(name, result, expected) {
     if (result.cardActions.some((action) => action.includes(forbiddenAction))) {
       throw new Error(`${name} should not show card action: ${forbiddenAction}`);
     }
+  }
+  if (expected.desktopFilterOpens !== undefined && result.desktopFilterOpens !== expected.desktopFilterOpens) {
+    throw new Error(`${name} expected desktopFilterOpens=${expected.desktopFilterOpens}, got ${result.desktopFilterOpens}`);
   }
   if (result.minTarget < expected.minTarget) {
     throw new Error(`${name} touch/click target too small: ${result.minTarget} < ${expected.minTarget}`);
@@ -222,6 +254,7 @@ async function main() {
     },
     actions: ["加候選", "詳情", "Flickr", "大圖", "原圖", "Sheets"],
     forbiddenActions: [],
+    desktopFilterOpens: true,
     minTarget: 38,
   });
   assertProbe("mobile", mobile, {

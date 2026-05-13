@@ -138,7 +138,7 @@ input:focus-visible {
 
 .finder-toolbar {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr);
   gap: 10px;
   align-items: end;
   padding: 14px;
@@ -534,7 +534,7 @@ input:focus-visible {
 }
 
 .active-filters button {
-  min-height: 36px;
+  min-height: 44px;
   border-color: var(--accent);
   background: var(--accent-soft);
   color: var(--accent-strong);

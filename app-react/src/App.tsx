@@ -230,12 +230,6 @@ export function App() {
           <Label>搜尋</Label>
           <Input placeholder="可放字、品牌露出、友善交流、舞台講者" />
         </TextField>
-        <Button type="button" onPress={() => setActiveSheet("filter")}>
-          篩選
-        </Button>
-        <Button type="button" onPress={() => setActiveSheet("candidate")}>
-          候選 {finderState.selectedPhotoIds.length}
-        </Button>
       </section>
 
       <section className="desktop-control-panel" aria-label="桌面搜尋與篩選工作區">

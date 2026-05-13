@@ -70,11 +70,11 @@ export function PhotoPreview({ data, photo, selected, onToggleCandidate }: Photo
         <Button type="button" onPress={() => onToggleCandidate(photo.photo_id)}>
           <ActionLabel icon={selected ? "✓" : "+"} text={selected ? "已候選" : "加候選"} />
         </Button>
-        <Button type="button" onPress={() => openUrl(photo.photo_url)}>
-          <ActionLabel icon="F" text="Flickr" />
-        </Button>
         <Button type="button" isDisabled={!largeUrl} onPress={() => openUrl(largeUrl)}>
           <ActionLabel icon="↗" text="大圖" />
+        </Button>
+        <Button type="button" onPress={() => openUrl(photo.photo_url)}>
+          <ActionLabel icon="F" text="Flickr" />
         </Button>
         <Button type="button" isDisabled={!originalUrl} onPress={() => openUrl(originalUrl)}>
           <ActionLabel icon="⤓" text="原圖" />

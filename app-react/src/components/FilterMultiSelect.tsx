@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Button, Dialog, Input, Label, Popover, TextField } from "react-aria-components";
+import { Button, Dialog, DialogTrigger, Input, Label, Popover, TextField } from "react-aria-components";
 
 export type FilterOption = {
   label: string;
@@ -86,14 +86,16 @@ export function FilterMultiSelect({
   return (
     <div className="filter-multi-select">
       <span className="filter-label">{label}</span>
-      <Button className="filter-trigger" type="button">
-        {summary}
-      </Button>
-      <Popover className="filter-popover" containerPadding={12} offset={6} placement="bottom start" shouldFlip>
-        <Dialog className="filter-dialog" aria-label={`${label}選單`}>
-          {optionsList}
-        </Dialog>
-      </Popover>
+      <DialogTrigger>
+        <Button className="filter-trigger" type="button">
+          {summary}
+        </Button>
+        <Popover className="filter-popover" containerPadding={12} offset={6} placement="bottom start" shouldFlip>
+          <Dialog className="filter-dialog" aria-label={`${label}選單`}>
+            {optionsList}
+          </Dialog>
+        </Popover>
+      </DialogTrigger>
     </div>
   );
 }

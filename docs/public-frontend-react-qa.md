@@ -22,8 +22,11 @@
 pnpm finder:build
 pnpm finder:check
 pnpm finder:performance:check
+PORT=4174 pnpm finder:dev:fixture
 pnpm finder:responsive:check -- http://127.0.0.1:<port>/
 ```
+
+`finder:responsive:check` 需要先有本機 frontend server。若 4174 已被占用，改用其他 port，並把同一個 URL 傳給 responsive check。
 
 完整本機健康檢查：
 
@@ -120,6 +123,8 @@ pnpm finder:performance:check
 - 首批只 render 固定頁數照片卡。
 - 搜尋、篩選、推薦排序與探索排序在 10k 級資料下維持可接受時間。
 - load more 才增加畫面卡片數量。
+
+目前 `pnpm finder:performance:check` 驗證的是 10k 級搜尋/排序核心；DOM 層「首批不超過 page size、load more 才增加卡片」仍需人工或後續 browser harness 驗證，不能只靠此指令代表完整 UI 壓力測試。
 
 ## Analytics 腳本
 

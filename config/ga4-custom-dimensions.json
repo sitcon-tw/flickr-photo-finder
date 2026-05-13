@@ -43,6 +43,12 @@
       "scope": "EVENT"
     },
     {
+      "parameterName": "copy_template",
+      "displayName": "Copy template",
+      "description": "Candidate list copy template identifier.",
+      "scope": "EVENT"
+    },
+    {
       "parameterName": "recommended_use",
       "displayName": "Recommended use",
       "description": "Selected photo recommended use filter.",
