@@ -96,6 +96,8 @@ async function main() {
     "data/photo-schema.json",
     "data/search-aliases.json",
     "data/tag-taxonomy.json",
+    "fixtures/albums.csv",
+    "fixtures/photos.csv",
     "index.html",
   ];
 

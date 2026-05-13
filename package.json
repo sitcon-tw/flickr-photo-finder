@@ -55,6 +55,7 @@
     "finder:react:dev": "vite --config app-react/vite.config.ts --host 127.0.0.1",
     "finder:react:build": "vite build --config app-react/vite.config.ts",
     "finder:react:check": "node scripts/commands/check-react-pages-artifact.mjs",
+    "finder:react:smoke": "node scripts/commands/smoke-react-pages-artifact.mjs",
     "finder:react:typecheck": "tsc -p app-react/tsconfig.json",
     "finder:test": "node --test tests/*.test.mjs",
     "dev": "pnpm finder:dev",

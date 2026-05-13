@@ -11,6 +11,8 @@ const publicFiles = [
   "data/photo-schema.json",
   "data/search-aliases.json",
   "data/tag-taxonomy.json",
+  "fixtures/albums.csv",
+  "fixtures/photos.csv",
 ];
 
 async function copyIntoPreviewArtifact(sourcePath: string, outputRoot: string) {
