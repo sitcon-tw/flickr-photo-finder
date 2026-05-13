@@ -116,12 +116,12 @@ https://docs.google.com/spreadsheets/d/<spreadsheetId>/gviz/tq?tqx=out:csv&sheet
 公開前端維持原生 ES modules，不導入 bundler 或成熟前端 framework。目前的拆分原則是 Functional Core / Imperative Shell：
 
 - `app/search-sort.js` 是可測試純函式核心，負責 search text、篩選、scoring、推薦排序與探索排序；不得直接讀 DOM 或全域控制項。
-- `app/url-state.js` 負責 URL query encode/decode；selected ids、filters 與 sort deep link 行為應先在這裡調整。
+- `app/url-state.js` 負責 URL query encode/decode；selected ids、filters 與 sort deep link 行為應先在這裡調整。新版 filter URL 使用重複 query 參數表示多選，例如 `scene=攤位&scene=會眾`；舊單值 deep link 不保證相容。
 - `app/analytics.js` 負責 GA4 setup、事件參數整理、搜尋字串清理與結果追蹤去重；前端其他模組只呼叫 `trackEvent` 或傳入 snapshot。
 - `app/ai-assistant.js` 負責 AI 助手提示詞與事件參數的純資料組裝，不處理 clipboard 或 DOM。
 - `app/candidates.js` 負責候選清單資料選取、markdown 與候選清單 DOM render；不改變搜尋或排序結果。
 - `app/data-loader.js` 負責讀取 project config、schema、taxonomy、search aliases 與 `photos` CSV，並依 schema 正規化 list 欄位、sheet row number 與 `search_text`。
-- `app/controls.js` 負責查詢 DOM controls/elements、建立可搜尋 select/autocomplete、填入篩選選項、任務模式按鈕與 active filter entry。控制項狀態仍由 `main.js` 組合進 render loop。
+- `app/controls.js` 負責查詢 DOM controls/elements、建立可搜尋 multi-select / token autocomplete、填入篩選選項、任務模式按鈕、任務感知篩選分層與 active filter entry。控制項狀態仍由 `main.js` 的 finder state 組合進 render loop。
 - `app/overview-render.js` 負責索引概覽統計與 DOM render；統計規則應從 `photoSchema`、`option_labels` 與照片資料推導。
 - `app/photo-render.js` 負責主照片卡、Flickr / Finder / Sheets 連結、圖片尺寸下載、狀態 badge、排序訊號與卡片內 action。它接受目前 task/search/sort state 與 callback，不自行讀全域控制項。
 - `app/result-render.js` 負責結果狀態文字、active filter chips、task mode active state、load-more panel 與 empty state。
@@ -135,7 +135,13 @@ https://docs.google.com/spreadsheets/d/<spreadsheetId>/gviz/tq?tqx=out:csv&sheet
 
 公開前端遇到選項可能偏長的篩選欄位，例如活動/相簿、場景、素材包、贊助品項，應使用頁面內可搜尋的選單或 autocomplete，不依賴瀏覽器原生 `<select>` / `<datalist>` 彈出層。原生彈出層由瀏覽器與作業系統控制，長列表在小視窗或特定環境中可能出現 fallback 呈現，難以用 CSS 穩定修正。實作上仍可保留原本欄位值作為篩選狀態來源，但使用者操作層應提供可搜尋、可捲動且不離開頁面布局的選單。贊助品項仍應保留輸入片段文字搜尋的能力，不應被限制成只能選擇完整品項名稱。
 
-面對上千或上萬張照片時，公開前端應以「工作任務」作為初始心智模型，而不是只提供欄位表單。任務模式可以調整推薦排序權重，但不應隱藏資料；使用者仍可透過活動/相簿、使用提醒、整理狀態、構圖、留白、裁切、贊助品項與素材包等欄位自行收斂結果。結果狀態列應清楚說明任務模式是排序情境，不是硬篩選。
+篩選狀態應以 finder state 為唯一來源，DOM 控制項只負責呈現與發出變更事件。所有篩選欄位都以陣列表示，即使資料欄位本身是單值，例如照片方向或整理狀態。篩選語意固定為同一欄位內 OR、不同欄位間 AND；active chips 應一值一顆，移除時只移除該值，不清掉整個欄位。
+
+篩選區應採「固定核心 + 任務重點 + 進階條件」分層，而不是把整份 schema 攤在第一層。固定核心包含任務模式、搜尋、活動/相簿、排序與清除。任務重點依目前任務提升相關條件，例如網站橫幅與設計素材提升方向、留白與裁切，贊助提案與贊助成果提升贊助價值與贊助品項。其他條件保留在進階區，讓使用者需要時再收斂。
+
+面對上千或上萬張照片時，公開前端應以「工作任務」作為初始心智模型，而不是只提供欄位表單。任務模式可以調整推薦排序權重，但不應隱藏資料；使用者仍可透過活動/相簿、構圖、留白、裁切、場景、用途、贊助品項與素材包等欄位自行收斂結果。結果狀態列應清楚說明任務模式是排序情境，不是硬篩選。
+
+`curation_status` 與 `public_use_status` 不應成為主要找圖入口。照片量級很大時，只有少量照片會是人工處理過的整理狀態；若把 `reviewed` 或 `approved` 放成第一層門檻，Finder 會過早排除大量仍可探索的公開 Flickr 照片。這兩個欄位應保留在進階篩選與卡片狀態中，作為使用前提醒與後續檢查依據，而不是預設探索範圍。
 
 活動/相簿篩選應使用 `album_ids` 作為主要判斷，並以 `event_year`、`event_name` 與 `album_title` 組成可讀選項文字；若舊資料沒有 `album_ids`，才退回用 `album_title` 比對。這是硬篩選，服務已知道目標活動或相簿的使用者，不應取代任務模式或文字搜尋。
 
