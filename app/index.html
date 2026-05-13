@@ -166,9 +166,15 @@
         <div>
           <strong id="resultSummary">載入中</strong>
           <p id="resultContext">準備讀取資料</p>
+          <p id="selectedNotice" class="selected-notice" hidden></p>
         </div>
         <div id="activeFilters" class="active-filters" aria-label="已套用條件"></div>
       </section>
+
+      <div class="mobile-action-bar" aria-label="手機快捷操作">
+        <button id="mobileFilterButton" type="button">篩選</button>
+        <button id="mobileCandidateButton" type="button">候選 0</button>
+      </div>
 
       <section class="workspace">
         <aside class="side-panel" aria-label="候選與資料概覽">
@@ -258,6 +264,28 @@
         </div>
       </article>
     </template>
+
+    <div id="modalBackdrop" class="modal-backdrop" hidden></div>
+
+    <section id="photoPreviewDialog" class="photo-preview-dialog" aria-label="照片預覽" aria-modal="true" role="dialog" hidden>
+      <div class="dialog-header">
+        <div>
+          <h2 id="previewTitle">照片預覽</h2>
+          <p id="previewMeta"></p>
+        </div>
+        <button id="closePreviewButton" type="button">關閉</button>
+      </div>
+      <div class="preview-image-frame">
+        <img id="previewImage" alt="" />
+      </div>
+      <dl id="previewDetails" class="preview-details"></dl>
+      <div class="preview-actions">
+        <button id="previewCandidateButton" class="candidate-toggle-button" type="button">候選</button>
+        <a id="previewFlickrLink" class="photo-action" target="_blank" rel="noreferrer">Flickr</a>
+        <a id="previewOriginalLink" class="photo-action" target="_blank" rel="noreferrer">原圖</a>
+        <a id="previewSheetLink" class="photo-action" target="_blank" rel="noreferrer">Sheets</a>
+      </div>
+    </section>
 
     <script type="module" src="./main.js"></script>
   </body>

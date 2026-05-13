@@ -51,6 +51,10 @@ export function queryControls() {
     candidateCopyTemplate: document.querySelector("#candidateCopyTemplateSelect"),
     clearCandidates: document.querySelector("#clearCandidatesButton"),
     copyAiAssistantPrompt: document.querySelector("#copyAiAssistantPromptButton"),
+    mobileFilter: document.querySelector("#mobileFilterButton"),
+    mobileCandidate: document.querySelector("#mobileCandidateButton"),
+    closePreview: document.querySelector("#closePreviewButton"),
+    previewCandidate: document.querySelector("#previewCandidateButton"),
   };
 }
 
@@ -67,6 +71,8 @@ export function queryElements() {
     sourceLink: document.querySelector("#sourceLink"),
     repositoryLink: document.querySelector("#repositoryLink"),
     taskModes: document.querySelector("#taskModes"),
+    searchPanel: document.querySelector(".search-panel"),
+    sidePanel: document.querySelector(".side-panel"),
     taskFilterGrid: document.querySelector("#taskFilterGrid"),
     advancedFilters: document.querySelector("#advancedFilters"),
     advancedFilterGrid: document.querySelector("#advancedFilterGrid"),
@@ -75,7 +81,17 @@ export function queryElements() {
     loadMoreSummary: document.querySelector("#loadMoreSummary"),
     candidateSummary: document.querySelector("#candidateSummary"),
     candidateList: document.querySelector("#candidateList"),
+    selectedNotice: document.querySelector("#selectedNotice"),
     aiAssistantSheetLink: document.querySelector("#aiAssistantSheetLink"),
+    modalBackdrop: document.querySelector("#modalBackdrop"),
+    photoPreviewDialog: document.querySelector("#photoPreviewDialog"),
+    previewTitle: document.querySelector("#previewTitle"),
+    previewMeta: document.querySelector("#previewMeta"),
+    previewImage: document.querySelector("#previewImage"),
+    previewDetails: document.querySelector("#previewDetails"),
+    previewFlickrLink: document.querySelector("#previewFlickrLink"),
+    previewOriginalLink: document.querySelector("#previewOriginalLink"),
+    previewSheetLink: document.querySelector("#previewSheetLink"),
   };
 }
 

@@ -6,14 +6,6 @@ export function selectedPhotos(selectedPhotoIds, photos) {
     .filter(Boolean);
 }
 
-function statusReminder(photo, { labelFor }) {
-  const publicStatus = String(photo.public_use_status ?? "").trim();
-  if (!["avoid", "needs_review"].includes(publicStatus)) {
-    return "";
-  }
-  return `提醒: ${labelFor("public_use_status", publicStatus)}`;
-}
-
 export function candidateMarkdown(photo, { photoTitle, finderLink, sheetRowLink, labelFor }) {
   const publicStatus = photo.public_use_status ? labelFor("public_use_status", photo.public_use_status) : "未填";
   const curationStatus = photo.curation_status ? labelFor("curation_status", photo.curation_status) : "未填";
@@ -34,11 +26,9 @@ export function candidateCopyText(candidates, { photoTitle, finderLink, candidat
     const items = candidates
       .map((photo, index) => {
         const rowLink = sheetRowLink(photo) || "未設定";
-        const curationStatus = photo.curation_status ? labelFor("curation_status", photo.curation_status) : "未填";
-        const publicStatus = photo.public_use_status ? labelFor("public_use_status", photo.public_use_status) : "未填";
         return `${index + 1}. ${photo.photo_url || finderLink(photo)}
-   Sheets: ${rowLink}
-   整理: ${curationStatus} / 使用提醒: ${publicStatus}`;
+   Finder: ${finderLink(photo)}
+   Sheets: ${rowLink}`;
       })
       .join("\n\n");
     return `候選照片:\nFinder 清單: ${listLink}\n\n${items}`;
@@ -49,10 +39,7 @@ export function candidateCopyText(candidates, { photoTitle, finderLink, candidat
   }
 
   const items = candidates
-    .map((photo, index) => {
-      const reminder = statusReminder(photo, { labelFor });
-      return [`${index + 1}. ${photo.photo_url || finderLink(photo)}`, reminder ? `   ${reminder}` : ""].filter(Boolean).join("\n");
-    })
+    .map((photo, index) => `${index + 1}. ${photo.photo_url || finderLink(photo)}`)
     .join("\n");
   return `候選照片:\n\n${items}`;
 }
@@ -106,8 +93,6 @@ export function renderCandidates({
     const meta = document.createElement("p");
     meta.textContent = [
       photo.event_year,
-      photo.curation_status ? labelFor("curation_status", photo.curation_status) : "整理未填",
-      photo.public_use_status ? labelFor("public_use_status", photo.public_use_status) : "",
       photo.recommended_uses.slice(0, 2).join("、"),
     ]
       .filter(Boolean)

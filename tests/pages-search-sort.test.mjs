@@ -346,15 +346,17 @@ describe("Pages search/sort pure logic", () => {
     assert.match(imText, /^候選照片:/);
     assert.match(imText, /1\. https:\/\/www\.flickr\.com\/photos\/sitcon\/100/);
     assert.match(imText, /2\. https:\/\/www\.flickr\.com\/photos\/sitcon\/200/);
-    assert.match(imText, /提醒: needs_review/);
+    assert.doesNotMatch(imText, /needs_review/);
     assert.doesNotMatch(imText, /SITCON 2026/);
     assert.doesNotMatch(imText, /Sheets:/);
     assert.doesNotMatch(imText, /Finder 清單:/);
 
     const collaborationText = candidateCopyText(items, helpers, "collaboration");
     assert.match(collaborationText, /Finder 清單: https:\/\/finder\.test\/\?selected=100%2C200/);
+    assert.match(collaborationText, /Finder: https:\/\/finder\.test\/#photo-100/);
     assert.match(collaborationText, /Sheets: https:\/\/sheet\.test\/A28/);
-    assert.match(collaborationText, /整理: ai_labeled \/ 使用提醒: needs_review/);
+    assert.doesNotMatch(collaborationText, /整理:/);
+    assert.doesNotMatch(collaborationText, /使用提醒:/);
 
     const urlText = candidateCopyText(items, helpers, "flickr_urls");
     assert.equal(

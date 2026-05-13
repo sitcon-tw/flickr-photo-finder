@@ -30,6 +30,8 @@ import { renderOverview as renderOverviewPanel } from "./overview-render.js";
 import {
   copyTextToClipboard,
   finderLink,
+  largeImageUrl,
+  originalSizePageUrl,
   photoAnchorId,
   photoTitle,
   renderPhotoCard,
@@ -70,6 +72,7 @@ let projectConfig = {};
 let optionLabelMaps = new Map();
 let searchTokensForField = () => [];
 let filterControlEventsBound = false;
+let activePreviewPhoto = null;
 
 const state = {
   taskMode: "all",
@@ -158,6 +161,57 @@ function setExternalLink(link, href) {
   link.removeAttribute("aria-disabled");
 }
 
+function setModalOpen(open) {
+  elements.modalBackdrop.hidden = !open;
+  document.body.classList.toggle("has-modal-open", open);
+}
+
+function closeFilterSheet() {
+  elements.searchPanel.classList.remove("is-filter-open");
+  if (!elements.photoPreviewDialog.hidden || elements.sidePanel.classList.contains("is-candidate-open")) {
+    return;
+  }
+  setModalOpen(false);
+}
+
+function openFilterSheet() {
+  closeCandidateSheet();
+  closePreview();
+  elements.searchPanel.classList.add("is-filter-open");
+  setModalOpen(true);
+}
+
+function closeCandidateSheet() {
+  elements.sidePanel.classList.remove("is-candidate-open");
+  if (!elements.photoPreviewDialog.hidden || elements.searchPanel.classList.contains("is-filter-open")) {
+    return;
+  }
+  setModalOpen(false);
+}
+
+function openCandidateSheet() {
+  closeFilterSheet();
+  closePreview();
+  elements.sidePanel.classList.add("is-candidate-open");
+  setModalOpen(true);
+}
+
+function closePreview() {
+  elements.photoPreviewDialog.hidden = true;
+  activePreviewPhoto = null;
+  if (!elements.searchPanel.classList.contains("is-filter-open") && !elements.sidePanel.classList.contains("is-candidate-open")) {
+    setModalOpen(false);
+  }
+}
+
+function closeMobileOverlays() {
+  elements.searchPanel.classList.remove("is-filter-open");
+  elements.sidePanel.classList.remove("is-candidate-open");
+  elements.photoPreviewDialog.hidden = true;
+  activePreviewPhoto = null;
+  setModalOpen(false);
+}
+
 function currentFilterSnapshot() {
   const filterCounts = Object.fromEntries(Object.entries(state.filters).map(([key, values]) => [`${key}Count`, values.length]));
   return {
@@ -223,6 +277,26 @@ function labelFor(fieldName, value) {
   return optionLabels(fieldName).get(value) ?? value;
 }
 
+function appendPreviewDetail(label, values, { fieldName = "" } = {}) {
+  const normalized = (Array.isArray(values) ? values : [values]).filter(Boolean);
+  if (normalized.length === 0) {
+    return;
+  }
+  const row = document.createElement("div");
+  row.className = "detail-row";
+  const term = document.createElement("dt");
+  term.textContent = label;
+  const description = document.createElement("dd");
+  for (const value of normalized) {
+    const tag = document.createElement("span");
+    tag.className = "tag";
+    tag.textContent = fieldName ? labelFor(fieldName, value) : value;
+    description.append(tag);
+  }
+  row.append(term, description);
+  elements.previewDetails.append(row);
+}
+
 function activeTask() {
   return taskModes.find((task) => task.id === state.taskMode) ?? taskModes[0];
 }
@@ -253,10 +327,60 @@ function sheetRowLink(photo) {
   return buildSheetRowLink(photo, projectConfig);
 }
 
+function openPreview(photo) {
+  closeFilterSheet();
+  closeCandidateSheet();
+  activePreviewPhoto = photo;
+  const largeUrl = largeImageUrl(photo);
+  const previewUrl = largeUrl || photo.image_preview_url;
+  elements.previewTitle.textContent = photoTitle(photo);
+  elements.previewMeta.textContent = [photo.event_year, photo.album_title, `photo_id: ${photo.photo_id}`].filter(Boolean).join(" / ");
+  elements.previewImage.src = previewUrl;
+  elements.previewImage.alt = [photoTitle(photo), photo.event_year].filter(Boolean).join(" ");
+  elements.previewDetails.replaceChildren();
+  appendPreviewDetail("構圖", [photo.orientation], { fieldName: "orientation" });
+  appendPreviewDetail("留白", photo.has_negative_space, { fieldName: "has_negative_space" });
+  appendPreviewDetail("裁切", photo.safe_crop);
+  appendPreviewDetail("用途", photo.recommended_uses.slice(0, 4));
+  appendPreviewDetail("場景", photo.scene_tags.slice(0, 4));
+  appendPreviewDetail("贊助", [...photo.sponsorship_tags, ...photo.sponsorship_items].slice(0, 4));
+  appendPreviewDetail("整理狀態", photo.curation_status, { fieldName: "curation_status" });
+  appendPreviewDetail("使用提醒", photo.public_use_status, { fieldName: "public_use_status" });
+  setExternalLink(elements.previewFlickrLink, photo.photo_url);
+  setExternalLink(elements.previewOriginalLink, originalSizePageUrl(photo));
+  setExternalLink(elements.previewSheetLink, sheetRowLink(photo));
+  updatePreviewCandidateButton();
+  elements.photoPreviewDialog.hidden = false;
+  setModalOpen(true);
+  controls.closePreview.focus({ preventScroll: true });
+}
+
+function updatePreviewCandidateButton() {
+  if (!activePreviewPhoto) {
+    return;
+  }
+  const selected = state.selectedPhotoIds.has(activePreviewPhoto.photo_id);
+  controls.previewCandidate.textContent = selected ? "已加入候選" : "加入候選";
+  controls.previewCandidate.setAttribute("aria-pressed", selected ? "true" : "false");
+  controls.previewCandidate.classList.toggle("is-selected", selected);
+}
+
 function candidateListLink() {
   const url = new URL(window.location.href);
   url.hash = "";
   return url.toString();
+}
+
+function activeFilterCount() {
+  return activeFilterEntries().filter(([key]) => key !== "task" && key !== "search").length;
+}
+
+function updateMobileSummary() {
+  const selectedCount = state.selectedPhotoIds.size;
+  controls.mobileFilter.textContent = activeFilterCount() > 0 ? `篩選 ${activeFilterCount()}` : "篩選";
+  controls.mobileCandidate.textContent = `候選 ${selectedCount}`;
+  elements.selectedNotice.hidden = selectedCount === 0;
+  elements.selectedNotice.textContent = selectedCount === 0 ? "" : `目前已有 ${selectedCount} 張候選照片，可從「候選 ${selectedCount}」查看。`;
 }
 
 function renderPhoto(photo, resultRank, resultCount) {
@@ -270,6 +394,7 @@ function renderPhoto(photo, resultRank, resultCount) {
     taskMode: state.taskMode,
     sortMode: controls.sort.value,
     toggleCandidate,
+    openPreview,
     trackEvent,
   });
 }
@@ -283,6 +408,7 @@ function toggleCandidate(photoId) {
     state.selectedPhotoIds.add(photoId);
     trackEvent("add_candidate", { photo_id: photoId, task_mode: state.taskMode, sort_mode: controls.sort.value });
   }
+  updatePreviewCandidateButton();
   render({ preservePage: true, preserveScroll: true, source: "candidate" });
 }
 
@@ -389,6 +515,7 @@ function render({ resetPage = false, preservePage = false, preserveScroll = fals
     labelFor,
     toggleCandidate,
   });
+  updateMobileSummary();
   elements.grid.replaceChildren();
   elements.summary.textContent = `${filtered.length} / ${photos.length} 張照片`;
   elements.context.textContent = resultContextText({ photos, filtered, controls, activeTask, activeFilterEntries });
@@ -598,10 +725,24 @@ controls.loadMore.addEventListener("click", () => {
 controls.copyCandidates.addEventListener("click", copyCandidateList);
 controls.clearCandidates.addEventListener("click", clearCandidates);
 controls.copyAiAssistantPrompt.addEventListener("click", copyAiAssistantPrompt);
+controls.mobileFilter.addEventListener("click", openFilterSheet);
+controls.mobileCandidate.addEventListener("click", openCandidateSheet);
+controls.closePreview.addEventListener("click", closePreview);
+controls.previewCandidate.addEventListener("click", () => {
+  if (activePreviewPhoto) {
+    toggleCandidate(activePreviewPhoto.photo_id);
+  }
+});
+elements.modalBackdrop.addEventListener("click", closeMobileOverlays);
 elements.aiAssistantSheetLink.addEventListener("click", () => {
   trackEvent("open_sheets_for_ai_assistant", currentAiAssistantEventParams());
 });
 window.addEventListener("hashchange", revealPhotoFromHash);
+window.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    closeMobileOverlays();
+  }
+});
 
 try {
   await loadData();
