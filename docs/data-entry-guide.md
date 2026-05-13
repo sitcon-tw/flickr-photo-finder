@@ -111,7 +111,7 @@ Google Sheets、CSV、AI proposal 與 repo 工具儲存的是 taxonomy raw value
 | `sponsorship_items` | 對應哪個 CFS 贊助品項，例如 `會場攤位`、`Badge 繩廠商 Logo 曝光`。 |
 | `sponsorship_tags` | 能支援哪種贊助價值，例如品牌露出、會眾互動、實體導流。 |
 
-`sponsorship_items` 必須對齊 `data/sponsorship-items.json` 的 2026 CFS 固定版本資料。未來年度若有新的 CFS 品項，應建立新版本資料或明確更新標籤字典。
+`sponsorship_items` 必須對齊 `data/sponsorship-items.json` 的 2026 CFS 固定版本資料。未來年度若有不同 CFS 品項，應建立對應年度版本資料或明確更新標籤字典。
 
 ## 公開使用判斷
 

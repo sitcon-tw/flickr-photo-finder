@@ -12,6 +12,12 @@ const syntaxRoots = [
 
 const checks = [
   {
+    name: "Language governance",
+    command: "pnpm",
+    args: ["language:check"],
+    next: "Replace vague relative version wording with concrete dates, hashes, schema versions, or current repo source references, then rerun pnpm language:check.",
+  },
+  {
     name: "JavaScript syntax",
     run: checkSyntax,
     next: "Fix the syntax error in the reported file, then rerun pnpm project:check.",
