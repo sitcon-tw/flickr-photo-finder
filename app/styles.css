@@ -1211,10 +1211,6 @@ select {
   --action-icon: var(--icon-download);
 }
 
-.preview-photo-button {
-  --action-icon: var(--icon-external);
-}
-
 .original-image-link {
   --action-icon: var(--icon-external);
 }
@@ -1708,7 +1704,6 @@ select {
     grid-template-columns: 1fr 1fr;
   }
 
-  .photo-actions .download-large-image-button,
   .photo-actions .original-image-link,
   .photo-actions .copy-flickr-link-button,
   .photo-actions .copy-finder-link-button,

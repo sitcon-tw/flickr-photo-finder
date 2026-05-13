@@ -358,7 +358,6 @@ export function renderPhotoCard(photo, resultRank, resultCount, context) {
   const originalImageLink = fragment.querySelector(".original-image-link");
   const sheetRowLinkElement = fragment.querySelector(".sheet-row-link");
   const candidateButton = fragment.querySelector(".candidate-toggle-button");
-  const previewButton = fragment.querySelector(".preview-photo-button");
   const copyFlickrLinkButton = fragment.querySelector(".copy-flickr-link-button");
   const copyFinderLinkButton = fragment.querySelector(".copy-finder-link-button");
   const largeUrl = largeImageUrl(photo);
@@ -427,13 +426,6 @@ export function renderPhotoCard(photo, resultRank, resultCount, context) {
   candidateButton.addEventListener("click", () => {
     toggleCandidate(photo.photo_id);
   });
-  previewButton.disabled = !openPreview;
-  previewButton.addEventListener("click", () => {
-    if (openPreview) {
-      openPreview(photo);
-    }
-  });
-
   downloadLargeButton.title = "直接下載 Flickr large-1024 圖片";
   setActionButton(downloadLargeButton, Boolean(largeUrl));
   downloadLargeButton.addEventListener("click", async () => {
