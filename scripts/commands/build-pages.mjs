@@ -193,6 +193,7 @@ export async function buildPagesArtifact({
   await rm(outputDir, { recursive: true, force: true });
   await mkdir(outputDir, { recursive: true });
   await writeIndexHtml(outputDir);
+  await copyIntoArtifact("app/analytics-core.js", outputDir, "analytics-core.js");
   await copyIntoArtifact("app/analytics.js", outputDir, "analytics.js");
   await copyIntoArtifact("app/ai-assistant.js", outputDir, "ai-assistant.js");
   await copyIntoArtifact("app/candidate-copy.js", outputDir, "candidate-copy.js");

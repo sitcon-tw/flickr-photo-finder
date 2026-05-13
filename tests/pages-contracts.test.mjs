@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { describe, it } from "node:test";
+import { hasActiveFilters, resultCountBucket, resultsEventParams, sanitizeSearchTerm } from "../app/analytics.js";
 import { candidateCopyText, selectedPhotos } from "../app/candidates.js";
 import { activeFilterEntries, applyControlsRegistry, filterDefinitions } from "../app/controls.js";
 import { buildSearchText, filterAndSortPhotos, uniqueSearchTokens } from "../app/search-sort.js";
@@ -324,5 +325,53 @@ describe("Pages finder contracts", () => {
       filterAndSortPhotos(photos, { selectedPhotoIds: promotedPhotoIds }).map((item) => item.photo_id),
       ["200", "100", "300"],
     );
+  });
+
+  it("keeps analytics event helpers low-cardinality and privacy-safe", () => {
+    assert.equal(resultCountBucket(0), "0");
+    assert.equal(resultCountBucket(5), "1_5");
+    assert.equal(resultCountBucket(20), "6_20");
+    assert.equal(resultCountBucket(21), "21_plus");
+    assert.equal(sanitizeSearchTerm(" contact test@example.org 0912-345-678 網站橫幅 "), "contact 網站橫幅");
+
+    const snapshot = {
+      taskMode: "social",
+      sortMode: "discover",
+      searchTerm: "網站橫幅",
+      resultCount: 7,
+      useCount: 2,
+      moodCount: 1,
+      sceneCount: 0,
+      peopleCountCount: 0,
+      subjectTypeCount: 0,
+      orientationCount: 1,
+      safeCropCount: 0,
+      publicStatusCount: 1,
+      priorityCount: 0,
+      curationStatusCount: 0,
+      albumCount: 0,
+      sponsorshipItemCount: 1,
+      sponsorshipTagCount: 0,
+      collectionCount: 0,
+      recommendedUse: ["社群貼文"],
+      orientation: ["landscape"],
+    };
+
+    assert.equal(hasActiveFilters(snapshot), true);
+    assert.deepEqual(resultsEventParams(snapshot), {
+      result_count: 7,
+      result_count_bucket: "6_20",
+      search_surface: "main",
+      task_mode: "social",
+      sort_mode: "discover",
+      filter_count: 13,
+      recommended_use_count: 2,
+      public_use_status_count: 1,
+      priority_level_count: 0,
+      curation_status_count: 0,
+      album_filter_used: false,
+      sponsorship_filter_used: true,
+      collection_filter_used: false,
+    });
   });
 });

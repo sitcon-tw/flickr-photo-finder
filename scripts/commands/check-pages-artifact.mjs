@@ -106,6 +106,23 @@ async function assertNoForbiddenEntries(artifactDir) {
   }
 }
 
+async function assertOnlyExpectedEntries(artifactDir, requiredFiles) {
+  const allowedEntries = new Set(requiredFiles);
+  for (const file of requiredFiles) {
+    const parts = file.split("/");
+    while (parts.length > 1) {
+      parts.pop();
+      allowedEntries.add(parts.join("/"));
+    }
+  }
+
+  for (const entry of await listArtifactEntries(artifactDir)) {
+    if (!allowedEntries.has(entry)) {
+      throw new Error(`Pages artifact contains unexpected file or directory: ${entry}`);
+    }
+  }
+}
+
 async function assertIncludes(path, text, label) {
   const content = await readFile(path, "utf8");
   if (!content.includes(text)) {
@@ -141,6 +158,7 @@ async function main() {
     ".nojekyll",
     "assets/og-image.png",
     "ai-assistant.js",
+    "analytics-core.js",
     "analytics.js",
     "candidate-copy.js",
     "candidates.js",
@@ -167,6 +185,7 @@ async function main() {
   for (const file of requiredFiles) {
     await assertFile(join(options.artifactDir, file));
   }
+  await assertOnlyExpectedEntries(options.artifactDir, requiredFiles);
 
   const indexHtml = await assertIncludes(join(options.artifactDir, "index.html"), "./styles.css", "styles.css");
   if (!indexHtml.includes("./main.js")) {
@@ -195,6 +214,7 @@ async function main() {
   await assertPngDimensions(join(options.artifactDir, "assets/og-image.png"), 1200, 630);
   await assertIncludes(join(options.artifactDir, "main.js"), "./ai-assistant.js", "ai-assistant.js");
   await assertIncludes(join(options.artifactDir, "main.js"), "./analytics.js", "analytics.js");
+  await assertIncludes(join(options.artifactDir, "analytics.js"), "./analytics-core.js", "analytics-core.js");
   await assertIncludes(join(options.artifactDir, "main.js"), "./candidates.js", "candidates.js");
   await assertIncludes(join(options.artifactDir, "candidates.js"), "./candidate-copy.js", "candidate-copy.js");
   await assertIncludes(join(options.artifactDir, "main.js"), "./controls.js", "controls.js");
