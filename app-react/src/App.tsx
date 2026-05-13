@@ -1,7 +1,9 @@
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { Button, Input, Label, ListBox, ListBoxItem, Popover, Select, SelectValue, TextField } from "react-aria-components";
+import { AiAssistantPanel } from "./components/AiAssistantPanel";
 import { CandidatePanel } from "./components/CandidatePanel";
 import { FilterMultiSelect } from "./components/FilterMultiSelect";
+import { OverviewPanel } from "./components/OverviewPanel";
 import { PhotoCard } from "./components/PhotoCard";
 import { PhotoPreview } from "./components/PhotoPreview";
 import { SheetDialog } from "./components/SheetDialog";
@@ -212,6 +214,8 @@ export function App() {
               onPreview={openPreview}
               onRemove={toggleCandidate}
             />
+            <OverviewPanel data={finderData.data} />
+            <AiAssistantPanel data={finderData.data} filters={finderState.filters} search={finderState.search} task={selectedTask} />
           </aside>
         ) : null}
       </div>

@@ -211,9 +211,13 @@ button {
 .desktop-side-panel {
   position: sticky;
   top: 16px;
+  display: grid;
+  gap: 12px;
 }
 
-.candidate-panel {
+.candidate-panel,
+.overview-panel,
+.assistant-panel {
   display: grid;
   gap: 12px;
   padding: 16px;
@@ -287,6 +291,48 @@ button {
 }
 
 .candidate-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.overview-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.overview-item {
+  display: grid;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid #d8deea;
+  border-radius: 8px;
+  background: #f7f8fb;
+}
+
+.overview-item h3,
+.overview-item dl {
+  margin: 0;
+}
+
+.overview-item strong {
+  font-size: 18px;
+}
+
+.overview-item dl div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: #4d5a70;
+  font-size: 13px;
+}
+
+.overview-item dd {
+  margin: 0;
+  font-weight: 800;
+}
+
+.assistant-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
