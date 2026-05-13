@@ -10,7 +10,7 @@ if (buildStatus !== 0) {
   process.exit(buildStatus);
 }
 
-const generatedFiles = ["app/data-loader.js", "app/data-utils.js", "app/search-sort.js", "app/url-state.js"];
+const generatedFiles = ["app/candidate-copy.js", "app/data-loader.js", "app/data-utils.js", "app/search-sort.js", "app/url-state.js"];
 const diffStatus = run("git", ["diff", "--exit-code", "--", ...generatedFiles]);
 if (diffStatus !== 0) {
   console.error(`Generated core output is stale. Run pnpm finder:core:build and commit ${generatedFiles.join(", ")}.`);

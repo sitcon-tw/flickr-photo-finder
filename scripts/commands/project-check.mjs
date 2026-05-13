@@ -27,7 +27,7 @@ const checks = [
     name: "Finder core TypeScript check",
     command: "pnpm",
     args: ["finder:core:check"],
-    next: "Run pnpm finder:core:build, commit generated app/data-loader.js, app/data-utils.js, app/search-sort.js, or app/url-state.js if they changed, then rerun pnpm finder:core:check.",
+    next: "Run pnpm finder:core:build, commit generated app/candidate-copy.js, app/data-loader.js, app/data-utils.js, app/search-sort.js, or app/url-state.js if they changed, then rerun pnpm finder:core:check.",
   },
   {
     name: "JavaScript syntax",
