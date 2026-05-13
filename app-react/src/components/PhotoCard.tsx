@@ -66,6 +66,15 @@ async function copyText(text: string) {
   }
 }
 
+function ActionLabel({ icon, text }: { icon: string; text: string }) {
+  return (
+    <span className="action-label">
+      <span aria-hidden="true">{icon}</span>
+      <span>{text}</span>
+    </span>
+  );
+}
+
 export function PhotoCard({ data, photo, task, selected, onPreview, onToggleCandidate }: PhotoCardProps) {
   const badges = statusBadges(data, photo);
   const signals = [...new Set([...taskSignals(data, photo, task), ...workHints(data, photo)])];
@@ -110,25 +119,25 @@ export function PhotoCard({ data, photo, task, selected, onPreview, onToggleCand
         </div>
         <div className="photo-card-actions">
           <Button className={selected ? "candidate-action is-selected" : "candidate-action"} type="button" onPress={() => onToggleCandidate(photo.photo_id)}>
-            {selected ? "已候選" : "加候選"}
+            <ActionLabel icon={selected ? "✓" : "+"} text={selected ? "已候選" : "加候選"} />
           </Button>
           <Button className="desktop-detail-action" type="button" onPress={() => onPreview(photo)}>
-            詳情
+            <ActionLabel icon="i" text="詳情" />
           </Button>
           <Button className="desktop-source-action" type="button" onPress={() => openUrl(photo.photo_url)}>
-            Flickr
+            <ActionLabel icon="F" text="Flickr" />
           </Button>
           <Button className="desktop-source-action" type="button" onPress={() => openUrl(largeUrl)}>
-            大圖
+            <ActionLabel icon="↗" text="大圖" />
           </Button>
           <Button className="desktop-source-action" type="button" isDisabled={!originalUrl} onPress={() => openUrl(originalUrl)}>
-            原圖
+            <ActionLabel icon="⤓" text="原圖" />
           </Button>
           <Button className="desktop-source-action" type="button" isDisabled={!sheetsUrl} onPress={() => openUrl(sheetsUrl)}>
-            Sheets
+            <ActionLabel icon="S" text="Sheets" />
           </Button>
           <Button className="mobile-large-action" type="button" onPress={() => openUrl(largeUrl)}>
-            大圖
+            <ActionLabel icon="↗" text="大圖" />
           </Button>
         </div>
       </div>

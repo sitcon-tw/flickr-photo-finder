@@ -74,7 +74,7 @@ export function CandidatePanel({ data, selectedPhotoIds, onPreview, onRemove }: 
         ))}
       </div>
       <div className="candidate-actions">
-        <Button type="button" isDisabled={candidates.length === 0} onPress={() => copyCandidates("discussion")}>
+        <Button type="button" isDisabled={candidates.length === 0} onPress={() => copyCandidates("im")}>
           複製討論清單
         </Button>
         <Button type="button" isDisabled={candidates.length === 0} onPress={() => copyCandidates("sponsor")}>

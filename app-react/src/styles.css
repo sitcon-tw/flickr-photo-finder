@@ -710,6 +710,28 @@ input:focus-visible {
   font-weight: 750;
 }
 
+.action-label {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+}
+
+.action-label span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.action-label span:first-child {
+  display: inline-grid;
+  flex: 0 0 auto;
+  place-items: center;
+  min-width: 16px;
+  color: currentcolor;
+  font-weight: 900;
+}
+
 .candidate-action {
   border-color: var(--accent);
   background: var(--accent);
@@ -926,17 +948,22 @@ input:focus-visible {
 
   .photo-card h3 {
     font-size: 14px;
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
   }
 
   .photo-card p,
   .photo-card-heading span,
   .photo-badges,
-  .photo-reference {
+  .photo-reference,
+  .photo-signals {
     display: none;
   }
 
   .photo-card-actions {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .desktop-detail-action,

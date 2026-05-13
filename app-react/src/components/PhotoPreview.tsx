@@ -16,6 +16,15 @@ function openUrl(url: string) {
   }
 }
 
+function ActionLabel({ icon, text }: { icon: string; text: string }) {
+  return (
+    <span className="action-label">
+      <span aria-hidden="true">{icon}</span>
+      <span>{text}</span>
+    </span>
+  );
+}
+
 export function PhotoPreview({ data, photo, selected, onToggleCandidate }: PhotoPreviewProps) {
   const largeUrl = largeImageUrl(photo);
   const originalUrl = originalSizePageUrl(photo);
@@ -59,19 +68,19 @@ export function PhotoPreview({ data, photo, selected, onToggleCandidate }: Photo
       </div>
       <div className="preview-actions">
         <Button type="button" onPress={() => onToggleCandidate(photo.photo_id)}>
-          {selected ? "已候選" : "加候選"}
+          <ActionLabel icon={selected ? "✓" : "+"} text={selected ? "已候選" : "加候選"} />
         </Button>
         <Button type="button" onPress={() => openUrl(photo.photo_url)}>
-          Flickr
+          <ActionLabel icon="F" text="Flickr" />
         </Button>
         <Button type="button" isDisabled={!largeUrl} onPress={() => openUrl(largeUrl)}>
-          大圖
+          <ActionLabel icon="↗" text="大圖" />
         </Button>
         <Button type="button" isDisabled={!originalUrl} onPress={() => openUrl(originalUrl)}>
-          原圖
+          <ActionLabel icon="⤓" text="原圖" />
         </Button>
         <Button type="button" isDisabled={!sheetsUrl} onPress={() => openUrl(sheetsUrl)}>
-          Sheets
+          <ActionLabel icon="S" text="Sheets" />
         </Button>
       </div>
     </div>
