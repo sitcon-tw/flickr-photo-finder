@@ -6,7 +6,7 @@ import { normalizeText } from "./search-sort.js";
 const enhancedSelects = new Map();
 const autocompleteInputs = new Map();
 
-export const filterDefinitions = [
+export let filterDefinitions = [
   { key: "album", label: "活動/相簿", group: "core", control: "album" },
   { key: "use", label: "用途", group: "general", control: "use" },
   { key: "mood", label: "氛圍", group: "general", control: "mood" },
@@ -482,7 +482,7 @@ export function bindControlDismissal(root = document) {
   });
 }
 
-const taskPrimaryFilters = {
+let taskPrimaryFilters = {
   social: ["use", "scene", "orientation", "safeCrop", "negativeSpace", "mood"],
   hero: ["orientation", "negativeSpace", "safeCrop", "scene", "mood"],
   visual: ["orientation", "negativeSpace", "safeCrop", "scene", "mood"],
@@ -493,8 +493,27 @@ const taskPrimaryFilters = {
   recap: ["use", "scene", "mood", "orientation"],
 };
 
-const defaultPrimaryFilters = ["use", "scene", "orientation", "safeCrop", "negativeSpace", "mood"];
-const lowLevelFilters = new Set(["publicStatus", "priority", "curationStatus"]);
+let defaultPrimaryFilters = ["use", "scene", "orientation", "safeCrop", "negativeSpace", "mood"];
+let lowLevelFilters = new Set(["publicStatus", "priority", "curationStatus"]);
+
+export function applyControlsRegistry(interfaceRegistry) {
+  const pages = interfaceRegistry?.pages ?? {};
+  if (Array.isArray(pages.filters) && pages.filters.length > 0) {
+    filterDefinitions = pages.filters.map((filter) => ({
+      ...filter,
+      field: filter.field ?? "",
+      filterParam: filter.filterParam ?? filter.key,
+      source: filter.source ?? {},
+    }));
+  }
+  taskPrimaryFilters = Object.fromEntries(
+    (pages.taskModes ?? [])
+      .filter((task) => task.id && Array.isArray(task.primaryFilters))
+      .map((task) => [task.id, task.primaryFilters]),
+  );
+  defaultPrimaryFilters = pages.defaultPrimaryFilters ?? defaultPrimaryFilters;
+  lowLevelFilters = new Set(filterDefinitions.filter((filter) => filter.lowLevel).map((filter) => filter.key));
+}
 
 function filterLabelFor(controls, definition) {
   return controls[definition.control]?.closest("label") ?? null;
@@ -606,21 +625,59 @@ export function setupTaskModes(container, taskModes) {
   }
 }
 
+function setVisibleLabel(control, text) {
+  const label = control?.closest("label")?.querySelector("span");
+  if (label && text) {
+    label.textContent = text;
+  }
+}
+
+function valuesForFilter(definition, { taxonomy, photos, albums, peopleCountFilters, uniqueSorted }) {
+  const source = definition.source ?? {};
+  if (source.type === "album") {
+    return albumFilterOptions(photos, albums);
+  }
+  if (source.type === "people_count_buckets") {
+    return peopleCountFilters;
+  }
+  if (source.type === "boolean") {
+    return ["true", "false"];
+  }
+  if (source.type === "photo_values") {
+    return uniqueSorted(photos.flatMap((photo) => photo[definition.field] ?? []));
+  }
+  if (source.key) {
+    return taxonomy[source.key] ?? [];
+  }
+  return [];
+}
+
 export function setupFilters({ controls, elements, taxonomy, photos, albums, peopleCountFilters, optionLabels, uniqueSorted }) {
-  fillSelectOptions(controls.album, "全部活動/相簿", albumFilterOptions(photos, albums));
-  fillSelect(controls.use, "全部用途", taxonomy.recommended_uses ?? []);
-  fillSelect(controls.mood, "全部氛圍", taxonomy.mood_tags ?? []);
-  fillSelect(controls.scene, "全部場景", taxonomy.scene_tags ?? []);
-  controls.peopleCount.replaceChildren(...peopleCountFilters.map(({ label, value }) => new Option(label, value)));
-  fillSelectWithLabels(controls.subjectType, "全部主體", taxonomy.subject_type ?? [], optionLabels("subject_type"));
-  fillSelectWithLabels(controls.orientation, "全部方向", taxonomy.orientation ?? [], optionLabels("orientation"));
-  fillSelectWithLabels(controls.negativeSpace, "全部留白狀態", ["true", "false"], optionLabels("has_negative_space"));
-  fillSelect(controls.safeCrop, "全部裁切", taxonomy.safe_crop ?? []);
-  fillSelect(controls.sponsorshipTag, "全部贊助價值", taxonomy.sponsorship_tags ?? []);
-  fillSelectWithLabels(controls.publicStatus, "全部使用提醒", taxonomy.public_use_status ?? [], optionLabels("public_use_status"));
-  fillSelectWithLabels(controls.priority, "全部優先度", taxonomy.priority_level ?? [], optionLabels("priority_level"));
-  fillSelectWithLabels(controls.curationStatus, "全部整理狀態", taxonomy.curation_status ?? [], optionLabels("curation_status"));
-  fillSelect(controls.collection, "全部素材包", uniqueSorted(photos.flatMap((photo) => photo.collections)));
+  for (const definition of filterDefinitions) {
+    const control = controls[definition.control];
+    if (!control) {
+      continue;
+    }
+    setVisibleLabel(control, definition.label);
+    const values = valuesForFilter(definition, { taxonomy, photos, albums, peopleCountFilters, uniqueSorted });
+    const emptyLabel = definition.emptyLabel ?? `全部${definition.label}`;
+    if (definition.source?.type === "album") {
+      fillSelectOptions(control, emptyLabel, values);
+    } else if (definition.source?.type === "people_count_buckets") {
+      control.replaceChildren(...values.map(({ label, value }) => new Option(label, value)));
+    } else if (definition.source?.type === "taxonomy_autocomplete") {
+      setupAutocompleteInput(control, values);
+    } else if (definition.source?.labels) {
+      fillSelectWithLabels(control, emptyLabel, values, optionLabels(definition.field));
+    } else {
+      fillSelect(control, emptyLabel, values);
+    }
+    if (definition.searchPlaceholder && control.tagName === "SELECT") {
+      setupEnhancedSelect(control, definition.searchPlaceholder);
+    } else if (definition.searchPlaceholder && "placeholder" in control) {
+      control.placeholder = definition.searchPlaceholder;
+    }
+  }
   elements.sponsorshipItemOptions.replaceChildren(
     ...(taxonomy.sponsorship_items ?? []).map((value) => {
       const option = document.createElement("option");
@@ -628,21 +685,6 @@ export function setupFilters({ controls, elements, taxonomy, photos, albums, peo
       return option;
     }),
   );
-  setupEnhancedSelect(controls.album, "搜尋活動或相簿");
-  setupEnhancedSelect(controls.use, "搜尋用途");
-  setupEnhancedSelect(controls.mood, "搜尋氛圍");
-  setupEnhancedSelect(controls.scene, "搜尋場景");
-  setupEnhancedSelect(controls.peopleCount, "搜尋人數");
-  setupEnhancedSelect(controls.subjectType, "搜尋主體");
-  setupEnhancedSelect(controls.orientation, "搜尋方向");
-  setupEnhancedSelect(controls.negativeSpace, "搜尋留白狀態");
-  setupEnhancedSelect(controls.safeCrop, "搜尋裁切");
-  setupEnhancedSelect(controls.sponsorshipTag, "搜尋贊助價值");
-  setupEnhancedSelect(controls.publicStatus, "搜尋使用提醒");
-  setupEnhancedSelect(controls.priority, "搜尋優先度");
-  setupEnhancedSelect(controls.curationStatus, "搜尋整理狀態");
-  setupEnhancedSelect(controls.collection, "搜尋素材包");
-  setupAutocompleteInput(controls.sponsorshipItem, taxonomy.sponsorship_items ?? []);
 }
 
 export function selectedOptionText(select) {

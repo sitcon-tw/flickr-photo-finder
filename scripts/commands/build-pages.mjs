@@ -82,6 +82,7 @@ async function writePagesConfig(outputDir, { albumsCsvUrl, photosCsvUrl }) {
 export const dataSources = {
   albumsCsvUrl: ${JSON.stringify(albumsCsvUrl)},
   photosCsvUrl: ${JSON.stringify(photosCsvUrl)},
+  interfaceRegistryJsonUrl: "./data/interface-registry.json",
   schemaJsonUrl: "./data/photo-schema.json",
   searchAliasesJsonUrl: "./data/search-aliases.json",
   taxonomyJsonUrl: "./data/tag-taxonomy.json",
@@ -199,6 +200,7 @@ export async function buildPagesArtifact({
   await copyIntoArtifact("app/styles.css", outputDir, "styles.css");
   await copyIntoArtifact("app/assets/og-image.png", outputDir, "assets/og-image.png");
   await copyIntoArtifact("config/project.json", outputDir);
+  await copyIntoArtifact("data/interface-registry.json", outputDir);
   await copyIntoArtifact("data/photo-schema.json", outputDir);
   await copyIntoArtifact("data/search-aliases.json", outputDir);
   await copyIntoArtifact("data/tag-taxonomy.json", outputDir);

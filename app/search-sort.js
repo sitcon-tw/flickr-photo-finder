@@ -32,6 +32,43 @@ function unique(values) {
   return [...new Set(values.filter(Boolean))];
 }
 
+let queryPhraseAliases = {
+  可放字: ["可放字", "留白", "negative space"],
+  放字: ["可放字", "留白", "negative space"],
+  留白: ["留白", "可放字", "negative space"],
+  網站橫幅: ["網站橫幅", "網頁橫幅", "橫幅", "背景素材"],
+  版面背景: ["版面背景", "背景素材", "橫幅", "網站橫幅"],
+  logo: ["logo", "品牌露出", "背板"],
+  品牌: ["品牌", "品牌露出", "贊助成果佐證"],
+  社群感: ["社群感", "社群介紹", "交流感", "友善"],
+  友善交流: ["友善", "交流感", "交流"],
+  舞台講者: ["舞台", "講者", "新聞稿", "簡報"],
+  志工: ["志工", "志工招募", "工作人員", "幕後感"],
+  正式: ["正式", "專業", "新聞稿", "簡報"],
+};
+let statusPolicy = {
+  public_use_status: { approved: 0, needs_review: -10, avoid: -160 },
+  curation_status: { reviewed: 60, ai_labeled: 25, unreviewed: 0 },
+  priority_level: { high: 80, normal: 25, low: -10 },
+};
+let taskScoreWeights = {
+  recommendedUses: 150,
+  moods: 45,
+  scenes: 45,
+  sponsorshipTags: 65,
+  orientations: 35,
+  safeCrops: 35,
+  prefersNegativeSpace: 35,
+  hasPreviewImage: 10,
+  missingPreviewImage: -50,
+};
+
+export function applySearchRegistry(interfaceRegistry) {
+  queryPhraseAliases = interfaceRegistry?.pages?.queryPhraseAliases ?? queryPhraseAliases;
+  statusPolicy = interfaceRegistry?.pages?.statusPolicy ?? statusPolicy;
+  taskScoreWeights = interfaceRegistry?.pages?.taskScoreWeights ?? taskScoreWeights;
+}
+
 export function buildSearchText(photo, { searchTokensForField = (_fieldName, value) => asList(value) } = {}) {
   const derivedTokens = [
     ...searchTokensForField("has_negative_space", photo.has_negative_space),
@@ -69,21 +106,7 @@ export function buildSearchText(photo, { searchTokensForField = (_fieldName, val
 }
 
 export function queryAlternatives(term) {
-  const aliases = new Map([
-    ["可放字", ["可放字", "留白", "negative space"]],
-    ["放字", ["可放字", "留白", "negative space"]],
-    ["留白", ["留白", "可放字", "negative space"]],
-    ["網站橫幅", ["網站橫幅", "網頁橫幅", "橫幅", "背景素材"]],
-    ["版面背景", ["版面背景", "背景素材", "橫幅", "網站橫幅"]],
-    ["logo", ["logo", "品牌露出", "背板"]],
-    ["品牌", ["品牌", "品牌露出", "贊助成果佐證"]],
-    ["社群感", ["社群感", "社群介紹", "交流感", "友善"]],
-    ["友善交流", ["友善", "交流感", "交流"]],
-    ["舞台講者", ["舞台", "講者", "新聞稿", "簡報"]],
-    ["志工", ["志工", "志工招募", "工作人員", "幕後感"]],
-    ["正式", ["正式", "專業", "新聞稿", "簡報"]],
-  ]);
-  return aliases.get(term) ?? [term];
+  return queryPhraseAliases[term] ?? [term];
 }
 
 export function textMatches(photo, query) {
@@ -196,24 +219,20 @@ export function scoreOverlap(photoValues, taskValues, weight) {
 }
 
 export function photoScore(photo, task = {}) {
-  const publicScore = { approved: 0, needs_review: -10, avoid: -160 };
-  const curationScore = { reviewed: 60, ai_labeled: 25, unreviewed: 0 };
-  const priorityScore = { high: 80, normal: 25, low: -10 };
-
   let score = 0;
-  score += publicScore[photo.public_use_status] ?? 0;
-  score += curationScore[photo.curation_status] ?? 0;
-  score += priorityScore[photo.priority_level] ?? 0;
-  score += isFilled(photo.image_preview_url) ? 10 : -50;
+  score += statusPolicy.public_use_status?.[photo.public_use_status] ?? 0;
+  score += statusPolicy.curation_status?.[photo.curation_status] ?? 0;
+  score += statusPolicy.priority_level?.[photo.priority_level] ?? 0;
+  score += isFilled(photo.image_preview_url) ? taskScoreWeights.hasPreviewImage : taskScoreWeights.missingPreviewImage;
 
-  score += scoreOverlap(photo.recommended_uses, task.recommendedUses, 150);
-  score += scoreOverlap(photo.mood_tags, task.moods, 45);
-  score += scoreOverlap(photo.scene_tags, task.scenes, 45);
-  score += scoreOverlap(photo.sponsorship_tags, task.sponsorshipTags, 65);
-  score += scoreOverlap(photo.orientation, task.orientations, 35);
-  score += scoreOverlap(photo.safe_crop, task.safeCrops, 35);
+  score += scoreOverlap(photo.recommended_uses, task.recommendedUses, taskScoreWeights.recommendedUses);
+  score += scoreOverlap(photo.mood_tags, task.moods, taskScoreWeights.moods);
+  score += scoreOverlap(photo.scene_tags, task.scenes, taskScoreWeights.scenes);
+  score += scoreOverlap(photo.sponsorship_tags, task.sponsorshipTags, taskScoreWeights.sponsorshipTags);
+  score += scoreOverlap(photo.orientation, task.orientations, taskScoreWeights.orientations);
+  score += scoreOverlap(photo.safe_crop, task.safeCrops, taskScoreWeights.safeCrops);
   if (task.prefersNegativeSpace && photo.has_negative_space === "true") {
-    score += 35;
+    score += taskScoreWeights.prefersNegativeSpace;
   }
 
   return score;

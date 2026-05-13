@@ -115,6 +115,7 @@ async function main() {
     "controls.js",
     "data-loader.js",
     "data-utils.js",
+    "data/interface-registry.json",
     "data/photo-schema.json",
     "data/search-aliases.json",
     "data/tag-taxonomy.json",
@@ -179,11 +180,12 @@ async function main() {
   const config = await assertIncludes(join(options.artifactDir, "config.js"), "photosCsvUrl", "photosCsvUrl");
   if (
     !config.includes("albumsCsvUrl") ||
+    !config.includes("interfaceRegistryJsonUrl") ||
     !config.includes("schemaJsonUrl") ||
     !config.includes("searchAliasesJsonUrl") ||
     !config.includes("taxonomyJsonUrl")
   ) {
-    throw new Error("config.js must include albumsCsvUrl, schemaJsonUrl, searchAliasesJsonUrl, and taxonomyJsonUrl");
+    throw new Error("config.js must include albumsCsvUrl, interfaceRegistryJsonUrl, schemaJsonUrl, searchAliasesJsonUrl, and taxonomyJsonUrl");
   }
   if (!/https:\/\/docs\.google\.com\/spreadsheets\/d\/[^/]+\/gviz\/tq/.test(config.match(/albumsCsvUrl: ([^,]+)/)?.[1] ?? "")) {
     throw new Error("config.js does not appear to point albumsCsvUrl at a public Google Sheets CSV URL");
@@ -193,6 +195,7 @@ async function main() {
   }
 
   JSON.parse(await readFile(join(options.artifactDir, "config/project.json"), "utf8"));
+  JSON.parse(await readFile(join(options.artifactDir, "data/interface-registry.json"), "utf8"));
   JSON.parse(await readFile(join(options.artifactDir, "data/photo-schema.json"), "utf8"));
   JSON.parse(await readFile(join(options.artifactDir, "data/search-aliases.json"), "utf8"));
   JSON.parse(await readFile(join(options.artifactDir, "data/tag-taxonomy.json"), "utf8"));
