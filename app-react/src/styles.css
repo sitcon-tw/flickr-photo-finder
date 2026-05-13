@@ -13,37 +13,96 @@ button {
   min-height: 44px;
 }
 
-.migration-shell {
-  display: grid;
+.finder-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
   min-height: 100vh;
-  place-items: center;
   padding: 24px;
 }
 
-.migration-panel {
-  width: min(720px, 100%);
-  padding: 24px;
+.finder-header,
+.finder-toolbar,
+.result-surface,
+.sheet-preview {
   border: 1px solid #d8deea;
   border-radius: 8px;
   background: #fff;
   box-shadow: 0 16px 36px rgb(23 32 51 / 10%);
 }
 
-.migration-panel h1 {
+.finder-header,
+.result-surface,
+.sheet-preview {
+  padding: 20px;
+}
+
+.finder-header {
+  display: flex;
+  gap: 16px;
+  align-items: start;
+  justify-content: space-between;
+}
+
+.finder-header h1 {
   margin: 0 0 12px;
   font-size: 32px;
 }
 
-.migration-panel p {
+.finder-header p,
+.result-surface p,
+.sheet-preview p {
   color: #4d5a70;
   line-height: 1.7;
 }
 
+.task-strip {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+}
+
+.task-button {
+  display: grid;
+  min-width: 180px;
+  padding: 10px;
+  text-align: left;
+}
+
+.task-button span {
+  color: #4d5a70;
+  font-size: 13px;
+}
+
+.task-button.is-active {
+  border-color: #0f6f89;
+  color: #0f6f89;
+}
+
+.finder-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 10px;
+  align-items: end;
+  padding: 14px;
+}
+
+.search-field {
+  display: grid;
+  gap: 6px;
+}
+
+.search-field input {
+  min-height: 44px;
+  padding: 0 10px;
+}
+
 .core-status {
+  margin: 0;
   font-weight: 700;
 }
 
-.migration-panel button {
+.finder-shell button {
   padding: 0 16px;
 }
 
@@ -53,4 +112,50 @@ button {
   font-size: 13px;
   font-weight: 800;
   text-transform: uppercase;
+}
+
+.mobile-action-bar {
+  display: none;
+}
+
+.sheet-preview {
+  position: fixed;
+  z-index: 20;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  border-radius: 12px 12px 0 0;
+}
+
+.sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+@media (max-width: 760px) {
+  .finder-shell {
+    padding: 16px 16px 88px;
+  }
+
+  .finder-header,
+  .finder-toolbar {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .mobile-action-bar {
+    position: fixed;
+    z-index: 10;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    padding: 10px 12px max(10px, env(safe-area-inset-bottom));
+    border-top: 1px solid #d8deea;
+    background: #fff;
+  }
 }
