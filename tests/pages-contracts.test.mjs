@@ -1,9 +1,14 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import { describe, it } from "node:test";
 import { candidateCopyText, selectedPhotos } from "../app/candidates.js";
-import { activeFilterEntries } from "../app/controls.js";
+import { activeFilterEntries, applyControlsRegistry, filterDefinitions } from "../app/controls.js";
 import { buildSearchText, filterAndSortPhotos, uniqueSearchTokens } from "../app/search-sort.js";
-import { decodeUrlState, encodeUrlState } from "../app/url-state.js";
+import { applyUrlStateRegistry, decodeUrlState, encodeUrlState } from "../app/url-state.js";
+
+const interfaceRegistry = JSON.parse(await readFile(new URL("../data/interface-registry.json", import.meta.url), "utf8"));
+applyControlsRegistry(interfaceRegistry);
+applyUrlStateRegistry(interfaceRegistry);
 
 const emptyDecodedFilters = {
   album: [],
@@ -95,6 +100,13 @@ const controls = {
   collection: blankSelect,
 };
 
+function photoFiltersFromFinderState(state, search = "") {
+  return Object.fromEntries([
+    ["search", search],
+    ...filterDefinitions.map((definition) => [definition.filterParam ?? definition.key, state.filters[definition.key] ?? []]),
+  ]);
+}
+
 describe("Pages finder contracts", () => {
   it("round-trips task, search, sort, repeated filters, and selected candidate order", () => {
     const params = encodeUrlState({
@@ -137,6 +149,67 @@ describe("Pages finder contracts", () => {
     assert.deepEqual(decoded.filters.scene, ["攤位", "Booth"]);
     assert.equal(decoded.filters.future, undefined);
     assert.deepEqual(decoded.selectedPhotoIds, ["3", "2", "1"]);
+  });
+
+  it("uses registry URL keys for public deep-link parameters", () => {
+    const params = encodeUrlState({
+      taskMode: "sponsor-report",
+      filters: {
+        peopleCount: ["6-20"],
+        negativeSpace: ["true"],
+        sponsorshipItem: ["Badge"],
+      },
+      selectedPhotoIds: ["100"],
+    });
+
+    assert.equal(params.get("people"), "6-20");
+    assert.equal(params.get("negative"), "true");
+    assert.equal(params.get("sponsorItem"), "Badge");
+    assert.equal(params.get("peopleCount"), null);
+    assert.equal(params.get("negativeSpace"), null);
+    assert.equal(params.get("sponsorshipItem"), null);
+
+    assert.deepEqual(decodeUrlState(params), {
+      taskMode: "sponsor-report",
+      search: "",
+      sort: "",
+      filters: {
+        ...emptyDecodedFilters,
+        peopleCount: ["6-20"],
+        negativeSpace: ["true"],
+        sponsorshipItem: ["Badge"],
+      },
+      selectedPhotoIds: ["100"],
+    });
+  });
+
+  it("maps decoded finder state through registry filterParam before search filtering", () => {
+    const decoded = decodeUrlState(new URLSearchParams("use=%E7%A4%BE%E7%BE%A4%E8%B2%BC%E6%96%87&people=6-20&sponsorItem=Badge"));
+    const socialBadge = withSearchText(
+      photo({
+        photo_id: "social-badge",
+        people_count: "8",
+        recommended_uses: ["社群貼文"],
+        sponsorship_items: ["Badge 識別證贊助"],
+      }),
+    );
+    const pressBadge = withSearchText(
+      photo({
+        photo_id: "press-badge",
+        people_count: "8",
+        recommended_uses: ["新聞稿"],
+        sponsorship_items: ["Badge 識別證贊助"],
+      }),
+    );
+
+    const results = filterAndSortPhotos([pressBadge, socialBadge], {
+      filters: photoFiltersFromFinderState(decoded),
+    });
+
+    assert.deepEqual(
+      results.map((item) => item.photo_id),
+      ["social-badge"],
+    );
   });
 
   it("keeps filter semantics as OR within a field and AND across fields", () => {
@@ -229,6 +302,27 @@ describe("Pages finder contracts", () => {
     assert.equal(
       flickrUrls,
       "https://www.flickr.com/photos/sitcon/200\nhttps://www.flickr.com/photos/sitcon/100",
+    );
+  });
+
+  it("uses shared selected URL order for both candidate list and promoted results", () => {
+    const decoded = decodeUrlState(new URLSearchParams("selected=200,100"));
+    const photos = [
+      withSearchText(photo({ photo_id: "100", event_name: "SITCON 2026", priority_level: "low" })),
+      withSearchText(photo({ photo_id: "200", event_name: "SITCON 2025", priority_level: "low" })),
+      withSearchText(photo({ photo_id: "300", event_name: "SITCON 2024", priority_level: "high" })),
+    ];
+    const selectedPhotoIds = new Set(decoded.selectedPhotoIds);
+    const promotedPhotoIds = new Set(decoded.selectedPhotoIds);
+
+    assert.deepEqual(
+      selectedPhotos(selectedPhotoIds, photos).map((item) => item.photo_id),
+      ["200", "100"],
+    );
+
+    assert.deepEqual(
+      filterAndSortPhotos(photos, { selectedPhotoIds: promotedPhotoIds }).map((item) => item.photo_id),
+      ["200", "100", "300"],
     );
   });
 });

@@ -12,7 +12,7 @@ GitHub Pages frontend 已是 SITCON Flickr Photo Finder 的長期主要產品介
 
 目前 master 仍以 vanilla ES modules 與 imperative DOM shell 維護這些互動。既有模組拆分已經讓 search/sort、URL state、data loader、candidate copy 等核心邏輯可測，但 overlay、popover positioning、focus management、scroll lock、mobile keyboard、touch gesture 與 accessible select/listbox 仍需要大量自製補丁。
 
-2026-05-14 前的 prototype 已封存為 tag `archive/pages-react-aria-migration-prototype-2026-05-14`。該 prototype 證明 Vite + React + TypeScript + React Aria 方向可行，也暴露出執行方式問題：不能邊實作邊補規格、邊 QA 邊修正。後續遷移需從 master 重新開始，先建立追蹤 issue、ADR、migration plan 與 acceptance gates，再分階段實作。
+2026-05-14 前的 prototype 已封存為 tag `archive/pages-react-aria-migration-prototype-2026-05-14`，目前指向 commit `ad1003097b252b479474ce92bfcd1b44f2cc1ce7`。該 prototype 證明 Vite + React + TypeScript + React Aria 方向可行，也暴露出執行方式問題：不能邊實作邊補規格、邊 QA 邊修正。後續遷移需從 master 重新開始，先建立追蹤 issue、ADR、migration plan 與 acceptance gates，再分階段實作。
 
 Tracking issue: <https://github.com/sitcon-tw/flickr-photo-finder/issues/44>
 
