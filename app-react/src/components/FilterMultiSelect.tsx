@@ -11,6 +11,7 @@ type FilterMultiSelectProps = {
   options: FilterOption[];
   selectedValues: string[];
   onChange: (values: string[]) => void;
+  inline?: boolean;
 };
 
 export function FilterMultiSelect({
@@ -18,6 +19,7 @@ export function FilterMultiSelect({
   options,
   selectedValues,
   onChange,
+  inline = false,
 }: FilterMultiSelectProps) {
   const [query, setQuery] = useState("");
   const selected = useMemo(() => new Set(selectedValues), [selectedValues]);
@@ -43,41 +45,53 @@ export function FilterMultiSelect({
     onChange([...next]);
   }
 
+  const optionsList = (
+    <>
+      <TextField className="filter-search" value={query} onChange={setQuery}>
+        <Label>搜尋{label}</Label>
+        <Input placeholder="輸入關鍵字" />
+      </TextField>
+      <div className="filter-options">
+        {filteredOptions.length === 0 ? <p className="filter-empty">沒有符合的選項</p> : null}
+        {filteredOptions.map((option) => {
+          const isSelected = selected.has(option.value);
+          return (
+            <Button
+              key={option.value}
+              className={isSelected ? "filter-option is-selected" : "filter-option"}
+              type="button"
+              onPress={() => toggleValue(option.value)}
+            >
+              <span>{option.label}</span>
+              <span aria-hidden="true">{isSelected ? "已選" : ""}</span>
+            </Button>
+          );
+        })}
+      </div>
+    </>
+  );
+
+  if (inline) {
+    return (
+      <section className="filter-multi-select filter-multi-select-inline" aria-label={`${label}選單`}>
+        <div className="inline-filter-heading">
+          <span className="filter-label">{label}</span>
+          <span>{summary}</span>
+        </div>
+        {optionsList}
+      </section>
+    );
+  }
+
   return (
     <div className="filter-multi-select">
       <span className="filter-label">{label}</span>
       <Button className="filter-trigger" type="button">
         {summary}
       </Button>
-      <Popover
-        className="filter-popover"
-        containerPadding={12}
-        offset={6}
-        placement="bottom start"
-        shouldFlip
-      >
+      <Popover className="filter-popover" containerPadding={12} offset={6} placement="bottom start" shouldFlip>
         <Dialog className="filter-dialog" aria-label={`${label}選單`}>
-          <TextField className="filter-search" value={query} onChange={setQuery}>
-            <Label>搜尋{label}</Label>
-            <Input placeholder="輸入關鍵字" />
-          </TextField>
-          <div className="filter-options">
-            {filteredOptions.length === 0 ? <p className="filter-empty">沒有符合的選項</p> : null}
-            {filteredOptions.map((option) => {
-              const isSelected = selected.has(option.value);
-              return (
-                <Button
-                  key={option.value}
-                  className={isSelected ? "filter-option is-selected" : "filter-option"}
-                  type="button"
-                  onPress={() => toggleValue(option.value)}
-                >
-                  <span>{option.label}</span>
-                  <span aria-hidden="true">{isSelected ? "已選" : ""}</span>
-                </Button>
-              );
-            })}
-          </div>
+          {optionsList}
         </Dialog>
       </Popover>
     </div>

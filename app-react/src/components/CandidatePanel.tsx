@@ -65,7 +65,7 @@ export function CandidatePanel({ data, selectedPhotoIds, onPreview, onRemove }: 
             </button>
             <div>
               <strong>{photoTitle(photo)}</strong>
-              <span>{photo.visual_description || photo.photo_url}</span>
+              <span>{[photo.sponsorship_items[0], labelFor(data, "public_use_status", photo.public_use_status), photo.visual_description].filter(Boolean).join(" / ") || photo.photo_url}</span>
             </div>
             <Button type="button" onPress={() => onRemove(photo.photo_id)}>
               移除
@@ -74,11 +74,11 @@ export function CandidatePanel({ data, selectedPhotoIds, onPreview, onRemove }: 
         ))}
       </div>
       <div className="candidate-actions">
-        <Button type="button" isDisabled={candidates.length === 0} onPress={() => copyCandidates("collaboration")}>
-          複製協作
+        <Button type="button" isDisabled={candidates.length === 0} onPress={() => copyCandidates("discussion")}>
+          複製討論清單
         </Button>
-        <Button type="button" isDisabled={candidates.length === 0} onPress={() => copyCandidates("flickr_urls")}>
-          複製 Flickr
+        <Button type="button" isDisabled={candidates.length === 0} onPress={() => copyCandidates("collaboration")}>
+          複製檢查清單
         </Button>
       </div>
       {copyStatus ? <p className="copy-status">{copyStatus}</p> : null}

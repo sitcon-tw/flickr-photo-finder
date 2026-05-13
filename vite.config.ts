@@ -1,5 +1,5 @@
 import react from "@vitejs/plugin-react";
-import { copyFile, mkdir, readFile } from "node:fs/promises";
+import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { dirname, join, normalize } from "node:path";
 import { defineConfig } from "vite";
@@ -14,6 +14,18 @@ const repoStaticFiles = [
   "fixtures/albums.csv",
   "fixtures/photos.csv",
 ];
+
+const fixtureConfigJs = `export const projectConfigUrl = "/config/project.json";
+
+export const dataSources = {
+  albumsCsvUrl: "/fixtures/albums.csv",
+  photosCsvUrl: "/fixtures/photos.csv",
+  interfaceRegistryJsonUrl: "/data/interface-registry.json",
+  schemaJsonUrl: "/data/photo-schema.json",
+  searchAliasesJsonUrl: "/data/search-aliases.json",
+  taxonomyJsonUrl: "/data/tag-taxonomy.json",
+};
+`;
 
 function contentTypeFor(path: string) {
   if (path.endsWith(".json")) return "application/json; charset=utf-8";
@@ -30,6 +42,12 @@ function repoStaticData(): Plugin {
     configureServer(server: ViteDevServer) {
       server.middlewares.use(async (request: IncomingMessage, response: ServerResponse, next: (error?: unknown) => void) => {
         const pathname = new URL(request.url ?? "/", "http://localhost").pathname;
+        if (pathname === "/config.js") {
+          response.statusCode = 200;
+          response.setHeader("Content-Type", "text/javascript; charset=utf-8");
+          response.end(fixtureConfigJs);
+          return;
+        }
         if (!staticFiles.has(pathname)) {
           next();
           return;
@@ -49,6 +67,8 @@ function repoStaticData(): Plugin {
       if (!shouldCopyStaticFiles) {
         return;
       }
+      await mkdir(copyOutputDir, { recursive: true });
+      await writeFile(join(copyOutputDir, "config.js"), fixtureConfigJs);
       for (const filePath of repoStaticFiles) {
         const target = join(copyOutputDir, filePath);
         await mkdir(dirname(target), { recursive: true });

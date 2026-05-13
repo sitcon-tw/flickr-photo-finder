@@ -43,6 +43,18 @@ export function PhotoPreview({ data, photo, selected, onToggleCandidate }: Photo
             <dt>構圖</dt>
             <dd>{[labelFor(data, "orientation", photo.orientation), ...photo.safe_crop].filter(Boolean).join(" / ") || "未填"}</dd>
           </div>
+          <div>
+            <dt>贊助品項</dt>
+            <dd>{photo.sponsorship_items.join("、") || "未填"}</dd>
+          </div>
+          <div>
+            <dt>贊助價值</dt>
+            <dd>{photo.sponsorship_tags.join("、") || "未填"}</dd>
+          </div>
+          <div>
+            <dt>攝影/授權</dt>
+            <dd>{[photo.photographer, photo.license].filter(Boolean).join(" / ") || "回 Flickr 確認"}</dd>
+          </div>
         </dl>
       </div>
       <div className="preview-actions">

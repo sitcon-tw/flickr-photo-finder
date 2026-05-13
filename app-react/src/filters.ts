@@ -94,3 +94,25 @@ export function updateFilter(filters: FinderFilters, definition: FilterDefinitio
     [filterParam]: values,
   };
 }
+
+export function filtersFromUrlShape(input: Record<string, unknown> = {}): FinderFilters {
+  const filters = {} as Partial<FinderFilters>;
+  for (const definition of allFilterDefinitions()) {
+    const filterParam = definition.filterParam ?? (definition.key as FinderFilterKey);
+    filters[filterParam] = Array.isArray(input[definition.key])
+      ? (input[definition.key] as string[])
+      : Array.isArray(input[filterParam])
+        ? (input[filterParam] as string[])
+        : [];
+  }
+  return filters as FinderFilters;
+}
+
+export function filtersToUrlShape(filters: FinderFilters): Record<string, string[]> {
+  return Object.fromEntries(
+    allFilterDefinitions().map((definition) => {
+      const filterParam = definition.filterParam ?? (definition.key as FinderFilterKey);
+      return [definition.key, filters[filterParam] ?? []];
+    }),
+  );
+}

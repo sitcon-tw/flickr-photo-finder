@@ -1,6 +1,7 @@
 import { Button } from "react-aria-components";
 import type { FinderData, PhotoRecord, TaskMode } from "../domain";
 import { labelFor } from "../filters";
+import { largeImageUrl } from "../finderCore";
 
 type PhotoCardProps = {
   data: FinderData;
@@ -43,10 +44,21 @@ function taskSignals(data: FinderData, photo: PhotoRecord, task?: TaskMode): str
   return signals.slice(0, 3);
 }
 
+function workHints(data: FinderData, photo: PhotoRecord): string[] {
+  return [
+    labelFor(data, "orientation", photo.orientation),
+    photo.has_negative_space ? labelFor(data, "has_negative_space", photo.has_negative_space) : "",
+    ...photo.safe_crop.slice(0, 2),
+    ...photo.sponsorship_items.slice(0, 1),
+    ...photo.sponsorship_tags.slice(0, 1),
+  ].filter(Boolean).slice(0, 4);
+}
+
 export function PhotoCard({ data, photo, task, selected, onPreview, onToggleCandidate }: PhotoCardProps) {
   const badges = statusBadges(data, photo);
-  const signals = taskSignals(data, photo, task);
+  const signals = [...new Set([...taskSignals(data, photo, task), ...workHints(data, photo)])];
   const imageLabel = `預覽 ${titleFor(photo)}`;
+  const largeUrl = largeImageUrl(photo) || photo.photo_url;
 
   return (
     <article className="photo-card">
@@ -78,8 +90,11 @@ export function PhotoCard({ data, photo, task, selected, onPreview, onToggleCand
           <Button type="button" onPress={() => onToggleCandidate(photo.photo_id)}>
             {selected ? "已候選" : "加候選"}
           </Button>
-          <Button type="button" onPress={() => onPreview(photo)}>
+          <Button className="desktop-detail-action" type="button" onPress={() => onPreview(photo)}>
             詳情
+          </Button>
+          <Button className="mobile-large-action" type="button" onPress={() => window.open(largeUrl, "_blank", "noopener,noreferrer")}>
+            大圖
           </Button>
         </div>
       </div>

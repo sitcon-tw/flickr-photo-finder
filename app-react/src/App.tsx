@@ -1,4 +1,4 @@
-import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { Button, Input, Label, ListBox, ListBoxItem, Popover, Select, SelectValue, TextField } from "react-aria-components";
 import { AiAssistantPanel } from "./components/AiAssistantPanel";
 import { CandidatePanel } from "./components/CandidatePanel";
@@ -7,9 +7,9 @@ import { OverviewPanel } from "./components/OverviewPanel";
 import { PhotoCard } from "./components/PhotoCard";
 import { PhotoPreview } from "./components/PhotoPreview";
 import { SheetDialog } from "./components/SheetDialog";
-import { encodeFinderState, useFinderData, useInitialFinderState } from "./data";
+import { encodeFinderState, stateFromUrl, useFinderData, useInitialFinderState } from "./data";
 import type { FinderFilterKey, PhotoRecord } from "./domain";
-import { activePrimaryFilterDefinitions, allFilterDefinitions, filterOptionsForDefinition, updateFilter } from "./filters";
+import { activePrimaryFilterDefinitions, allFilterDefinitions, filterOptionsForDefinition, labelFor, updateFilter } from "./filters";
 import { discoverHistorySize, discoverWindowSize, filterAndSortPhotos, pageSize, taskModes } from "./finderCore";
 import { trackReactEvent } from "./analytics";
 import "./styles.css";
@@ -19,6 +19,7 @@ type SheetName = "task" | "filter" | "candidate" | "preview" | null;
 export function App() {
   const initialFinderState = useInitialFinderState();
   const finderData = useFinderData();
+  const hydratedUrlAfterRegistry = useRef(false);
   const [finderState, setFinderState] = useState(initialFinderState);
   const [activeSheet, setActiveSheet] = useState<SheetName>(null);
   const [previewPhoto, setPreviewPhoto] = useState<PhotoRecord | null>(null);
@@ -31,6 +32,19 @@ export function App() {
   const loadedSummary = finderData.status === "ready" ? `${finderData.data.photos.length} 張照片 / ${finderData.data.albums.length} 個相簿` : "";
   const primaryFilters = useMemo(() => activePrimaryFilterDefinitions(selectedTask), [selectedTask, finderData.status]);
   const fullFilters = useMemo(() => allFilterDefinitions(), [finderData.status]);
+  const activeFilterEntries = useMemo(() => {
+    if (finderData.status !== "ready") return [];
+    return fullFilters.flatMap((definition) => {
+      const filterParam = (definition.filterParam ?? definition.key) as FinderFilterKey;
+      return (finderState.filters[filterParam] ?? []).map((value) => ({
+        key: definition.key,
+        label: definition.label,
+        value,
+        text: labelFor(finderData.data, definition.field ?? definition.key, value),
+        definition,
+      }));
+    });
+  }, [finderData, finderState.filters, fullFilters]);
   const results = useMemo(() => {
     if (finderData.status !== "ready") {
       return [] as PhotoRecord[];
@@ -62,10 +76,21 @@ export function App() {
     if (typeof window === "undefined") {
       return;
     }
+    if (!hydratedUrlAfterRegistry.current) {
+      return;
+    }
     const url = new URL(window.location.href);
     url.search = encodeFinderState(finderState).toString();
     window.history.replaceState(null, "", url);
   }, [finderState]);
+
+  useEffect(() => {
+    if (finderData.status !== "ready" || hydratedUrlAfterRegistry.current || typeof window === "undefined") {
+      return;
+    }
+    hydratedUrlAfterRegistry.current = true;
+    setFinderState(stateFromUrl(new URLSearchParams(window.location.search)));
+  }, [finderData.status]);
 
   useEffect(() => {
     setVisibleCount(pageSize);
@@ -87,7 +112,9 @@ export function App() {
 
   function openPreview(photo: PhotoRecord) {
     setPreviewPhoto(photo);
-    setActiveSheet("preview");
+    if (window.matchMedia("(max-width: 760px)").matches) {
+      setActiveSheet("preview");
+    }
     trackReactEvent("finder_photo_preview", {
       task_mode: finderState.taskMode,
       sort_mode: finderState.sort,
@@ -100,12 +127,12 @@ export function App() {
     <main className="finder-shell">
       <header className="finder-header">
         <div>
-          <p className="eyebrow">Pages frontend migration</p>
+          <p className="eyebrow">SITCON photo finder</p>
           <h1>SITCON Flickr Photo Finder</h1>
         </div>
         <p className="core-status">
           {finderData.status === "ready"
-            ? `${loadedSummary}，${taskModes.length} 種任務，page size ${pageSize}`
+            ? `${loadedSummary}，${taskModes.length} 種任務`
             : "載入照片索引中"}
         </p>
       </header>
@@ -127,7 +154,7 @@ export function App() {
         ))}
       </section>
       <Button className="mobile-task-button" type="button" onPress={() => setActiveSheet("task")}>
-        任務：{selectedTask?.label ?? "全部照片"}
+        找圖任務：{selectedTask?.label ?? "全部照片"}
       </Button>
 
       <section className="finder-toolbar" aria-label="搜尋與篩選">
@@ -190,13 +217,37 @@ export function App() {
 
       <div className="finder-workbench">
         <section className="result-surface" aria-label="搜尋結果">
-          <p>{selectedTask?.label ?? "全部照片"}排序情境</p>
+          <p>目前任務：{selectedTask?.label ?? "全部照片"}</p>
           <h2>{results.length} 張符合條件</h2>
           <p>
-            Search value: <strong>{finderState.search || "未輸入"}</strong>
+            搜尋：<strong>{finderState.search || "未輸入"}</strong>
           </p>
           {finderData.status === "error" ? <p className="load-error">{finderData.message}</p> : null}
           {finderData.status === "ready" ? <p>目前顯示 {visibleResults.length} / {results.length} 張</p> : null}
+          {activeFilterEntries.length > 0 ? (
+            <div className="active-filters" aria-label="已套用篩選">
+              {activeFilterEntries.map((entry) => (
+                <Button
+                  key={`${entry.key}:${entry.value}`}
+                  type="button"
+                  onPress={() =>
+                    setFinderState((current) => ({
+                      ...current,
+                      filters: updateFilter(
+                        current.filters,
+                        entry.definition,
+                        (current.filters[(entry.definition.filterParam ?? entry.definition.key) as FinderFilterKey] ?? []).filter(
+                          (value) => value !== entry.value,
+                        ),
+                      ),
+                    }))
+                  }
+                >
+                  {entry.label}: {entry.text} x
+                </Button>
+              ))}
+            </div>
+          ) : null}
           <div className="photo-grid">
             {finderData.status === "ready"
               ? visibleResults.map((photo) => (
@@ -220,6 +271,16 @@ export function App() {
         </section>
         {finderData.status === "ready" ? (
           <aside className="desktop-side-panel">
+            {previewPhoto ? (
+              <section className="desktop-detail-panel" aria-label="照片詳情">
+                <PhotoPreview
+                  data={finderData.data}
+                  photo={previewPhoto}
+                  selected={finderState.selectedPhotoIds.includes(previewPhoto.photo_id)}
+                  onToggleCandidate={toggleCandidate}
+                />
+              </section>
+            ) : null}
             <CandidatePanel
               data={finderData.data}
               selectedPhotoIds={finderState.selectedPhotoIds}
@@ -289,6 +350,7 @@ export function App() {
                       filters: updateFilter(current.filters, definition, values),
                     }))
                   }
+                  inline
                 />
               );
             })}

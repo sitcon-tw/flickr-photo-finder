@@ -18,6 +18,7 @@ import {
   type SortMode,
 } from "./domain";
 import { setupReactAnalytics } from "./analytics";
+import { filtersFromUrlShape, filtersToUrlShape } from "./filters";
 
 const sortModes = new Set<SortMode>(["recommended", "discover", "newest", "oldest", "people-desc", "people-asc"]);
 
@@ -63,13 +64,16 @@ export function stateFromUrl(params: URLSearchParams): FinderState {
     taskMode: normalizeTaskMode(decoded.taskMode),
     search: normalizeSearch(decoded.search),
     sort: normalizeSortMode(decoded.sort),
-    filters: normalizeFilters(decoded.filters),
+    filters: normalizeFilters(filtersFromUrlShape(decoded.filters)),
     selectedPhotoIds: normalizeFilterValues(decoded.selectedPhotoIds),
   };
 }
 
 export function encodeFinderState(state: FinderState): URLSearchParams {
-  return encodeUrlState(state);
+  return encodeUrlState({
+    ...state,
+    filters: filtersToUrlShape(state.filters),
+  });
 }
 
 export function useInitialFinderState(): FinderState {
