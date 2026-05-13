@@ -53,6 +53,12 @@ const checks = [
     next: "Fix the failing frontend logic test, then rerun pnpm finder:test.",
   },
   {
+    name: "Finder React typecheck",
+    command: "pnpm",
+    args: ["finder:react:typecheck"],
+    next: "Fix the React TypeScript error, then rerun pnpm finder:react:typecheck.",
+  },
+  {
     name: "Finder Pages build",
     command: "pnpm",
     args: ["finder:build"],

@@ -44,7 +44,7 @@ export function AiAssistantPanel({ data, filters, search, task }: AiAssistantPan
     await navigator.clipboard.writeText(prompt);
     trackReactEvent("finder_ai_prompt_copy", {
       task_mode: task?.id,
-      has_search: Boolean(search.trim()),
+      has_search_term: Boolean(search.trim()),
       has_filters: Object.values(filters).some((values) => values.length > 0),
     });
     setCopyStatus("已複製");

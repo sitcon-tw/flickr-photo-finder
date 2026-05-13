@@ -21,24 +21,20 @@ import { setupReactAnalytics } from "./analytics";
 
 const sortModes = new Set<SortMode>(["recommended", "discover", "newest", "oldest", "people-desc", "people-asc"]);
 
-const fallbackRuntimeConfig = {
-  projectConfigUrl: "/config/project.json",
+type RuntimeConfig = {
+  projectConfigUrl: string;
   dataSources: {
-    albumsCsvUrl: "/fixtures/albums.csv",
-    photosCsvUrl: "/fixtures/photos.csv",
-    interfaceRegistryJsonUrl: "/data/interface-registry.json",
-    schemaJsonUrl: "/data/photo-schema.json",
-    searchAliasesJsonUrl: "/data/search-aliases.json",
-    taxonomyJsonUrl: "/data/tag-taxonomy.json",
-  },
+    albumsCsvUrl: string;
+    photosCsvUrl: string;
+    interfaceRegistryJsonUrl: string;
+    schemaJsonUrl: string;
+    searchAliasesJsonUrl: string;
+    taxonomyJsonUrl: string;
+  };
 };
 
-async function loadRuntimeConfig(): Promise<typeof fallbackRuntimeConfig> {
-  try {
-    return (await import(/* @vite-ignore */ new URL("./config.js", window.location.href).toString())) as typeof fallbackRuntimeConfig;
-  } catch {
-    return fallbackRuntimeConfig;
-  }
+async function loadRuntimeConfig(): Promise<RuntimeConfig> {
+  return (await import(/* @vite-ignore */ new URL("./config.js", window.location.href).toString())) as RuntimeConfig;
 }
 
 function normalizeSortMode(value: unknown): SortMode {

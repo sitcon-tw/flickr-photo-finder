@@ -82,6 +82,32 @@ async function assertIncludes(path, text, label) {
   return content;
 }
 
+function moduleStringValue(content, propertyName) {
+  const match = content.match(new RegExp(`${propertyName}:\\s*([\"'])(.*?)\\1`));
+  return match?.[2] ?? "";
+}
+
+function assertGoogleSheetsCsvUrl(url, sheetName, label) {
+  if (!url) {
+    throw new Error(`config.js must include ${label}`);
+  }
+  if (/(^|\/)(fixtures|local|tmp)\//.test(url)) {
+    throw new Error(`${label} must not point at local fixture/cache data: ${url}`);
+  }
+  let parsed;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new Error(`${label} is not a valid absolute URL: ${url}`);
+  }
+  if (parsed.protocol !== "https:" || parsed.hostname !== "docs.google.com" || !parsed.pathname.includes("/spreadsheets/d/")) {
+    throw new Error(`${label} must point at a public Google Sheets CSV URL: ${url}`);
+  }
+  if (parsed.searchParams.get("tqx") !== "out:csv" || parsed.searchParams.get("sheet") !== sheetName) {
+    throw new Error(`${label} must use tqx=out:csv and sheet=${sheetName}: ${url}`);
+  }
+}
+
 async function assertPngDimensions(path, expectedWidth, expectedHeight) {
   const buffer = await readFile(path);
   const pngSignature = "89504e470d0a1a0a";
@@ -168,12 +194,8 @@ async function main() {
   ) {
     throw new Error("config.js must include albumsCsvUrl, interfaceRegistryJsonUrl, schemaJsonUrl, searchAliasesJsonUrl, and taxonomyJsonUrl");
   }
-  if (!/https:\/\/docs\.google\.com\/spreadsheets\/d\/[^/]+\/gviz\/tq/.test(config.match(/albumsCsvUrl: ([^,]+)/)?.[1] ?? "")) {
-    throw new Error("config.js does not appear to point albumsCsvUrl at a public Google Sheets CSV URL");
-  }
-  if (!/https:\/\/docs\.google\.com\/spreadsheets\/d\/[^/]+\/gviz\/tq/.test(config)) {
-    throw new Error("config.js does not appear to point photosCsvUrl at a public Google Sheets CSV URL");
-  }
+  assertGoogleSheetsCsvUrl(moduleStringValue(config, "albumsCsvUrl"), "albums", "albumsCsvUrl");
+  assertGoogleSheetsCsvUrl(moduleStringValue(config, "photosCsvUrl"), "photos", "photosCsvUrl");
 
   JSON.parse(await readFile(join(options.artifactDir, "config/project.json"), "utf8"));
   JSON.parse(await readFile(join(options.artifactDir, "data/interface-registry.json"), "utf8"));
