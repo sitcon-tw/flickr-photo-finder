@@ -364,8 +364,8 @@ function openPreview(photo) {
   appendPreviewDetail("使用提醒", photo.public_use_status, { fieldName: "public_use_status" });
   controls.previewLarge.disabled = !largeUrl;
   controls.previewLarge.dataset.largeImageUrl = largeUrl;
-  setExternalLink(elements.previewImageLink, originalUrl);
-  elements.previewImageLink.title = originalUrl ? "開啟 Flickr 原始尺寸頁" : "";
+  setExternalLink(elements.previewImageLink, photo.photo_url);
+  elements.previewImageLink.title = photo.photo_url ? "開啟 Flickr 照片頁" : "";
   setExternalLink(elements.previewOriginalLink, originalUrl);
   setExternalLink(elements.previewSheetLink, sheetRowLink(photo));
   updatePreviewCandidateButton();
