@@ -17,6 +17,7 @@ import {
   type FinderState,
   type SortMode,
 } from "./domain";
+import { setupReactAnalytics } from "./analytics";
 
 const sortModes = new Set<SortMode>(["recommended", "discover", "newest", "oldest", "people-desc", "people-asc"]);
 
@@ -101,6 +102,7 @@ export function useFinderData(): FinderLoadState {
         applyTaskModeRegistry(loaded.interfaceRegistry);
         applyUrlStateRegistry(loaded.interfaceRegistry);
         applySearchRegistry(loaded.interfaceRegistry);
+        setupReactAnalytics(loaded.projectConfig);
         if (!cancelled) {
           setLoadState({ status: "ready", data: loaded });
         }

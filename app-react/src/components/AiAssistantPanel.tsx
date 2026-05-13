@@ -3,6 +3,7 @@ import { Button } from "react-aria-components";
 import type { FinderData, FinderFilters, TaskMode } from "../domain";
 import { labelFor } from "../filters";
 import { buildAiAssistantPrompt } from "../finderCore";
+import { trackReactEvent } from "../analytics";
 
 type AiAssistantPanelProps = {
   data: FinderData;
@@ -41,6 +42,11 @@ export function AiAssistantPanel({ data, filters, search, task }: AiAssistantPan
       return;
     }
     await navigator.clipboard.writeText(prompt);
+    trackReactEvent("finder_ai_prompt_copy", {
+      task_mode: task?.id,
+      has_search: Boolean(search.trim()),
+      has_filters: Object.values(filters).some((values) => values.length > 0),
+    });
     setCopyStatus("已複製");
     window.setTimeout(() => setCopyStatus(""), 1600);
   }
@@ -55,7 +61,16 @@ export function AiAssistantPanel({ data, filters, search, task }: AiAssistantPan
       </div>
       <div className="assistant-actions">
         <Button type="button" onPress={copyPrompt}>複製提示詞</Button>
-        <Button type="button" isDisabled={!sheetUrl} onPress={() => window.open(sheetUrl, "_blank", "noopener,noreferrer")}>開 Sheets</Button>
+        <Button
+          type="button"
+          isDisabled={!sheetUrl}
+          onPress={() => {
+            trackReactEvent("finder_ai_sheet_open", { task_mode: task?.id });
+            window.open(sheetUrl, "_blank", "noopener,noreferrer");
+          }}
+        >
+          開 Sheets
+        </Button>
       </div>
       {copyStatus ? <p className="copy-status">{copyStatus}</p> : null}
     </section>

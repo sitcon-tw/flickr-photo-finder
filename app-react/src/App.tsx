@@ -11,6 +11,7 @@ import { encodeFinderState, useFinderData, useInitialFinderState } from "./data"
 import type { FinderFilterKey, PhotoRecord } from "./domain";
 import { activePrimaryFilterDefinitions, allFilterDefinitions, filterOptionsForDefinition, updateFilter } from "./filters";
 import { discoverHistorySize, discoverWindowSize, filterAndSortPhotos, pageSize, taskModes } from "./finderCore";
+import { trackReactEvent } from "./analytics";
 import "./styles.css";
 
 type SheetName = "task" | "filter" | "candidate" | "preview" | null;
@@ -75,8 +76,10 @@ export function App() {
       const selected = new Set(current.selectedPhotoIds);
       if (selected.has(photoId)) {
         selected.delete(photoId);
+        trackReactEvent("finder_candidate_remove", { candidate_count: selected.size });
       } else {
         selected.add(photoId);
+        trackReactEvent("finder_candidate_add", { candidate_count: selected.size });
       }
       return { ...current, selectedPhotoIds: [...selected] };
     });
@@ -85,6 +88,12 @@ export function App() {
   function openPreview(photo: PhotoRecord) {
     setPreviewPhoto(photo);
     setActiveSheet("preview");
+    trackReactEvent("finder_photo_preview", {
+      task_mode: finderState.taskMode,
+      sort_mode: finderState.sort,
+      curation_status: photo.curation_status,
+      public_use_status: photo.public_use_status,
+    });
   }
 
   return (
@@ -107,7 +116,10 @@ export function App() {
             key={task.id}
             className={task.id === finderState.taskMode ? "task-button is-active" : "task-button"}
             type="button"
-            onPress={() => setFinderState((current) => ({ ...current, taskMode: task.id }))}
+            onPress={() => {
+              setFinderState((current) => ({ ...current, taskMode: task.id }));
+              trackReactEvent("finder_task_select", { task_mode: task.id });
+            }}
           >
             <strong>{task.label}</strong>
             <span>{task.description}</span>
@@ -251,6 +263,7 @@ export function App() {
                 type="button"
                 onPress={() => {
                   setFinderState((current) => ({ ...current, taskMode: task.id }));
+                  trackReactEvent("finder_task_select", { task_mode: task.id });
                   setActiveSheet(null);
                 }}
               >

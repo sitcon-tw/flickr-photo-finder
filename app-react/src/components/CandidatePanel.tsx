@@ -3,6 +3,7 @@ import { Button } from "react-aria-components";
 import type { FinderData, PhotoRecord } from "../domain";
 import { labelFor } from "../filters";
 import { candidateCopyText, finderLink, photoTitle, selectedPhotos, sheetRowLink } from "../finderCore";
+import { trackReactEvent } from "../analytics";
 
 type CandidatePanelProps = {
   data: FinderData;
@@ -37,6 +38,12 @@ export function CandidatePanel({ data, selectedPhotoIds, onPreview, onRemove }: 
       templateId,
     );
     const copied = await copyText(text);
+    if (copied) {
+      trackReactEvent("finder_candidate_copy", {
+        candidate_count: candidates.length,
+        copy_template: templateId,
+      });
+    }
     setCopyStatus(copied ? "已複製" : "複製失敗");
     window.setTimeout(() => setCopyStatus(""), 1600);
   }
