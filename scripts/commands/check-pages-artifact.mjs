@@ -1,4 +1,4 @@
-import { readFile, stat } from "node:fs/promises";
+import { readdir, readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 
 const defaultArtifactDir = "tmp/pages";
@@ -107,36 +107,35 @@ async function main() {
   const requiredFiles = [
     ".nojekyll",
     "assets/og-image.png",
-    "ai-assistant.js",
-    "analytics.js",
-    "candidates.js",
     "config.js",
     "config/project.json",
-    "controls.js",
-    "data-loader.js",
-    "data-utils.js",
     "data/interface-registry.json",
     "data/photo-schema.json",
     "data/search-aliases.json",
     "data/tag-taxonomy.json",
     "index.html",
-    "main.js",
-    "overview-render.js",
-    "photo-render.js",
-    "result-render.js",
-    "search-sort.js",
-    "styles.css",
-    "task-modes.js",
-    "url-state.js",
   ];
 
   for (const file of requiredFiles) {
     await assertFile(join(options.artifactDir, file));
   }
 
-  const indexHtml = await assertIncludes(join(options.artifactDir, "index.html"), "./styles.css", "styles.css");
-  if (!indexHtml.includes("./main.js")) {
-    throw new Error("index.html does not reference main.js");
+  const assets = await readdir(join(options.artifactDir, "assets"));
+  const jsAssets = assets.filter((file) => file.endsWith(".js"));
+  const cssAssets = assets.filter((file) => file.endsWith(".css"));
+  if (jsAssets.length === 0) {
+    throw new Error("artifact assets directory does not contain a React JavaScript bundle");
+  }
+  if (cssAssets.length === 0) {
+    throw new Error("artifact assets directory does not contain a React CSS bundle");
+  }
+
+  const indexHtml = await assertIncludes(join(options.artifactDir, "index.html"), "./assets/", "Vite assets");
+  if (!jsAssets.some((file) => indexHtml.includes(`./assets/${file}`))) {
+    throw new Error("index.html does not reference the React JavaScript bundle");
+  }
+  if (!cssAssets.some((file) => indexHtml.includes(`./assets/${file}`))) {
+    throw new Error("index.html does not reference the React CSS bundle");
   }
   const requiredMetadata = [
     'name="description"',
@@ -159,24 +158,6 @@ async function main() {
     throw new Error("index.html og:image must point at an absolute HTTPS URL for assets/og-image.png");
   }
   await assertPngDimensions(join(options.artifactDir, "assets/og-image.png"), 1200, 630);
-  await assertIncludes(join(options.artifactDir, "main.js"), "./ai-assistant.js", "ai-assistant.js");
-  await assertIncludes(join(options.artifactDir, "main.js"), "./analytics.js", "analytics.js");
-  await assertIncludes(join(options.artifactDir, "main.js"), "./candidates.js", "candidates.js");
-  await assertIncludes(join(options.artifactDir, "main.js"), "./controls.js", "controls.js");
-  await assertIncludes(join(options.artifactDir, "controls.js"), "./analytics.js", "analytics.js");
-  await assertIncludes(join(options.artifactDir, "controls.js"), "./search-sort.js", "search-sort.js");
-  await assertIncludes(join(options.artifactDir, "main.js"), "./data-loader.js", "data-loader.js");
-  await assertIncludes(join(options.artifactDir, "data-loader.js"), "./data-utils.js", "data-utils.js");
-  await assertIncludes(join(options.artifactDir, "data-loader.js"), "./search-sort.js", "search-sort.js");
-  await assertIncludes(join(options.artifactDir, "main.js"), "./overview-render.js", "overview-render.js");
-  await assertIncludes(join(options.artifactDir, "overview-render.js"), "./search-sort.js", "search-sort.js");
-  await assertIncludes(join(options.artifactDir, "main.js"), "./photo-render.js", "photo-render.js");
-  await assertIncludes(join(options.artifactDir, "photo-render.js"), "./analytics.js", "analytics.js");
-  await assertIncludes(join(options.artifactDir, "photo-render.js"), "./search-sort.js", "search-sort.js");
-  await assertIncludes(join(options.artifactDir, "main.js"), "./result-render.js", "result-render.js");
-  await assertIncludes(join(options.artifactDir, "main.js"), "./search-sort.js", "search-sort.js");
-  await assertIncludes(join(options.artifactDir, "main.js"), "./task-modes.js", "task-modes.js");
-  await assertIncludes(join(options.artifactDir, "main.js"), "./url-state.js", "url-state.js");
   const config = await assertIncludes(join(options.artifactDir, "config.js"), "photosCsvUrl", "photosCsvUrl");
   if (
     !config.includes("albumsCsvUrl") ||

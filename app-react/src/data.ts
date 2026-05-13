@@ -4,11 +4,9 @@ import {
   applyControlsRegistry,
   applyTaskModeRegistry,
   applyUrlStateRegistry,
-  dataSources,
   decodeUrlState,
   encodeUrlState,
   loadFinderData,
-  projectConfigUrl,
 } from "./finderCore";
 import {
   createInitialFinderState,
@@ -21,6 +19,26 @@ import {
 } from "./domain";
 
 const sortModes = new Set<SortMode>(["recommended", "discover", "newest", "oldest", "people-desc", "people-asc"]);
+
+const fallbackRuntimeConfig = {
+  projectConfigUrl: "/config/project.json",
+  dataSources: {
+    albumsCsvUrl: "/fixtures/albums.csv",
+    photosCsvUrl: "/fixtures/photos.csv",
+    interfaceRegistryJsonUrl: "/data/interface-registry.json",
+    schemaJsonUrl: "/data/photo-schema.json",
+    searchAliasesJsonUrl: "/data/search-aliases.json",
+    taxonomyJsonUrl: "/data/tag-taxonomy.json",
+  },
+};
+
+async function loadRuntimeConfig(): Promise<typeof fallbackRuntimeConfig> {
+  try {
+    return (await import(/* @vite-ignore */ new URL("./config.js", window.location.href).toString())) as typeof fallbackRuntimeConfig;
+  } catch {
+    return fallbackRuntimeConfig;
+  }
+}
 
 function normalizeSortMode(value: unknown): SortMode {
   const sortMode = String(value ?? "");
@@ -74,7 +92,11 @@ export function useFinderData(): FinderLoadState {
 
     async function loadData() {
       try {
-        const loaded = (await loadFinderData({ dataSources, projectConfigUrl })) as FinderData;
+        const runtimeConfig = await loadRuntimeConfig();
+        const loaded = (await loadFinderData({
+          dataSources: runtimeConfig.dataSources,
+          projectConfigUrl: runtimeConfig.projectConfigUrl,
+        })) as FinderData;
         applyControlsRegistry(loaded.interfaceRegistry);
         applyTaskModeRegistry(loaded.interfaceRegistry);
         applyUrlStateRegistry(loaded.interfaceRegistry);

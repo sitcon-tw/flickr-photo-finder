@@ -23,6 +23,8 @@ function contentTypeFor(path: string) {
 
 function repoStaticData(): Plugin {
   const staticFiles = new Set(repoStaticFiles.map((path) => `/${path}`));
+  const copyOutputDir = process.env.FINDER_REACT_COPY_OUT_DIR ?? "tmp/pages-react";
+  const shouldCopyStaticFiles = process.env.FINDER_REACT_COPY_STATIC !== "0";
   return {
     name: "finder-repo-static-data",
     configureServer(server: ViteDevServer) {
@@ -44,8 +46,11 @@ function repoStaticData(): Plugin {
       });
     },
     async closeBundle() {
+      if (!shouldCopyStaticFiles) {
+        return;
+      }
       for (const filePath of repoStaticFiles) {
-        const target = join("tmp/pages-react", filePath);
+        const target = join(copyOutputDir, filePath);
         await mkdir(dirname(target), { recursive: true });
         await copyFile(filePath, target);
       }
@@ -57,7 +62,7 @@ export default defineConfig({
   base: "./",
   build: {
     emptyOutDir: true,
-    outDir: "../tmp/pages-react",
+    outDir: process.env.FINDER_REACT_OUT_DIR ?? "../tmp/pages-react",
   },
   plugins: [react(), repoStaticData()],
   root: "app-react",

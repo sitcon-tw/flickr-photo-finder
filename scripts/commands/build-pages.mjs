@@ -1,6 +1,7 @@
 import { copyFile, mkdir, readFile, rm, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { build as viteBuild } from "vite";
 import { googleSheetsSpreadsheetId, projectConfig } from "../lib/core/project-config.mjs";
 
 export const defaultOutputDir = "tmp/pages";
@@ -149,7 +150,8 @@ function renderMetadataHtml() {
 }
 
 async function writeIndexHtml(outputDir) {
-  const source = await readFile("app/index.html", "utf8");
+  const indexPath = join(outputDir, "index.html");
+  const source = await readFile(indexPath, "utf8");
   const startMarker = "    <!-- app-metadata:start -->";
   const endMarker = "    <!-- app-metadata:end -->";
   const startIndex = source.indexOf(startMarker);
@@ -162,7 +164,35 @@ async function writeIndexHtml(outputDir) {
   const before = source.slice(0, startIndex);
   const after = source.slice(endIndex + endMarker.length);
   const metadataHtml = renderMetadataHtml();
-  await writeFile(join(outputDir, "index.html"), `${before}${startMarker}\n${metadataHtml}\n${endMarker}${after}`);
+  await writeFile(indexPath, `${before}${startMarker}\n${metadataHtml}\n${endMarker}${after}`);
+}
+
+async function buildReactApp(outputDir) {
+  const previousOutDir = process.env.FINDER_REACT_OUT_DIR;
+  const previousCopyOutDir = process.env.FINDER_REACT_COPY_OUT_DIR;
+  const previousCopyStatic = process.env.FINDER_REACT_COPY_STATIC;
+  process.env.FINDER_REACT_OUT_DIR = resolve(outputDir);
+  process.env.FINDER_REACT_COPY_OUT_DIR = resolve(outputDir);
+  process.env.FINDER_REACT_COPY_STATIC = "0";
+  try {
+    await viteBuild({ configFile: "vite.config.ts" });
+  } finally {
+    if (previousOutDir === undefined) {
+      delete process.env.FINDER_REACT_OUT_DIR;
+    } else {
+      process.env.FINDER_REACT_OUT_DIR = previousOutDir;
+    }
+    if (previousCopyStatic === undefined) {
+      delete process.env.FINDER_REACT_COPY_STATIC;
+    } else {
+      process.env.FINDER_REACT_COPY_STATIC = previousCopyStatic;
+    }
+    if (previousCopyOutDir === undefined) {
+      delete process.env.FINDER_REACT_COPY_OUT_DIR;
+    } else {
+      process.env.FINDER_REACT_COPY_OUT_DIR = previousCopyOutDir;
+    }
+  }
 }
 
 export async function buildPagesArtifact({
@@ -183,21 +213,8 @@ export async function buildPagesArtifact({
 
   await rm(outputDir, { recursive: true, force: true });
   await mkdir(outputDir, { recursive: true });
+  await buildReactApp(outputDir);
   await writeIndexHtml(outputDir);
-  await copyIntoArtifact("app/analytics.js", outputDir, "analytics.js");
-  await copyIntoArtifact("app/ai-assistant.js", outputDir, "ai-assistant.js");
-  await copyIntoArtifact("app/candidates.js", outputDir, "candidates.js");
-  await copyIntoArtifact("app/controls.js", outputDir, "controls.js");
-  await copyIntoArtifact("app/data-loader.js", outputDir, "data-loader.js");
-  await copyIntoArtifact("app/data-utils.js", outputDir, "data-utils.js");
-  await copyIntoArtifact("app/main.js", outputDir, "main.js");
-  await copyIntoArtifact("app/overview-render.js", outputDir, "overview-render.js");
-  await copyIntoArtifact("app/photo-render.js", outputDir, "photo-render.js");
-  await copyIntoArtifact("app/result-render.js", outputDir, "result-render.js");
-  await copyIntoArtifact("app/search-sort.js", outputDir, "search-sort.js");
-  await copyIntoArtifact("app/task-modes.js", outputDir, "task-modes.js");
-  await copyIntoArtifact("app/url-state.js", outputDir, "url-state.js");
-  await copyIntoArtifact("app/styles.css", outputDir, "styles.css");
   await copyIntoArtifact("app/assets/og-image.png", outputDir, "assets/og-image.png");
   await copyIntoArtifact("config/project.json", outputDir);
   await copyIntoArtifact("data/interface-registry.json", outputDir);
