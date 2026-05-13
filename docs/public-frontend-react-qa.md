@@ -21,6 +21,7 @@
 ```bash
 pnpm finder:build
 pnpm finder:check
+pnpm finder:performance:check
 pnpm finder:responsive:check -- http://127.0.0.1:<port>/
 ```
 
@@ -30,7 +31,7 @@ pnpm finder:responsive:check -- http://127.0.0.1:<port>/
 pnpm project:check
 ```
 
-若只修改前端互動或樣式，至少跑 `pnpm finder:build`、`pnpm finder:check` 與 `pnpm finder:responsive:check`。若修改搜尋、排序、候選、URL state 或資料正規化，還要跑 `pnpm finder:test`。
+若只修改前端互動或樣式，至少跑 `pnpm finder:build`、`pnpm finder:check` 與 `pnpm finder:responsive:check`。若修改搜尋、排序、候選、URL state 或資料正規化，還要跑 `pnpm finder:test` 與 `pnpm finder:performance:check`。
 
 ## 桌面人工腳本
 
@@ -109,6 +110,10 @@ pnpm project:check
 ## 大資料腳本
 
 大資料驗收不應依賴正式 Sheets 即時資料量。使用 synthetic 10k 級資料確認搜尋、篩選與排序核心，並使用 responsive check 確認 UI 不一次 render 全部卡片。
+
+```bash
+pnpm finder:performance:check
+```
 
 通過條件：
 

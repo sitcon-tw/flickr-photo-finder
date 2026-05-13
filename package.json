@@ -50,6 +50,7 @@
     "finder:dev:export": "node scripts/commands/dev-server.mjs --source export",
     "finder:build": "node scripts/commands/build-pages.mjs",
     "finder:check": "node scripts/commands/check-pages-artifact.mjs",
+    "finder:performance:check": "node scripts/commands/check-finder-performance.mjs",
     "finder:responsive:check": "node scripts/commands/check-finder-responsive.mjs",
     "finder:test": "node --test tests/*.test.mjs",
     "finder:react:dev": "vite --config vite.config.ts",

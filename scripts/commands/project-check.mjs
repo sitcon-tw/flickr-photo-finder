@@ -53,6 +53,12 @@ const checks = [
     next: "Fix the failing frontend logic test, then rerun pnpm finder:test.",
   },
   {
+    name: "Finder performance check",
+    command: "pnpm",
+    args: ["finder:performance:check"],
+    next: "Fix the frontend search/sort performance issue, or tune the documented threshold with evidence, then rerun pnpm finder:performance:check.",
+  },
+  {
     name: "Finder React typecheck",
     command: "pnpm",
     args: ["finder:react:typecheck"],
