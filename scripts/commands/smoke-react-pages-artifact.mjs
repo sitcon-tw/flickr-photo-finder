@@ -72,6 +72,7 @@ async function main() {
   assertIncludes(dom, "探索更多", "sort control");
   assertIncludes(dom, "社群貼文", "task mode control");
   assertIncludes(dom, "主要篩選", "primary filter controls");
+  assertIncludes(dom, "候選 0", "candidate panel");
   assertIncludes(dom, "顯示前 12 張", "visible result summary");
   assertIncludes(dom, "photo-card", "photo card markup");
   assertIncludes(dom, "https://www.flickr.com/photos/sitcon/", "Flickr photo links");
