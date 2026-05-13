@@ -182,6 +182,10 @@ function syncEnhancedSelectValue(control) {
   control.trigger.classList.toggle("is-empty", values.length === 0);
 }
 
+function shouldFocusEnhancedSelectSearch() {
+  return window.matchMedia("(pointer: fine)").matches && !window.matchMedia("(max-width: 760px)").matches;
+}
+
 function syncEnhancedSelectValueForSelect(select) {
   const control = enhancedSelects.get(select);
   if (control) {
@@ -240,10 +244,13 @@ function openEnhancedSelect(control) {
   renderEnhancedSelectOptions(control);
   control.panel.hidden = false;
   control.trigger.setAttribute("aria-expanded", "true");
-  window.requestAnimationFrame(() => control.search.focus({ preventScroll: true }));
+  if (shouldFocusEnhancedSelectSearch()) {
+    window.requestAnimationFrame(() => control.search.focus({ preventScroll: true }));
+  }
 }
 
 function toggleEnhancedSelectValue(control, value) {
+  const optionScrollTop = control.options.scrollTop;
   if (!value) {
     for (const option of control.select.options) {
       option.selected = false;
@@ -259,6 +266,7 @@ function toggleEnhancedSelectValue(control, value) {
   }
   syncEnhancedSelectValue(control);
   renderEnhancedSelectOptions(control);
+  control.options.scrollTop = optionScrollTop;
   control.select.dispatchEvent(new Event("input", { bubbles: true }));
 }
 
