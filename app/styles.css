@@ -1471,6 +1471,17 @@ select {
     grid-template-columns: 1fr;
   }
 
+  .search-panel:not(.is-filter-open) .primary-search {
+    display: grid;
+    grid-template-columns: 1fr;
+    margin-bottom: 0;
+  }
+
+  .search-panel:not(.is-filter-open) .primary-search label:not(.search-field),
+  .search-panel:not(.is-filter-open) #resetButton {
+    display: none;
+  }
+
   button,
   .source-link,
   .photo-action,
