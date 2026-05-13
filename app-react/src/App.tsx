@@ -8,13 +8,27 @@ import { PhotoCard } from "./components/PhotoCard";
 import { PhotoPreview } from "./components/PhotoPreview";
 import { SheetDialog } from "./components/SheetDialog";
 import { encodeFinderState, stateFromUrl, useFinderData, useInitialFinderState } from "./data";
-import type { FinderFilterKey, PhotoRecord } from "./domain";
-import { activePrimaryFilterDefinitions, allFilterDefinitions, filterOptionsForDefinition, labelFor, updateFilter } from "./filters";
+import { createEmptyFilters, type FinderFilterKey, type PhotoRecord } from "./domain";
+import {
+  activePrimaryFilterDefinitions,
+  allFilterDefinitions,
+  filterOptionsForDefinition,
+  labelFor,
+  updateFilter,
+  type FilterDefinition,
+} from "./filters";
 import { discoverHistorySize, discoverWindowSize, filterAndSortPhotos, pageSize, taskModes } from "./finderCore";
 import { trackReactEvent } from "./analytics";
 import "./styles.css";
 
 type SheetName = "task" | "filter" | "candidate" | "preview" | null;
+type ActiveFilterEntry = {
+  key: string;
+  label: string;
+  value: string;
+  text: string;
+  definition: FilterDefinition;
+};
 
 export function App() {
   const initialFinderState = useInitialFinderState();
@@ -32,7 +46,7 @@ export function App() {
   const loadedSummary = finderData.status === "ready" ? `${finderData.data.photos.length} 張照片 / ${finderData.data.albums.length} 個相簿` : "";
   const primaryFilters = useMemo(() => activePrimaryFilterDefinitions(selectedTask), [selectedTask, finderData.status]);
   const fullFilters = useMemo(() => allFilterDefinitions(), [finderData.status]);
-  const activeFilterEntries = useMemo(() => {
+  const activeFilterEntries = useMemo<ActiveFilterEntry[]>(() => {
     if (finderData.status !== "ready") return [];
     return fullFilters.flatMap((definition) => {
       const filterParam = (definition.filterParam ?? definition.key) as FinderFilterKey;
@@ -123,12 +137,61 @@ export function App() {
     });
   }
 
+  function clearFilters() {
+    setFinderState((current) => ({
+      ...current,
+      filters: createEmptyFilters(),
+      search: "",
+      sort: "recommended",
+    }));
+  }
+
+  function removeActiveFilter(entry: ActiveFilterEntry) {
+    setFinderState((current) => ({
+      ...current,
+      filters: updateFilter(
+        current.filters,
+        entry.definition,
+        (current.filters[(entry.definition.filterParam ?? entry.definition.key) as FinderFilterKey] ?? []).filter(
+          (value) => value !== entry.value,
+        ),
+      ),
+    }));
+  }
+
+  function renderFilterControls(definitions: FilterDefinition[], options: { inline?: boolean } = {}) {
+    if (finderData.status !== "ready") {
+      return null;
+    }
+    return definitions.map((definition) => {
+      const filterParam = (definition.filterParam ?? definition.key) as FinderFilterKey;
+      return (
+        <FilterMultiSelect
+          key={definition.key}
+          label={definition.label}
+          options={filterOptionsForDefinition(finderData.data, definition)}
+          selectedValues={finderState.filters[filterParam] ?? []}
+          onChange={(values) =>
+            setFinderState((current) => ({
+              ...current,
+              filters: updateFilter(current.filters, definition, values),
+            }))
+          }
+          inline={options.inline}
+        />
+      );
+    });
+  }
+
+  const advancedFilters = fullFilters.filter((definition) => !primaryFilters.some((primary) => primary.key === definition.key));
+
   return (
     <main className="finder-shell">
       <header className="finder-header">
         <div>
           <p className="eyebrow">SITCON photo finder</p>
           <h1>SITCON Flickr Photo Finder</h1>
+          <p>從工作任務出發，在公開 Flickr 照片索引中建立可討論的候選清單。</p>
         </div>
         <p className="core-status">
           {finderData.status === "ready"
@@ -157,7 +220,7 @@ export function App() {
         找圖任務：{selectedTask?.label ?? "全部照片"}
       </Button>
 
-      <section className="finder-toolbar" aria-label="搜尋與篩選">
+      <section className="finder-toolbar mobile-toolbar" aria-label="手機搜尋與快捷操作">
         <TextField
           className="search-field"
           value={finderState.search}
@@ -173,55 +236,74 @@ export function App() {
           候選 {finderState.selectedPhotoIds.length}
         </Button>
       </section>
-      <section className="filter-grid" aria-label="主要篩選">
-        {finderData.status === "ready"
-          ? primaryFilters.map((definition) => {
-              const filterParam = (definition.filterParam ?? definition.key) as FinderFilterKey;
-              return (
-                <FilterMultiSelect
-                  key={definition.key}
-                  label={definition.label}
-                  options={filterOptionsForDefinition(finderData.data, definition)}
-                  selectedValues={finderState.filters[filterParam] ?? []}
-                  onChange={(values) =>
-                    setFinderState((current) => ({
-                      ...current,
-                      filters: updateFilter(current.filters, definition, values),
-                    }))
-                  }
-                />
-              );
-            })
-          : null}
-        <Select
-          className="sort-select"
-          selectedKey={finderState.sort}
-          onSelectionChange={(key) => setFinderState((current) => ({ ...current, sort: String(key) as typeof current.sort }))}
-        >
-          <Label>排序</Label>
-          <Button>
-            <SelectValue />
+
+      <section className="desktop-control-panel" aria-label="桌面搜尋與篩選工作區">
+        <div className="control-row">
+          <TextField
+            className="search-field"
+            value={finderState.search}
+            onChange={(search) => setFinderState((current) => ({ ...current, search }))}
+          >
+            <Label>搜尋照片內容</Label>
+            <Input placeholder="可放字、品牌露出、友善交流、舞台講者" />
+          </TextField>
+          <Select
+            className="sort-select"
+            selectedKey={finderState.sort}
+            onSelectionChange={(key) => setFinderState((current) => ({ ...current, sort: String(key) as typeof current.sort }))}
+          >
+            <Label>排序</Label>
+            <Button>
+              <SelectValue />
+            </Button>
+            <Popover className="filter-popover">
+              <ListBox>
+                <ListBoxItem id="recommended">推薦排序</ListBoxItem>
+                <ListBoxItem id="discover">探索更多</ListBoxItem>
+                <ListBoxItem id="newest">年份新到舊</ListBoxItem>
+                <ListBoxItem id="oldest">年份舊到新</ListBoxItem>
+                <ListBoxItem id="people-desc">人數多到少</ListBoxItem>
+                <ListBoxItem id="people-asc">人數少到多</ListBoxItem>
+              </ListBox>
+            </Popover>
+          </Select>
+          <Button className="secondary-button" type="button" onPress={clearFilters}>
+            清除條件
           </Button>
-          <Popover className="filter-popover">
-            <ListBox>
-              <ListBoxItem id="recommended">推薦排序</ListBoxItem>
-              <ListBoxItem id="discover">探索更多</ListBoxItem>
-              <ListBoxItem id="newest">年份新到舊</ListBoxItem>
-              <ListBoxItem id="oldest">年份舊到新</ListBoxItem>
-              <ListBoxItem id="people-desc">人數多到少</ListBoxItem>
-              <ListBoxItem id="people-asc">人數少到多</ListBoxItem>
-            </ListBox>
-          </Popover>
-        </Select>
+        </div>
+        <div className="desktop-filter-section">
+          <div className="section-heading compact">
+            <h2>任務重點條件</h2>
+            <p>依目前任務提升最常用篩選，不會替你隱藏其他照片。</p>
+          </div>
+          <div className="filter-grid desktop-primary-filters" aria-label="任務重點篩選">
+            {renderFilterControls(primaryFilters)}
+          </div>
+        </div>
+        <details className="desktop-advanced-filters">
+          <summary>進階條件</summary>
+          <div className="filter-grid desktop-advanced-grid" aria-label="進階篩選">
+            {renderFilterControls(advancedFilters)}
+          </div>
+        </details>
       </section>
 
       <div className="finder-workbench">
         <section className="result-surface" aria-label="搜尋結果">
-          <p>目前任務：{selectedTask?.label ?? "全部照片"}</p>
-          <h2>{results.length} 張符合條件</h2>
-          <p>
-            搜尋：<strong>{finderState.search || "未輸入"}</strong>
-          </p>
+          <div className="result-heading">
+            <div>
+              <p>目前任務：{selectedTask?.label ?? "全部照片"}</p>
+              <h2>{results.length} 張符合條件</h2>
+              <p>
+                搜尋：<strong>{finderState.search || "未輸入"}</strong>
+              </p>
+            </div>
+            {finderState.selectedPhotoIds.length > 0 ? (
+              <Button className="desktop-candidate-shortcut" type="button" onPress={() => setActiveSheet("candidate")}>
+                候選 {finderState.selectedPhotoIds.length}
+              </Button>
+            ) : null}
+          </div>
           {finderData.status === "error" ? <p className="load-error">{finderData.message}</p> : null}
           {finderData.status === "ready" ? <p>目前顯示 {visibleResults.length} / {results.length} 張</p> : null}
           {activeFilterEntries.length > 0 ? (
@@ -230,18 +312,7 @@ export function App() {
                 <Button
                   key={`${entry.key}:${entry.value}`}
                   type="button"
-                  onPress={() =>
-                    setFinderState((current) => ({
-                      ...current,
-                      filters: updateFilter(
-                        current.filters,
-                        entry.definition,
-                        (current.filters[(entry.definition.filterParam ?? entry.definition.key) as FinderFilterKey] ?? []).filter(
-                          (value) => value !== entry.value,
-                        ),
-                      ),
-                    }))
-                  }
+                  onPress={() => removeActiveFilter(entry)}
                 >
                   {entry.label}: {entry.text} x
                 </Button>
@@ -271,16 +342,24 @@ export function App() {
         </section>
         {finderData.status === "ready" ? (
           <aside className="desktop-side-panel">
-            {previewPhoto ? (
-              <section className="desktop-detail-panel" aria-label="照片詳情">
+            <section className="desktop-detail-panel" aria-label="照片詳情">
+              <div className="panel-heading">
+                <div>
+                  <h2>照片 Inspector</h2>
+                  <p>{previewPhoto ? "檢查構圖、來源與使用提醒" : "點選照片查看完整資訊"}</p>
+                </div>
+              </div>
+              {previewPhoto ? (
                 <PhotoPreview
                   data={finderData.data}
                   photo={previewPhoto}
                   selected={finderState.selectedPhotoIds.includes(previewPhoto.photo_id)}
                   onToggleCandidate={toggleCandidate}
                 />
-              </section>
-            ) : null}
+              ) : (
+                <p className="empty-panel">尚未選取照片。桌面版會在這裡保留 detail，不打斷目前結果瀏覽。</p>
+              )}
+            </section>
             <CandidatePanel
               data={finderData.data}
               selectedPhotoIds={finderState.selectedPhotoIds}
@@ -336,24 +415,7 @@ export function App() {
         ) : null}
         {activeSheet === "filter" && finderData.status === "ready" ? (
           <div className="sheet-filter-grid">
-            {fullFilters.map((definition) => {
-              const filterParam = (definition.filterParam ?? definition.key) as FinderFilterKey;
-              return (
-                <FilterMultiSelect
-                  key={definition.key}
-                  label={definition.label}
-                  options={filterOptionsForDefinition(finderData.data, definition)}
-                  selectedValues={finderState.filters[filterParam] ?? []}
-                  onChange={(values) =>
-                    setFinderState((current) => ({
-                      ...current,
-                      filters: updateFilter(current.filters, definition, values),
-                    }))
-                  }
-                  inline
-                />
-              );
-            })}
+            {renderFilterControls(fullFilters, { inline: true })}
           </div>
         ) : null}
         {activeSheet === "preview" && previewPhoto && finderData.status === "ready" ? (

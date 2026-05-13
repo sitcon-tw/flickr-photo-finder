@@ -1,7 +1,7 @@
 import { Button } from "react-aria-components";
 import type { FinderData, PhotoRecord, TaskMode } from "../domain";
 import { labelFor } from "../filters";
-import { largeImageUrl } from "../finderCore";
+import { largeImageUrl, originalSizePageUrl, sheetRowLink } from "../finderCore";
 
 type PhotoCardProps = {
   data: FinderData;
@@ -54,14 +54,28 @@ function workHints(data: FinderData, photo: PhotoRecord): string[] {
   ].filter(Boolean).slice(0, 4);
 }
 
+function openUrl(url: string) {
+  if (url) {
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
+}
+
+async function copyText(text: string) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+  }
+}
+
 export function PhotoCard({ data, photo, task, selected, onPreview, onToggleCandidate }: PhotoCardProps) {
   const badges = statusBadges(data, photo);
   const signals = [...new Set([...taskSignals(data, photo, task), ...workHints(data, photo)])];
   const imageLabel = `預覽 ${titleFor(photo)}`;
   const largeUrl = largeImageUrl(photo) || photo.photo_url;
+  const originalUrl = originalSizePageUrl(photo);
+  const sheetsUrl = sheetRowLink(photo, data.projectConfig);
 
   return (
-    <article className="photo-card">
+    <article className="photo-card" id={`photo-${photo.photo_id}`}>
       <button className="photo-image-button" type="button" aria-label={imageLabel} onClick={() => onPreview(photo)}>
         {photo.image_preview_url ? (
           <img src={photo.image_preview_url} alt={titleFor(photo)} loading="lazy" decoding="async" />
@@ -75,6 +89,14 @@ export function PhotoCard({ data, photo, task, selected, onPreview, onToggleCand
           <h3>{titleFor(photo)}</h3>
           <span>{photo.event_year}</span>
         </div>
+        <div className="photo-reference">
+          <Button className="photo-id-button" type="button" onPress={() => copyText(photo.photo_id)} aria-label="複製 photo id">
+            {photo.photo_id}
+          </Button>
+          {signals.slice(0, 2).map((signal) => (
+            <span className="sort-signal-text" key={signal}>{signal}</span>
+          ))}
+        </div>
         <div className="photo-badges" aria-label="狀態">
           {badges.map((badge) => (
             <span key={badge}>{badge}</span>
@@ -87,13 +109,25 @@ export function PhotoCard({ data, photo, task, selected, onPreview, onToggleCand
           ))}
         </div>
         <div className="photo-card-actions">
-          <Button type="button" onPress={() => onToggleCandidate(photo.photo_id)}>
+          <Button className={selected ? "candidate-action is-selected" : "candidate-action"} type="button" onPress={() => onToggleCandidate(photo.photo_id)}>
             {selected ? "已候選" : "加候選"}
           </Button>
           <Button className="desktop-detail-action" type="button" onPress={() => onPreview(photo)}>
             詳情
           </Button>
-          <Button className="mobile-large-action" type="button" onPress={() => window.open(largeUrl, "_blank", "noopener,noreferrer")}>
+          <Button className="desktop-source-action" type="button" onPress={() => openUrl(photo.photo_url)}>
+            Flickr
+          </Button>
+          <Button className="desktop-source-action" type="button" onPress={() => openUrl(largeUrl)}>
+            大圖
+          </Button>
+          <Button className="desktop-source-action" type="button" isDisabled={!originalUrl} onPress={() => openUrl(originalUrl)}>
+            原圖
+          </Button>
+          <Button className="desktop-source-action" type="button" isDisabled={!sheetsUrl} onPress={() => openUrl(sheetsUrl)}>
+            Sheets
+          </Button>
+          <Button className="mobile-large-action" type="button" onPress={() => openUrl(largeUrl)}>
             大圖
           </Button>
         </div>

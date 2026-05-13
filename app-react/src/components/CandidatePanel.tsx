@@ -77,8 +77,14 @@ export function CandidatePanel({ data, selectedPhotoIds, onPreview, onRemove }: 
         <Button type="button" isDisabled={candidates.length === 0} onPress={() => copyCandidates("discussion")}>
           複製討論清單
         </Button>
+        <Button type="button" isDisabled={candidates.length === 0} onPress={() => copyCandidates("sponsor")}>
+          贊助佐證
+        </Button>
         <Button type="button" isDisabled={candidates.length === 0} onPress={() => copyCandidates("collaboration")}>
           複製檢查清單
+        </Button>
+        <Button type="button" isDisabled={candidates.length === 0} onPress={() => copyCandidates("flickr_urls")}>
+          Flickr URLs
         </Button>
       </div>
       {copyStatus ? <p className="copy-status">{copyStatus}</p> : null}
