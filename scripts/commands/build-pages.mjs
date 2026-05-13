@@ -1,9 +1,17 @@
+import { spawnSync } from "node:child_process";
 import { copyFile, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { googleSheetsSpreadsheetId, projectConfig } from "../lib/core/project-config.mjs";
 
 export const defaultOutputDir = "tmp/pages";
+
+function buildCoreModules() {
+  const result = spawnSync(process.execPath, ["node_modules/typescript/bin/tsc", "-p", "app-core/tsconfig.json"], { stdio: "inherit" });
+  if (result.status !== 0) {
+    throw new Error("Could not build finder core TypeScript modules");
+  }
+}
 
 function printUsage() {
   console.log(`Usage:
@@ -181,6 +189,7 @@ export async function buildPagesArtifact({
   const resolvedAlbumsCsvUrl = albumsCsvUrl || (spreadsheetId ? googleSheetsCsvUrl(spreadsheetId, "albums") : "");
   const resolvedPhotosCsvUrl = photosCsvUrl || googleSheetsCsvUrl(spreadsheetId, "photos");
 
+  buildCoreModules();
   await rm(outputDir, { recursive: true, force: true });
   await mkdir(outputDir, { recursive: true });
   await writeIndexHtml(outputDir);

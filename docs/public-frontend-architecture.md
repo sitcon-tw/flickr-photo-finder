@@ -118,7 +118,7 @@ https://docs.google.com/spreadsheets/d/<spreadsheetId>/gviz/tq?tqx=out:csv&sheet
 在 final cutover 前，目前的拆分原則仍是 Functional Core / Imperative Shell：
 
 - `app/search-sort.js` 是可測試純函式核心，負責 search text、篩選、scoring、推薦排序與探索排序；不得直接讀 DOM 或全域控制項。
-- `app/url-state.js` 負責 URL query encode/decode；selected ids、filters 與 sort deep link 行為應先在這裡調整。Filter URL 使用重複 query 參數表示多選，例如 `scene=攤位&scene=會眾`；早期單值 query 格式不保證相容。
+- `app/url-state.js` 由 `app-core/url-state.ts` 產出，負責 URL query encode/decode；selected ids、filters 與 sort deep link 行為應先改 TypeScript source，再執行 `pnpm finder:core:build`。底層使用標準 `URLSearchParams`，但 query schema 是 finder 產品 contract：filter URL 使用重複 query 參數表示多選，例如 `scene=攤位&scene=會眾`，候選清單使用 `selected=200,100` 保留順序；早期單值 query 格式不保證相容。未來 React router 或 search-param helper 可接管 state 同步 plumbing，但不能取代這裡定義的 URL 語意。
 - `app/analytics.js` 負責 GA4 setup、事件參數整理、搜尋字串清理與結果追蹤去重；前端其他模組只呼叫 `trackEvent` 或傳入 snapshot。
 - `app/ai-assistant.js` 負責 AI 助手提示詞與事件參數的純資料組裝，不處理 clipboard 或 DOM。
 - `app/candidates.js` 負責候選清單資料選取、markdown 與候選清單 DOM render；不改變搜尋或排序結果。

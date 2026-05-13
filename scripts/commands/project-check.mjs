@@ -24,6 +24,12 @@ const checks = [
     next: "Fix data/interface-registry.json or regenerate apps-script/GeneratedConfig.js, then rerun pnpm shared-values:check.",
   },
   {
+    name: "Finder core TypeScript check",
+    command: "pnpm",
+    args: ["finder:core:check"],
+    next: "Run pnpm finder:core:build, commit generated app/url-state.js if it changed, then rerun pnpm finder:core:check.",
+  },
+  {
     name: "JavaScript syntax",
     run: checkSyntax,
     next: "Fix the syntax error in the reported file, then rerun pnpm project:check.",

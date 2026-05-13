@@ -48,6 +48,8 @@
     "finder:dev": "node scripts/commands/dev-server.mjs --source sheets",
     "finder:dev:fixture": "node scripts/commands/dev-server.mjs --source fixture",
     "finder:dev:export": "node scripts/commands/dev-server.mjs --source export",
+    "finder:core:build": "tsc -p app-core/tsconfig.json",
+    "finder:core:check": "node scripts/commands/check-core-build.mjs",
     "finder:build": "node scripts/commands/build-pages.mjs",
     "finder:check": "node scripts/commands/check-pages-artifact.mjs",
     "finder:react:dev": "vite --config app-react/vite.config.ts --host 127.0.0.1",
