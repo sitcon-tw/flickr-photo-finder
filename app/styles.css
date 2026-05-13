@@ -1639,6 +1639,19 @@ select {
     padding: 10px;
   }
 
+  .search-panel.is-filter-open .enhanced-select-panel {
+    position: fixed;
+    z-index: 110;
+    inset: auto 12px max(12px, env(safe-area-inset-bottom)) 12px;
+    width: auto;
+    max-width: none;
+    max-height: min(62vh, 430px);
+  }
+
+  .search-panel.is-filter-open .enhanced-select-options {
+    max-height: min(46vh, 340px);
+  }
+
   .autocomplete-token {
     min-height: 44px;
     padding: 0 12px;
