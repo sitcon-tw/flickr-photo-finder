@@ -17,6 +17,8 @@
 
 欄位、taxonomy value、boolean value、狀態與人類審核報表文字不要在各介面各自翻譯。欄位顯示文字回到 `data/photo-schema.json`，taxonomy / boolean 顯示文字回到 `data/tag-taxonomy.json` 的 `option_labels`，Node 端人類輸出使用 `scripts/lib/core/metadata-display.mjs`。只有單一畫面專屬的操作文案，例如按鈕、空狀態與局部提示，才留在該畫面程式中。
 
+跨介面 filter、task mode、URL key、狀態排序、people count bucket、Apps Script field set 等 interface policy 回到 `data/interface-registry.json`。不要為了單一 Pages、Apps Script 或 CLI 改動另寫一份欄位 mapping；需要短 label 或介面排序時，先更新 registry，再執行 `pnpm apps-script:build-config` 與 `pnpm shared-values:check`。
+
 描述版本或狀態時不要使用「新 / 舊 / 最新」搭配版本的相對詞。改用具體日期、prompt hash、schema version、header shape、target name 或「目前 repo source」；例如比較 AI prompt 時寫出 `prompt_template_sha256`，說明 Sheets 格式時寫出實際 header。`pnpm language:check` 會阻擋這類含糊版本詞再次進入 repo。
 
 ## Agent 可以協助的工作
@@ -109,6 +111,7 @@ Agent 的 AI 初標工作不應把資料標成 `reviewed`。`curation_status = r
 
 ```bash
 pnpm language:check
+pnpm shared-values:check
 pnpm data:validate
 ```
 
@@ -154,6 +157,7 @@ pnpm finder:check
 - 相簿匯入與同步：`docs/sheets-sync-workflow.md`
 - 外部 AI 或 metadata 輔助：先依任務判斷讀者角色；模型初標以 run 目錄的 `ai-labeling-prompt.md` 與 `docs/ai-labeling-contract.md` 為主，操作者流程再讀 `docs/ai-labeling-operator-guide.md`，品質評估再讀 `docs/ai-labeling-evaluation-notes.md`，公開資料取用再讀 `docs/ai-readable-dataset.md`
 - Apps Script：`docs/apps-script-maintenance-design.md`
+- 共用值治理：`docs/shared-value-governance.md`
 - 人工填寫欄位：`docs/data-entry-guide.md`、`docs/photo-fields-reference.md`
 - 產品背景與 MVP 取捨：`docs/photo-finder-mvp.md`、`docs/mvp-implementation-plan.md`
 

@@ -1,6 +1,6 @@
 // URL query serialization for the Pages finder. Keep this independent from DOM
 // controls so deep-link behavior stays reviewable and testable.
-const filterUrlKeys = {
+let filterUrlKeys = {
   album: "album",
   use: "use",
   mood: "mood",
@@ -17,6 +17,13 @@ const filterUrlKeys = {
   curationStatus: "curation",
   collection: "collection",
 };
+
+export function applyUrlStateRegistry(interfaceRegistry) {
+  const filters = interfaceRegistry?.pages?.filters ?? [];
+  if (filters.length > 0) {
+    filterUrlKeys = Object.fromEntries(filters.map((filter) => [filter.key, filter.urlKey]));
+  }
+}
 
 function cleanValues(values) {
   const seen = new Set();

@@ -1,10 +1,10 @@
-export const pageSize = 96;
-export const searchDebounceMs = 180;
-export const resultTrackingDelayMs = 600;
-export const discoverWindowSize = 24;
-export const discoverHistorySize = 12;
+export let pageSize = 96;
+export let searchDebounceMs = 180;
+export let resultTrackingDelayMs = 600;
+export let discoverWindowSize = 24;
+export let discoverHistorySize = 12;
 
-export const peopleCountFilters = [
+export let peopleCountFilters = [
   { label: "全部人數", value: "" },
   { label: "未標記", value: "unknown" },
   { label: "無人", value: "0" },
@@ -14,7 +14,7 @@ export const peopleCountFilters = [
   { label: "21 人以上", value: "21+" },
 ];
 
-export const taskModes = [
+export let taskModes = [
   {
     id: "all",
     label: "全部照片",
@@ -95,3 +95,14 @@ export const taskModes = [
     scenes: ["會眾", "舞台", "合照", "交流", "講者"],
   },
 ];
+
+export function applyTaskModeRegistry(interfaceRegistry) {
+  const settings = interfaceRegistry?.pages?.settings ?? {};
+  pageSize = Number(settings.pageSize || pageSize);
+  searchDebounceMs = Number(settings.searchDebounceMs || searchDebounceMs);
+  resultTrackingDelayMs = Number(settings.resultTrackingDelayMs || resultTrackingDelayMs);
+  discoverWindowSize = Number(settings.discoverWindowSize || discoverWindowSize);
+  discoverHistorySize = Number(settings.discoverHistorySize || discoverHistorySize);
+  peopleCountFilters = interfaceRegistry?.pages?.peopleCountBuckets ?? peopleCountFilters;
+  taskModes = interfaceRegistry?.pages?.taskModes ?? taskModes;
+}

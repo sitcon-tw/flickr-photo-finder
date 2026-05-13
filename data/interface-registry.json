@@ -1,0 +1,92 @@
+{
+  "version": "2026-1.0.0",
+  "pages": {
+    "settings": {
+      "pageSize": 96,
+      "searchDebounceMs": 180,
+      "resultTrackingDelayMs": 600,
+      "discoverWindowSize": 24,
+      "discoverHistorySize": 12
+    },
+    "filters": [
+      { "key": "album", "label": "活動/相簿", "group": "core", "control": "album", "urlKey": "album", "source": { "type": "album" }, "emptyLabel": "全部活動/相簿", "searchPlaceholder": "搜尋活動或相簿" },
+      { "key": "use", "field": "recommended_uses", "filterParam": "recommendedUse", "label": "用途", "group": "general", "control": "use", "urlKey": "use", "source": { "type": "taxonomy", "key": "recommended_uses" }, "emptyLabel": "全部用途", "searchPlaceholder": "搜尋用途" },
+      { "key": "mood", "field": "mood_tags", "filterParam": "mood", "label": "氛圍", "group": "general", "control": "mood", "urlKey": "mood", "source": { "type": "taxonomy", "key": "mood_tags" }, "emptyLabel": "全部氛圍", "searchPlaceholder": "搜尋氛圍" },
+      { "key": "scene", "field": "scene_tags", "filterParam": "scene", "label": "場景", "group": "general", "control": "scene", "urlKey": "scene", "source": { "type": "taxonomy", "key": "scene_tags" }, "emptyLabel": "全部場景", "searchPlaceholder": "搜尋場景" },
+      { "key": "peopleCount", "field": "people_count", "filterParam": "peopleCount", "label": "人數", "group": "details", "control": "peopleCount", "urlKey": "people", "source": { "type": "people_count_buckets" }, "emptyLabel": "全部人數", "searchPlaceholder": "搜尋人數" },
+      { "key": "subjectType", "field": "subject_type", "filterParam": "subjectType", "label": "主體", "group": "details", "control": "subjectType", "urlKey": "subject", "source": { "type": "taxonomy", "key": "subject_type", "labels": true }, "emptyLabel": "全部主體", "searchPlaceholder": "搜尋主體" },
+      { "key": "orientation", "field": "orientation", "filterParam": "orientation", "label": "方向", "group": "visual", "control": "orientation", "urlKey": "orientation", "source": { "type": "taxonomy", "key": "orientation", "labels": true }, "emptyLabel": "全部方向", "searchPlaceholder": "搜尋方向" },
+      { "key": "negativeSpace", "field": "has_negative_space", "filterParam": "negativeSpace", "label": "留白", "group": "visual", "control": "negativeSpace", "urlKey": "negative", "source": { "type": "boolean", "labels": true }, "emptyLabel": "全部留白狀態", "searchPlaceholder": "搜尋留白狀態" },
+      { "key": "safeCrop", "field": "safe_crop", "filterParam": "safeCrop", "label": "裁切", "group": "visual", "control": "safeCrop", "urlKey": "crop", "source": { "type": "taxonomy", "key": "safe_crop" }, "emptyLabel": "全部裁切", "searchPlaceholder": "搜尋裁切" },
+      { "key": "sponsorshipTag", "field": "sponsorship_tags", "filterParam": "sponsorshipTag", "label": "贊助價值", "group": "sponsor", "control": "sponsorshipTag", "urlKey": "sponsorTag", "source": { "type": "taxonomy", "key": "sponsorship_tags" }, "emptyLabel": "全部贊助價值", "searchPlaceholder": "搜尋贊助價值" },
+      { "key": "sponsorshipItem", "field": "sponsorship_items", "filterParam": "sponsorshipItem", "label": "贊助品項", "group": "sponsor", "control": "sponsorshipItem", "urlKey": "sponsorItem", "source": { "type": "taxonomy_autocomplete", "key": "sponsorship_items" }, "searchPlaceholder": "搜尋品項" },
+      { "key": "publicStatus", "field": "public_use_status", "filterParam": "publicStatus", "label": "使用提醒", "group": "status", "control": "publicStatus", "urlKey": "public", "source": { "type": "taxonomy", "key": "public_use_status", "labels": true }, "emptyLabel": "全部使用提醒", "searchPlaceholder": "搜尋使用提醒", "lowLevel": true },
+      { "key": "priority", "field": "priority_level", "filterParam": "priority", "label": "優先度", "group": "status", "control": "priority", "urlKey": "priority", "source": { "type": "taxonomy", "key": "priority_level", "labels": true }, "emptyLabel": "全部優先度", "searchPlaceholder": "搜尋優先度", "lowLevel": true },
+      { "key": "curationStatus", "field": "curation_status", "filterParam": "curationStatus", "label": "整理狀態", "group": "status", "control": "curationStatus", "urlKey": "curation", "source": { "type": "taxonomy", "key": "curation_status", "labels": true }, "emptyLabel": "全部整理狀態", "searchPlaceholder": "搜尋整理狀態", "lowLevel": true },
+      { "key": "collection", "field": "collections", "filterParam": "collection", "label": "素材包", "group": "details", "control": "collection", "urlKey": "collection", "source": { "type": "photo_values" }, "emptyLabel": "全部素材包", "searchPlaceholder": "搜尋素材包" }
+    ],
+    "defaultPrimaryFilters": ["use", "scene", "orientation", "safeCrop", "negativeSpace", "mood"],
+    "peopleCountBuckets": [
+      { "label": "全部人數", "value": "" },
+      { "label": "未標記", "value": "unknown", "missing": true },
+      { "label": "無人", "value": "0", "min": 0, "max": 0 },
+      { "label": "1 人", "value": "1", "min": 1, "max": 1 },
+      { "label": "2-5 人", "value": "2-5", "min": 2, "max": 5 },
+      { "label": "6-20 人", "value": "6-20", "min": 6, "max": 20 },
+      { "label": "21 人以上", "value": "21+", "min": 21 }
+    ],
+    "taskModes": [
+      { "id": "all", "label": "全部照片", "description": "不套任務權重" },
+      { "id": "social", "label": "社群貼文", "description": "友善、交流、可裁切", "primaryFilters": ["use", "scene", "orientation", "safeCrop", "negativeSpace", "mood"], "recommendedUses": ["社群貼文", "社群介紹", "活動回顧"], "moods": ["友善", "交流感", "青春感", "活力", "熱鬧"], "scenes": ["會眾", "交流", "工作人員"], "safeCrops": ["1:1", "16:9", "9:16"], "prefersNegativeSpace": true },
+      { "id": "hero", "label": "網站橫幅", "description": "橫式、留白、可放標題", "primaryFilters": ["orientation", "negativeSpace", "safeCrop", "scene", "mood"], "recommendedUses": ["網站橫幅", "社群介紹"], "moods": ["專業", "青春感", "友善"], "scenes": ["舞台", "會眾", "交流", "場地", "背板"], "orientations": ["landscape"], "safeCrops": ["16:9"], "prefersNegativeSpace": true },
+      { "id": "visual", "label": "設計素材", "description": "版面背景、簡報與延伸素材", "primaryFilters": ["orientation", "negativeSpace", "safeCrop", "scene", "mood"], "recommendedUses": ["網站橫幅", "社群貼文", "簡報"], "moods": ["專業", "青春感", "活力", "安靜"], "scenes": ["場地", "背板", "舞台", "交流"], "orientations": ["landscape", "square"], "safeCrops": ["16:9", "1:1", "9:16"], "prefersNegativeSpace": true },
+      { "id": "sponsor-pitch", "label": "贊助提案", "description": "互動、觸及、品牌價值", "primaryFilters": ["sponsorshipTag", "sponsorshipItem", "scene", "orientation", "negativeSpace"], "recommendedUses": ["贊助提案", "簡報"], "moods": ["熱鬧", "專業", "交流感"], "scenes": ["攤位", "會眾", "交流", "舞台"], "sponsorshipTags": ["品牌露出", "會眾互動", "觸及學生族群", "社群信任感", "參與者體驗"] },
+      { "id": "sponsor-report", "label": "贊助成果", "description": "品項與成果佐證", "primaryFilters": ["sponsorshipItem", "sponsorshipTag", "scene"], "recommendedUses": ["贊助成果報告"], "scenes": ["攤位", "會眾", "背板", "舞台", "螢幕"], "sponsorshipTags": ["贊助成果佐證", "品牌露出", "會眾互動", "主舞台曝光", "議程曝光"] },
+      { "id": "press", "label": "新聞稿/簡報", "description": "正式、代表性、可追溯", "primaryFilters": ["scene", "orientation", "use", "mood"], "recommendedUses": ["新聞稿", "簡報", "社群介紹", "活動回顧"], "moods": ["專業", "專注", "儀式感", "交流感"], "scenes": ["舞台", "講者", "會眾", "背板", "場地"], "orientations": ["landscape"] },
+      { "id": "volunteer", "label": "志工招募", "description": "幕後、活力、參與感", "primaryFilters": ["use", "scene", "mood", "orientation"], "recommendedUses": ["志工招募"], "moods": ["幕後感", "友善", "青春感", "活力"], "scenes": ["工作人員", "交流", "報到", "攝影"] },
+      { "id": "recap", "label": "活動回顧", "description": "規模、交流、成果", "primaryFilters": ["use", "scene", "mood", "orientation"], "recommendedUses": ["活動回顧", "社群介紹"], "moods": ["熱鬧", "成就感", "交流感", "儀式感"], "scenes": ["會眾", "舞台", "合照", "交流", "講者"] }
+    ],
+    "statusPolicy": {
+      "public_use_status": { "approved": 0, "needs_review": -10, "avoid": -160 },
+      "curation_status": { "reviewed": 60, "ai_labeled": 25, "unreviewed": 0 },
+      "priority_level": { "high": 80, "normal": 25, "low": -10 }
+    },
+    "taskScoreWeights": {
+      "recommendedUses": 150,
+      "moods": 45,
+      "scenes": 45,
+      "sponsorshipTags": 65,
+      "orientations": 35,
+      "safeCrops": 35,
+      "prefersNegativeSpace": 35,
+      "hasPreviewImage": 10,
+      "missingPreviewImage": -50
+    },
+    "queryPhraseAliases": {
+      "可放字": ["可放字", "留白", "negative space"],
+      "放字": ["可放字", "留白", "negative space"],
+      "留白": ["留白", "可放字", "negative space"],
+      "網站橫幅": ["網站橫幅", "網頁橫幅", "橫幅", "背景素材"],
+      "版面背景": ["版面背景", "背景素材", "橫幅", "網站橫幅"],
+      "logo": ["logo", "品牌露出", "背板"],
+      "品牌": ["品牌", "品牌露出", "贊助成果佐證"],
+      "社群感": ["社群感", "社群介紹", "交流感", "友善"],
+      "友善交流": ["友善", "交流感", "交流"],
+      "舞台講者": ["舞台", "講者", "新聞稿", "簡報"],
+      "志工": ["志工", "志工招募", "工作人員", "幕後感"],
+      "正式": ["正式", "專業", "新聞稿", "簡報"]
+    }
+  },
+  "appsScript": {
+    "publicReadFields": ["curation_status", "public_use_status", "priority_level", "collections"],
+    "reviewPanel": {
+      "bufferBefore": 10,
+      "bufferAfter": 10,
+      "fields": ["people_count", "subject_type", "scene_tags", "mood_tags", "recommended_uses", "sponsorship_items", "sponsorship_tags", "orientation", "has_negative_space", "safe_crop", "visual_description", "public_use_status", "priority_level", "collections", "curation_notes"]
+    },
+    "reviewWebApp": {
+      "listFields": ["photo_id", "photo_url", "image_preview_url", "album_title", "event_name", "event_year", "scene_tags", "recommended_uses", "sponsorship_items", "public_use_status", "priority_level", "curation_status", "visual_description", "curation_notes"],
+      "filterFields": ["curation_status", "public_use_status", "recommended_uses", "scene_tags", "sponsorship_items"]
+    }
+  }
+}

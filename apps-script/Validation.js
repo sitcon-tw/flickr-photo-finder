@@ -8,7 +8,7 @@ function validationMessage_(key) {
 
 function validatePublicReadFields_() {
   const headers = getConfig_().headers;
-  return PHOTO_FINDER_PUBLIC_READ_FIELDS
+  return getPublicReadFields_()
     .filter((fieldName) => !headers.includes(fieldName))
     .map((fieldName) => ({
       rowNumber: "",

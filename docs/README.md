@@ -25,6 +25,7 @@
 | 我要修改公開前端 | `docs/public-frontend-architecture.md` | 先確認正式資料來源、本機 fixture/export 模式、前端模組邊界、artifact build/check 與 GitHub Pages 部署邊界。 |
 | 我要修改 Apps Script | `docs/apps-script-maintenance-design.md` | 先確認 clasp 綁定、target、GeneratedConfig、Sheets-side validation 與練習表/正式表邊界。 |
 | 我要修改 taxonomy 或欄位 schema | `真理來源` 與 `共用字串歸屬` | 實際 source 是 `data/tag-taxonomy.json` 與 `data/photo-schema.json`；改完需依影響範圍同步 Apps Script、前端或 validation，並執行 `pnpm data:validate`。 |
+| 我要修改 filter、task mode、URL key 或跨介面 field set | `docs/shared-value-governance.md` | Interface policy 來源是 `data/interface-registry.json`；改完需重新產生 Apps Script config 並執行 `pnpm shared-values:check`。 |
 | 我要部署或檢查 Pages artifact | `pnpm workflow -- --task pages-build` | workflow 是日常入口；低階檢查可用 `pnpm finder:build` 後接 `pnpm finder:check`。 |
 | 我要維護 Sheets 同步或練習表 | `docs/sheets-sync-workflow.md` | 先確認正式表、練習表、service account 與 dry-run/write 邊界。 |
 | 我要檢查正式 Sheets 資料健康度 | `pnpm sheets:report` | 先用 `pnpm sheets:export` 更新 `tmp/sheets-export/`；風險分級與後續處理看 `docs/sheets-sync-workflow.md`。 |
@@ -39,6 +40,7 @@
 | 受控字彙、列舉值與人類顯示文字 | `data/tag-taxonomy.json` | Apps Script、Sheets 下拉選單、GitHub Pages、文件與 validation 應從這份資料衍生。`option_labels` 是 raw value 的唯一顯示文字來源。 |
 | 資料值搜尋同義詞 | `data/search-aliases.json` | 只放 raw value 的搜尋別名，供 GitHub Pages 與離線搜尋評估共用；不要放單一畫面的任務文案。 |
 | 公開欄位敏感內容 warning 規則 | `data/public-sensitive-content-rules.json` | 用於本機 validation 與 Apps Script validation report；warning 不等於 hard fail，人工判斷與例外處理看 `docs/database-collaboration-strategy.md`。 |
+| filter、task mode、URL key、狀態排序與跨介面欄位集合 | `data/interface-registry.json` | 只引用 schema/taxonomy 既有欄位與值，不新增資料契約；詳細分層見 `docs/shared-value-governance.md`。 |
 | SITCON 2026 CFS 贊助品項 | `data/sponsorship-items.json` | 這是固定版本資料，不自動追遠端更新。 |
 | 組織名稱、Flickr 帳號、GitHub 專案連結與前端標題 | `config/project.json` | SITCON 是此 repo 的預設實例；其他組織 fork 時應先改這份設定。 |
 | 公開 Google Sheets ID | `config/project.json` 的 `googleSheets.spreadsheetId` | 這份 Sheets 預期可公開讀取；寫入權限由 Google Drive/Sheets 管理。 |
@@ -82,6 +84,7 @@
 | Apps Script 即時驗證文案 | `data/validation-messages.json` | 後端驗證與 sidebar 即時提示共用；不要在 HTML 內另寫同一組錯誤訊息。 |
 | 人類審核輸出格式 | `scripts/lib/core/metadata-display.mjs` | CLI diff、report、CSV 等人類輸出應共用這個 helper，機器 JSON plan 維持 raw value。 |
 | 版本與狀態描述 | 具體日期、hash、schema version、header shape 或目前 repo source | 避免用「新 / 舊 / 最新」搭配版本的相對詞。若是 prompt 差異，寫出 prompt hash 或「目前 repo prompt」；若是 Sheets 格式差異，寫出實際 header。 |
+| 跨介面 UI policy | `data/interface-registry.json` | Pages、Apps Script 或 CLI 需要共用 filter、field set、URL key 或狀態排序時，先登錄 registry，再由使用端讀取或檢查。 |
 | 單一畫面的操作文案 | 該畫面程式或文件 | 例如按鈕、空狀態與提示文字可留在當地；若跨兩個以上介面重複，應提升成共用來源。 |
 
 ## 目前狀態
@@ -94,6 +97,7 @@
 - `pnpm data:validate`，檢查 sample/export data、schema 與 taxonomy。
 - `pnpm data:validate` 也會對公開文字欄位輸出敏感內容 warning；warning 不會讓指令失敗，但應由整理者確認是否要移除或改寫。
 - `pnpm language:check`，檢查文件與程式輸出是否使用含糊的相對版本詞。
+- `pnpm shared-values:check`，檢查 `data/interface-registry.json` 是否只引用合法 schema field、taxonomy value、URL key 與 Apps Script field set，並確認 `apps-script/GeneratedConfig.js` 已同步。
 - `pnpm sheets:init`，產生建立正式 Google Sheets 起點所需的初始 CSV。
 - `pnpm sheets:check`，只讀檢查公開 Google Sheets 固定 tabs 的 header 與初始化覆蓋風險。
 - `pnpm sheets:onboarding:check`，使用 Google Sheets API 只讀檢查正式表 `使用說明`、固定練習表連結、練習表回連正式表，以及 practice/formal spreadsheet ID 是否混用。
@@ -170,6 +174,7 @@
 - `public-frontend-redesign-brief.md`: GitHub Pages 前端重構的歷史需求基準與驗收標準；後續回歸或 P2 規劃可用來比對。
 - `frontend-analytics-design.md`: 前端使用行為分析目的、GA4 事件設計、實作前檢查與後續分析流程。
 - `ga4-operations.md`: GA4 後台操作、service account 權限、custom dimensions 與 BigQuery 延後策略。
+- `shared-value-governance.md`: 欄位、taxonomy、filter、task mode、URL key 與跨介面 field set 的共用值治理分層。
 - `ai-readable-dataset.md`: AI 如何讀取照片索引資料。
 - `ai-labeling-operator-guide.md`: AI 初標操作者與 repo 維護 agent 的 prepare-to-review、報表檢視與回寫前檢查指南；不是模型初標任務的主要 prompt。
 - `ai-labeling-contract.md`: AI 初標工作包的輸入、輸出、限制與驗證合約。

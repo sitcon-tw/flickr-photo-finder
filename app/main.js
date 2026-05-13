@@ -13,6 +13,7 @@ import { candidateCopyText, renderCandidates, selectedPhotos } from "./candidate
 import { dataSources, projectConfigUrl } from "./config.js";
 import {
   activeFilterEntries as buildActiveFilterEntries,
+  applyControlsRegistry,
   bindControlDismissal,
   filterDefinitions,
   queryControls,
@@ -42,9 +43,10 @@ import {
   updateLoadMore,
   updateTaskButtons,
 } from "./result-render.js";
-import { filterAndSortPhotos } from "./search-sort.js";
-import { decodeUrlState, encodeUrlState } from "./url-state.js";
+import { applySearchRegistry, filterAndSortPhotos } from "./search-sort.js";
+import { applyUrlStateRegistry, decodeUrlState, encodeUrlState } from "./url-state.js";
 import {
+  applyTaskModeRegistry,
   discoverHistorySize,
   discoverWindowSize,
   pageSize,
@@ -67,6 +69,7 @@ let renderTimer = 0;
 let projectConfig = {};
 let optionLabelMaps = new Map();
 let searchTokensForField = () => [];
+let filterControlEventsBound = false;
 
 const state = {
   taskMode: "all",
@@ -76,7 +79,13 @@ const state = {
   lastTrackedZeroState: "",
 };
 
-const filterControls = Object.fromEntries(filterDefinitions.map((definition) => [definition.key, controls[definition.control]]));
+let filterControls = {};
+
+function refreshFilterControls() {
+  filterControls = Object.fromEntries(filterDefinitions.map((definition) => [definition.key, controls[definition.control]]));
+}
+
+refreshFilterControls();
 
 function cleanFilterValues(values) {
   const seen = new Set();
@@ -219,24 +228,10 @@ function activeTask() {
 }
 
 function currentPhotoFilters() {
-  return {
-    search: controls.search.value,
-    album: state.filters.album,
-    recommendedUse: state.filters.use,
-    mood: state.filters.mood,
-    scene: state.filters.scene,
-    peopleCount: state.filters.peopleCount,
-    subjectType: state.filters.subjectType,
-    orientation: state.filters.orientation,
-    negativeSpace: state.filters.negativeSpace,
-    safeCrop: state.filters.safeCrop,
-    sponsorshipTag: state.filters.sponsorshipTag,
-    sponsorshipItem: state.filters.sponsorshipItem,
-    publicStatus: state.filters.publicStatus,
-    priority: state.filters.priority,
-    curationStatus: state.filters.curationStatus,
-    collection: state.filters.collection,
-  };
+  return Object.fromEntries([
+    ["search", controls.search.value],
+    ...filterDefinitions.map((definition) => [definition.filterParam ?? definition.key, state.filters[definition.key] ?? []]),
+  ]);
 }
 
 function filteredAndSortedPhotos() {
@@ -507,6 +502,17 @@ function revealPhotoFromHash() {
 
 async function loadData() {
   const loadedData = await loadFinderData({ dataSources, projectConfigUrl });
+  applyControlsRegistry(loadedData.interfaceRegistry);
+  applyTaskModeRegistry(loadedData.interfaceRegistry);
+  applyUrlStateRegistry(loadedData.interfaceRegistry);
+  applySearchRegistry(loadedData.interfaceRegistry);
+  refreshFilterControls();
+  bindFilterControlEvents();
+  for (const definition of filterDefinitions) {
+    if (!Object.hasOwn(state.filters, definition.key)) {
+      state.filters[definition.key] = [];
+    }
+  }
   applyProjectConfig(loadedData.projectConfig);
   photoSchema = loadedData.photoSchema;
   optionLabelMaps = loadedData.optionLabelMaps;
@@ -538,6 +544,27 @@ function scheduleSearchRender() {
   }, searchDebounceMs);
 }
 
+function bindFilterControlEvents() {
+  if (filterControlEventsBound) {
+    return;
+  }
+  filterControlEventsBound = true;
+  for (const [key, control] of Object.entries(controls)) {
+    if (["reset", "loadMore", "copyCandidates", "clearCandidates", "candidateCopyTemplate", "copyAiAssistantPrompt"].includes(key)) {
+      continue;
+    }
+    const filterDefinition = filterDefinitions.find((definition) => definition.control === key);
+    if (filterDefinition) {
+      control.addEventListener("input", () => {
+        syncStateFromControl(filterDefinition.key);
+        render({ resetPage: true, source: "filter" });
+      });
+    } else {
+      control.addEventListener("input", key === "search" ? scheduleSearchRender : () => render({ resetPage: true, source: "filter" }));
+    }
+  }
+}
+
 elements.taskModes.addEventListener("click", (event) => {
   const button = event.target.closest("[data-task-mode]");
   if (!button) {
@@ -547,21 +574,6 @@ elements.taskModes.addEventListener("click", (event) => {
   render({ resetPage: true, source: "filter" });
   trackEvent("select_task_mode", { task_mode: state.taskMode });
 });
-
-for (const [key, control] of Object.entries(controls)) {
-  if (["reset", "loadMore", "copyCandidates", "clearCandidates", "candidateCopyTemplate", "copyAiAssistantPrompt"].includes(key)) {
-    continue;
-  }
-  const filterDefinition = filterDefinitions.find((definition) => definition.control === key);
-  if (filterDefinition) {
-    control.addEventListener("input", () => {
-      syncStateFromControl(filterDefinition.key);
-      render({ resetPage: true, source: "filter" });
-    });
-  } else {
-    control.addEventListener("input", key === "search" ? scheduleSearchRender : () => render({ resetPage: true, source: "filter" }));
-  }
-}
 
 elements.activeFilters.addEventListener("click", (event) => {
   const button = event.target.closest("[data-filter-key]");

@@ -52,9 +52,10 @@ export function normalizeAlbumRows(rows) {
 
 export async function loadFinderData({ dataSources, projectConfigUrl }) {
   const albumsRequest = dataSources.albumsCsvUrl ? fetch(dataSources.albumsCsvUrl) : Promise.resolve(null);
-  const [albumsResponse, photosResponse, schemaResponse, taxonomyResponse, searchAliasesResponse, projectConfigResponse] = await Promise.all([
+  const [albumsResponse, photosResponse, interfaceRegistryResponse, schemaResponse, taxonomyResponse, searchAliasesResponse, projectConfigResponse] = await Promise.all([
     albumsRequest,
     fetch(dataSources.photosCsvUrl),
+    fetch(dataSources.interfaceRegistryJsonUrl),
     fetch(dataSources.schemaJsonUrl),
     fetch(dataSources.taxonomyJsonUrl),
     fetch(dataSources.searchAliasesJsonUrl),
@@ -64,6 +65,7 @@ export async function loadFinderData({ dataSources, projectConfigUrl }) {
   if (
     (albumsResponse && !albumsResponse.ok) ||
     !photosResponse.ok ||
+    !interfaceRegistryResponse.ok ||
     !schemaResponse.ok ||
     !taxonomyResponse.ok ||
     !searchAliasesResponse.ok ||
@@ -72,9 +74,10 @@ export async function loadFinderData({ dataSources, projectConfigUrl }) {
     throw new Error("資料載入失敗");
   }
 
-  const [albumsText, photosText, photoSchema, taxonomy, searchAliases, projectConfig] = await Promise.all([
+  const [albumsText, photosText, interfaceRegistry, photoSchema, taxonomy, searchAliases, projectConfig] = await Promise.all([
     albumsResponse ? albumsResponse.text() : "",
     photosResponse.text(),
+    interfaceRegistryResponse.json(),
     schemaResponse.json(),
     taxonomyResponse.json(),
     searchAliasesResponse.json(),
@@ -85,6 +88,7 @@ export async function loadFinderData({ dataSources, projectConfigUrl }) {
 
   return {
     projectConfig,
+    interfaceRegistry,
     photoSchema,
     taxonomy,
     optionLabelMaps,

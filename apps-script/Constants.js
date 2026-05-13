@@ -43,3 +43,37 @@ const PHOTO_FINDER_REVIEW_WEB_APP_LIST_FIELDS = [
   "visual_description",
   "curation_notes",
 ];
+
+function getInterfaceRegistry_() {
+  return getConfig_().interfaceRegistry || {};
+}
+
+function getPublicReadFields_() {
+  return getInterfaceRegistry_().appsScript?.publicReadFields || PHOTO_FINDER_PUBLIC_READ_FIELDS;
+}
+
+function getReviewPanelBufferBefore_() {
+  return getInterfaceRegistry_().appsScript?.reviewPanel?.bufferBefore || PHOTO_FINDER_REVIEW_PANEL_BUFFER_BEFORE;
+}
+
+function getReviewPanelBufferAfter_() {
+  return getInterfaceRegistry_().appsScript?.reviewPanel?.bufferAfter || PHOTO_FINDER_REVIEW_PANEL_BUFFER_AFTER;
+}
+
+function getReviewPanelFieldNames_() {
+  return getInterfaceRegistry_().appsScript?.reviewPanel?.fields || [];
+}
+
+function getReviewWebAppListFields_() {
+  return getInterfaceRegistry_().appsScript?.reviewWebApp?.listFields || PHOTO_FINDER_REVIEW_WEB_APP_LIST_FIELDS;
+}
+
+function getReviewWebAppFilterFields_() {
+  return getInterfaceRegistry_().appsScript?.reviewWebApp?.filterFields || [
+    "curation_status",
+    "public_use_status",
+    "recommended_uses",
+    "scene_tags",
+    "sponsorship_items",
+  ];
+}
