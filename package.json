@@ -10,6 +10,7 @@
     "workflow": "node scripts/workflows/workflow.mjs",
     "eval": "node scripts/workflows/eval-workflow.mjs",
     "project:check": "node scripts/commands/project-check.mjs",
+    "language:check": "node scripts/commands/check-language-governance.mjs",
     "data:validate": "node scripts/commands/validate-data.mjs",
     "validate:data": "pnpm data:validate",
     "albums:discover": "node scripts/commands/discover-albums.mjs",

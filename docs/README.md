@@ -81,6 +81,7 @@
 | raw value 的搜尋同義詞 | `data/search-aliases.json` | 只放會跨搜尋介面共用的別名；任務模式與 query 提示仍屬於各自產品介面。 |
 | Apps Script 即時驗證文案 | `data/validation-messages.json` | 後端驗證與 sidebar 即時提示共用；不要在 HTML 內另寫同一組錯誤訊息。 |
 | 人類審核輸出格式 | `scripts/lib/core/metadata-display.mjs` | CLI diff、report、CSV 等人類輸出應共用這個 helper，機器 JSON plan 維持 raw value。 |
+| 版本與狀態描述 | 具體日期、hash、schema version、header shape 或目前 repo source | 避免用「新 / 舊 / 最新」搭配版本的相對詞。若是 prompt 差異，寫出 prompt hash 或「目前 repo prompt」；若是 Sheets 格式差異，寫出實際 header。 |
 | 單一畫面的操作文案 | 該畫面程式或文件 | 例如按鈕、空狀態與提示文字可留在當地；若跨兩個以上介面重複，應提升成共用來源。 |
 
 ## 目前狀態
@@ -92,6 +93,7 @@
 - 本機 static search UI：`pnpm finder:dev` 預設讀正式 Google Sheets 公開 CSV；`pnpm finder:dev:fixture` 讀 `fixtures/photos.csv`；`pnpm finder:dev:export` 讀 `tmp/sheets-export/photos.csv`。
 - `pnpm data:validate`，檢查 sample/export data、schema 與 taxonomy。
 - `pnpm data:validate` 也會對公開文字欄位輸出敏感內容 warning；warning 不會讓指令失敗，但應由整理者確認是否要移除或改寫。
+- `pnpm language:check`，檢查文件與程式輸出是否使用含糊的相對版本詞。
 - `pnpm sheets:init`，產生建立正式 Google Sheets 起點所需的初始 CSV。
 - `pnpm sheets:check`，只讀檢查公開 Google Sheets 固定 tabs 的 header 與初始化覆蓋風險。
 - `pnpm sheets:onboarding:check`，使用 Google Sheets API 只讀檢查正式表 `使用說明`、固定練習表連結、練習表回連正式表，以及 practice/formal spreadsheet ID 是否混用。

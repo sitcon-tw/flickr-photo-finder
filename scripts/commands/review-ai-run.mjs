@@ -935,7 +935,7 @@ function buildPromptVersionNotes(manifest) {
   }
   if (manifest.prompt_template_sha256 !== currentPrompt.prompt_template_sha256) {
     return [
-      `這個 run 使用的 prompt template hash \`${manifest.prompt_template_sha256.slice(0, 12)}\` 不同於目前 repo 版本 \`${currentPrompt.prompt_template_sha256.slice(0, 12)}\`；若要用新版 prompt 評估模型，請重新建立 run 或 attempt。`,
+      `這個 run 使用的 prompt template hash \`${manifest.prompt_template_sha256.slice(0, 12)}\` 不同於目前 repo prompt hash \`${currentPrompt.prompt_template_sha256.slice(0, 12)}\`；若要用目前 repo prompt 評估模型，請重新建立 run 或 attempt。`,
     ];
   }
   return [];

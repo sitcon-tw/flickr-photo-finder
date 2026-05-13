@@ -18,7 +18,7 @@ Accepted
 - `data/tag-taxonomy.json` 由這份 snapshot 衍生可用 sponsorship item raw values。
 - `sponsorship_items`、`sponsorship_tags` 與 `scene_tags` 保持概念分離。
 - 不建立自動同步遠端 CFS 的流程。
-- 未來年度或新版 CFS 應明確引入新版本資料或替換 snapshot，而不是假設 2026 snapshot 持續更新。
+- 未來年度或修訂版本 CFS 應明確引入對應版本資料或替換 snapshot，而不是假設 2026 snapshot 持續更新。
 
 ## 取捨
 
@@ -30,7 +30,7 @@ Accepted
 
 代價：
 
-- 2026 以外的活動或未來年度需要明確資料遷移或新版 snapshot。
+- 2026 以外的活動或未來年度需要明確資料遷移或對應年度 snapshot。
 - 若 CFS 原始資料後續修正，repo 不會自動跟進。
 - 同一張照片在不同年度 sponsorship vocabulary 下的意義可能需要人工重新整理。
 

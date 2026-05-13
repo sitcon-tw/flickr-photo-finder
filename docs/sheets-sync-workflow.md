@@ -190,7 +190,7 @@ pnpm sheets:migrate-headers -- --write
 pnpm sheets:sync-taxonomy
 ```
 
-dry-run 會讀取目標 spreadsheet 的 `taxonomy` tab，回報目前 header 狀態、現有資料列數、空白 `label_zh` 數量與 repo 會寫入的列數。工具只接受目前 1.0 header `taxonomy_key,value,label_zh,order`，或舊版 header `taxonomy_key,value,order`；若 header 被人工改成未知格式，會拒絕覆寫。
+dry-run 會讀取目標 spreadsheet 的 `taxonomy` tab，回報目前 header 狀態、現有資料列數、空白 `label_zh` 數量與 repo 會寫入的列數。工具只接受目前 1.0 header `taxonomy_key,value,label_zh,order`，或既有三欄 header `taxonomy_key,value,order`；若 header 被人工改成未知格式，會拒絕覆寫。
 
 確認 dry-run 只會重寫 `taxonomy` 輔助表後，再執行：
 
