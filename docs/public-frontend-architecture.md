@@ -122,7 +122,7 @@ https://docs.google.com/spreadsheets/d/<spreadsheetId>/gviz/tq?tqx=out:csv&sheet
 - `app/analytics.js` 負責 GA4 setup、事件參數整理、搜尋字串清理與結果追蹤去重；前端其他模組只呼叫 `trackEvent` 或傳入 snapshot。
 - `app/ai-assistant.js` 負責 AI 助手提示詞與事件參數的純資料組裝，不處理 clipboard 或 DOM。
 - `app/candidates.js` 負責候選清單資料選取、markdown 與候選清單 DOM render；不改變搜尋或排序結果。
-- `app/data-loader.js` 負責讀取 project config、schema、taxonomy、search aliases 與 `photos` CSV，並依 schema 正規化 list 欄位、sheet row number 與 `search_text`。
+- `app/data-loader.js` 與 `app/data-utils.js` 由 `app-core/data-loader.ts`、`app-core/data-utils.ts` 產出，負責讀取 project config、schema、taxonomy、search aliases 與 `photos` CSV，並依 schema 正規化 list 欄位、sheet row number 與 `search_text`。
 - `app/controls.js` 負責查詢 DOM controls/elements、建立可搜尋 multi-select / token autocomplete、填入篩選選項、任務模式按鈕、任務感知篩選分層與 active filter entry。控制項狀態仍由 `main.js` 的 finder state 組合進 render loop。
 - `app/overview-render.js` 負責索引概覽統計與 DOM render；統計規則應從 `photoSchema`、`option_labels` 與照片資料推導。
 - `app/photo-render.js` 負責主照片卡、Flickr / Finder / Sheets 連結、圖片尺寸下載、狀態 badge、排序訊號與卡片內 action。它接受目前 task/search/sort state 與 callback，不自行讀全域控制項。
@@ -183,11 +183,9 @@ HTML metadata 則需要 crawler 在執行 JavaScript 前就能讀到，因此 `p
 目前 repo 內的 `.github/workflows/pages.yml` 會在 pull request 執行 build/check，並在 `master` push 或手動觸發時部署：
 
 1. 安裝 pnpm dependencies。
-2. 執行 `pnpm data:validate`。
-3. 執行 `pnpm finder:build -- --output-dir tmp/pages`。
-4. 執行 `pnpm finder:check -- --dir tmp/pages`，確認 artifact 真的包含前端與資料設定。
-5. 非 pull request 時，上傳 `tmp/pages` 作為 GitHub Pages artifact。
-6. 非 pull request 時，使用 GitHub Pages deploy action 發布。
+2. 執行 `pnpm project:check`，其中包含資料驗證、core generated output drift check、React preview check、正式 Pages build 與 artifact check。
+3. 非 pull request 時，上傳 `tmp/pages` 作為 GitHub Pages artifact。
+4. 非 pull request 時，使用 GitHub Pages deploy action 發布。
 
 目前 repository Pages 來源已設定為 GitHub Actions。維護時若 Pages 無法部署，應先確認 repository Settings > Pages 仍使用 GitHub Actions 來源，再檢查 `.github/workflows/pages.yml` 的 build/check/deploy 結果。
 
