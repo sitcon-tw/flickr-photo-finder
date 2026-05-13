@@ -53,6 +53,24 @@ const checks = [
     next: "Fix the failing frontend logic test, then rerun pnpm finder:test.",
   },
   {
+    name: "React preview typecheck",
+    command: "pnpm",
+    args: ["finder:react:typecheck"],
+    next: "Fix the React preview TypeScript error, then rerun pnpm finder:react:typecheck.",
+  },
+  {
+    name: "React preview build",
+    command: "pnpm",
+    args: ["finder:react:build"],
+    next: "Fix the React preview build error, then rerun pnpm finder:react:build.",
+  },
+  {
+    name: "React preview artifact check",
+    command: "pnpm",
+    args: ["finder:react:check"],
+    next: "Run pnpm finder:react:build if the preview artifact is missing, or fix the React preview artifact check error and rerun pnpm finder:react:check.",
+  },
+  {
     name: "Finder Pages build",
     command: "pnpm",
     args: ["finder:build"],
