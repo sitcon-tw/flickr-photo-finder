@@ -6,6 +6,17 @@
 
 本遷移追求長期產品成功，不把既有 vanilla artifact、模組拆分、GA4 event names、URL query shape 或 candidate copy template 視為不可破壞契約。保留或翻掉任何舊設計，都應回到使用者能否更快從工作需求找到可用照片、整理候選並交給他人討論。
 
+## React UI 重設基準
+
+2026-05 React cutover 後，owner 決策調整為：React 版可以完全重設 UI 與資訊架構，不把 2026-05-13 前 `app/` vanilla Pages artifact 的視覺或版面當作硬性基準；但必須保留既有找圖功能與任務連續性，讓使用者仍能完成任務模式、搜尋、篩選、排序、結果瀏覽、照片 detail、候選清單、候選複製與 Flickr / 大圖 / 原圖 / Sheets 來源操作。
+
+桌面與手機必須視為兩個產品表面：
+
+- Desktop 是長時間找圖工作台，應提供高資訊密度、固定篩選區、結果 grid、常駐候選/概覽/AI 工具與 inspector/detail。Desktop 的 filter、candidate 與 detail 不應以 bottom sheet 作為主要操作模式。
+- Mobile 是快速挑選與討論介面，沿用 #5 決策：結果優先、固定「篩選 / 候選」入口、filter/candidate/preview 以 sheet 管理、卡片第一層只保留手機主要 action。
+
+React 實作可以共享 finder state、資料讀取、搜尋排序、URL state、候選輸出與 analytics；但 desktop/mobile 的 presentational components、layout、操作入口與資訊密度應分開，避免因共用單一 JSX 而把手機 UX 套到桌面。
+
 ## 參考基準
 
 - `docs/photo-finder-mvp.md`：Finder 的核心目標是替 Flickr 加上可搜尋、可判斷用途的索引層，不取代 Flickr。
