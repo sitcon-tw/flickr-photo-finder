@@ -188,12 +188,12 @@ function assertProbe(name, result, expected) {
     }
   }
   for (const expectedAction of expected.actions) {
-    if (!result.cardActions.includes(expectedAction)) {
+    if (!result.cardActions.some((action) => action.includes(expectedAction))) {
       throw new Error(`${name} is missing visible card action: ${expectedAction}`);
     }
   }
   for (const forbiddenAction of expected.forbiddenActions) {
-    if (result.cardActions.includes(forbiddenAction)) {
+    if (result.cardActions.some((action) => action.includes(forbiddenAction))) {
       throw new Error(`${name} should not show card action: ${forbiddenAction}`);
     }
   }
