@@ -490,6 +490,10 @@ button {
   display: none;
 }
 
+.mobile-task-button {
+  display: none;
+}
+
 .sheet-overlay {
   position: fixed;
   z-index: 20;
@@ -521,6 +525,17 @@ button {
   gap: 12px;
 }
 
+.sheet-task-list,
+.sheet-filter-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.sheet-task-list .task-button,
+.sheet-filter-grid .filter-multi-select {
+  width: 100%;
+}
+
 @media (max-width: 760px) {
   .finder-shell {
     padding: 16px 16px 88px;
@@ -530,6 +545,17 @@ button {
   .finder-toolbar {
     display: grid;
     grid-template-columns: 1fr;
+  }
+
+  .task-strip,
+  .filter-grid {
+    display: none;
+  }
+
+  .mobile-task-button {
+    display: block;
+    width: 100%;
+    background: #fff;
   }
 
   .mobile-action-bar {

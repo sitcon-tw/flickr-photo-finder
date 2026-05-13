@@ -7,11 +7,11 @@ import { PhotoPreview } from "./components/PhotoPreview";
 import { SheetDialog } from "./components/SheetDialog";
 import { encodeFinderState, useFinderData, useInitialFinderState } from "./data";
 import type { FinderFilterKey, PhotoRecord } from "./domain";
-import { activePrimaryFilterDefinitions, filterOptionsForDefinition, updateFilter } from "./filters";
+import { activePrimaryFilterDefinitions, allFilterDefinitions, filterOptionsForDefinition, updateFilter } from "./filters";
 import { discoverHistorySize, discoverWindowSize, filterAndSortPhotos, pageSize, taskModes } from "./finderCore";
 import "./styles.css";
 
-type SheetName = "filter" | "candidate" | "preview" | null;
+type SheetName = "task" | "filter" | "candidate" | "preview" | null;
 
 export function App() {
   const initialFinderState = useInitialFinderState();
@@ -27,6 +27,7 @@ export function App() {
   );
   const loadedSummary = finderData.status === "ready" ? `${finderData.data.photos.length} 張照片 / ${finderData.data.albums.length} 個相簿` : "";
   const primaryFilters = useMemo(() => activePrimaryFilterDefinitions(selectedTask), [selectedTask, finderData.status]);
+  const fullFilters = useMemo(() => allFilterDefinitions(), [finderData.status]);
   const results = useMemo(() => {
     if (finderData.status !== "ready") {
       return [] as PhotoRecord[];
@@ -111,6 +112,9 @@ export function App() {
           </Button>
         ))}
       </section>
+      <Button className="mobile-task-button" type="button" onPress={() => setActiveSheet("task")}>
+        任務：{selectedTask?.label ?? "全部照片"}
+      </Button>
 
       <section className="finder-toolbar" aria-label="搜尋與篩選">
         <TextField
@@ -223,9 +227,56 @@ export function App() {
 
       <SheetDialog
         isOpen={activeSheet !== null}
-        title={activeSheet ? `${activeSheet} sheet` : "sheet"}
+        title={
+          activeSheet === "task"
+            ? "任務模式"
+            : activeSheet === "filter"
+              ? "篩選"
+              : activeSheet === "candidate"
+                ? `候選 ${finderState.selectedPhotoIds.length}`
+                : "照片詳情"
+        }
         onOpenChange={(open) => setActiveSheet(open ? activeSheet : null)}
       >
+        {activeSheet === "task" ? (
+          <div className="sheet-task-list">
+            {taskModes.map((task) => (
+              <Button
+                key={task.id}
+                className={task.id === finderState.taskMode ? "task-button is-active" : "task-button"}
+                type="button"
+                onPress={() => {
+                  setFinderState((current) => ({ ...current, taskMode: task.id }));
+                  setActiveSheet(null);
+                }}
+              >
+                <strong>{task.label}</strong>
+                <span>{task.description}</span>
+              </Button>
+            ))}
+          </div>
+        ) : null}
+        {activeSheet === "filter" && finderData.status === "ready" ? (
+          <div className="sheet-filter-grid">
+            {fullFilters.map((definition) => {
+              const filterParam = (definition.filterParam ?? definition.key) as FinderFilterKey;
+              return (
+                <FilterMultiSelect
+                  key={definition.key}
+                  label={definition.label}
+                  options={filterOptionsForDefinition(finderData.data, definition)}
+                  selectedValues={finderState.filters[filterParam] ?? []}
+                  onChange={(values) =>
+                    setFinderState((current) => ({
+                      ...current,
+                      filters: updateFilter(current.filters, definition, values),
+                    }))
+                  }
+                />
+              );
+            })}
+          </div>
+        ) : null}
         {activeSheet === "preview" && previewPhoto && finderData.status === "ready" ? (
           <PhotoPreview
             data={finderData.data}
@@ -242,7 +293,6 @@ export function App() {
             onRemove={toggleCandidate}
           />
         ) : null}
-        {activeSheet === "filter" ? <p>主要篩選已在畫面上方，完整手機 filter sheet 會在下一個 slice 接上。</p> : null}
       </SheetDialog>
     </main>
   );

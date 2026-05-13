@@ -83,6 +83,10 @@ export function activePrimaryFilterDefinitions(task: TaskMode | undefined): Filt
   return definitions.filter((definition) => activeKeys.has(definition.key) && !definition.lowLevel);
 }
 
+export function allFilterDefinitions(): FilterDefinition[] {
+  return filterDefinitions as FilterDefinition[];
+}
+
 export function updateFilter(filters: FinderFilters, definition: FilterDefinition, values: string[]): FinderFilters {
   const filterParam = definition.filterParam ?? (definition.key as FinderFilterKey);
   return {
