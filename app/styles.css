@@ -1685,6 +1685,7 @@ select {
     font-size: 12px;
   }
 
+  .photo-reference .photo-id-button,
   .photo-reference .sort-signal-text {
     display: none;
   }
