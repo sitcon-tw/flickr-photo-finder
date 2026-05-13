@@ -107,13 +107,17 @@ https://docs.google.com/spreadsheets/d/<spreadsheetId>/gviz/tq?tqx=out:csv&sheet
 - `pnpm finder:dev:fixture`：讀 `fixtures/photos.csv`，適合最小樣本、離線 smoke test 與 regression 檢查。
 - `pnpm finder:dev:export`：讀 `tmp/sheets-export/photos.csv`，適合使用最近一次正式 Sheets 匯出快照開發；若檔案不存在，先執行 `pnpm sheets:export`。
 
-這三種入口都會先產生本機 dev artifact，預設放在 `tmp/pages-dev/<source>/`，並在 terminal 印出 `Data source` 與實際 `Photos CSV URL`。部署到 GitHub Pages 時，仍使用 `pnpm finder:build` 產生 `tmp/pages/`，讓 `photosCsvUrl` 指向 `config/project.json` 中 `googleSheets.spreadsheetId` 的 Google Sheets `photos` 公開 CSV 輸出。
+這三種入口都應保留為前端日常開發入口，並在 terminal 印出 `Data source` 與實際 `Photos CSV URL`。部署到 GitHub Pages 時，仍使用 `pnpm finder:build` 產生 `tmp/pages/`，讓 `photosCsvUrl` 指向 `config/project.json` 中 `googleSheets.spreadsheetId` 的 Google Sheets `photos` 公開 CSV 輸出。
+
+Pages frontend 已是多人長期使用的主要產品介面，不再以手刻原生 DOM 互動作為長期方向。後續前端工具鏈應採 Vite + React + TypeScript，並以 React Aria Components 作為 dialog、popover、select / combobox、focus management 與 accessibility 的基礎 primitive。導入這些工具的目標是降低 mobile overlay、浮層定位、鍵盤焦點、scroll lock、觸控手勢與長清單操作反覆修補的風險；不是引入有強烈視覺風格的 UI kit。
+
+本機前端開發需要快速反映 source、fixture/export CSV 與設定變更；這項需求應交由 Vite dev server / HMR 與新的 build orchestration 承接，不再另建自製 live reload 流程。
 
 前端可以讀公開資料 URL，但不能使用任何需要保密的 token、API key 或 OAuth credential。
 
 ## 前端模組邊界
 
-公開前端維持原生 ES modules，不導入 bundler 或成熟前端 framework。目前的拆分原則是 Functional Core / Imperative Shell：
+公開前端的長期拆分原則是 Functional Core / Product UI Shell。搜尋、排序、URL state、資料正規化、候選輸出與 AI 助手提示詞等純資料邏輯應保留為可測試核心；使用者互動層則遷移到 React component 與成熟 UI primitive。遷移期間若仍需維護 `app/` 原生 ES modules，應把它視為過渡層，不再擴張自製 select、sheet、popover 或 gesture 邏輯。
 
 - `app/search-sort.js` 是可測試純函式核心，負責 search text、篩選、scoring、推薦排序與探索排序；不得直接讀 DOM 或全域控制項。
 - `app/url-state.js` 負責 URL query encode/decode；selected ids、filters 與 sort deep link 行為應先在這裡調整。Filter URL 使用重複 query 參數表示多選，例如 `scene=攤位&scene=會眾`；早期單值 query 格式不保證相容。
@@ -127,7 +131,7 @@ https://docs.google.com/spreadsheets/d/<spreadsheetId>/gviz/tq?tqx=out:csv&sheet
 - `app/result-render.js` 負責結果狀態文字、active filter chips、task mode active state、load-more panel 與 empty state。
 - `app/main.js` 保留 bootstrap、專案設定套用、state、URL state、資料載入順序、事件 wiring 與 render loop 組合。新增前端行為時，先判斷是否屬於上述模組；只有跨模組協調才留在 `main.js`。
 
-新增前端模組時，需同步 `scripts/commands/build-pages.mjs` 與 `scripts/commands/check-pages-artifact.mjs`，確保 GitHub Pages artifact 包含新檔案。可測試的純邏輯應加入 `pnpm finder:test`，並納入 `pnpm project:check`。
+新增或遷移前端模組時，需同步 `scripts/commands/build-pages.mjs` 與 `scripts/commands/check-pages-artifact.mjs`，確保 GitHub Pages artifact 包含 Vite build 結果、runtime config 與必要公開資料。可測試的純邏輯與互動 regression 應加入 `pnpm finder:test`，並納入 `pnpm project:check`。
 
 公開前端右上角的外部連結由 `config/project.json` 控制。除了 Flickr 來源連結，也應提供 GitHub 專案連結，讓使用者能回到 repo 了解專案細節或回報問題。
 
