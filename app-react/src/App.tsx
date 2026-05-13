@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Button, Input, Label, TextField } from "react-aria-components";
 import { FilterMultiSelect, type FilterOption } from "./components/FilterMultiSelect";
+import { SheetDialog } from "./components/SheetDialog";
 import { pageSize, taskModes } from "./finderCore";
 import "./styles.css";
 
@@ -92,17 +93,13 @@ export function App() {
         </Button>
       </div>
 
-      {activeSheet ? (
-        <section className="sheet-preview" role="dialog" aria-modal="true" aria-label="遷移中面板">
-          <div className="sheet-header">
-            <strong>{activeSheet}</strong>
-            <Button type="button" onPress={() => setActiveSheet(null)}>
-              關閉
-            </Button>
-          </div>
-          <p>React Aria modal primitives will replace this temporary shell in the next slices.</p>
-        </section>
-      ) : null}
+      <SheetDialog
+        isOpen={activeSheet !== null}
+        title={activeSheet ? `${activeSheet} sheet` : "sheet"}
+        onOpenChange={(open) => setActiveSheet(open ? activeSheet : null)}
+      >
+        <p>React Aria modal primitives now own this sheet shell.</p>
+      </SheetDialog>
     </main>
   );
 }

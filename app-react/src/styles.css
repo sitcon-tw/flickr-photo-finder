@@ -23,8 +23,7 @@ button {
 
 .finder-header,
 .finder-toolbar,
-.result-surface,
-.sheet-preview {
+.result-surface {
   border: 1px solid #d8deea;
   border-radius: 8px;
   background: #fff;
@@ -32,8 +31,7 @@ button {
 }
 
 .finder-header,
-.result-surface,
-.sheet-preview {
+.result-surface {
   padding: 20px;
 }
 
@@ -191,13 +189,28 @@ button {
   display: none;
 }
 
-.sheet-preview {
+.sheet-overlay {
   position: fixed;
   z-index: 20;
+  inset: 0;
+  background: rgb(23 32 51 / 36%);
+}
+
+.sheet-modal {
+  position: fixed;
   right: 0;
   bottom: 0;
   left: 0;
+}
+
+.sheet-dialog {
+  max-height: 82vh;
+  overflow: auto;
+  padding: 20px;
+  border: 1px solid #d8deea;
   border-radius: 12px 12px 0 0;
+  background: #fff;
+  box-shadow: 0 -16px 38px rgb(23 32 51 / 24%);
 }
 
 .sheet-header {
