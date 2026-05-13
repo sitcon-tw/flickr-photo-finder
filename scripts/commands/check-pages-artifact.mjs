@@ -1,4 +1,4 @@
-import { readFile, stat } from "node:fs/promises";
+import { readdir, readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 
 const defaultArtifactDir = "tmp/pages";
@@ -74,6 +74,38 @@ async function assertArtifactDir(path) {
   }
 }
 
+async function listArtifactEntries(root, relativeDir = "") {
+  const entries = await readdir(join(root, relativeDir), { withFileTypes: true });
+  const paths = [];
+  for (const entry of entries) {
+    const relativePath = relativeDir ? `${relativeDir}/${entry.name}` : entry.name;
+    paths.push(relativePath);
+    if (entry.isDirectory()) {
+      paths.push(...await listArtifactEntries(root, relativePath));
+    }
+  }
+  return paths;
+}
+
+async function assertNoForbiddenEntries(artifactDir) {
+  const forbiddenTopLevelDirs = new Set(["app-core", "app-react", "docs", "fixtures", "scripts", "tests"]);
+  const forbiddenTopLevelFiles = new Set(["package.json", "pnpm-lock.yaml", "tsconfig.json"]);
+  const entries = await listArtifactEntries(artifactDir);
+
+  for (const entry of entries) {
+    const [topLevel] = entry.split("/");
+    if (forbiddenTopLevelDirs.has(topLevel)) {
+      throw new Error(`Pages artifact must not include repo source directory: ${entry}`);
+    }
+    if (forbiddenTopLevelFiles.has(entry)) {
+      throw new Error(`Pages artifact must not include repo metadata file: ${entry}`);
+    }
+    if (/\.(?:map|ts|tsx)$/.test(entry)) {
+      throw new Error(`Pages artifact must not include source or sourcemap file: ${entry}`);
+    }
+  }
+}
+
 async function assertIncludes(path, text, label) {
   const content = await readFile(path, "utf8");
   if (!content.includes(text)) {
@@ -103,6 +135,7 @@ async function main() {
   }
 
   await assertArtifactDir(options.artifactDir);
+  await assertNoForbiddenEntries(options.artifactDir);
 
   const requiredFiles = [
     ".nojekyll",
