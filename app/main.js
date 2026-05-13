@@ -76,7 +76,7 @@ let optionLabelMaps = new Map();
 let searchTokensForField = () => [];
 let filterControlEventsBound = false;
 let activePreviewPhoto = null;
-let previewDragState = null;
+let sheetDragState = null;
 
 const state = {
   taskMode: "all",
@@ -171,6 +171,7 @@ function setModalOpen(open) {
 }
 
 function closeFilterSheet() {
+  resetSheetDragState();
   elements.searchPanel.classList.remove("is-filter-open");
   if (!elements.photoPreviewDialog.hidden || elements.sidePanel.classList.contains("is-candidate-open")) {
     return;
@@ -186,6 +187,7 @@ function openFilterSheet() {
 }
 
 function closeCandidateSheet() {
+  resetSheetDragState();
   elements.sidePanel.classList.remove("is-candidate-open");
   if (!elements.photoPreviewDialog.hidden || elements.searchPanel.classList.contains("is-filter-open")) {
     return;
@@ -201,7 +203,7 @@ function openCandidateSheet() {
 }
 
 function closePreview() {
-  resetPreviewDragState();
+  resetSheetDragState();
   elements.photoPreviewDialog.hidden = true;
   activePreviewPhoto = null;
   if (!elements.searchPanel.classList.contains("is-filter-open") && !elements.sidePanel.classList.contains("is-candidate-open")) {
@@ -210,7 +212,7 @@ function closePreview() {
 }
 
 function closeMobileOverlays() {
-  resetPreviewDragState();
+  resetSheetDragState();
   elements.searchPanel.classList.remove("is-filter-open");
   elements.sidePanel.classList.remove("is-candidate-open");
   elements.photoPreviewDialog.hidden = true;
@@ -218,62 +220,71 @@ function closeMobileOverlays() {
   setModalOpen(false);
 }
 
-function isMobilePreviewSheet() {
+function isMobileSheet() {
   return window.matchMedia("(max-width: 760px)").matches;
 }
 
-function resetPreviewDragState() {
-  previewDragState = null;
-  elements.photoPreviewDialog.style.transform = "";
+function resetSheetDragState() {
+  if (sheetDragState?.sheet) {
+    sheetDragState.sheet.style.transform = "";
+  }
+  sheetDragState = null;
 }
 
-function previewTouchFromList(touches, identifier) {
+function touchFromList(touches, identifier) {
   return Array.from(touches).find((touch) => touch.identifier === identifier) ?? null;
 }
 
-function onPreviewTouchStart(event) {
-  if (elements.photoPreviewDialog.hidden || !isMobilePreviewSheet() || event.touches.length !== 1) {
+function shouldIgnoreSheetDragStart(event) {
+  return Boolean(event.target.closest(".enhanced-select-panel, .candidate-list"));
+}
+
+function onSheetTouchStart(event, { sheet, isOpen, close }) {
+  if (!isOpen() || !isMobileSheet() || event.touches.length !== 1 || shouldIgnoreSheetDragStart(event)) {
     return;
   }
   const touch = event.touches[0];
-  previewDragState = {
+  sheetDragState = {
+    sheet,
+    close,
     touchId: touch.identifier,
     startY: touch.clientY,
-    startScrollTop: elements.photoPreviewDialog.scrollTop,
+    startScrollTop: sheet.scrollTop,
   };
 }
 
-function onPreviewTouchMove(event) {
-  if (!previewDragState) {
+function onSheetTouchMove(event) {
+  if (!sheetDragState) {
     return;
   }
-  const touch = previewTouchFromList(event.touches, previewDragState.touchId);
+  const touch = touchFromList(event.touches, sheetDragState.touchId);
   if (!touch) {
     return;
   }
-  const deltaY = touch.clientY - previewDragState.startY;
-  if (previewDragState.startScrollTop > 0 || deltaY <= 0) {
+  const deltaY = touch.clientY - sheetDragState.startY;
+  if (sheetDragState.startScrollTop > 0 || deltaY <= 0) {
     return;
   }
   event.preventDefault();
   const dragOffset = Math.min(deltaY, 160);
-  elements.photoPreviewDialog.style.transform = `translateY(${Math.round(dragOffset)}px)`;
+  sheetDragState.sheet.style.transform = `translateY(${Math.round(dragOffset)}px)`;
 }
 
-function onPreviewTouchEnd(event) {
-  if (!previewDragState) {
+function onSheetTouchEnd(event) {
+  if (!sheetDragState) {
     return;
   }
-  const touch = previewTouchFromList(event.changedTouches, previewDragState.touchId);
+  const touch = touchFromList(event.changedTouches, sheetDragState.touchId);
   if (!touch) {
-    resetPreviewDragState();
+    resetSheetDragState();
     return;
   }
-  const deltaY = touch.clientY - previewDragState.startY;
-  const shouldClose = previewDragState.startScrollTop <= 0 && deltaY >= 96;
-  resetPreviewDragState();
+  const deltaY = touch.clientY - sheetDragState.startY;
+  const shouldClose = sheetDragState.startScrollTop <= 0 && deltaY >= 96;
+  const close = sheetDragState.close;
+  resetSheetDragState();
   if (shouldClose) {
-    closePreview();
+    close();
   }
 }
 
@@ -854,10 +865,38 @@ controls.mobileCandidate.addEventListener("click", openCandidateSheet);
 controls.closeFilterSheet.addEventListener("click", closeFilterSheet);
 controls.closeCandidateSheet.addEventListener("click", closeCandidateSheet);
 controls.closePreview.addEventListener("click", closePreview);
-elements.photoPreviewDialog.addEventListener("touchstart", onPreviewTouchStart, { passive: true });
-elements.photoPreviewDialog.addEventListener("touchmove", onPreviewTouchMove, { passive: false });
-elements.photoPreviewDialog.addEventListener("touchend", onPreviewTouchEnd);
-elements.photoPreviewDialog.addEventListener("touchcancel", onPreviewTouchEnd);
+elements.searchPanel.addEventListener(
+  "touchstart",
+  (event) => onSheetTouchStart(event, {
+    sheet: elements.searchPanel,
+    isOpen: () => elements.searchPanel.classList.contains("is-filter-open"),
+    close: closeFilterSheet,
+  }),
+  { passive: true },
+);
+elements.sidePanel.addEventListener(
+  "touchstart",
+  (event) => onSheetTouchStart(event, {
+    sheet: elements.sidePanel,
+    isOpen: () => elements.sidePanel.classList.contains("is-candidate-open"),
+    close: closeCandidateSheet,
+  }),
+  { passive: true },
+);
+elements.photoPreviewDialog.addEventListener(
+  "touchstart",
+  (event) => onSheetTouchStart(event, {
+    sheet: elements.photoPreviewDialog,
+    isOpen: () => !elements.photoPreviewDialog.hidden,
+    close: closePreview,
+  }),
+  { passive: true },
+);
+for (const sheet of [elements.searchPanel, elements.sidePanel, elements.photoPreviewDialog]) {
+  sheet.addEventListener("touchmove", onSheetTouchMove, { passive: false });
+  sheet.addEventListener("touchend", onSheetTouchEnd);
+  sheet.addEventListener("touchcancel", onSheetTouchEnd);
+}
 controls.previewLarge.addEventListener("click", downloadPreviewLargeImage);
 controls.previewCandidate.addEventListener("click", () => {
   if (activePreviewPhoto) {
