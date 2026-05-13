@@ -66,8 +66,12 @@ async function main() {
     "--dump-dom",
     options.url,
   ]);
-  assertIncludes(dom, "30 張照片", "fixture photo count");
+  assertIncludes(dom, "30 / 30 張照片", "fixture filtered photo count");
   assertIncludes(dom, "101 個相簿", "fixture album count");
+  assertIncludes(dom, "可放字、品牌露出、友善交流、舞台講者", "search placeholder");
+  assertIncludes(dom, "探索更多", "sort control");
+  assertIncludes(dom, "社群貼文", "task mode control");
+  assertIncludes(dom, "顯示前 12 張", "visible result summary");
   assertIncludes(dom, "photo-card", "photo card markup");
   assertIncludes(dom, "https://www.flickr.com/photos/sitcon/", "Flickr photo links");
   console.log(`React preview smoke passed: ${options.url}`);
