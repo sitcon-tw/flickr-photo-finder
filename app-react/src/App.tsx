@@ -1,6 +1,7 @@
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { Button, Input, Label, ListBox, ListBoxItem, Popover, Select, SelectValue, TextField } from "react-aria-components";
 import { FilterMultiSelect } from "./components/FilterMultiSelect";
+import { PhotoCard } from "./components/PhotoCard";
 import { SheetDialog } from "./components/SheetDialog";
 import { encodeFinderState, useFinderData, useInitialFinderState } from "./data";
 import type { FinderFilterKey, PhotoRecord } from "./domain";
@@ -15,6 +16,8 @@ export function App() {
   const finderData = useFinderData();
   const [finderState, setFinderState] = useState(initialFinderState);
   const [activeSheet, setActiveSheet] = useState<SheetName>(null);
+  const [previewPhoto, setPreviewPhoto] = useState<PhotoRecord | null>(null);
+  const [visibleCount, setVisibleCount] = useState(pageSize);
   const deferredSearch = useDeferredValue(finderState.search);
   const selectedTask = useMemo(
     () => taskModes.find((task) => task.id === finderState.taskMode) ?? taskModes[0],
@@ -46,7 +49,8 @@ export function App() {
       selectedPhotoIds: finderState.selectedPhotoIds,
     }) as PhotoRecord[];
   }, [deferredSearch, finderData, finderState.filters, finderState.selectedPhotoIds, finderState.sort, selectedTask]);
-  const visibleResults = results.slice(0, pageSize);
+  const visibleResults = results.slice(0, visibleCount);
+  const hasMoreResults = visibleCount < results.length;
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -56,6 +60,27 @@ export function App() {
     url.search = encodeFinderState(finderState).toString();
     window.history.replaceState(null, "", url);
   }, [finderState]);
+
+  useEffect(() => {
+    setVisibleCount(pageSize);
+  }, [deferredSearch, finderState.filters, finderState.sort, finderState.taskMode]);
+
+  function toggleCandidate(photoId: string) {
+    setFinderState((current) => {
+      const selected = new Set(current.selectedPhotoIds);
+      if (selected.has(photoId)) {
+        selected.delete(photoId);
+      } else {
+        selected.add(photoId);
+      }
+      return { ...current, selectedPhotoIds: [...selected] };
+    });
+  }
+
+  function openPreview(photo: PhotoRecord) {
+    setPreviewPhoto(photo);
+    setActiveSheet("preview");
+  }
 
   return (
     <main className="finder-shell">
@@ -150,18 +175,27 @@ export function App() {
           Search value: <strong>{finderState.search || "未輸入"}</strong>
         </p>
         {finderData.status === "error" ? <p className="load-error">{finderData.message}</p> : null}
-        {finderData.status === "ready" ? <p>目前顯示前 {visibleResults.length} 張，後續會接完整照片卡片與載入更多。</p> : null}
-        <div className="result-list">
-          {visibleResults.slice(0, 12).map((photo) => (
-            <article className="result-row" key={photo.photo_id}>
-              <strong>{photo.event_name || photo.album_title || photo.photo_id}</strong>
-              <span>{photo.visual_description || photo.photo_url}</span>
-            </article>
-          ))}
+        {finderData.status === "ready" ? <p>目前顯示 {visibleResults.length} / {results.length} 張</p> : null}
+        <div className="photo-grid">
+          {finderData.status === "ready"
+            ? visibleResults.map((photo) => (
+                <PhotoCard
+                  key={photo.photo_id}
+                  data={finderData.data}
+                  photo={photo}
+                  task={selectedTask}
+                  selected={finderState.selectedPhotoIds.includes(photo.photo_id)}
+                  onPreview={openPreview}
+                  onToggleCandidate={toggleCandidate}
+                />
+              ))
+            : null}
         </div>
-        <Button type="button" onPress={() => setActiveSheet("preview")}>
-          開啟預覽
-        </Button>
+        {hasMoreResults ? (
+          <Button className="load-more-button" type="button" onPress={() => setVisibleCount((current) => current + pageSize)}>
+            載入更多
+          </Button>
+        ) : null}
       </section>
 
       <div className="mobile-action-bar">
@@ -178,7 +212,16 @@ export function App() {
         title={activeSheet ? `${activeSheet} sheet` : "sheet"}
         onOpenChange={(open) => setActiveSheet(open ? activeSheet : null)}
       >
-        <p>React Aria modal primitives now own this sheet shell.</p>
+        {activeSheet === "preview" && previewPhoto ? (
+          <div className="sheet-preview">
+            <p>{previewPhoto.visual_description || previewPhoto.photo_url}</p>
+            <Button type="button" onPress={() => window.open(previewPhoto.photo_url, "_blank", "noopener,noreferrer")}>
+              Flickr
+            </Button>
+          </div>
+        ) : (
+          <p>React Aria modal primitives now own this sheet shell.</p>
+        )}
       </SheetDialog>
     </main>
   );
