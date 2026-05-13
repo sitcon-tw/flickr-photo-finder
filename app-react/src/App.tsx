@@ -1,14 +1,25 @@
 import { useMemo, useState } from "react";
 import { Button, Input, Label, TextField } from "react-aria-components";
+import { FilterMultiSelect, type FilterOption } from "./components/FilterMultiSelect";
 import { pageSize, taskModes } from "./finderCore";
 import "./styles.css";
 
 type SheetName = "filter" | "candidate" | "preview" | null;
 
+const sampleFilterOptions: FilterOption[] = [
+  { label: "橫式", value: "landscape" },
+  { label: "直式", value: "portrait" },
+  { label: "方形", value: "square" },
+  { label: "舞台講者", value: "stage-speaker" },
+  { label: "會眾互動", value: "audience-interaction" },
+  { label: "品牌露出", value: "brand-visibility" },
+];
+
 export function App() {
   const [activeTaskMode, setActiveTaskMode] = useState(taskModes[0]?.id ?? "all");
   const [searchTerm, setSearchTerm] = useState("");
   const [activeSheet, setActiveSheet] = useState<SheetName>(null);
+  const [sampleFilters, setSampleFilters] = useState<string[]>([]);
   const selectedTask = useMemo(
     () => taskModes.find((task) => task.id === activeTaskMode) ?? taskModes[0],
     [activeTaskMode],
@@ -51,6 +62,14 @@ export function App() {
         <Button type="button" onPress={() => setActiveSheet("candidate")}>
           候選 0
         </Button>
+      </section>
+      <section className="filter-demo" aria-label="React Aria 篩選選單">
+        <FilterMultiSelect
+          label="示範條件"
+          options={sampleFilterOptions}
+          selectedValues={sampleFilters}
+          onChange={setSampleFilters}
+        />
       </section>
 
       <section className="result-surface" aria-label="搜尋結果">
