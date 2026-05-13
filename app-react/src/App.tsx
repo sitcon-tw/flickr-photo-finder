@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useReducer, useState } from "react";
+import { candidateCopyText, selectedPhotos } from "../../app-core/candidate-copy";
 import { loadFinderData } from "../../app-core/data-loader";
 import { applySearchRegistry, filterAndSortPhotos } from "../../app-core/search-sort";
 import { applyUrlStateRegistry, decodeUrlState } from "../../app-core/url-state";
@@ -19,6 +20,9 @@ type PhotoRecord = Record<string, PhotoValue> & {
   curation_status: string;
   visual_description: string;
   search_text: string;
+  _sheet_row_number?: number;
+  sponsorship_items: string[];
+  sponsorship_tags: string[];
 };
 
 type FinderData = Awaited<ReturnType<typeof loadFinderData>>;
@@ -61,6 +65,7 @@ type FinderViewState = {
   sortMode: SortModeValue;
   taskModeId: string;
   filters: FinderFilters;
+  selectedPhotoIds: string[];
 };
 type FinderViewAction =
   | { type: "hydrate"; state: Partial<FinderViewState>; validTaskModes: string[] }
@@ -69,6 +74,8 @@ type FinderViewAction =
   | { type: "setTaskMode"; value: string; validTaskModes: string[]; nextFilterKeys: string[] }
   | { type: "setFilterValues"; key: string; values: string[] }
   | { type: "clearFilterValue"; key: string; value: string }
+  | { type: "toggleCandidate"; photoId: string }
+  | { type: "clearCandidates" }
   | { type: "reset"; filterKeys: string[] };
 
 const previewDataSources = {
@@ -97,14 +104,51 @@ const initialViewState: FinderViewState = {
   sortMode: "recommended",
   taskModeId: "all",
   filters: {},
+  selectedPhotoIds: [],
 };
 
 function photoTitle(photo: PhotoRecord) {
   return photo.event_name || photo.album_title || photo.photo_id;
 }
 
+function candidatePhotoTitle(photo: { photo_id: string; event_name?: unknown; album_title?: unknown }) {
+  return String(photo.event_name || photo.album_title || photo.photo_id);
+}
+
 function statusText(photo: PhotoRecord) {
   return [photo.public_use_status, photo.priority_level, photo.curation_status].filter(Boolean).join(" / ");
+}
+
+function finderLink(photo: { photo_id: string }) {
+  const url = new URL(window.location.href);
+  url.hash = `photo-${photo.photo_id}`;
+  return url.toString();
+}
+
+function sheetRowLink(photo: PhotoRecord, data: FinderData | null) {
+  const spreadsheetId = String(data?.projectConfig?.googleSheets?.spreadsheetId ?? "").trim();
+  if (!spreadsheetId || !photo._sheet_row_number) {
+    return "";
+  }
+  const gid = encodeURIComponent(String(data?.projectConfig?.googleSheets?.photosSheetGid ?? 0));
+  const range = encodeURIComponent(`A${photo._sheet_row_number}`);
+  return `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit?gid=${gid}#gid=${gid}&range=${range}`;
+}
+
+function copyTextToClipboard(text: string) {
+  if (navigator.clipboard?.writeText) {
+    return navigator.clipboard.writeText(text).then(() => true);
+  }
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.opacity = "0";
+  document.body.append(textarea);
+  textarea.select();
+  const copied = document.execCommand("copy");
+  textarea.remove();
+  return Promise.resolve(copied);
 }
 
 function compactLabelParts(parts: unknown[]) {
@@ -167,9 +211,17 @@ function albumFilterOptions(photos: PhotoRecord[], albums: Record<string, PhotoV
   return orderedOptions;
 }
 
-function PhotoCard({ photo }: { photo: PhotoRecord }) {
+function PhotoCard({
+  photo,
+  selected,
+  onToggleCandidate,
+}: {
+  photo: PhotoRecord;
+  selected: boolean;
+  onToggleCandidate: (photoId: string) => void;
+}) {
   return (
-    <article className="photo-card">
+    <article className="photo-card" data-photo-id={photo.photo_id}>
       {photo.image_preview_url ? (
         <img src={photo.image_preview_url} alt={photoTitle(photo)} loading="lazy" decoding="async" />
       ) : (
@@ -191,10 +243,73 @@ function PhotoCard({ photo }: { photo: PhotoRecord }) {
         </dl>
         <div className="photo-card__footer">
           <span>{statusText(photo)}</span>
-          <a href={photo.photo_url}>Flickr</a>
+          <div className="photo-card__actions">
+            <button
+              type="button"
+              className={selected ? "candidate-toggle is-selected" : "candidate-toggle"}
+              aria-pressed={selected}
+              onClick={() => onToggleCandidate(photo.photo_id)}
+            >
+              {selected ? "已候選" : "候選"}
+            </button>
+            <a href={photo.photo_url}>Flickr</a>
+          </div>
         </div>
       </div>
     </article>
+  );
+}
+
+function CandidatePanel({
+  candidates,
+  copyTemplate,
+  copyStatus,
+  onCopyTemplateChange,
+  onCopy,
+  onClear,
+}: {
+  candidates: PhotoRecord[];
+  copyTemplate: string;
+  copyStatus: string;
+  onCopyTemplateChange: (template: string) => void;
+  onCopy: () => void;
+  onClear: () => void;
+}) {
+  return (
+    <section className="candidate-panel" aria-label="候選照片">
+      <div className="candidate-panel__heading">
+        <h2>候選 {candidates.length}</h2>
+        <div className="candidate-panel__actions">
+          <label>
+            <span>複製格式</span>
+            <select value={copyTemplate} onChange={(event) => onCopyTemplateChange(event.target.value)} disabled={candidates.length === 0}>
+              <option value="im">IM 討論版</option>
+              <option value="sponsor">贊助佐證版</option>
+              <option value="collaboration">協作檢查版</option>
+              <option value="flickr_urls">純 Flickr URL</option>
+            </select>
+          </label>
+          <button type="button" onClick={onCopy} disabled={candidates.length === 0}>
+            {copyStatus || "複製"}
+          </button>
+          <button type="button" onClick={onClear} disabled={candidates.length === 0}>
+            清空
+          </button>
+        </div>
+      </div>
+      {candidates.length === 0 ? (
+        <p className="candidate-empty">尚無候選照片</p>
+      ) : (
+        <ol className="candidate-list">
+          {candidates.map((photo) => (
+            <li key={photo.photo_id}>
+              <span>{photoTitle(photo)}</span>
+              <a href={photo.photo_url}>Flickr</a>
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
   );
 }
 
@@ -275,6 +390,7 @@ function normalizeViewState(state: Partial<FinderViewState>, validTaskModes: str
     filters: Object.fromEntries(
       Object.entries(state.filters ?? {}).map(([key, values]) => [key, cleanValues(values)]),
     ),
+    selectedPhotoIds: cleanValues(state.selectedPhotoIds ?? []),
   };
 }
 
@@ -311,10 +427,24 @@ function finderViewReducer(state: FinderViewState, action: FinderViewAction): Fi
       },
     };
   }
+  if (action.type === "toggleCandidate") {
+    const photoId = action.photoId.trim();
+    if (!photoId) {
+      return state;
+    }
+    if (state.selectedPhotoIds.includes(photoId)) {
+      return { ...state, selectedPhotoIds: state.selectedPhotoIds.filter((item) => item !== photoId) };
+    }
+    return { ...state, selectedPhotoIds: [...state.selectedPhotoIds, photoId] };
+  }
+  if (action.type === "clearCandidates") {
+    return { ...state, selectedPhotoIds: [] };
+  }
   if (action.type === "reset") {
     return {
       ...initialViewState,
       filters: Object.fromEntries(action.filterKeys.map((key) => [key, []])),
+      selectedPhotoIds: state.selectedPhotoIds,
     };
   }
   return state;
@@ -345,6 +475,11 @@ function buildPartialFinderUrl(state: FinderViewState, ownedFilterDefinitions: F
     for (const value of cleanValues(state.filters[key] ?? [])) {
       params.append(urlKey, value);
     }
+  }
+  if (state.selectedPhotoIds.length > 0) {
+    params.set("selected", state.selectedPhotoIds.join(","));
+  } else {
+    params.delete("selected");
   }
 
   const nextSearch = params.toString();
@@ -458,6 +593,8 @@ export function App() {
   const [error, setError] = useState<string>("");
   const [viewState, dispatch] = useReducer(finderViewReducer, initialViewState);
   const [urlStateReady, setUrlStateReady] = useState(false);
+  const [copyTemplate, setCopyTemplate] = useState("im");
+  const [copyStatus, setCopyStatus] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -491,6 +628,7 @@ export function App() {
     [validTaskModes, viewState],
   );
   const { searchTerm, sortMode, taskModeId } = normalizedViewState;
+  const selectedPhotoIdSet = useMemo(() => new Set(normalizedViewState.selectedPhotoIds), [normalizedViewState.selectedPhotoIds]);
   const activeFilterDefinitions = useMemo(() => primaryFilterDefinitions(data, taskModeId), [data, taskModeId]);
   const ownedFilterDefinitions = useMemo(() => allReactOwnedPrimaryFilterDefinitions(data), [data]);
   const activeFilterKeys = useMemo(
@@ -517,6 +655,7 @@ export function App() {
         sortMode: isSortModeValue(urlState.sort) ? urlState.sort : "recommended",
         taskModeId: nextTaskModeId,
         filters: Object.fromEntries(nextFilterKeys.map((key) => [key, urlState.filters[key] ?? []])),
+        selectedPhotoIds: urlState.selectedPhotoIds,
       },
       validTaskModes,
     });
@@ -533,13 +672,24 @@ export function App() {
         sortMode,
         taskModeId,
         filters: Object.fromEntries(activeFilterKeys.map((key) => [key, normalizedViewState.filters[key] ?? []])),
+        selectedPhotoIds: normalizedViewState.selectedPhotoIds,
       },
       ownedFilterDefinitions,
     );
     if (nextUrl !== `${window.location.pathname}${window.location.search}${window.location.hash}`) {
       window.history.replaceState(null, "", nextUrl);
     }
-  }, [activeFilterDefinitions, activeFilterKeys, data, normalizedViewState.filters, ownedFilterDefinitions, searchTerm, sortMode, taskModeId, urlStateReady]);
+  }, [
+    activeFilterKeys,
+    data,
+    normalizedViewState.filters,
+    normalizedViewState.selectedPhotoIds,
+    ownedFilterDefinitions,
+    searchTerm,
+    sortMode,
+    taskModeId,
+    urlStateReady,
+  ]);
 
   useEffect(() => {
     if (!data) {
@@ -556,6 +706,7 @@ export function App() {
           sortMode: isSortModeValue(urlState.sort) ? urlState.sort : "recommended",
           taskModeId: nextTaskModeId,
           filters: Object.fromEntries(nextFilterKeys.map((key) => [key, urlState.filters[key] ?? []])),
+          selectedPhotoIds: urlState.selectedPhotoIds,
         },
         validTaskModes,
       });
@@ -572,10 +723,25 @@ export function App() {
         task: activeTask.id === "all" ? {} : activeTask,
         discoverHistorySize: settings.discoverHistorySize,
         discoverWindowSize: settings.discoverWindowSize,
+        selectedPhotoIds: normalizedViewState.selectedPhotoIds,
       }) as unknown as PhotoRecord[],
-    [activeFilterDefinitions, activeTask, normalizedViewState.filters, photos, searchTerm, settings.discoverHistorySize, settings.discoverWindowSize, sortMode],
+    [
+      activeFilterDefinitions,
+      activeTask,
+      normalizedViewState.filters,
+      normalizedViewState.selectedPhotoIds,
+      photos,
+      searchTerm,
+      settings.discoverHistorySize,
+      settings.discoverWindowSize,
+      sortMode,
+    ],
   );
   const previewPhotos = filteredPhotos.slice(0, previewResultLimit);
+  const candidatePhotos = useMemo(
+    () => selectedPhotos(normalizedViewState.selectedPhotoIds, photos) as PhotoRecord[],
+    [normalizedViewState.selectedPhotoIds, photos],
+  );
   const visibleSummary =
     filteredPhotos.length > previewPhotos.length
       ? `顯示前 ${previewPhotos.length} 張，尚有 ${filteredPhotos.length - previewPhotos.length} 張`
@@ -587,6 +753,28 @@ export function App() {
     taskMode: activeTask,
   });
   const hasActiveFilters = activeFilterKeys.some((key) => (normalizedViewState.filters[key] ?? []).length > 0);
+  async function copyCandidates() {
+    const candidateListUrl = new URL(window.location.href);
+    candidateListUrl.hash = "";
+    const text = candidateCopyText(
+      candidatePhotos,
+      {
+        photoTitle: candidatePhotoTitle,
+        finderLink,
+        candidateListLink: () => candidateListUrl.toString(),
+        sheetRowLink: (photo) => sheetRowLink(photo as PhotoRecord, data),
+        labelFor: (fieldName, value) => optionLabelFor(data, { key: fieldName, field: fieldName, label: fieldName, source: { labels: true } }, String(value ?? "")),
+      },
+      copyTemplate,
+    );
+    try {
+      const copied = await copyTextToClipboard(text);
+      setCopyStatus(copied ? "已複製" : "複製失敗");
+    } catch {
+      setCopyStatus("複製失敗");
+    }
+    window.setTimeout(() => setCopyStatus(""), 1600);
+  }
 
   return (
     <main className="finder-shell">
@@ -681,6 +869,15 @@ export function App() {
         </div>
       </section>
 
+      <CandidatePanel
+        candidates={candidatePhotos}
+        copyTemplate={copyTemplate}
+        copyStatus={copyStatus}
+        onCopyTemplateChange={setCopyTemplate}
+        onCopy={copyCandidates}
+        onClear={() => dispatch({ type: "clearCandidates" })}
+      />
+
       <section className="finder-status" aria-live="polite">
         {error ? (
           <strong>資料載入失敗：{error}</strong>
@@ -700,7 +897,14 @@ export function App() {
 
       <section className="photo-grid" aria-label="照片預覽">
         {previewPhotos.length > 0 ? (
-          previewPhotos.map((photo) => <PhotoCard key={photo.photo_id} photo={photo} />)
+          previewPhotos.map((photo) => (
+            <PhotoCard
+              key={photo.photo_id}
+              photo={photo}
+              selected={selectedPhotoIdSet.has(photo.photo_id)}
+              onToggleCandidate={(photoId) => dispatch({ type: "toggleCandidate", photoId })}
+            />
+          ))
         ) : (
           <div className="empty-result">沒有符合目前搜尋的照片</div>
         )}

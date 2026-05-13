@@ -128,7 +128,7 @@ async function runInteractionSmoke({ url }) {
     initialUrl.searchParams.append("use", "社群貼文");
     initialUrl.searchParams.append("scene", "攤位");
     initialUrl.searchParams.set("curation", "reviewed");
-    initialUrl.searchParams.set("selected", "200,100");
+    initialUrl.searchParams.set("selected", "54682769955,54681614067");
 
     const target = await openDevtoolsTarget(debugPort, initialUrl.href);
     ws = new WebSocket(target.webSocketDebuggerUrl);
@@ -148,6 +148,7 @@ async function runInteractionSmoke({ url }) {
         useSelected: [...document.querySelectorAll('.filter-control select')]
           .some((select) => [...select.selectedOptions].some((option) => option.value === '社群貼文')),
         activeTaskLabel: document.querySelector('.task-mode.is-active strong')?.textContent,
+        candidateHeading: document.querySelector('.candidate-panel h2')?.textContent,
         location: window.location.search,
         resultCountText: document.querySelector('.finder-status strong')?.textContent
       }))()`,
@@ -165,8 +166,45 @@ async function runInteractionSmoke({ url }) {
     if (!hydratedValue.sceneSelected || !hydratedValue.useSelected) {
       throw new Error("Expected URL filter to hydrate active primary filter control");
     }
+    if (hydratedValue.candidateHeading !== "候選 2") {
+      throw new Error(`Expected URL selected to hydrate candidate panel, got ${hydratedValue.candidateHeading}`);
+    }
     if (!String(hydratedValue.resultCountText).includes("/ 30 張照片")) {
       throw new Error(`Expected hydrated result count text, got ${hydratedValue.resultCountText}`);
+    }
+
+    const copySmoke = await evaluate(
+      ws,
+      31,
+      `(async () => {
+        Object.defineProperty(navigator, 'clipboard', {
+          configurable: true,
+          value: {
+            writeText: async (text) => {
+              window.__reactCandidateCopyText = text;
+            }
+          }
+        });
+        const copySelect = document.querySelector('.candidate-panel__actions select');
+        const labels = [...copySelect.options].map((option) => option.textContent);
+        const selectValueSetter = Object.getOwnPropertyDescriptor(window.HTMLSelectElement.prototype, 'value').set;
+        selectValueSetter.call(copySelect, 'collaboration');
+        copySelect.dispatchEvent(new Event('change', { bubbles: true }));
+        document.querySelector('.candidate-panel__actions button').click();
+        await new Promise((resolve) => window.setTimeout(resolve, 100));
+        return {
+          labels,
+          copiedText: window.__reactCandidateCopyText
+        };
+      })()`,
+    );
+    const copySmokeValue = copySmoke.result.value;
+    const expectedCopyLabels = ["IM 討論版", "贊助佐證版", "協作檢查版", "純 Flickr URL"];
+    if (JSON.stringify(copySmokeValue.labels) !== JSON.stringify(expectedCopyLabels)) {
+      throw new Error(`Expected candidate copy labels to match vanilla UI, got ${JSON.stringify(copySmokeValue.labels)}`);
+    }
+    if (!String(copySmokeValue.copiedText).includes("Finder 清單:") || !String(copySmokeValue.copiedText).includes("Sheets:")) {
+      throw new Error(`Expected collaboration copy to include Finder list and Sheets links, got ${copySmokeValue.copiedText}`);
     }
 
     const interaction = await evaluate(
@@ -197,7 +235,10 @@ async function runInteractionSmoke({ url }) {
         search: document.querySelector('input[type="search"]')?.value,
         sort: document.querySelector('select')?.value,
         searchParams: window.location.search,
-        activeTaskLabel: document.querySelector('.task-mode.is-active strong')?.textContent
+        activeTaskLabel: document.querySelector('.task-mode.is-active strong')?.textContent,
+        firstPhotoIds: [...document.querySelectorAll('.photo-card')]
+          .slice(0, 2)
+          .map((card) => card.dataset.photoId)
       }))()`,
     );
     const updatedValue = updated.result.value;
@@ -220,11 +261,14 @@ async function runInteractionSmoke({ url }) {
     if (updatedParams.get("curation") !== "reviewed") {
       throw new Error(`Expected reset to preserve unimplemented filter URL keys, got ${updatedValue.searchParams}`);
     }
-    if (updatedParams.get("selected") !== "200,100") {
+    if (updatedParams.get("selected") !== "54682769955,54681614067") {
       throw new Error(`Expected reset to preserve selected URL key, got ${updatedValue.searchParams}`);
     }
     if (updatedValue.activeTaskLabel !== "全部照片") {
       throw new Error(`Expected reset to restore all task mode, got ${updatedValue.activeTaskLabel}`);
+    }
+    if (updatedValue.firstPhotoIds[0] !== "54682769955" || updatedValue.firstPhotoIds[1] !== "54681614067") {
+      throw new Error(`Expected preserved URL selected order to promote result cards, got ${JSON.stringify(updatedValue.firstPhotoIds)}`);
     }
 
     const filterOnly = await evaluate(
@@ -261,6 +305,23 @@ async function runInteractionSmoke({ url }) {
     }
     if (filterReset.result.value.anySelectedFilter) {
       throw new Error("Expected filter-only reset to clear selected filter controls");
+    }
+
+    await evaluate(ws, 9, "document.querySelector('.candidate-panel__actions button:last-child').click()");
+    await delay(400);
+    const candidateClear = await evaluate(
+      ws,
+      10,
+      `(() => ({
+        searchParams: window.location.search,
+        candidateHeading: document.querySelector('.candidate-panel h2')?.textContent
+      }))()`,
+    );
+    if (new URLSearchParams(candidateClear.result.value.searchParams).has("selected")) {
+      throw new Error(`Expected clear candidates to remove selected query, got ${candidateClear.result.value.searchParams}`);
+    }
+    if (candidateClear.result.value.candidateHeading !== "候選 0") {
+      throw new Error(`Expected clear candidates to update candidate count, got ${candidateClear.result.value.candidateHeading}`);
     }
 
     ws.close();
