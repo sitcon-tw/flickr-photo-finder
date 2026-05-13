@@ -525,26 +525,8 @@
       const status = document.querySelector("#status");
 
       const bootstrapState = <?!= bootstrapState ?>;
-      const rowBufferBefore = 10;
-      const rowBufferAfter = 10;
-      const sidebarFieldNames = [
-        "people_count",
-        "subject_type",
-        "scene_tags",
-        "mood_tags",
-        "recommended_uses",
-        "sponsorship_items",
-        "sponsorship_tags",
-        "orientation",
-        "has_negative_space",
-        "safe_crop",
-        "visual_description",
-        "public_use_status",
-        "priority_level",
-        "collections",
-        "curation_notes",
-      ];
-      const sidebarFieldSet = new Set(sidebarFieldNames);
+      const rowBufferBefore = bootstrapState.current?.bufferBefore || 10;
+      const rowBufferAfter = bootstrapState.current?.bufferAfter || 10;
       const rowCache = new Map();
       let currentState = null;
       let completingReview = false;
@@ -869,7 +851,7 @@
       }
 
       function visibleFields() {
-        return currentState.fields.filter((field) => sidebarFieldSet.has(field.name) && !field.readOnly);
+        return currentState.fields.filter((field) => !field.readOnly);
       }
 
       function valuesFromForm() {
@@ -1089,7 +1071,7 @@
         previewUrl.href = imageUrl || state.record.image_preview_url || "#";
 
         state.fields.forEach((field) => {
-          if (!sidebarFieldSet.has(field.name) || field.readOnly) {
+          if (field.readOnly) {
             return;
           }
           const wrapper = document.createElement("div");

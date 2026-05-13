@@ -35,7 +35,7 @@ function saveReviewWebAppPhoto(photoId, values) {
 function buildReviewWebAppPhotoSummary_(row, rowNumber) {
   const record = rowToRecord_(row);
   const summary = { rowNumber };
-  PHOTO_FINDER_REVIEW_WEB_APP_LIST_FIELDS.forEach((fieldName) => {
+  getReviewWebAppListFields_().forEach((fieldName) => {
     summary[fieldName] = record[fieldName] || "";
   });
   return summary;
@@ -43,14 +43,11 @@ function buildReviewWebAppPhotoSummary_(row, rowNumber) {
 
 function buildReviewWebAppFilterOptions_(photos) {
   const config = getConfig_();
-  return {
-    curation_status: config.taxonomy.curation_status || [],
-    public_use_status: config.taxonomy.public_use_status || [],
-    recommended_uses: config.taxonomy.recommended_uses || [],
-    scene_tags: config.taxonomy.scene_tags || [],
-    sponsorship_items: config.taxonomy.sponsorship_items || [],
-    collections: collectListValues_(photos, "collections"),
-  };
+  const options = {};
+  getReviewWebAppFilterFields_().forEach((fieldName) => {
+    options[fieldName] = config.taxonomy[fieldName] || collectListValues_(photos, fieldName);
+  });
+  return options;
 }
 
 function collectListValues_(records, fieldName) {
@@ -65,25 +62,25 @@ function collectListValues_(records, fieldName) {
 
 function normalizeReviewWebAppFilters_(filters) {
   const source = filters && typeof filters === "object" ? filters : {};
-  return {
-    curation_status: normalizeText_(source.curation_status),
-    public_use_status: normalizeText_(source.public_use_status),
-    recommended_uses: normalizeText_(source.recommended_uses),
-    scene_tags: normalizeText_(source.scene_tags),
-    sponsorship_items: normalizeText_(source.sponsorship_items),
-    query: normalizeText_(source.query).toLowerCase(),
-  };
+  const normalized = { query: normalizeText_(source.query).toLowerCase() };
+  getReviewWebAppFilterFields_().forEach((fieldName) => {
+    normalized[fieldName] = normalizeText_(source[fieldName]);
+  });
+  return normalized;
 }
 
 function matchesReviewWebAppFilters_(photo, filters) {
   return (
     matchesQuery_(photo, filters.query) &&
-    matchesScalarField_(photo, "curation_status", filters.curation_status) &&
-    matchesScalarField_(photo, "public_use_status", filters.public_use_status) &&
-    matchesListField_(photo, "recommended_uses", filters.recommended_uses) &&
-    matchesListField_(photo, "scene_tags", filters.scene_tags) &&
-    matchesListField_(photo, "sponsorship_items", filters.sponsorship_items)
+    getReviewWebAppFilterFields_().every((fieldName) => matchesReviewWebAppField_(photo, fieldName, filters[fieldName]))
   );
+}
+
+function matchesReviewWebAppField_(photo, fieldName, expectedValue) {
+  const field = getConfig_().fields.find((item) => item.name === fieldName);
+  return field?.multiValue
+    ? matchesListField_(photo, fieldName, expectedValue)
+    : matchesScalarField_(photo, fieldName, expectedValue);
 }
 
 function matchesQuery_(photo, query) {
@@ -111,4 +108,3 @@ function matchesScalarField_(record, fieldName, expectedValue) {
 function matchesListField_(record, fieldName, expectedValue) {
   return !expectedValue || splitList_(record[fieldName] || "").includes(expectedValue);
 }
-

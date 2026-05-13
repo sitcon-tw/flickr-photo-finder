@@ -11,7 +11,7 @@ function getReviewPanelBootstrapState() {
   const rowNumber = getActivePhotoRowNumber_(sheet);
   return {
     current: buildReviewPanelState_(sheet, rowNumber),
-    buffer: buildReviewPhotoBuffer_(sheet, rowNumber, PHOTO_FINDER_REVIEW_PANEL_BUFFER_BEFORE, PHOTO_FINDER_REVIEW_PANEL_BUFFER_AFTER),
+    buffer: buildReviewPhotoBuffer_(sheet, rowNumber, getReviewPanelBufferBefore_(), getReviewPanelBufferAfter_()),
   };
 }
 
@@ -115,6 +115,8 @@ function buildReviewPanelStateFromRow_(row, rowNumber, providedErrors) {
   return {
     errors: blockingValidationIssues_(issues),
     warnings: issues.filter(isWarningIssue_),
+    bufferAfter: getReviewPanelBufferAfter_(),
+    bufferBefore: getReviewPanelBufferBefore_(),
     fields: getReviewPanelFields_(),
     record,
     reviewedRequiredFields: config.reviewedRequiredFields || [],
@@ -133,7 +135,11 @@ function rowToRecord_(row) {
 
 function getReviewPanelFields_() {
   const config = getConfig_();
-  return config.fields.map((field) => ({
+  const fieldNames = getReviewPanelFieldNames_();
+  const fields = fieldNames.length > 0
+    ? fieldNames.map((fieldName) => config.fields.find((field) => field.name === fieldName)).filter(Boolean)
+    : config.fields;
+  return fields.map((field) => ({
     descriptionZh: field.descriptionZh || "",
     labelZh: field.labelZh || field.name,
     multiValue: Boolean(field.multiValue),
