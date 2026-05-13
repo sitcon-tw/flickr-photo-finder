@@ -1,57 +1,80 @@
 // URL query serialization for the Pages finder. Keep this independent from DOM
 // controls so deep-link behavior stays reviewable and testable.
-function urlValue(key, value) {
-  return value ? [[key, value]] : [];
+const filterUrlKeys = {
+  album: "album",
+  use: "use",
+  mood: "mood",
+  scene: "scene",
+  peopleCount: "people",
+  subjectType: "subject",
+  orientation: "orientation",
+  negativeSpace: "negative",
+  safeCrop: "crop",
+  sponsorshipTag: "sponsorTag",
+  sponsorshipItem: "sponsorItem",
+  publicStatus: "public",
+  priority: "priority",
+  curationStatus: "curation",
+  collection: "collection",
+};
+
+function cleanValues(values) {
+  const seen = new Set();
+  return (Array.isArray(values) ? values : [values])
+    .map((value) => String(value ?? "").trim())
+    .filter(Boolean)
+    .filter((value) => {
+      const key = value.toLowerCase();
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    });
+}
+
+function appendValues(params, key, values) {
+  for (const value of cleanValues(values)) {
+    params.append(key, value);
+  }
 }
 
 export function encodeUrlState(state) {
   const params = new URLSearchParams();
-  for (const [key, value] of [
-    ...urlValue("task", state.taskMode !== "all" ? state.taskMode : ""),
-    ...urlValue("q", String(state.search ?? "").trim()),
-    ...urlValue("sort", state.sort !== "recommended" ? state.sort : ""),
-    ...urlValue("album", state.album),
-    ...urlValue("use", state.use),
-    ...urlValue("mood", state.mood),
-    ...urlValue("scene", state.scene),
-    ...urlValue("people", state.peopleCount),
-    ...urlValue("subject", state.subjectType),
-    ...urlValue("orientation", state.orientation),
-    ...urlValue("negative", state.negativeSpace),
-    ...urlValue("crop", state.safeCrop),
-    ...urlValue("sponsorTag", state.sponsorshipTag),
-    ...urlValue("sponsorItem", String(state.sponsorshipItem ?? "").trim()),
-    ...urlValue("public", state.publicStatus),
-    ...urlValue("priority", state.priority),
-    ...urlValue("curation", state.curationStatus),
-    ...urlValue("collection", state.collection),
-    ...urlValue("selected", [...(state.selectedPhotoIds ?? [])].join(",")),
-  ]) {
-    params.set(key, value);
+
+  if (state.taskMode && state.taskMode !== "all") {
+    params.set("task", state.taskMode);
+  }
+  const search = String(state.search ?? "").trim();
+  if (search) {
+    params.set("q", search);
+  }
+  if (state.sort && state.sort !== "recommended") {
+    params.set("sort", state.sort);
+  }
+
+  for (const [filterKey, urlKey] of Object.entries(filterUrlKeys)) {
+    appendValues(params, urlKey, state.filters?.[filterKey] ?? []);
+  }
+
+  const selected = [...(state.selectedPhotoIds ?? [])].map((value) => String(value ?? "").trim()).filter(Boolean);
+  if (selected.length > 0) {
+    params.set("selected", selected.join(","));
   }
   return params;
 }
 
 export function decodeUrlState(params) {
+  const filters = {};
+  for (const [filterKey, urlKey] of Object.entries(filterUrlKeys)) {
+    filters[filterKey] = cleanValues(params.getAll(urlKey));
+  }
+
   return {
     taskMode: params.get("task") ?? "",
     search: params.get("q") ?? "",
     sort: params.get("sort") ?? "",
-    album: params.get("album") ?? "",
-    use: params.get("use") ?? "",
-    mood: params.get("mood") ?? "",
-    scene: params.get("scene") ?? "",
-    peopleCount: params.get("people") ?? "",
-    subjectType: params.get("subject") ?? "",
-    orientation: params.get("orientation") ?? "",
-    negativeSpace: params.get("negative") ?? "",
-    safeCrop: params.get("crop") ?? "",
-    sponsorshipTag: params.get("sponsorTag") ?? "",
-    sponsorshipItem: params.get("sponsorItem") ?? "",
-    publicStatus: params.get("public") ?? "",
-    priority: params.get("priority") ?? "",
-    curationStatus: params.get("curation") ?? "",
-    collection: params.get("collection") ?? "",
+    filters,
     selectedPhotoIds: (params.get("selected") ?? "").split(",").filter(Boolean),
   };
 }

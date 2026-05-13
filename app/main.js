@@ -14,11 +14,15 @@ import { dataSources, projectConfigUrl } from "./config.js";
 import {
   activeFilterEntries as buildActiveFilterEntries,
   bindControlDismissal,
+  filterDefinitions,
   queryControls,
   queryElements,
+  selectedControlValues,
+  setControlValues,
   setupFilters,
   setupTaskModes,
   syncEnhancedSelects,
+  updateFilterLayout,
 } from "./controls.js";
 import { loadFinderData, optionLabelsFor } from "./data-loader.js";
 import { renderOverview as renderOverviewPanel } from "./overview-render.js";
@@ -66,10 +70,65 @@ let searchTokensForField = () => [];
 
 const state = {
   taskMode: "all",
+  filters: Object.fromEntries(filterDefinitions.map((definition) => [definition.key, []])),
   selectedPhotoIds: new Set(),
   promotedPhotoIds: new Set(),
   lastTrackedZeroState: "",
 };
+
+const filterControls = Object.fromEntries(filterDefinitions.map((definition) => [definition.key, controls[definition.control]]));
+
+function cleanFilterValues(values) {
+  const seen = new Set();
+  return (Array.isArray(values) ? values : [values])
+    .map((value) => String(value ?? "").trim())
+    .filter(Boolean)
+    .filter((value) => {
+      const key = value.toLowerCase();
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    });
+}
+
+function setFilterValues(key, values, { syncControl = true } = {}) {
+  if (!Object.hasOwn(state.filters, key)) {
+    return;
+  }
+  state.filters[key] = cleanFilterValues(values);
+  if (syncControl && filterControls[key]) {
+    setControlValues(filterControls[key], state.filters[key], { dispatch: false });
+  }
+}
+
+function clearFilterValue(key, value) {
+  const target = String(value ?? "").trim().toLowerCase();
+  if (!target) {
+    setFilterValues(key, []);
+    return;
+  }
+  setFilterValues(
+    key,
+    state.filters[key].filter((item) => item.toLowerCase() !== target),
+  );
+}
+
+function syncControlsFromState() {
+  for (const definition of filterDefinitions) {
+    setControlValues(controls[definition.control], state.filters[definition.key] ?? [], { dispatch: false });
+  }
+  syncEnhancedSelects();
+}
+
+function syncStateFromControl(key) {
+  const control = filterControls[key];
+  if (!control) {
+    return;
+  }
+  setFilterValues(key, selectedControlValues(control), { syncControl: false });
+}
 
 function photosSheetUrl() {
   const spreadsheetId = String(projectConfig.googleSheets?.spreadsheetId ?? "").trim();
@@ -91,25 +150,27 @@ function setExternalLink(link, href) {
 }
 
 function currentFilterSnapshot() {
+  const filterCounts = Object.fromEntries(Object.entries(state.filters).map(([key, values]) => [`${key}Count`, values.length]));
   return {
     taskMode: state.taskMode,
     searchTerm: sanitizeSearchTerm(controls.search.value),
-    recommendedUse: controls.use.value,
-    mood: controls.mood.value,
+    recommendedUse: state.filters.use,
+    mood: state.filters.mood,
     sortMode: controls.sort.value,
-    album: controls.album.value,
-    scene: controls.scene.value,
-    peopleCount: controls.peopleCount.value,
-    subjectType: controls.subjectType.value,
-    orientation: controls.orientation.value,
-    negativeSpace: controls.negativeSpace.value,
-    safeCrop: controls.safeCrop.value,
-    sponsorshipTag: controls.sponsorshipTag.value,
-    sponsorshipItem: sanitizeSearchTerm(controls.sponsorshipItem.value),
-    publicUseStatus: controls.publicStatus.value,
-    priorityLevel: controls.priority.value,
-    curationStatus: controls.curationStatus.value,
-    collection: controls.collection.value,
+    album: state.filters.album,
+    scene: state.filters.scene,
+    peopleCount: state.filters.peopleCount,
+    subjectType: state.filters.subjectType,
+    orientation: state.filters.orientation,
+    negativeSpace: state.filters.negativeSpace,
+    safeCrop: state.filters.safeCrop,
+    sponsorshipTag: state.filters.sponsorshipTag,
+    sponsorshipItemCount: state.filters.sponsorshipItem.length,
+    publicUseStatus: state.filters.publicStatus,
+    priorityLevel: state.filters.priority,
+    curationStatus: state.filters.curationStatus,
+    collection: state.filters.collection,
+    ...filterCounts,
     resultCount: currentResults.length,
   };
 }
@@ -160,21 +221,21 @@ function activeTask() {
 function currentPhotoFilters() {
   return {
     search: controls.search.value,
-    album: controls.album.value,
-    recommendedUse: controls.use.value,
-    mood: controls.mood.value,
-    scene: controls.scene.value,
-    peopleCount: controls.peopleCount.value,
-    subjectType: controls.subjectType.value,
-    orientation: controls.orientation.value,
-    negativeSpace: controls.negativeSpace.value,
-    safeCrop: controls.safeCrop.value,
-    sponsorshipTag: controls.sponsorshipTag.value,
-    sponsorshipItem: controls.sponsorshipItem.value,
-    publicStatus: controls.publicStatus.value,
-    priority: controls.priority.value,
-    curationStatus: controls.curationStatus.value,
-    collection: controls.collection.value,
+    album: state.filters.album,
+    recommendedUse: state.filters.use,
+    mood: state.filters.mood,
+    scene: state.filters.scene,
+    peopleCount: state.filters.peopleCount,
+    subjectType: state.filters.subjectType,
+    orientation: state.filters.orientation,
+    negativeSpace: state.filters.negativeSpace,
+    safeCrop: state.filters.safeCrop,
+    sponsorshipTag: state.filters.sponsorshipTag,
+    sponsorshipItem: state.filters.sponsorshipItem,
+    publicStatus: state.filters.publicStatus,
+    priority: state.filters.priority,
+    curationStatus: state.filters.curationStatus,
+    collection: state.filters.collection,
   };
 }
 
@@ -294,13 +355,13 @@ function activeFilterEntries() {
   return buildActiveFilterEntries({ state, controls, activeTask: activeTask() });
 }
 
-function clearFilter(key) {
+function clearFilter(key, value = "") {
   if (key === "task") {
     state.taskMode = "all";
   } else if (key === "search") {
     controls.search.value = "";
-  } else if (controls[key]) {
-    controls[key].value = "";
+  } else {
+    clearFilterValue(key, value);
   }
   syncEnhancedSelects();
   render({ resetPage: true, source: "filter" });
@@ -321,6 +382,7 @@ function render({ resetPage = false, preservePage = false, preserveScroll = fals
   }
 
   updateTaskButtons({ elements, taskMode: state.taskMode });
+  updateFilterLayout({ controls, elements, taskMode: state.taskMode });
   renderActiveFilters({ elements, activeFilterEntries });
   renderCandidates({
     selectedPhotoIds: state.selectedPhotoIds,
@@ -384,22 +446,10 @@ function resetFilters() {
   state.taskMode = "all";
   controls.search.value = "";
   controls.sort.value = "recommended";
-  controls.album.value = "";
-  controls.use.value = "";
-  controls.mood.value = "";
-  controls.scene.value = "";
-  controls.peopleCount.value = "";
-  controls.subjectType.value = "";
-  controls.orientation.value = "";
-  controls.negativeSpace.value = "";
-  controls.safeCrop.value = "";
-  controls.sponsorshipTag.value = "";
-  controls.sponsorshipItem.value = "";
-  controls.publicStatus.value = "";
-  controls.priority.value = "";
-  controls.curationStatus.value = "";
-  controls.collection.value = "";
-  syncEnhancedSelects();
+  for (const definition of filterDefinitions) {
+    setFilterValues(definition.key, []);
+  }
+  syncControlsFromState();
   render({ resetPage: true, source: "filter" });
 }
 
@@ -409,30 +459,10 @@ function syncUrlState() {
     taskMode: state.taskMode,
     search: controls.search.value,
     sort: controls.sort.value,
-    album: controls.album.value,
-    use: controls.use.value,
-    mood: controls.mood.value,
-    scene: controls.scene.value,
-    peopleCount: controls.peopleCount.value,
-    subjectType: controls.subjectType.value,
-    orientation: controls.orientation.value,
-    negativeSpace: controls.negativeSpace.value,
-    safeCrop: controls.safeCrop.value,
-    sponsorshipTag: controls.sponsorshipTag.value,
-    sponsorshipItem: controls.sponsorshipItem.value,
-    publicStatus: controls.publicStatus.value,
-    priority: controls.priority.value,
-    curationStatus: controls.curationStatus.value,
-    collection: controls.collection.value,
+    filters: state.filters,
     selectedPhotoIds: state.selectedPhotoIds,
   }).toString();
   window.history.replaceState(null, "", url);
-}
-
-function setControlValue(control, value) {
-  if (value && [...control.options].some((option) => option.value === value)) {
-    control.value = value;
-  }
 }
 
 function applyUrlState() {
@@ -441,27 +471,17 @@ function applyUrlState() {
     state.taskMode = urlState.taskMode;
   }
   controls.search.value = urlState.search;
-  setControlValue(controls.sort, urlState.sort);
-  setControlValue(controls.album, urlState.album);
-  setControlValue(controls.use, urlState.use);
-  setControlValue(controls.mood, urlState.mood);
-  setControlValue(controls.scene, urlState.scene);
-  setControlValue(controls.peopleCount, urlState.peopleCount);
-  setControlValue(controls.subjectType, urlState.subjectType);
-  setControlValue(controls.orientation, urlState.orientation);
-  setControlValue(controls.negativeSpace, urlState.negativeSpace);
-  setControlValue(controls.safeCrop, urlState.safeCrop);
-  setControlValue(controls.sponsorshipTag, urlState.sponsorshipTag);
-  controls.sponsorshipItem.value = urlState.sponsorshipItem;
-  setControlValue(controls.publicStatus, urlState.publicStatus);
-  setControlValue(controls.priority, urlState.priority);
-  setControlValue(controls.curationStatus, urlState.curationStatus);
-  setControlValue(controls.collection, urlState.collection);
+  if (urlState.sort && [...controls.sort.options].some((option) => option.value === urlState.sort)) {
+    controls.sort.value = urlState.sort;
+  }
+  for (const definition of filterDefinitions) {
+    setFilterValues(definition.key, urlState.filters[definition.key] ?? [], { syncControl: false });
+  }
   for (const photoId of urlState.selectedPhotoIds) {
     state.selectedPhotoIds.add(photoId);
     state.promotedPhotoIds.add(photoId);
   }
-  syncEnhancedSelects();
+  syncControlsFromState();
 }
 
 function revealPhotoFromHash() {
@@ -504,6 +524,7 @@ async function loadData() {
     optionLabels,
     uniqueSorted,
   });
+  updateFilterLayout({ controls, elements, taskMode: state.taskMode });
   applyUrlState();
   renderOverview();
   render({ resetPage: true });
@@ -531,7 +552,15 @@ for (const [key, control] of Object.entries(controls)) {
   if (["reset", "loadMore", "copyCandidates", "clearCandidates", "candidateCopyTemplate", "copyAiAssistantPrompt"].includes(key)) {
     continue;
   }
-  control.addEventListener("input", key === "search" ? scheduleSearchRender : () => render({ resetPage: true, source: "filter" }));
+  const filterDefinition = filterDefinitions.find((definition) => definition.control === key);
+  if (filterDefinition) {
+    control.addEventListener("input", () => {
+      syncStateFromControl(filterDefinition.key);
+      render({ resetPage: true, source: "filter" });
+    });
+  } else {
+    control.addEventListener("input", key === "search" ? scheduleSearchRender : () => render({ resetPage: true, source: "filter" }));
+  }
 }
 
 elements.activeFilters.addEventListener("click", (event) => {
@@ -539,7 +568,7 @@ elements.activeFilters.addEventListener("click", (event) => {
   if (!button) {
     return;
   }
-  clearFilter(button.dataset.filterKey);
+  clearFilter(button.dataset.filterKey, button.dataset.filterValue ?? "");
 });
 
 controls.reset.addEventListener("click", resetFilters);

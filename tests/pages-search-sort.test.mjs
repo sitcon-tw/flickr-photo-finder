@@ -171,6 +171,71 @@ describe("Pages search/sort pure logic", () => {
     );
   });
 
+  it("matches any selected value within a filter and all selected filter groups", () => {
+    const boothLandscape = withSearchText(
+      photo({
+        photo_id: "booth-landscape",
+        scene_tags: ["攤位"],
+        orientation: "landscape",
+      }),
+    );
+    const audiencePortrait = withSearchText(
+      photo({
+        photo_id: "audience-portrait",
+        scene_tags: ["會眾"],
+        orientation: "portrait",
+      }),
+    );
+    const stageLandscape = withSearchText(
+      photo({
+        photo_id: "stage-landscape",
+        scene_tags: ["舞台"],
+        orientation: "landscape",
+      }),
+    );
+
+    const results = filterAndSortPhotos([stageLandscape, audiencePortrait, boothLandscape], {
+      filters: {
+        scene: ["攤位", "會眾"],
+        orientation: ["landscape"],
+      },
+    });
+
+    assert.deepEqual(
+      results.map((result) => result.photo_id),
+      ["booth-landscape"],
+    );
+  });
+
+  it("matches multi-value people buckets and sponsor item tokens", () => {
+    const booth = withSearchText(
+      photo({
+        photo_id: "booth",
+        people_count: "8",
+        sponsorship_items: ["Badge 識別證贊助"],
+      }),
+    );
+    const noPeople = withSearchText(
+      photo({
+        photo_id: "no-people",
+        people_count: "0",
+        sponsorship_items: ["茶點贊助"],
+      }),
+    );
+
+    const results = filterAndSortPhotos([noPeople, booth], {
+      filters: {
+        peopleCount: ["6-20", "21+"],
+        sponsorshipItem: ["badge", "攤位"],
+      },
+    });
+
+    assert.deepEqual(
+      results.map((result) => result.photo_id),
+      ["booth"],
+    );
+  });
+
   it("builds AI assistant prompts from explicit finder state", () => {
     const prompt = buildAiAssistantPrompt({
       sheetUrl: "https://docs.google.com/spreadsheets/d/example/edit",
@@ -193,32 +258,41 @@ describe("Pages search/sort pure logic", () => {
       taskMode: "hero",
       search: " 講者 ",
       sort: "recommended",
-      album: "id:123",
+      filters: {
+        album: ["id:123", "id:456"],
+        scene: ["舞台", "講者"],
+        orientation: ["landscape"],
+        sponsorshipItem: ["badge", "logo"],
+      },
       selectedPhotoIds: new Set(["100", "200"]),
     });
 
     assert.equal(params.get("sort"), null);
     assert.equal(params.get("q"), "講者");
+    assert.deepEqual(params.getAll("album"), ["id:123", "id:456"]);
+    assert.deepEqual(params.getAll("scene"), ["舞台", "講者"]);
     assert.equal(params.get("selected"), "100,200");
     assert.deepEqual(decodeUrlState(params), {
       taskMode: "hero",
       search: "講者",
       sort: "",
-      album: "id:123",
-      use: "",
-      mood: "",
-      scene: "",
-      peopleCount: "",
-      subjectType: "",
-      orientation: "",
-      negativeSpace: "",
-      safeCrop: "",
-      sponsorshipTag: "",
-      sponsorshipItem: "",
-      publicStatus: "",
-      priority: "",
-      curationStatus: "",
-      collection: "",
+      filters: {
+        album: ["id:123", "id:456"],
+        use: [],
+        mood: [],
+        scene: ["舞台", "講者"],
+        peopleCount: [],
+        subjectType: [],
+        orientation: ["landscape"],
+        negativeSpace: [],
+        safeCrop: [],
+        sponsorshipTag: [],
+        sponsorshipItem: ["badge", "logo"],
+        publicStatus: [],
+        priority: [],
+        curationStatus: [],
+        collection: [],
+      },
       selectedPhotoIds: ["100", "200"],
     });
   });
@@ -361,9 +435,16 @@ describe("Pages search/sort pure logic", () => {
   });
 
   it("shapes active filter entries for AI prompts and filter chips", () => {
-    const select = (value, text) => ({ value, selectedOptions: [{ textContent: text }] });
+    const select = (value, text) => ({ value, options: [{ value, textContent: text }], selectedOptions: [{ textContent: text }] });
     const entries = activeFilterEntries({
-      state: { taskMode: "social" },
+      state: {
+        taskMode: "social",
+        filters: {
+          album: ["id:1"],
+          scene: ["交流"],
+          sponsorshipItem: ["攤位"],
+        },
+      },
       activeTask: socialTask,
       controls: {
         search: { value: "  講者  " },
@@ -381,16 +462,16 @@ describe("Pages search/sort pure logic", () => {
         priority: select("", ""),
         curationStatus: select("", ""),
         collection: select("", ""),
-        sponsorshipItem: { value: "攤位" },
+        sponsorshipItem: { value: "", dataset: { tokenInput: "true", values: "攤位" } },
       },
     });
 
     assert.deepEqual(entries, [
       ["task", "任務", "社群貼文"],
       ["search", "搜尋", "講者"],
-      ["album", "活動/相簿", "SITCON 2026"],
-      ["scene", "場景", "交流"],
-      ["sponsorshipItem", "贊助品項", "攤位"],
+      ["album", "活動/相簿", "SITCON 2026", "id:1"],
+      ["scene", "場景", "交流", "交流"],
+      ["sponsorshipItem", "贊助品項", "攤位", "攤位"],
     ]);
   });
 

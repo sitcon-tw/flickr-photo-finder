@@ -6,6 +6,26 @@ import { normalizeText } from "./search-sort.js";
 const enhancedSelects = new Map();
 const autocompleteInputs = new Map();
 
+export const filterDefinitions = [
+  { key: "album", label: "活動/相簿", group: "core", control: "album" },
+  { key: "use", label: "用途", group: "general", control: "use" },
+  { key: "mood", label: "氛圍", group: "general", control: "mood" },
+  { key: "scene", label: "場景", group: "general", control: "scene" },
+  { key: "peopleCount", label: "人數", group: "details", control: "peopleCount" },
+  { key: "subjectType", label: "主體", group: "details", control: "subjectType" },
+  { key: "orientation", label: "方向", group: "visual", control: "orientation" },
+  { key: "negativeSpace", label: "留白", group: "visual", control: "negativeSpace" },
+  { key: "safeCrop", label: "裁切", group: "visual", control: "safeCrop" },
+  { key: "sponsorshipTag", label: "贊助價值", group: "sponsor", control: "sponsorshipTag" },
+  { key: "sponsorshipItem", label: "贊助品項", group: "sponsor", control: "sponsorshipItem" },
+  { key: "publicStatus", label: "使用提醒", group: "status", control: "publicStatus" },
+  { key: "priority", label: "優先度", group: "status", control: "priority" },
+  { key: "curationStatus", label: "整理狀態", group: "status", control: "curationStatus" },
+  { key: "collection", label: "素材包", group: "details", control: "collection" },
+];
+
+export const filterDefinitionsByKey = new Map(filterDefinitions.map((definition) => [definition.key, definition]));
+
 export function queryControls() {
   return {
     search: document.querySelector("#searchInput"),
@@ -47,6 +67,9 @@ export function queryElements() {
     sourceLink: document.querySelector("#sourceLink"),
     repositoryLink: document.querySelector("#repositoryLink"),
     taskModes: document.querySelector("#taskModes"),
+    taskFilterGrid: document.querySelector("#taskFilterGrid"),
+    advancedFilters: document.querySelector("#advancedFilters"),
+    advancedFilterGrid: document.querySelector("#advancedFilterGrid"),
     sponsorshipItemOptions: document.querySelector("#sponsorshipItemOptions"),
     loadMorePanel: document.querySelector("#loadMorePanel"),
     loadMoreSummary: document.querySelector("#loadMoreSummary"),
@@ -86,11 +109,63 @@ function enhancedSelectOptionText(option) {
   return option?.textContent ?? option?.label ?? option?.value ?? "";
 }
 
+export function selectedControlValues(control) {
+  if (!control) {
+    return [];
+  }
+  if (control.dataset?.tokenInput === "true") {
+    return (control.dataset.values ?? "").split("\n").filter(Boolean);
+  }
+  if (control.multiple) {
+    return [...control.selectedOptions].map((option) => option.value).filter(Boolean);
+  }
+  return control.value ? [control.value] : [];
+}
+
+export function setControlValues(control, values, { dispatch = true } = {}) {
+  const selectedValues = new Set((Array.isArray(values) ? values : [values]).map((value) => String(value ?? "").trim()).filter(Boolean));
+  if (control.dataset?.tokenInput === "true") {
+    control.dataset.values = [...selectedValues].join("\n");
+    control.value = "";
+    syncAutocompleteInput(control);
+    if (dispatch) {
+      control.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+    return;
+  }
+  for (const option of control.options) {
+    option.selected = selectedValues.has(option.value);
+  }
+  syncEnhancedSelectValueForSelect(control);
+  if (dispatch) {
+    control.dispatchEvent(new Event("input", { bubbles: true }));
+  }
+}
+
+export function clearControlValues(control) {
+  setControlValues(control, []);
+}
+
+export function optionTextForValue(control, value) {
+  if (control.dataset?.tokenInput === "true") {
+    return value;
+  }
+  const option = [...control.options].find((item) => item.value === value);
+  return enhancedSelectOptionText(option) || value;
+}
+
 function syncEnhancedSelectValue(control) {
-  const selected = control.select.selectedOptions[0];
-  const text = enhancedSelectOptionText(selected) || control.placeholder;
-  control.triggerText.textContent = text;
-  control.trigger.classList.toggle("is-empty", !control.select.value);
+  const values = selectedControlValues(control.select);
+  control.triggerText.textContent = values.length === 0 ? control.placeholder : `已選 ${values.length} 個`;
+  control.trigger.classList.toggle("is-empty", values.length === 0);
+}
+
+function syncEnhancedSelectValueForSelect(select) {
+  const control = enhancedSelects.get(select);
+  if (control) {
+    syncEnhancedSelectValue(control);
+    renderEnhancedSelectOptions(control);
+  }
 }
 
 function closeEnhancedSelect(control) {
@@ -114,8 +189,9 @@ function renderEnhancedSelectOptions(control) {
     button.className = "enhanced-select-option";
     button.dataset.value = option.value;
     button.setAttribute("role", "option");
-    button.setAttribute("aria-selected", option.value === control.select.value ? "true" : "false");
-    button.classList.toggle("is-selected", option.value === control.select.value);
+    const selected = option.value ? selectedControlValues(control.select).includes(option.value) : selectedControlValues(control.select).length === 0;
+    button.setAttribute("aria-selected", selected ? "true" : "false");
+    button.classList.toggle("is-selected", selected);
     button.classList.toggle("is-empty", option.value === "");
     button.textContent = enhancedSelectOptionText(option);
     button.title = enhancedSelectOptionText(option);
@@ -145,16 +221,29 @@ function openEnhancedSelect(control) {
   window.requestAnimationFrame(() => control.search.focus({ preventScroll: true }));
 }
 
-function setEnhancedSelectValue(control, value) {
-  control.select.value = value;
+function toggleEnhancedSelectValue(control, value) {
+  if (!value) {
+    for (const option of control.select.options) {
+      option.selected = false;
+    }
+  } else if (control.select.multiple) {
+    const option = [...control.select.options].find((item) => item.value === value);
+    if (option) {
+      option.selected = !option.selected;
+    }
+  } else {
+    control.select.value = value;
+    closeEnhancedSelect(control);
+  }
   syncEnhancedSelectValue(control);
-  closeEnhancedSelect(control);
+  renderEnhancedSelectOptions(control);
   control.select.dispatchEvent(new Event("input", { bubbles: true }));
 }
 
 function setupEnhancedSelect(select, searchPlaceholder) {
   let control = enhancedSelects.get(select);
   if (!control) {
+    select.multiple = true;
     select.classList.add("enhanced-select-native");
     select.tabIndex = -1;
 
@@ -206,7 +295,7 @@ function setupEnhancedSelect(select, searchPlaceholder) {
       if (!optionButton) {
         return;
       }
-      setEnhancedSelectValue(control, optionButton.dataset.value ?? "");
+      toggleEnhancedSelectValue(control, optionButton.dataset.value ?? "");
     });
     select.addEventListener("input", () => syncEnhancedSelectValue(control));
     select.addEventListener("change", () => syncEnhancedSelectValue(control));
@@ -228,9 +317,71 @@ function closeAutocompleteInput(control) {
   control.panel.hidden = true;
 }
 
+function autocompleteValues(input) {
+  return selectedControlValues(input);
+}
+
+function syncAutocompleteInput(input) {
+  const control = autocompleteInputs.get(input);
+  if (!control) {
+    return;
+  }
+  const values = autocompleteValues(input);
+  const fragment = document.createDocumentFragment();
+  for (const value of values) {
+    const token = document.createElement("button");
+    token.type = "button";
+    token.className = "autocomplete-token";
+    token.dataset.value = value;
+    token.textContent = `${value} ×`;
+    token.title = `移除 ${value}`;
+    fragment.append(token);
+  }
+  control.tokens.replaceChildren(fragment);
+  control.root.classList.toggle("has-tokens", values.length > 0);
+}
+
+function setAutocompleteValues(input, values) {
+  const nextValues = [];
+  const seen = new Set();
+  for (const value of values) {
+    const normalized = String(value ?? "").trim();
+    const key = normalized.toLowerCase();
+    if (!normalized || seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    nextValues.push(normalized);
+  }
+  input.dataset.values = nextValues.join("\n");
+  syncAutocompleteInput(input);
+}
+
+function addAutocompleteInputValue(control, value) {
+  const nextValue = String(value ?? "").trim();
+  if (!nextValue) {
+    return;
+  }
+  setAutocompleteValues(control.input, [...autocompleteValues(control.input), nextValue]);
+  control.input.value = "";
+  control.input.dispatchEvent(new Event("input", { bubbles: true }));
+  renderAutocompleteOptions(control);
+}
+
+function removeAutocompleteInputValue(control, value) {
+  const target = String(value ?? "").trim().toLowerCase();
+  setAutocompleteValues(
+    control.input,
+    autocompleteValues(control.input).filter((item) => item.toLowerCase() !== target),
+  );
+  control.input.dispatchEvent(new Event("input", { bubbles: true }));
+  renderAutocompleteOptions(control);
+}
+
 function renderAutocompleteOptions(control) {
   const query = normalizeText(control.input.value);
-  const values = control.values.filter((value) => !query || normalizeText(value).includes(query));
+  const selected = new Set(autocompleteValues(control.input).map((value) => value.toLowerCase()));
+  const values = control.values.filter((value) => !selected.has(String(value).toLowerCase())).filter((value) => !query || normalizeText(value).includes(query));
   const fragment = document.createDocumentFragment();
 
   for (const value of values) {
@@ -258,19 +409,17 @@ function openAutocompleteInput(control) {
   control.panel.hidden = false;
 }
 
-function setAutocompleteInputValue(control, value) {
-  control.input.value = value;
-  control.input.dispatchEvent(new Event("input", { bubbles: true }));
-  closeAutocompleteInput(control);
-}
-
 function setupAutocompleteInput(input, values) {
   let control = autocompleteInputs.get(input);
   if (!control) {
+    input.dataset.tokenInput = "true";
+    input.dataset.values = input.dataset.values ?? "";
     input.removeAttribute("list");
 
     const root = document.createElement("div");
     root.className = "autocomplete-input";
+    const tokens = document.createElement("div");
+    tokens.className = "autocomplete-tokens";
     const panel = document.createElement("div");
     panel.className = "autocomplete-panel";
     panel.hidden = true;
@@ -280,9 +429,9 @@ function setupAutocompleteInput(input, values) {
     panel.append(options);
 
     input.insertAdjacentElement("beforebegin", root);
-    root.append(input, panel);
+    root.append(tokens, input, panel);
 
-    control = { root, input, panel, options, values: [] };
+    control = { root, input, tokens, panel, options, values: [] };
     autocompleteInputs.set(input, control);
 
     input.addEventListener("focus", () => openAutocompleteInput(control));
@@ -291,18 +440,30 @@ function setupAutocompleteInput(input, values) {
       if (event.key === "Escape") {
         event.preventDefault();
         closeAutocompleteInput(control);
+      } else if (event.key === "Enter") {
+        event.preventDefault();
+        addAutocompleteInputValue(control, input.value);
       }
+    });
+    tokens.addEventListener("click", (event) => {
+      const tokenButton = event.target.closest("[data-value]");
+      if (!tokenButton) {
+        return;
+      }
+      removeAutocompleteInputValue(control, tokenButton.dataset.value ?? "");
     });
     options.addEventListener("click", (event) => {
       const optionButton = event.target.closest("[data-value]");
       if (!optionButton) {
         return;
       }
-      setAutocompleteInputValue(control, optionButton.dataset.value ?? "");
+      addAutocompleteInputValue(control, optionButton.dataset.value ?? "");
+      closeAutocompleteInput(control);
     });
   }
 
   control.values = values;
+  syncAutocompleteInput(input);
   renderAutocompleteOptions(control);
 }
 
@@ -319,6 +480,52 @@ export function bindControlDismissal(root = document) {
       }
     }
   });
+}
+
+const taskPrimaryFilters = {
+  social: ["use", "scene", "orientation", "safeCrop", "negativeSpace", "mood"],
+  hero: ["orientation", "negativeSpace", "safeCrop", "scene", "mood"],
+  visual: ["orientation", "negativeSpace", "safeCrop", "scene", "mood"],
+  "sponsor-pitch": ["sponsorshipTag", "sponsorshipItem", "scene", "orientation", "negativeSpace"],
+  "sponsor-report": ["sponsorshipItem", "sponsorshipTag", "scene"],
+  press: ["scene", "orientation", "use", "mood"],
+  volunteer: ["use", "scene", "mood", "orientation"],
+  recap: ["use", "scene", "mood", "orientation"],
+};
+
+const defaultPrimaryFilters = ["use", "scene", "orientation", "safeCrop", "negativeSpace", "mood"];
+const lowLevelFilters = new Set(["publicStatus", "priority", "curationStatus"]);
+
+function filterLabelFor(controls, definition) {
+  return controls[definition.control]?.closest("label") ?? null;
+}
+
+export function updateFilterLayout({ controls, elements, taskMode }) {
+  const primaryKeys = new Set(taskPrimaryFilters[taskMode] ?? defaultPrimaryFilters);
+  let primaryOrder = 0;
+  let advancedOrder = 0;
+
+  for (const definition of filterDefinitions) {
+    if (definition.key === "album") {
+      continue;
+    }
+    const label = filterLabelFor(controls, definition);
+    if (!label) {
+      continue;
+    }
+    label.dataset.filterKey = definition.key;
+    label.dataset.filterGroup = definition.group;
+
+    const primary = primaryKeys.has(definition.key) && !lowLevelFilters.has(definition.key);
+    label.style.order = String(primary ? primaryOrder++ : advancedOrder++);
+    if (primary) {
+      elements.taskFilterGrid.append(label);
+    } else {
+      elements.advancedFilterGrid.append(label);
+    }
+  }
+
+  elements.advancedFilters.hidden = elements.advancedFilterGrid.children.length === 0;
 }
 
 function compactLabelParts(parts) {
@@ -422,7 +629,18 @@ export function setupFilters({ controls, elements, taxonomy, photos, albums, peo
     }),
   );
   setupEnhancedSelect(controls.album, "搜尋活動或相簿");
+  setupEnhancedSelect(controls.use, "搜尋用途");
+  setupEnhancedSelect(controls.mood, "搜尋氛圍");
   setupEnhancedSelect(controls.scene, "搜尋場景");
+  setupEnhancedSelect(controls.peopleCount, "搜尋人數");
+  setupEnhancedSelect(controls.subjectType, "搜尋主體");
+  setupEnhancedSelect(controls.orientation, "搜尋方向");
+  setupEnhancedSelect(controls.negativeSpace, "搜尋留白狀態");
+  setupEnhancedSelect(controls.safeCrop, "搜尋裁切");
+  setupEnhancedSelect(controls.sponsorshipTag, "搜尋贊助價值");
+  setupEnhancedSelect(controls.publicStatus, "搜尋使用提醒");
+  setupEnhancedSelect(controls.priority, "搜尋優先度");
+  setupEnhancedSelect(controls.curationStatus, "搜尋整理狀態");
   setupEnhancedSelect(controls.collection, "搜尋素材包");
   setupAutocompleteInput(controls.sponsorshipItem, taxonomy.sponsorship_items ?? []);
 }
@@ -439,28 +657,11 @@ export function activeFilterEntries({ state, controls, activeTask }) {
   if (controls.search.value.trim()) {
     entries.push(["search", "搜尋", sanitizeSearchTerm(controls.search.value)]);
   }
-  for (const [key, label, control] of [
-    ["album", "活動/相簿", controls.album],
-    ["use", "用途", controls.use],
-    ["mood", "氛圍", controls.mood],
-    ["scene", "場景", controls.scene],
-    ["peopleCount", "人數", controls.peopleCount],
-    ["subjectType", "主體", controls.subjectType],
-    ["orientation", "方向", controls.orientation],
-    ["negativeSpace", "留白", controls.negativeSpace],
-    ["safeCrop", "裁切", controls.safeCrop],
-    ["sponsorshipTag", "贊助價值", controls.sponsorshipTag],
-    ["publicStatus", "使用提醒", controls.publicStatus],
-    ["priority", "優先度", controls.priority],
-    ["curationStatus", "整理狀態", controls.curationStatus],
-    ["collection", "素材包", controls.collection],
-  ]) {
-    if (control.value) {
-      entries.push([key, label, selectedOptionText(control)]);
+  for (const definition of filterDefinitions) {
+    const control = controls[definition.control];
+    for (const value of state.filters?.[definition.key] ?? []) {
+      entries.push([definition.key, definition.label, optionTextForValue(control, value), value]);
     }
-  }
-  if (controls.sponsorshipItem.value.trim()) {
-    entries.push(["sponsorshipItem", "贊助品項", controls.sponsorshipItem.value.trim()]);
   }
   return entries;
 }

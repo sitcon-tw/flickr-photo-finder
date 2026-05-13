@@ -373,6 +373,17 @@ select {
   white-space: nowrap;
 }
 
+.enhanced-select-option::before {
+  display: inline-block;
+  width: 18px;
+  color: var(--muted);
+  content: "";
+}
+
+.enhanced-select-option.is-selected::before {
+  content: "✓";
+}
+
 .enhanced-select-option:hover,
 .enhanced-select-option.is-selected {
   background: var(--accent-soft);
@@ -392,7 +403,25 @@ select {
 
 .autocomplete-input {
   position: relative;
+  display: grid;
+  gap: 6px;
   min-width: 0;
+}
+
+.autocomplete-tokens {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.autocomplete-token {
+  min-height: 24px;
+  padding: 0 8px;
+  border-color: var(--line);
+  background: var(--panel-subtle);
+  color: var(--muted-strong);
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .autocomplete-panel {
@@ -445,6 +474,21 @@ select {
   display: grid;
   grid-template-columns: repeat(7, minmax(128px, 1fr));
   gap: 10px;
+}
+
+.advanced-filter-panel {
+  margin-top: 12px;
+}
+
+.advanced-filter-panel summary {
+  width: fit-content;
+  color: var(--muted-strong);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.advanced-filter-grid {
+  margin-top: 10px;
 }
 
 .result-bar {

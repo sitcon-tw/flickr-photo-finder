@@ -22,6 +22,12 @@ function asList(value) {
   return Array.isArray(value) ? value : [value].filter(Boolean);
 }
 
+function filterValues(value) {
+  return asList(value)
+    .map((item) => String(item ?? "").trim())
+    .filter(Boolean);
+}
+
 function unique(values) {
   return [...new Set(values.filter(Boolean))];
 }
@@ -91,37 +97,45 @@ export function textMatches(photo, query) {
 }
 
 export function hasListValue(photo, field, value) {
-  return !value || asList(photo[field]).includes(value);
+  const values = filterValues(value);
+  return values.length === 0 || values.some((item) => asList(photo[field]).includes(item));
 }
 
 export function valuePartiallyMatchesList(photo, field, query) {
-  const normalized = normalizeText(query);
+  const queries = filterValues(query).map(normalizeText).filter(Boolean);
+  if (queries.length === 0) {
+    return true;
+  }
+  return queries.some((normalized) => asList(photo[field]).some((value) => normalizeText(value).includes(normalized)));
+}
+
+function matchesOneAlbum(photo, value) {
+  const normalized = String(value ?? "").trim();
   if (!normalized) {
     return true;
   }
-  return asList(photo[field]).some((value) => normalizeText(value).includes(normalized));
+  if (normalized.startsWith("id:")) {
+    return asList(photo.album_ids).includes(normalized.slice(3));
+  }
+  if (normalized.startsWith("title:")) {
+    return photo.album_title === normalized.slice(6);
+  }
+  return asList(photo.album_ids).includes(normalized) || photo.album_title === normalized;
 }
 
 export function matchesAlbum(photo, value) {
-  if (!value) {
-    return true;
-  }
-  if (value.startsWith("id:")) {
-    return asList(photo.album_ids).includes(value.slice(3));
-  }
-  if (value.startsWith("title:")) {
-    return photo.album_title === value.slice(6);
-  }
-  return asList(photo.album_ids).includes(value) || photo.album_title === value;
+  const values = filterValues(value);
+  return values.length === 0 || values.some((item) => matchesOneAlbum(photo, item));
 }
 
-export function matchesPeopleCount(photo, value) {
-  if (!value) {
+function matchesOnePeopleCount(photo, value) {
+  const filterValue = String(value ?? "").trim();
+  if (!filterValue) {
     return true;
   }
 
   const normalized = String(photo.people_count ?? "").trim();
-  if (value === "unknown") {
+  if (filterValue === "unknown") {
     return normalized === "";
   }
 
@@ -130,16 +144,26 @@ export function matchesPeopleCount(photo, value) {
   }
 
   const count = Number(normalized);
-  if (value === "21+") {
+  if (filterValue === "21+") {
     return count >= 21;
   }
 
-  if (value.includes("-")) {
-    const [min, max] = value.split("-").map(Number);
+  if (filterValue.includes("-")) {
+    const [min, max] = filterValue.split("-").map(Number);
     return count >= min && count <= max;
   }
 
-  return count === Number(value);
+  return count === Number(filterValue);
+}
+
+export function matchesPeopleCount(photo, value) {
+  const values = filterValues(value);
+  return values.length === 0 || values.some((item) => matchesOnePeopleCount(photo, item));
+}
+
+export function matchesScalarValue(photo, field, value) {
+  const values = filterValues(value);
+  return values.length === 0 || values.includes(String(photo[field] ?? ""));
 }
 
 export function matchesFilters(photo, filters = {}) {
@@ -150,16 +174,16 @@ export function matchesFilters(photo, filters = {}) {
     hasListValue(photo, "mood_tags", filters.mood ?? "") &&
     hasListValue(photo, "scene_tags", filters.scene ?? "") &&
     matchesPeopleCount(photo, filters.peopleCount ?? "") &&
-    (!filters.subjectType || photo.subject_type === filters.subjectType) &&
-    (!filters.orientation || photo.orientation === filters.orientation) &&
-    (!filters.negativeSpace || photo.has_negative_space === filters.negativeSpace) &&
+    matchesScalarValue(photo, "subject_type", filters.subjectType ?? "") &&
+    matchesScalarValue(photo, "orientation", filters.orientation ?? "") &&
+    matchesScalarValue(photo, "has_negative_space", filters.negativeSpace ?? "") &&
     hasListValue(photo, "safe_crop", filters.safeCrop ?? "") &&
     hasListValue(photo, "sponsorship_tags", filters.sponsorshipTag ?? "") &&
     valuePartiallyMatchesList(photo, "sponsorship_items", filters.sponsorshipItem ?? "") &&
     hasListValue(photo, "collections", filters.collection ?? "") &&
-    (!filters.publicStatus || photo.public_use_status === filters.publicStatus) &&
-    (!filters.priority || photo.priority_level === filters.priority) &&
-    (!filters.curationStatus || photo.curation_status === filters.curationStatus)
+    matchesScalarValue(photo, "public_use_status", filters.publicStatus ?? "") &&
+    matchesScalarValue(photo, "priority_level", filters.priority ?? "") &&
+    matchesScalarValue(photo, "curation_status", filters.curationStatus ?? "")
   );
 }
 
