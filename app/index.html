@@ -49,11 +49,17 @@
       </header>
 
       <section class="task-panel" aria-label="找圖任務">
-        <div class="section-heading">
-          <h2>任務模式</h2>
-          <p>只調整推薦排序，不會排除照片。</p>
-        </div>
-        <div id="taskModes" class="task-modes"></div>
+        <details id="taskModeDetails" class="task-mode-details" open>
+          <summary>
+            <span>任務模式</span>
+            <strong id="taskModeSummary">全部照片</strong>
+          </summary>
+          <div class="section-heading">
+            <h2>任務模式</h2>
+            <p>只調整推薦排序，不會排除照片。</p>
+          </div>
+          <div id="taskModes" class="task-modes"></div>
+        </details>
       </section>
 
       <section class="search-panel" aria-label="搜尋與篩選">
@@ -264,6 +270,7 @@
           </details>
           <div class="photo-actions">
             <button class="candidate-toggle-button" type="button">候選</button>
+            <button class="preview-photo-button" type="button">預覽</button>
             <button class="download-large-image-button" type="button">大圖</button>
             <a class="photo-action original-image-link" target="_blank" rel="noreferrer">原圖</a>
             <button class="copy-flickr-link-button" type="button">Flickr</button>

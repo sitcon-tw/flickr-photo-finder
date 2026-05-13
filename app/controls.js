@@ -72,6 +72,8 @@ export function queryElements() {
     appTitle: document.querySelector("#appTitle"),
     sourceLink: document.querySelector("#sourceLink"),
     repositoryLink: document.querySelector("#repositoryLink"),
+    taskModeDetails: document.querySelector("#taskModeDetails"),
+    taskModeSummary: document.querySelector("#taskModeSummary"),
     taskModes: document.querySelector("#taskModes"),
     searchPanel: document.querySelector(".search-panel"),
     sidePanel: document.querySelector(".side-panel"),

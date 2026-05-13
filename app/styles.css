@@ -192,6 +192,10 @@ h3 {
   padding: 16px;
 }
 
+.task-mode-details > summary {
+  display: none;
+}
+
 .section-heading {
   display: flex;
   align-items: baseline;
@@ -1203,6 +1207,10 @@ select {
   --action-icon: var(--icon-download);
 }
 
+.preview-photo-button {
+  --action-icon: var(--icon-external);
+}
+
 .original-image-link {
   --action-icon: var(--icon-external);
 }
@@ -1385,11 +1393,50 @@ select {
   }
 
   .shell {
-    padding: 14px 14px 78px;
+    padding: 14px 14px 110px;
+  }
+
+  .task-panel {
+    padding: 0;
+  }
+
+  .task-mode-details > summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 44px;
+    padding: 0 14px;
+    color: var(--muted-strong);
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 760;
+  }
+
+  .task-mode-details > summary::after {
+    flex: 0 0 auto;
+    color: var(--muted);
+    content: "展開";
+    font-size: 12px;
+  }
+
+  .task-mode-details[open] > summary::after {
+    content: "收合";
+  }
+
+  .task-mode-details > summary strong {
+    min-width: 0;
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .task-mode-details .section-heading {
+    display: none;
   }
 
   .topbar,
-  .section-heading,
   .result-bar {
     display: grid;
     justify-content: stretch;
@@ -1428,13 +1475,16 @@ select {
   }
 
   .mobile-action-bar {
-    position: sticky;
-    z-index: 30;
-    bottom: 10px;
+    position: fixed;
+    z-index: 80;
+    right: 14px;
+    bottom: max(12px, env(safe-area-inset-bottom));
+    left: 14px;
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 8px;
-    margin: 10px 0 14px;
+    max-width: 520px;
+    margin: 0 auto;
     padding: 8px;
     border: 1px solid var(--line);
     border-radius: 8px;
@@ -1457,6 +1507,10 @@ select {
   .search-panel,
   .result-bar {
     margin-bottom: 10px;
+  }
+
+  .task-mode-details[open] {
+    padding: 0 14px 14px;
   }
 
   .search-panel .filter-grid,
@@ -1573,12 +1627,62 @@ select {
 
   .photo-grid {
     grid-template-columns: 1fr;
+    gap: 10px;
   }
 
-  .photo-actions,
+  .photo-card {
+    display: grid;
+    grid-template-columns: minmax(112px, 42%) minmax(0, 1fr);
+  }
+
+  .photo-link {
+    height: 100%;
+    min-height: 150px;
+    aspect-ratio: auto;
+  }
+
+  .photo-body {
+    gap: 7px;
+    padding: 10px;
+  }
+
+  .photo-title {
+    font-size: 14px;
+  }
+
+  .photo-reference {
+    min-height: 0;
+    font-size: 12px;
+  }
+
+  .photo-reference .sort-signal-text {
+    display: none;
+  }
+
+  .quick-details {
+    gap: 3px;
+  }
+
+  .quick-details .detail-row:nth-child(n + 3),
+  .metadata-details {
+    display: none;
+  }
+
   .candidate-actions,
   .ai-assistant-actions {
     grid-template-columns: 1fr;
+  }
+
+  .photo-actions {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .photo-actions .download-large-image-button,
+  .photo-actions .original-image-link,
+  .photo-actions .copy-flickr-link-button,
+  .photo-actions .copy-finder-link-button,
+  .photo-actions .sheet-row-link {
+    display: none;
   }
 
   .photo-link-hint {

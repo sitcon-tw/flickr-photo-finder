@@ -302,6 +302,16 @@ function activeTask() {
   return taskModes.find((task) => task.id === state.taskMode) ?? taskModes[0];
 }
 
+function updateTaskModeSummary() {
+  elements.taskModeSummary.textContent = activeTask().label;
+}
+
+function initializeMobileTaskModePanel() {
+  if (window.matchMedia("(max-width: 760px)").matches) {
+    elements.taskModeDetails.removeAttribute("open");
+  }
+}
+
 function currentPhotoFilters() {
   return Object.fromEntries([
     ["search", controls.search.value],
@@ -506,6 +516,7 @@ function render({ resetPage = false, preservePage = false, preserveScroll = fals
   }
 
   updateTaskButtons({ elements, taskMode: state.taskMode });
+  updateTaskModeSummary();
   updateFilterLayout({ controls, elements, taskMode: state.taskMode });
   renderActiveFilters({ elements, activeFilterEntries });
   renderCandidates({
@@ -652,6 +663,7 @@ async function loadData() {
   albums = loadedData.albums;
   photos = loadedData.photos;
   setupTaskModes(elements.taskModes, taskModes);
+  initializeMobileTaskModePanel();
   setupFilters({
     controls,
     elements,
