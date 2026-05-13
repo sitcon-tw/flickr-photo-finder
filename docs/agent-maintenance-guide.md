@@ -140,7 +140,7 @@ pnpm finder:build
 pnpm finder:check
 ```
 
-前端純邏輯應優先放在可測試模組，例如 `app/search-sort.js`、`app/url-state.js`、`app/data-loader.js` 或 `app/result-render.js`。DOM control 行為放在 `app/controls.js`，照片卡片 DOM 與 action 放在 `app/photo-render.js`。`app/main.js` 應維持 bootstrap、state、URL state、資料載入順序、事件 wiring 與 render loop 組合，避免再把 domain logic 或大型 DOM render 寫回主檔。
+前端純邏輯應優先放在可測試模組，例如 `app/search-sort.js`、`app/data-loader.js` 或 `app/result-render.js`。URL state 的 source 是 `app-core/url-state.ts`，`app/url-state.js` 是 `pnpm finder:core:build` 的產物。DOM control 行為放在 `app/controls.js`，照片卡片 DOM 與 action 放在 `app/photo-render.js`。`app/main.js` 應維持 bootstrap、state、URL state、資料載入順序、事件 wiring 與 render loop 組合，避免再把 domain logic 或大型 DOM render 寫回主檔。
 
 ## 文件優先順序
 
