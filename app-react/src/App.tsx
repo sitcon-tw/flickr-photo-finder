@@ -18,7 +18,7 @@ import {
   type FilterDefinition,
 } from "./filters";
 import { discoverHistorySize, discoverWindowSize, filterAndSortPhotos, pageSize, taskModes } from "./finderCore";
-import { trackReactEvent } from "./analytics";
+import { currentAnalyticsSurface, trackReactEvent } from "./analytics";
 import "./styles.css";
 
 type SheetName = "task" | "filter" | "candidate" | "preview" | null;
@@ -115,10 +115,10 @@ export function App() {
       const selected = new Set(current.selectedPhotoIds);
       if (selected.has(photoId)) {
         selected.delete(photoId);
-        trackReactEvent("finder_candidate_remove", { candidate_count: selected.size });
+        trackReactEvent("finder_candidate_remove", { candidate_count: selected.size, surface: currentAnalyticsSurface() });
       } else {
         selected.add(photoId);
-        trackReactEvent("finder_candidate_add", { candidate_count: selected.size });
+        trackReactEvent("finder_candidate_add", { candidate_count: selected.size, surface: currentAnalyticsSurface() });
       }
       return { ...current, selectedPhotoIds: [...selected] };
     });
@@ -134,6 +134,7 @@ export function App() {
       sort_mode: finderState.sort,
       curation_status: photo.curation_status,
       public_use_status: photo.public_use_status,
+      surface: currentAnalyticsSurface(),
     });
   }
 
@@ -208,7 +209,7 @@ export function App() {
             type="button"
             onPress={() => {
               setFinderState((current) => ({ ...current, taskMode: task.id }));
-              trackReactEvent("finder_task_select", { task_mode: task.id });
+              trackReactEvent("finder_task_select", { task_mode: task.id, surface: currentAnalyticsSurface() });
             }}
           >
             <strong>{task.label}</strong>
@@ -365,9 +366,10 @@ export function App() {
               selectedPhotoIds={finderState.selectedPhotoIds}
               onPreview={openPreview}
               onRemove={toggleCandidate}
+              surface="desktop"
             />
             <OverviewPanel data={finderData.data} />
-            <AiAssistantPanel data={finderData.data} filters={finderState.filters} search={finderState.search} task={selectedTask} />
+            <AiAssistantPanel data={finderData.data} filters={finderState.filters} search={finderState.search} task={selectedTask} surface="desktop" />
           </aside>
         ) : null}
       </div>
@@ -403,7 +405,7 @@ export function App() {
                 type="button"
                 onPress={() => {
                   setFinderState((current) => ({ ...current, taskMode: task.id }));
-                  trackReactEvent("finder_task_select", { task_mode: task.id });
+                  trackReactEvent("finder_task_select", { task_mode: task.id, surface: "mobile" });
                   setActiveSheet(null);
                 }}
               >
@@ -432,6 +434,7 @@ export function App() {
             selectedPhotoIds={finderState.selectedPhotoIds}
             onPreview={openPreview}
             onRemove={toggleCandidate}
+            surface="mobile"
           />
         ) : null}
       </SheetDialog>

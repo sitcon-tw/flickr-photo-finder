@@ -3,13 +3,14 @@ import { Button } from "react-aria-components";
 import type { FinderData, FinderFilters, TaskMode } from "../domain";
 import { labelFor } from "../filters";
 import { buildAiAssistantPrompt } from "../finderCore";
-import { trackReactEvent } from "../analytics";
+import { trackReactEvent, type AnalyticsSurface } from "../analytics";
 
 type AiAssistantPanelProps = {
   data: FinderData;
   filters: FinderFilters;
   search: string;
   task?: TaskMode;
+  surface: AnalyticsSurface;
 };
 
 function photosSheetUrl(data: FinderData): string {
@@ -26,7 +27,7 @@ function filterEntries(data: FinderData, filters: FinderFilters): [string, strin
   );
 }
 
-export function AiAssistantPanel({ data, filters, search, task }: AiAssistantPanelProps) {
+export function AiAssistantPanel({ data, filters, search, task, surface }: AiAssistantPanelProps) {
   const [copyStatus, setCopyStatus] = useState("");
   const sheetUrl = photosSheetUrl(data);
   const prompt = buildAiAssistantPrompt({
@@ -46,6 +47,7 @@ export function AiAssistantPanel({ data, filters, search, task }: AiAssistantPan
       task_mode: task?.id,
       has_search_term: Boolean(search.trim()),
       has_filters: Object.values(filters).some((values) => values.length > 0),
+      surface,
     });
     setCopyStatus("已複製");
     window.setTimeout(() => setCopyStatus(""), 1600);
@@ -65,7 +67,7 @@ export function AiAssistantPanel({ data, filters, search, task }: AiAssistantPan
           type="button"
           isDisabled={!sheetUrl}
           onPress={() => {
-            trackReactEvent("finder_ai_sheet_open", { task_mode: task?.id });
+            trackReactEvent("finder_ai_sheet_open", { task_mode: task?.id, surface });
             window.open(sheetUrl, "_blank", "noopener,noreferrer");
           }}
         >

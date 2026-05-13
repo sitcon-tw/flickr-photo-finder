@@ -3,13 +3,14 @@ import { Button } from "react-aria-components";
 import type { FinderData, PhotoRecord } from "../domain";
 import { labelFor } from "../filters";
 import { candidateCopyText, finderLink, photoTitle, selectedPhotos, sheetRowLink } from "../finderCore";
-import { trackReactEvent } from "../analytics";
+import { trackReactEvent, type AnalyticsSurface } from "../analytics";
 
 type CandidatePanelProps = {
   data: FinderData;
   selectedPhotoIds: string[];
   onPreview: (photo: PhotoRecord) => void;
   onRemove: (photoId: string) => void;
+  surface: AnalyticsSurface;
 };
 
 async function copyText(text: string): Promise<boolean> {
@@ -21,7 +22,7 @@ async function copyText(text: string): Promise<boolean> {
   return false;
 }
 
-export function CandidatePanel({ data, selectedPhotoIds, onPreview, onRemove }: CandidatePanelProps) {
+export function CandidatePanel({ data, selectedPhotoIds, onPreview, onRemove, surface }: CandidatePanelProps) {
   const [copyStatus, setCopyStatus] = useState("");
   const candidates = selectedPhotos(selectedPhotoIds, data.photos) as PhotoRecord[];
 
@@ -42,6 +43,7 @@ export function CandidatePanel({ data, selectedPhotoIds, onPreview, onRemove }: 
       trackReactEvent("finder_candidate_copy", {
         candidate_count: candidates.length,
         copy_template: templateId,
+        surface,
       });
     }
     setCopyStatus(copied ? "已複製" : "複製失敗");

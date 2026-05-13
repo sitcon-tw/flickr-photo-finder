@@ -5,6 +5,7 @@ type ProjectConfig = {
 };
 
 type EventParams = Record<string, string | number | boolean | undefined>;
+export type AnalyticsSurface = "desktop" | "mobile";
 
 let measurementId = "";
 let loaded = false;
@@ -49,4 +50,11 @@ export function trackReactEvent(name: string, params: EventParams = {}) {
     return;
   }
   window.gtag("event", name, cleanParams(params));
+}
+
+export function currentAnalyticsSurface(): AnalyticsSurface {
+  if (typeof window === "undefined") {
+    return "desktop";
+  }
+  return window.matchMedia("(max-width: 760px)").matches ? "mobile" : "desktop";
 }

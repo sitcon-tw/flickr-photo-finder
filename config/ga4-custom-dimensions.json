@@ -37,6 +37,12 @@
       "scope": "EVENT"
     },
     {
+      "parameterName": "surface",
+      "displayName": "Surface",
+      "description": "Photo finder interaction surface, such as desktop or mobile.",
+      "scope": "EVENT"
+    },
+    {
       "parameterName": "recommended_use",
       "displayName": "Recommended use",
       "description": "Selected photo recommended use filter.",
