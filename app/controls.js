@@ -57,6 +57,7 @@ export function queryControls() {
     closeCandidateSheet: document.querySelector("#closeCandidateSheetButton"),
     closePreview: document.querySelector("#closePreviewButton"),
     previewCandidate: document.querySelector("#previewCandidateButton"),
+    previewLarge: document.querySelector("#previewLargeButton"),
   };
 }
 
@@ -89,11 +90,12 @@ export function queryElements() {
     aiAssistantSheetLink: document.querySelector("#aiAssistantSheetLink"),
     modalBackdrop: document.querySelector("#modalBackdrop"),
     photoPreviewDialog: document.querySelector("#photoPreviewDialog"),
+    previewImageLink: document.querySelector("#previewImageLink"),
     previewTitle: document.querySelector("#previewTitle"),
     previewMeta: document.querySelector("#previewMeta"),
     previewImage: document.querySelector("#previewImage"),
     previewDetails: document.querySelector("#previewDetails"),
-    previewFlickrLink: document.querySelector("#previewFlickrLink"),
+    previewLargeButton: document.querySelector("#previewLargeButton"),
     previewOriginalLink: document.querySelector("#previewOriginalLink"),
     previewSheetLink: document.querySelector("#previewSheetLink"),
   };

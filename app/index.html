@@ -292,14 +292,16 @@
         <button id="closePreviewButton" type="button">關閉</button>
       </div>
       <div class="preview-image-frame">
-        <img id="previewImage" alt="" />
+        <a id="previewImageLink" class="preview-image-link" target="_blank" rel="noreferrer">
+          <img id="previewImage" alt="" />
+        </a>
       </div>
       <dl id="previewDetails" class="preview-details"></dl>
       <div class="preview-actions">
         <button id="previewCandidateButton" class="candidate-toggle-button" type="button">候選</button>
-        <a id="previewFlickrLink" class="photo-action" target="_blank" rel="noreferrer">Flickr</a>
-        <a id="previewOriginalLink" class="photo-action" target="_blank" rel="noreferrer">原圖</a>
-        <a id="previewSheetLink" class="photo-action" target="_blank" rel="noreferrer">Sheets</a>
+        <button id="previewLargeButton" class="download-large-image-button" type="button">大圖</button>
+        <a id="previewOriginalLink" class="photo-action original-image-link" target="_blank" rel="noreferrer">原圖</a>
+        <a id="previewSheetLink" class="photo-action sheet-row-link" target="_blank" rel="noreferrer">Sheets</a>
       </div>
     </section>
 

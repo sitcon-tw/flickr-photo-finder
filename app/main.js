@@ -30,7 +30,9 @@ import { renderOverview as renderOverviewPanel } from "./overview-render.js";
 import {
   copyTextToClipboard,
   displayImageUrl,
+  downloadImageUrl,
   finderLink,
+  imageDownloadFilename,
   largeImageUrl,
   originalSizePageUrl,
   photoAnchorId,
@@ -343,6 +345,7 @@ function openPreview(photo) {
   closeCandidateSheet();
   activePreviewPhoto = photo;
   const largeUrl = largeImageUrl(photo);
+  const originalUrl = originalSizePageUrl(photo);
   const previewUrl = largeUrl || photo.image_preview_url;
   elements.previewTitle.textContent = photoTitle(photo);
   elements.previewMeta.textContent = [photo.event_year, photo.album_title, `photo_id: ${photo.photo_id}`].filter(Boolean).join(" / ");
@@ -359,8 +362,11 @@ function openPreview(photo) {
   appendPreviewDetail("畫面描述", photo.visual_description);
   appendPreviewDetail("整理狀態", photo.curation_status, { fieldName: "curation_status" });
   appendPreviewDetail("使用提醒", photo.public_use_status, { fieldName: "public_use_status" });
-  setExternalLink(elements.previewFlickrLink, photo.photo_url);
-  setExternalLink(elements.previewOriginalLink, originalSizePageUrl(photo));
+  controls.previewLarge.disabled = !largeUrl;
+  controls.previewLarge.dataset.largeImageUrl = largeUrl;
+  setExternalLink(elements.previewImageLink, originalUrl);
+  elements.previewImageLink.title = originalUrl ? "開啟 Flickr 原始尺寸頁" : "";
+  setExternalLink(elements.previewOriginalLink, originalUrl);
   setExternalLink(elements.previewSheetLink, sheetRowLink(photo));
   updatePreviewCandidateButton();
   elements.photoPreviewDialog.hidden = false;
@@ -447,6 +453,31 @@ async function copyCandidateList() {
     }
   } catch {
     setTemporaryButtonText(controls.copyCandidates, "複製失敗");
+  }
+}
+
+async function downloadPreviewLargeImage() {
+  if (!activePreviewPhoto) {
+    return;
+  }
+  const largeUrl = controls.previewLarge.dataset.largeImageUrl || largeImageUrl(activePreviewPhoto);
+  if (!largeUrl) {
+    return;
+  }
+  const originalText = controls.previewLarge.textContent;
+  try {
+    controls.previewLarge.disabled = true;
+    controls.previewLarge.textContent = "下載中";
+    await downloadImageUrl(largeUrl, imageDownloadFilename(activePreviewPhoto, largeUrl));
+    controls.previewLarge.textContent = "已下載";
+    trackEvent("download_preview_large_image", { photo_id: activePreviewPhoto.photo_id });
+  } catch {
+    controls.previewLarge.textContent = "下載失敗";
+  } finally {
+    window.setTimeout(() => {
+      controls.previewLarge.disabled = false;
+      controls.previewLarge.textContent = originalText;
+    }, 1900);
   }
 }
 
@@ -707,6 +738,7 @@ function bindFilterControlEvents() {
       "closeCandidateSheet",
       "closePreview",
       "previewCandidate",
+      "previewLarge",
     ].includes(key)) {
       continue;
     }
@@ -760,6 +792,7 @@ controls.mobileCandidate.addEventListener("click", openCandidateSheet);
 controls.closeFilterSheet.addEventListener("click", closeFilterSheet);
 controls.closeCandidateSheet.addEventListener("click", closeCandidateSheet);
 controls.closePreview.addEventListener("click", closePreview);
+controls.previewLarge.addEventListener("click", downloadPreviewLargeImage);
 controls.previewCandidate.addEventListener("click", () => {
   if (activePreviewPhoto) {
     toggleCandidate(activePreviewPhoto.photo_id);

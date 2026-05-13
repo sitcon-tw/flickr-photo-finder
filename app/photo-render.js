@@ -141,13 +141,13 @@ function safeFilenamePart(value) {
     .slice(0, 80);
 }
 
-function imageDownloadFilename(photo, url) {
+export function imageDownloadFilename(photo, url) {
   const title = safeFilenamePart(photoTitle(photo));
   const id = safeFilenamePart(photo.photo_id) || "photo";
   return `${id}${title ? `-${title}` : ""}.${imageFileExtension(url)}`;
 }
 
-async function downloadImageUrl(url, filename) {
+export async function downloadImageUrl(url, filename) {
   const response = await fetch(url, { mode: "cors" });
   if (!response.ok) {
     throw new Error("圖片下載失敗");

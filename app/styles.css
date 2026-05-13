@@ -55,6 +55,10 @@ body {
   line-height: 1.5;
 }
 
+body.has-modal-open {
+  overflow: hidden;
+}
+
 button,
 input,
 select {
@@ -1319,6 +1323,13 @@ select {
   background: #111827;
 }
 
+.preview-image-link {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  color: inherit;
+}
+
 .preview-image-frame img {
   display: block;
   width: 100%;
@@ -1343,8 +1354,20 @@ select {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 6px;
   padding: 0 10px;
   font-weight: 750;
+}
+
+.preview-actions a::before,
+.preview-actions button::before {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+  background: currentColor;
+  content: "";
+  -webkit-mask: var(--action-icon) center / contain no-repeat;
+  mask: var(--action-icon) center / contain no-repeat;
 }
 
 .empty {
@@ -1388,10 +1411,6 @@ select {
 }
 
 @media (max-width: 760px) {
-  body.has-modal-open {
-    overflow: hidden;
-  }
-
   .shell {
     padding: 14px 14px 110px;
   }
