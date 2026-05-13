@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { loadFinderData } from "../../app-core/data-loader";
+import { applySearchRegistry, filterAndSortPhotos } from "../../app-core/search-sort";
 
-type PhotoRecord = Record<string, unknown> & {
+type PhotoValue = string | string[] | number | boolean | null | undefined;
+type PhotoRecord = Record<string, PhotoValue> & {
   photo_id: string;
   photo_url: string;
   image_preview_url: string;
@@ -14,9 +16,26 @@ type PhotoRecord = Record<string, unknown> & {
   priority_level: string;
   curation_status: string;
   visual_description: string;
+  search_text: string;
 };
 
 type FinderData = Awaited<ReturnType<typeof loadFinderData>>;
+type TaskMode = {
+  id: string;
+  label: string;
+  description?: string;
+  recommendedUses?: string[];
+  moods?: string[];
+  scenes?: string[];
+  sponsorshipTags?: string[];
+  orientations?: string[];
+  safeCrops?: string[];
+  prefersNegativeSpace?: boolean;
+};
+type FinderSettings = {
+  discoverHistorySize?: number;
+  discoverWindowSize?: number;
+};
 
 const previewDataSources = {
   albumsCsvUrl: "./fixtures/albums.csv",
@@ -26,6 +45,19 @@ const previewDataSources = {
   taxonomyJsonUrl: "./data/tag-taxonomy.json",
   searchAliasesJsonUrl: "./data/search-aliases.json",
 };
+
+const sortModes = [
+  { value: "recommended", label: "推薦排序" },
+  { value: "discover", label: "探索更多" },
+  { value: "newest", label: "年份新到舊" },
+  { value: "oldest", label: "年份舊到新" },
+  { value: "people-desc", label: "人數多到少" },
+  { value: "people-asc", label: "人數少到多" },
+] as const;
+type SortModeValue = (typeof sortModes)[number]["value"];
+
+const fallbackTaskModes: TaskMode[] = [{ id: "all", label: "全部照片", description: "不套任務權重" }];
+const previewResultLimit = 12;
 
 function photoTitle(photo: PhotoRecord) {
   return photo.event_name || photo.album_title || photo.photo_id;
@@ -66,9 +98,52 @@ function PhotoCard({ photo }: { photo: PhotoRecord }) {
   );
 }
 
+function registryTaskModes(data: FinderData | null) {
+  const modes = data?.interfaceRegistry?.pages?.taskModes;
+  return Array.isArray(modes) && modes.length > 0 ? (modes as TaskMode[]) : fallbackTaskModes;
+}
+
+function registrySettings(data: FinderData | null) {
+  return (data?.interfaceRegistry?.pages?.settings ?? {}) as FinderSettings;
+}
+
+function isSortModeValue(value: string): value is SortModeValue {
+  return sortModes.some((mode) => mode.value === value);
+}
+
+function resultContextText({
+  allCount,
+  resultCount,
+  sortMode,
+  taskMode,
+}: {
+  allCount: number;
+  resultCount: number;
+  sortMode: SortModeValue;
+  taskMode: TaskMode;
+}) {
+  if (allCount === 0) {
+    return "尚未載入照片";
+  }
+  if (resultCount === 0) {
+    return "目前條件沒有結果，可先移除搜尋字或改用其他任務情境。";
+  }
+  if (sortMode === "discover") {
+    return `以「${taskMode.label}」探索更多排序，分散年份、活動、相簿與素材包來源。`;
+  }
+  const sortLabel = sortModes.find((mode) => mode.value === sortMode)?.label ?? "推薦排序";
+  if (sortMode === "recommended" && taskMode.id !== "all") {
+    return `以「${taskMode.label}」情境推薦排序，仍顯示符合搜尋的照片。`;
+  }
+  return `以${sortLabel}顯示符合搜尋的照片。`;
+}
+
 export function App() {
   const [data, setData] = useState<FinderData | null>(null);
   const [error, setError] = useState<string>("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortMode, setSortMode] = useState<SortModeValue>("recommended");
+  const [taskModeId, setTaskModeId] = useState("all");
 
   useEffect(() => {
     let cancelled = false;
@@ -78,6 +153,7 @@ export function App() {
     })
       .then((loadedData) => {
         if (!cancelled) {
+          applySearchRegistry(loadedData.interfaceRegistry);
           setData(loadedData);
         }
       })
@@ -93,7 +169,34 @@ export function App() {
   }, []);
 
   const photos = useMemo(() => (data?.photos ?? []) as PhotoRecord[], [data]);
-  const previewPhotos = photos.slice(0, 12);
+  const taskModes = useMemo(() => registryTaskModes(data), [data]);
+  const activeTask = useMemo(
+    () => taskModes.find((mode) => mode.id === taskModeId) ?? taskModes[0] ?? fallbackTaskModes[0],
+    [taskModeId, taskModes],
+  );
+  const settings = registrySettings(data);
+  const filteredPhotos = useMemo(
+    () =>
+      filterAndSortPhotos(photos, {
+        filters: { search: searchTerm },
+        sortMode,
+        task: activeTask.id === "all" ? {} : activeTask,
+        discoverHistorySize: settings.discoverHistorySize,
+        discoverWindowSize: settings.discoverWindowSize,
+      }) as unknown as PhotoRecord[],
+    [activeTask, photos, searchTerm, settings.discoverHistorySize, settings.discoverWindowSize, sortMode],
+  );
+  const previewPhotos = filteredPhotos.slice(0, previewResultLimit);
+  const visibleSummary =
+    filteredPhotos.length > previewPhotos.length
+      ? `顯示前 ${previewPhotos.length} 張，尚有 ${filteredPhotos.length - previewPhotos.length} 張`
+      : `顯示 ${previewPhotos.length} 張`;
+  const contextText = resultContextText({
+    allCount: photos.length,
+    resultCount: filteredPhotos.length,
+    sortMode,
+    taskMode: activeTask,
+  });
 
   return (
     <main className="finder-shell">
@@ -106,24 +209,92 @@ export function App() {
         </p>
       </header>
 
+      <section className="finder-controls" aria-label="搜尋與排序">
+        <label className="finder-search">
+          <span>搜尋</span>
+          <input
+            type="search"
+            value={searchTerm}
+            placeholder="可放字、品牌露出、友善交流、舞台講者"
+            autoComplete="off"
+            onChange={(event) => setSearchTerm(event.target.value)}
+          />
+        </label>
+
+        <label className="finder-sort">
+          <span>排序</span>
+          <select
+            value={sortMode}
+            onChange={(event) => {
+              const nextSortMode = event.target.value;
+              setSortMode(isSortModeValue(nextSortMode) ? nextSortMode : "recommended");
+            }}
+          >
+            {sortModes.map((mode) => (
+              <option key={mode.value} value={mode.value}>
+                {mode.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <button
+          className="finder-reset"
+          type="button"
+          disabled={!searchTerm && sortMode === "recommended" && activeTask.id === "all"}
+          onClick={() => {
+            setSearchTerm("");
+            setSortMode("recommended");
+            setTaskModeId("all");
+          }}
+        >
+          清除
+        </button>
+      </section>
+
+      <section className="task-mode-panel" aria-label="任務模式">
+        <div className="task-mode-heading">
+          <h2>任務模式</h2>
+          <p>只調整推薦排序，不會排除照片。</p>
+        </div>
+        <div className="task-modes">
+          {taskModes.map((mode) => (
+            <button
+              key={mode.id}
+              type="button"
+              className={mode.id === activeTask.id ? "task-mode is-active" : "task-mode"}
+              onClick={() => setTaskModeId(mode.id)}
+            >
+              <strong>{mode.label}</strong>
+              {mode.description ? <span>{mode.description}</span> : null}
+            </button>
+          ))}
+        </div>
+      </section>
+
       <section className="finder-status" aria-live="polite">
         {error ? (
           <strong>資料載入失敗：{error}</strong>
         ) : data ? (
           <>
-            <strong>{photos.length} 張照片</strong>
+            <strong>{filteredPhotos.length} / {photos.length} 張照片</strong>
             <span>{data.albums.length} 個相簿</span>
             <span>{data.photoSchema.tables.photos.fields.length} 個照片欄位</span>
+            <span>{visibleSummary}</span>
           </>
         ) : (
           <strong>載入資料中</strong>
         )}
       </section>
 
+      <p className="result-context">{contextText}</p>
+
       <section className="photo-grid" aria-label="照片預覽">
-        {previewPhotos.map((photo) => (
-          <PhotoCard key={photo.photo_id} photo={photo} />
-        ))}
+        {previewPhotos.length > 0 ? (
+          previewPhotos.map((photo) => <PhotoCard key={photo.photo_id} photo={photo} />)
+        ) : (
+          <div className="empty-result">沒有符合目前搜尋的照片</div>
+        )}
       </section>
     </main>
   );
