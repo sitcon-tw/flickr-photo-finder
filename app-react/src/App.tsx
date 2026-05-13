@@ -1,4 +1,5 @@
 import { Button } from "react-aria-components";
+import { pageSize, taskModes } from "./finderCore";
 import "./styles.css";
 
 const dataModes = [
@@ -22,6 +23,9 @@ export function App() {
             <li key={mode}>{mode}</li>
           ))}
         </ul>
+        <p className="core-status">
+          Shared finder core loaded: {taskModes.length} task modes, {pageSize} photos per page.
+        </p>
         <Button type="button">React Aria button</Button>
       </section>
     </main>

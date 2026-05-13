@@ -39,6 +39,10 @@ button {
   line-height: 1.7;
 }
 
+.core-status {
+  font-weight: 700;
+}
+
 .migration-panel button {
   padding: 0 16px;
 }
