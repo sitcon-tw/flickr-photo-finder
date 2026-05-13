@@ -1,0 +1,52 @@
+:root {
+  color: #172033;
+  background: #f7f8fb;
+  font-family:
+    Inter, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+}
+
+body {
+  margin: 0;
+}
+
+button {
+  min-height: 44px;
+}
+
+.migration-shell {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 24px;
+}
+
+.migration-panel {
+  width: min(720px, 100%);
+  padding: 24px;
+  border: 1px solid #d8deea;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 16px 36px rgb(23 32 51 / 10%);
+}
+
+.migration-panel h1 {
+  margin: 0 0 12px;
+  font-size: 32px;
+}
+
+.migration-panel p {
+  color: #4d5a70;
+  line-height: 1.7;
+}
+
+.migration-panel button {
+  padding: 0 16px;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  color: #0f6f89;
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+}

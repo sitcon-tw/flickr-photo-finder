@@ -1,0 +1,12 @@
+import react from "@vitejs/plugin-react";
+import { defineConfig } from "vite";
+
+export default defineConfig({
+  base: "./",
+  build: {
+    emptyOutDir: true,
+    outDir: "../tmp/pages-react",
+  },
+  plugins: [react()],
+  root: "app-react",
+});

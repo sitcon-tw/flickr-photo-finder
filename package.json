@@ -51,6 +51,9 @@
     "finder:build": "node scripts/commands/build-pages.mjs",
     "finder:check": "node scripts/commands/check-pages-artifact.mjs",
     "finder:test": "node --test tests/*.test.mjs",
+    "finder:react:dev": "vite --config vite.config.ts",
+    "finder:react:build": "vite build --config vite.config.ts",
+    "finder:react:typecheck": "tsc --noEmit",
     "dev": "pnpm finder:dev",
     "dev:fixture": "pnpm finder:dev:fixture",
     "dev:export": "pnpm finder:dev:export",
@@ -81,6 +84,17 @@
   },
   "dependencies": {
     "@inquirer/prompts": "^8.4.3",
-    "googleapis": "^171.4.0"
+    "googleapis": "^171.4.0",
+    "react": "^19.2.6",
+    "react-aria-components": "^1.17.0",
+    "react-dom": "^19.2.6"
+  },
+  "devDependencies": {
+    "@types/node": "^25.7.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.1",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.12"
   }
 }
