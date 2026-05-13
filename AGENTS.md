@@ -68,6 +68,16 @@ Key areas:
 - For organization-level access and handoff, rely on SITCON's existing documentation and Google Drive management practices rather than inventing repo-local credential rules.
 - AI-generated labels may be written only as human-reviewable candidates. Keep `curation_status` semantics clear: `ai_labeled` is not the same as `reviewed`.
 
+## Collaboration Rules
+
+- For non-trivial work, inspect the real repo state before editing: branch, worktree, source-of-truth docs, schemas, tests, issue or PR state, and existing implementation. Separate confirmed facts, inference, and open decisions.
+- When a local issue reveals cross-module duplication, hard-coded shared values, unclear ownership, or long-term drift risk, pause local patching and raise the discussion to project-level governance.
+- For multi-step or cross-layer work, make the plan decision-complete before implementation: goal, success criteria, scope, work packages, commit or merge strategy, validation, and GitHub closeout.
+- Keep unrelated concerns in separate commits. For cross-layer work, split into bounded work packages and use `--no-ff` merge when preserving the package boundary helps future maintainers understand history.
+- Merge commit messages must explain the package boundary, source branch, and why the grouping exists. Do not keep obsolete local WIP branches as future development bases once clean history supersedes them.
+- Run the smallest relevant checks for each work package, then the full agreed validation before publishing. If an environment prevents a check, say exactly what was and was not verified.
+- Final status should include changed state, validation, branch or worktree state, GitHub issue or PR state, and remaining manual checks.
+
 ## Validation
 
 Run data validation after changing local sample/export data, `data/photo-schema.json`, taxonomy files, or validation logic:
