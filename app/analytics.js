@@ -70,24 +70,28 @@ export function sanitizeSearchTerm(value) {
     .slice(0, 100);
 }
 
+function hasValue(value) {
+  return Array.isArray(value) ? value.length > 0 : Boolean(value);
+}
+
 export function hasActiveFilters(snapshot) {
   return Boolean(
     snapshot.taskMode !== "all" ||
-      snapshot.recommendedUse ||
-      snapshot.mood ||
-      snapshot.album ||
-      snapshot.scene ||
-      snapshot.peopleCount ||
-      snapshot.subjectType ||
-      snapshot.orientation ||
-      snapshot.negativeSpace ||
-      snapshot.safeCrop ||
-      snapshot.sponsorshipTag ||
-      snapshot.sponsorshipItem ||
-      snapshot.publicUseStatus ||
-      snapshot.priorityLevel ||
-      snapshot.curationStatus ||
-      snapshot.collection,
+      hasValue(snapshot.recommendedUse) ||
+      hasValue(snapshot.mood) ||
+      hasValue(snapshot.album) ||
+      hasValue(snapshot.scene) ||
+      hasValue(snapshot.peopleCount) ||
+      hasValue(snapshot.subjectType) ||
+      hasValue(snapshot.orientation) ||
+      hasValue(snapshot.negativeSpace) ||
+      hasValue(snapshot.safeCrop) ||
+      hasValue(snapshot.sponsorshipTag) ||
+      snapshot.sponsorshipItemCount > 0 ||
+      hasValue(snapshot.publicUseStatus) ||
+      hasValue(snapshot.priorityLevel) ||
+      hasValue(snapshot.curationStatus) ||
+      hasValue(snapshot.collection),
   );
 }
 
@@ -102,13 +106,16 @@ export function resultsEventParams(snapshot) {
     search_surface: "main",
     task_mode: snapshot.taskMode,
     sort_mode: snapshot.sortMode,
-    recommended_use: snapshot.recommendedUse,
-    public_use_status: snapshot.publicUseStatus,
-    priority_level: snapshot.priorityLevel,
-    curation_status: snapshot.curationStatus,
-    album_filter_used: Boolean(snapshot.album),
-    sponsorship_filter_used: Boolean(snapshot.sponsorshipItem || snapshot.sponsorshipTag),
-    collection_filter_used: Boolean(snapshot.collection),
+    filter_count: Object.entries(snapshot)
+      .filter(([key]) => key.endsWith("Count"))
+      .reduce((total, [, value]) => total + Number(value || 0), 0),
+    recommended_use_count: snapshot.useCount,
+    public_use_status_count: snapshot.publicStatusCount,
+    priority_level_count: snapshot.priorityCount,
+    curation_status_count: snapshot.curationStatusCount,
+    album_filter_used: snapshot.albumCount > 0,
+    sponsorship_filter_used: snapshot.sponsorshipItemCount > 0 || snapshot.sponsorshipTagCount > 0,
+    collection_filter_used: snapshot.collectionCount > 0,
   };
 }
 
@@ -131,12 +138,12 @@ export function trackVisibleResults(source, snapshot) {
   if (hasTrackedResultState(snapshot)) {
     trackEvent("filter_results", {
       has_search_term: Boolean(snapshot.searchTerm),
-      mood_filter_used: Boolean(snapshot.mood),
-      scene_filter_used: Boolean(snapshot.scene),
-      people_count_filter: snapshot.peopleCount,
-      subject_type: snapshot.subjectType,
-      orientation_filter: snapshot.orientation,
-      safe_crop_filter: snapshot.safeCrop,
+      mood_filter_used: snapshot.moodCount > 0,
+      scene_filter_used: snapshot.sceneCount > 0,
+      people_count_filter_used: snapshot.peopleCountCount > 0,
+      subject_type_filter_used: snapshot.subjectTypeCount > 0,
+      orientation_filter_used: snapshot.orientationCount > 0,
+      safe_crop_filter_used: snapshot.safeCropCount > 0,
       ...resultsEventParams(snapshot),
     });
   }

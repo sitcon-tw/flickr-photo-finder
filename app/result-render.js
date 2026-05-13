@@ -9,11 +9,12 @@ export function renderActiveFilters({ elements, activeFilterEntries }) {
     return;
   }
 
-  for (const [key, label, value] of entries) {
+  for (const [key, label, value, rawValue = value] of entries) {
     const chip = document.createElement("button");
     chip.type = "button";
     chip.className = "filter-chip";
     chip.dataset.filterKey = key;
+    chip.dataset.filterValue = rawValue;
     chip.textContent = `${label}: ${value} ×`;
     elements.activeFilters.append(chip);
   }
@@ -24,7 +25,7 @@ export function resultContextText({ photos, filtered, controls, activeTask, acti
     return "尚未載入照片";
   }
   if (filtered.length === 0) {
-    return "目前條件沒有結果，可放寬整理狀態、任務條件或清除使用提醒。";
+    return "目前條件沒有結果，可先移除部分條件、放寬場景或構圖限制。";
   }
 
   const task = activeTask();

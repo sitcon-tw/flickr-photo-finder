@@ -83,7 +83,7 @@
           <button id="resetButton" type="button">清除</button>
         </div>
 
-        <div class="filter-grid">
+        <div id="taskFilterGrid" class="filter-grid">
           <label>
             <span>用途</span>
             <select id="useFilter"></select>
@@ -155,6 +155,11 @@
             <select id="collectionFilter"></select>
           </label>
         </div>
+
+        <details id="advancedFilters" class="advanced-filter-panel">
+          <summary>進階條件</summary>
+          <div id="advancedFilterGrid" class="filter-grid advanced-filter-grid"></div>
+        </details>
       </section>
 
       <section class="result-bar" aria-label="搜尋結果狀態">
