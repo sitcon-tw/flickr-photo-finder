@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button, Input, Label, TextField } from "react-aria-components";
 import { FilterMultiSelect, type FilterOption } from "./components/FilterMultiSelect";
 import { SheetDialog } from "./components/SheetDialog";
+import { encodeFinderState, useFinderData, useInitialFinderState } from "./data";
 import { pageSize, taskModes } from "./finderCore";
 import "./styles.css";
 
@@ -17,14 +18,25 @@ const sampleFilterOptions: FilterOption[] = [
 ];
 
 export function App() {
-  const [activeTaskMode, setActiveTaskMode] = useState(taskModes[0]?.id ?? "all");
-  const [searchTerm, setSearchTerm] = useState("");
+  const initialFinderState = useInitialFinderState();
+  const finderData = useFinderData();
+  const [finderState, setFinderState] = useState(initialFinderState);
   const [activeSheet, setActiveSheet] = useState<SheetName>(null);
   const [sampleFilters, setSampleFilters] = useState<string[]>([]);
   const selectedTask = useMemo(
-    () => taskModes.find((task) => task.id === activeTaskMode) ?? taskModes[0],
-    [activeTaskMode],
+    () => taskModes.find((task) => task.id === finderState.taskMode) ?? taskModes[0],
+    [finderState.taskMode, finderData.status],
   );
+  const loadedSummary = finderData.status === "ready" ? `${finderData.data.photos.length} 張照片 / ${finderData.data.albums.length} 個相簿` : "";
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const url = new URL(window.location.href);
+    url.search = encodeFinderState(finderState).toString();
+    window.history.replaceState(null, "", url);
+  }, [finderState]);
 
   return (
     <main className="finder-shell">
@@ -34,7 +46,9 @@ export function App() {
           <h1>SITCON Flickr Photo Finder</h1>
         </div>
         <p className="core-status">
-          Shared finder core: {taskModes.length} task modes, page size {pageSize}.
+          {finderData.status === "ready"
+            ? `${loadedSummary}，${taskModes.length} 種任務，page size ${pageSize}`
+            : "載入照片索引中"}
         </p>
       </header>
 
@@ -42,9 +56,9 @@ export function App() {
         {taskModes.map((task) => (
           <Button
             key={task.id}
-            className={task.id === activeTaskMode ? "task-button is-active" : "task-button"}
+            className={task.id === finderState.taskMode ? "task-button is-active" : "task-button"}
             type="button"
-            onPress={() => setActiveTaskMode(task.id)}
+            onPress={() => setFinderState((current) => ({ ...current, taskMode: task.id }))}
           >
             <strong>{task.label}</strong>
             <span>{task.description}</span>
@@ -53,7 +67,11 @@ export function App() {
       </section>
 
       <section className="finder-toolbar" aria-label="搜尋與篩選">
-        <TextField className="search-field" value={searchTerm} onChange={setSearchTerm}>
+        <TextField
+          className="search-field"
+          value={finderState.search}
+          onChange={(search) => setFinderState((current) => ({ ...current, search }))}
+        >
           <Label>搜尋</Label>
           <Input placeholder="可放字、品牌露出、友善交流、舞台講者" />
         </TextField>
@@ -77,8 +95,10 @@ export function App() {
         <p>{selectedTask?.label ?? "全部照片"}排序情境</p>
         <h2>React finder shell</h2>
         <p>
-          Search value: <strong>{searchTerm || "未輸入"}</strong>
+          Search value: <strong>{finderState.search || "未輸入"}</strong>
         </p>
+        {finderData.status === "error" ? <p className="load-error">{finderData.message}</p> : null}
+        {finderData.status === "ready" ? <p>Loaded photos: {finderData.data.photos.length}</p> : null}
         <Button type="button" onPress={() => setActiveSheet("preview")}>
           開啟預覽
         </Button>
