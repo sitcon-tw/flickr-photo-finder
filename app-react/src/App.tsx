@@ -1,7 +1,9 @@
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { Button, Input, Label, ListBox, ListBoxItem, Popover, Select, SelectValue, TextField } from "react-aria-components";
+import { CandidatePanel } from "./components/CandidatePanel";
 import { FilterMultiSelect } from "./components/FilterMultiSelect";
 import { PhotoCard } from "./components/PhotoCard";
+import { PhotoPreview } from "./components/PhotoPreview";
 import { SheetDialog } from "./components/SheetDialog";
 import { encodeFinderState, useFinderData, useInitialFinderState } from "./data";
 import type { FinderFilterKey, PhotoRecord } from "./domain";
@@ -168,35 +170,47 @@ export function App() {
         </Select>
       </section>
 
-      <section className="result-surface" aria-label="搜尋結果">
-        <p>{selectedTask?.label ?? "全部照片"}排序情境</p>
-        <h2>{results.length} 張符合條件</h2>
-        <p>
-          Search value: <strong>{finderState.search || "未輸入"}</strong>
-        </p>
-        {finderData.status === "error" ? <p className="load-error">{finderData.message}</p> : null}
-        {finderData.status === "ready" ? <p>目前顯示 {visibleResults.length} / {results.length} 張</p> : null}
-        <div className="photo-grid">
-          {finderData.status === "ready"
-            ? visibleResults.map((photo) => (
-                <PhotoCard
-                  key={photo.photo_id}
-                  data={finderData.data}
-                  photo={photo}
-                  task={selectedTask}
-                  selected={finderState.selectedPhotoIds.includes(photo.photo_id)}
-                  onPreview={openPreview}
-                  onToggleCandidate={toggleCandidate}
-                />
-              ))
-            : null}
-        </div>
-        {hasMoreResults ? (
-          <Button className="load-more-button" type="button" onPress={() => setVisibleCount((current) => current + pageSize)}>
-            載入更多
-          </Button>
+      <div className="finder-workbench">
+        <section className="result-surface" aria-label="搜尋結果">
+          <p>{selectedTask?.label ?? "全部照片"}排序情境</p>
+          <h2>{results.length} 張符合條件</h2>
+          <p>
+            Search value: <strong>{finderState.search || "未輸入"}</strong>
+          </p>
+          {finderData.status === "error" ? <p className="load-error">{finderData.message}</p> : null}
+          {finderData.status === "ready" ? <p>目前顯示 {visibleResults.length} / {results.length} 張</p> : null}
+          <div className="photo-grid">
+            {finderData.status === "ready"
+              ? visibleResults.map((photo) => (
+                  <PhotoCard
+                    key={photo.photo_id}
+                    data={finderData.data}
+                    photo={photo}
+                    task={selectedTask}
+                    selected={finderState.selectedPhotoIds.includes(photo.photo_id)}
+                    onPreview={openPreview}
+                    onToggleCandidate={toggleCandidate}
+                  />
+                ))
+              : null}
+          </div>
+          {hasMoreResults ? (
+            <Button className="load-more-button" type="button" onPress={() => setVisibleCount((current) => current + pageSize)}>
+              載入更多
+            </Button>
+          ) : null}
+        </section>
+        {finderData.status === "ready" ? (
+          <aside className="desktop-side-panel">
+            <CandidatePanel
+              data={finderData.data}
+              selectedPhotoIds={finderState.selectedPhotoIds}
+              onPreview={openPreview}
+              onRemove={toggleCandidate}
+            />
+          </aside>
         ) : null}
-      </section>
+      </div>
 
       <div className="mobile-action-bar">
         <Button type="button" onPress={() => setActiveSheet("filter")}>
@@ -212,16 +226,23 @@ export function App() {
         title={activeSheet ? `${activeSheet} sheet` : "sheet"}
         onOpenChange={(open) => setActiveSheet(open ? activeSheet : null)}
       >
-        {activeSheet === "preview" && previewPhoto ? (
-          <div className="sheet-preview">
-            <p>{previewPhoto.visual_description || previewPhoto.photo_url}</p>
-            <Button type="button" onPress={() => window.open(previewPhoto.photo_url, "_blank", "noopener,noreferrer")}>
-              Flickr
-            </Button>
-          </div>
-        ) : (
-          <p>React Aria modal primitives now own this sheet shell.</p>
-        )}
+        {activeSheet === "preview" && previewPhoto && finderData.status === "ready" ? (
+          <PhotoPreview
+            data={finderData.data}
+            photo={previewPhoto}
+            selected={finderState.selectedPhotoIds.includes(previewPhoto.photo_id)}
+            onToggleCandidate={toggleCandidate}
+          />
+        ) : null}
+        {activeSheet === "candidate" && finderData.status === "ready" ? (
+          <CandidatePanel
+            data={finderData.data}
+            selectedPhotoIds={finderState.selectedPhotoIds}
+            onPreview={openPreview}
+            onRemove={toggleCandidate}
+          />
+        ) : null}
+        {activeSheet === "filter" ? <p>主要篩選已在畫面上方，完整手機 filter sheet 會在下一個 slice 接上。</p> : null}
       </SheetDialog>
     </main>
   );
