@@ -18,6 +18,12 @@ const checks = [
     next: "Replace vague relative version wording with concrete dates, hashes, schema versions, or current repo source references, then rerun pnpm language:check.",
   },
   {
+    name: "Shared value governance",
+    command: "pnpm",
+    args: ["shared-values:check"],
+    next: "Fix data/interface-registry.json or regenerate apps-script/GeneratedConfig.js, then rerun pnpm shared-values:check.",
+  },
+  {
     name: "JavaScript syntax",
     run: checkSyntax,
     next: "Fix the syntax error in the reported file, then rerun pnpm project:check.",
