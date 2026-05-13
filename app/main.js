@@ -29,6 +29,7 @@ import { loadFinderData, optionLabelsFor } from "./data-loader.js";
 import { renderOverview as renderOverviewPanel } from "./overview-render.js";
 import {
   copyTextToClipboard,
+  displayImageUrl,
   finderLink,
   largeImageUrl,
   originalSizePageUrl,
@@ -343,7 +344,9 @@ function openPreview(photo) {
   appendPreviewDetail("裁切", photo.safe_crop);
   appendPreviewDetail("用途", photo.recommended_uses.slice(0, 4));
   appendPreviewDetail("場景", photo.scene_tags.slice(0, 4));
-  appendPreviewDetail("贊助", [...photo.sponsorship_tags, ...photo.sponsorship_items].slice(0, 4));
+  appendPreviewDetail("贊助品項", photo.sponsorship_items.slice(0, 4));
+  appendPreviewDetail("贊助價值", photo.sponsorship_tags.slice(0, 4));
+  appendPreviewDetail("畫面描述", photo.visual_description);
   appendPreviewDetail("整理狀態", photo.curation_status, { fieldName: "curation_status" });
   appendPreviewDetail("使用提醒", photo.public_use_status, { fieldName: "public_use_status" });
   setExternalLink(elements.previewFlickrLink, photo.photo_url);
@@ -514,6 +517,8 @@ function render({ resetPage = false, preservePage = false, preserveScroll = fals
     finderLink,
     labelFor,
     toggleCandidate,
+    openPreview,
+    displayImageUrl,
   });
   updateMobileSummary();
   elements.grid.replaceChildren();
@@ -677,7 +682,20 @@ function bindFilterControlEvents() {
   }
   filterControlEventsBound = true;
   for (const [key, control] of Object.entries(controls)) {
-    if (["reset", "loadMore", "copyCandidates", "clearCandidates", "candidateCopyTemplate", "copyAiAssistantPrompt"].includes(key)) {
+    if ([
+      "reset",
+      "loadMore",
+      "copyCandidates",
+      "clearCandidates",
+      "candidateCopyTemplate",
+      "copyAiAssistantPrompt",
+      "mobileFilter",
+      "mobileCandidate",
+      "closeFilterSheet",
+      "closeCandidateSheet",
+      "closePreview",
+      "previewCandidate",
+    ].includes(key)) {
       continue;
     }
     const filterDefinition = filterDefinitions.find((definition) => definition.control === key);
@@ -727,6 +745,8 @@ controls.clearCandidates.addEventListener("click", clearCandidates);
 controls.copyAiAssistantPrompt.addEventListener("click", copyAiAssistantPrompt);
 controls.mobileFilter.addEventListener("click", openFilterSheet);
 controls.mobileCandidate.addEventListener("click", openCandidateSheet);
+controls.closeFilterSheet.addEventListener("click", closeFilterSheet);
+controls.closeCandidateSheet.addEventListener("click", closeCandidateSheet);
 controls.closePreview.addEventListener("click", closePreview);
 controls.previewCandidate.addEventListener("click", () => {
   if (activePreviewPhoto) {

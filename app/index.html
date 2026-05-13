@@ -57,6 +57,11 @@
       </section>
 
       <section class="search-panel" aria-label="搜尋與篩選">
+        <div class="mobile-sheet-header">
+          <strong>篩選照片</strong>
+          <button id="closeFilterSheetButton" type="button">完成</button>
+        </div>
+
         <div class="primary-search">
           <label class="search-field">
             <span>搜尋</span>
@@ -180,14 +185,18 @@
         <aside class="side-panel" aria-label="候選與資料概覽">
           <section class="candidate-panel" aria-label="候選清單">
             <div class="section-heading">
-              <h2>候選清單</h2>
-              <p id="candidateSummary">0 張候選</p>
+              <div>
+                <h2>候選清單</h2>
+                <p id="candidateSummary">0 張候選</p>
+              </div>
+              <button id="closeCandidateSheetButton" class="mobile-sheet-close-button" type="button">完成</button>
             </div>
             <div id="candidateList" class="candidate-list"></div>
             <label class="candidate-copy-template">
               <span>複製用途</span>
               <select id="candidateCopyTemplateSelect">
                 <option value="im">IM 討論版</option>
+                <option value="sponsor">贊助佐證版</option>
                 <option value="collaboration">協作檢查版</option>
                 <option value="flickr_urls">純 Flickr URL</option>
               </select>

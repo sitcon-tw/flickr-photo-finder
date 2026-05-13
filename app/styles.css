@@ -200,6 +200,11 @@ h3 {
   margin-bottom: 12px;
 }
 
+.mobile-sheet-header,
+.mobile-sheet-close-button {
+  display: none;
+}
+
 .section-heading h2 {
   font-size: 17px;
   font-weight: 760;
@@ -371,6 +376,16 @@ select {
   text-overflow: ellipsis;
   text-align: left;
   white-space: nowrap;
+}
+
+.candidate-title-button {
+  display: inline;
+  width: fit-content;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
 }
 
 .enhanced-select-option::before {
@@ -666,10 +681,13 @@ select {
 }
 
 .candidate-thumb {
-  display: block;
+  display: grid;
+  place-items: center;
   width: 68px;
   aspect-ratio: 4 / 3;
   overflow: hidden;
+  padding: 0;
+  border: 0;
   border-radius: 6px;
   background: #e9eef3;
   color: var(--muted);
@@ -683,7 +701,7 @@ select {
   display: block;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
 }
 
 .candidate-body {
@@ -694,6 +712,7 @@ select {
 
 .candidate-item strong,
 .candidate-item a,
+.candidate-item .candidate-title-button,
 .candidate-item p,
 .candidate-item span {
   min-width: 0;
@@ -701,7 +720,8 @@ select {
 }
 
 .candidate-item strong,
-.candidate-item a {
+.candidate-item a,
+.candidate-item .candidate-title-button {
   color: var(--text);
   font-size: 14px;
   font-weight: 750;
@@ -720,6 +740,17 @@ select {
   justify-self: end;
   min-height: 32px;
   padding: 0 10px;
+}
+
+.candidate-item .candidate-thumb {
+  justify-self: start;
+  padding: 0;
+}
+
+.candidate-item .candidate-title-button {
+  justify-self: start;
+  min-height: 0;
+  padding: 0;
 }
 
 .candidate-copy-template {
@@ -877,7 +908,7 @@ select {
   display: block;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   transition: transform 180ms ease;
 }
 
@@ -1383,6 +1414,19 @@ select {
     min-height: 44px;
   }
 
+  .mobile-sheet-header {
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .mobile-sheet-header strong {
+    font-size: 16px;
+  }
+
   .mobile-action-bar {
     position: sticky;
     z-index: 30;
@@ -1433,6 +1477,10 @@ select {
     box-shadow: 0 -16px 38px rgb(15 23 42 / 24%);
   }
 
+  .search-panel.is-filter-open .mobile-sheet-header {
+    display: flex;
+  }
+
   .search-panel.is-filter-open .filter-grid {
     display: grid;
     grid-template-columns: 1fr;
@@ -1452,14 +1500,26 @@ select {
 
   .filter-chip {
     flex: 0 0 auto;
-    min-height: 38px;
+    min-height: 44px;
+    padding-left: 12px;
   }
 
   .filter-chip button {
-    width: 32px;
-    min-width: 32px;
-    min-height: 32px;
-    height: 32px;
+    width: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    height: 44px;
+  }
+
+  .enhanced-select-option,
+  .autocomplete-option {
+    min-height: 44px;
+    padding: 10px;
+  }
+
+  .autocomplete-token {
+    min-height: 44px;
+    padding: 0 12px;
   }
 
   .workspace {
@@ -1489,6 +1549,15 @@ select {
     box-shadow: none;
   }
 
+  .side-panel.is-candidate-open .section-heading {
+    align-items: center;
+  }
+
+  .side-panel.is-candidate-open .mobile-sheet-close-button {
+    display: inline-flex;
+    align-items: center;
+  }
+
   .side-panel.is-candidate-open .ai-assistant-panel,
   .side-panel.is-candidate-open .overview {
     display: none;
@@ -1513,7 +1582,7 @@ select {
   }
 
   .photo-link-hint {
-    min-height: 34px;
+    min-height: 44px;
   }
 
   .photo-statuses {
@@ -1521,7 +1590,7 @@ select {
   }
 
   .photo-id-button {
-    min-height: 36px;
+    min-height: 44px;
   }
 
   .candidate-item {

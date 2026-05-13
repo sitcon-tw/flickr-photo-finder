@@ -119,6 +119,10 @@ export function largeImageUrl(photo) {
   return buildSizedImageUrl(photo.image_preview_url, "b");
 }
 
+export function displayImageUrl(photo) {
+  return buildSizedImageUrl(photo.image_preview_url, "z") || photo.image_preview_url;
+}
+
 function imageFileExtension(url) {
   try {
     const pathname = new URL(url).pathname;
@@ -381,7 +385,7 @@ export function renderPhotoCard(photo, resultRank, resultCount, context) {
   });
   link.classList.toggle("is-preview-link", Boolean(openPreview));
 
-  image.src = photo.image_preview_url;
+  image.src = displayImageUrl(photo);
   image.alt = [photoTitle(photo), photo.event_year].filter(Boolean).join(" ");
   title.textContent = photoTitle(photo);
   year.textContent = photo.event_year || "";

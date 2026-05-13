@@ -321,6 +321,9 @@ describe("Pages search/sort pure logic", () => {
         photo_id: "100",
         event_name: "SITCON 2026",
         photo_url: "https://www.flickr.com/photos/sitcon/100",
+        visual_description: "攤位前有志工與會眾互動，背景可見識別證。",
+        sponsorship_items: ["Badge 識別證贊助"],
+        sponsorship_tags: ["品牌露出"],
         curation_status: "ai_labeled",
         public_use_status: "needs_review",
         _sheet_row_number: 28,
@@ -329,6 +332,8 @@ describe("Pages search/sort pure logic", () => {
         photo_id: "200",
         event_name: "SITCON 2025",
         photo_url: "https://www.flickr.com/photos/sitcon/200",
+        visual_description: "講者在舞台前展示投影片。",
+        sponsorship_tags: ["成果佐證"],
         curation_status: "reviewed",
         public_use_status: "",
         _sheet_row_number: 29,
@@ -350,6 +355,13 @@ describe("Pages search/sort pure logic", () => {
     assert.doesNotMatch(imText, /SITCON 2026/);
     assert.doesNotMatch(imText, /Sheets:/);
     assert.doesNotMatch(imText, /Finder 清單:/);
+
+    const sponsorText = candidateCopyText(items, helpers, "sponsor");
+    assert.match(sponsorText, /贊助佐證候選照片:/);
+    assert.match(sponsorText, /贊助品項: Badge 識別證贊助/);
+    assert.match(sponsorText, /贊助價值: 品牌露出/);
+    assert.match(sponsorText, /畫面描述: 攤位前有志工與會眾互動/);
+    assert.match(sponsorText, /Finder: https:\/\/finder\.test\/#photo-100/);
 
     const collaborationText = candidateCopyText(items, helpers, "collaboration");
     assert.match(collaborationText, /Finder 清單: https:\/\/finder\.test\/\?selected=100%2C200/);

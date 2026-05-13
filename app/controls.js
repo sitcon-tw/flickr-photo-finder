@@ -53,6 +53,8 @@ export function queryControls() {
     copyAiAssistantPrompt: document.querySelector("#copyAiAssistantPromptButton"),
     mobileFilter: document.querySelector("#mobileFilterButton"),
     mobileCandidate: document.querySelector("#mobileCandidateButton"),
+    closeFilterSheet: document.querySelector("#closeFilterSheetButton"),
+    closeCandidateSheet: document.querySelector("#closeCandidateSheetButton"),
     closePreview: document.querySelector("#closePreviewButton"),
     previewCandidate: document.querySelector("#previewCandidateButton"),
   };
