@@ -113,7 +113,9 @@ https://docs.google.com/spreadsheets/d/<spreadsheetId>/gviz/tq?tqx=out:csv&sheet
 
 ## 前端模組邊界
 
-公開前端維持原生 ES modules，不導入 bundler 或成熟前端 framework。目前的拆分原則是 Functional Core / Imperative Shell：
+公開前端目前維持原生 ES modules 與 Functional Core / Imperative Shell。長期 UI 架構已由 ADR 0007 決定遷移至 Vite + React + TypeScript + React Aria；執行進度與 phase gate 以 tracking issue #44 與 `docs/public-frontend-react-migration-plan.md` 為準。
+
+在 final cutover 前，目前的拆分原則仍是 Functional Core / Imperative Shell：
 
 - `app/search-sort.js` 是可測試純函式核心，負責 search text、篩選、scoring、推薦排序與探索排序；不得直接讀 DOM 或全域控制項。
 - `app/url-state.js` 負責 URL query encode/decode；selected ids、filters 與 sort deep link 行為應先在這裡調整。Filter URL 使用重複 query 參數表示多選，例如 `scene=攤位&scene=會眾`；早期單值 query 格式不保證相容。
