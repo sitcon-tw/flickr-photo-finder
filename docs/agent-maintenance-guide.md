@@ -140,7 +140,7 @@ pnpm finder:build
 pnpm finder:check
 ```
 
-前端純邏輯應優先放在可測試模組。`candidate-copy`、`data-loader`、`data-utils`、`search-sort` 與 URL state 的 source 分別在 `app-core/*.ts`，`app/candidate-copy.js`、`app/data-loader.js`、`app/data-utils.js`、`app/search-sort.js` 與 `app/url-state.js` 是 `pnpm finder:core:build` 的產物；其他尚未遷移的純邏輯仍在 `app/result-render.js`。DOM control 行為放在 `app/controls.js`，照片卡片 DOM 與 action 放在 `app/photo-render.js`，候選清單 DOM render 放在 `app/candidates.js`。`app/main.js` 應維持 bootstrap、state、URL state、資料載入順序、事件 wiring 與 render loop 組合，避免再把 domain logic 或大型 DOM render 寫回主檔。
+前端純邏輯應優先放在可測試模組。`analytics-core`、`candidate-copy`、`data-loader`、`data-utils`、`search-sort` 與 URL state 的 source 分別在 `app-core/*.ts`，`app/analytics-core.js`、`app/candidate-copy.js`、`app/data-loader.js`、`app/data-utils.js`、`app/search-sort.js` 與 `app/url-state.js` 是 `pnpm finder:core:build` 的產物；其他尚未遷移的純邏輯仍在 `app/result-render.js`。GA4 setup 與 dispatch 放在 `app/analytics.js`，DOM control 行為放在 `app/controls.js`，照片卡片 DOM 與 action 放在 `app/photo-render.js`，候選清單 DOM render 放在 `app/candidates.js`。`app/main.js` 應維持 bootstrap、state、URL state、資料載入順序、事件 wiring 與 render loop 組合，避免再把 domain logic 或大型 DOM render 寫回主檔。
 
 ## 文件優先順序
 
