@@ -122,7 +122,6 @@ node --check scripts/commands/validate-data.mjs
 node --check scripts/commands/discover-albums.mjs
 node --check scripts/commands/add-photo.mjs
 node --check scripts/commands/add-album.mjs
-node --check app/main.js
 node --check app/data-loader.js
 node --check app/controls.js
 node --check app/photo-render.js
@@ -140,7 +139,7 @@ pnpm finder:build
 pnpm finder:check
 ```
 
-前端純邏輯應優先放在可測試模組，例如 `app/search-sort.js`、`app/url-state.js`、`app/data-loader.js` 或 `app/result-render.js`。DOM control 行為放在 `app/controls.js`，照片卡片 DOM 與 action 放在 `app/photo-render.js`。`app/main.js` 應維持 bootstrap、state、URL state、資料載入順序、事件 wiring 與 render loop 組合，避免再把 domain logic 或大型 DOM render 寫回主檔。
+前端產品 shell 已切換為 `app-react/`。可測試純邏輯可暫留 `app/search-sort.js`、`app/url-state.js`、`app/data-loader.js` 或 `app/result-render.js`；若需要新增使用者互動、overlay、篩選 UI、照片卡片 UI 或 analytics，應放在 `app-react/`，不要再新增 vanilla DOM surface。
 
 ## 文件優先順序
 

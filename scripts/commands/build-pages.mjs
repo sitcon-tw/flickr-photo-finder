@@ -158,7 +158,7 @@ async function writeIndexHtml(outputDir) {
   const endIndex = source.indexOf(endMarker);
 
   if (startIndex === -1 || endIndex === -1 || endIndex <= startIndex) {
-    throw new Error("app/index.html must contain app-metadata markers");
+    throw new Error("app-react/index.html must contain app-metadata markers");
   }
 
   const before = source.slice(0, startIndex);

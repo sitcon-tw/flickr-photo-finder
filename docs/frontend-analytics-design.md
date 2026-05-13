@@ -14,8 +14,8 @@
 
 - `config/project.json` 的 `frontend.ga4MeasurementId` 保存 GA4 measurement ID。
 - `config/ga4-custom-dimensions.json` 保存 GA4 後台 event-scoped custom dimensions 註冊清單。
-- `app/index.html` 沒有 inline Google tag snippet；前端由 `app/main.js` 依專案設定動態載入 Google tag。
-- `app/main.js` 會在有 measurement ID 時建立 `dataLayer` / `gtag`，並載入 `https://www.googletagmanager.com/gtag/js`。
+- `app-react/index.html` 沒有 inline Google tag snippet；前端由 React data bootstrap 依專案設定動態載入 Google tag。
+- `app-react/src/analytics.ts` 會在有 measurement ID 時建立 `dataLayer` / `gtag`，並載入 `https://www.googletagmanager.com/gtag/js`。
 - 前端會追蹤文字搜尋、篩選、任務模式切換、零結果、載入更多、照片選擇、開啟 Flickr 原始頁、下載大圖、開啟原圖尺寸頁、複製 Flickr 連結、複製 finder 連結、候選清單操作與 AI 助手找圖入口操作。
 - 卡片會提供 `加入候選`、`下載大圖`、`原圖`、`Flickr 連結`、`本頁連結`、`回 Sheets` 等操作。
 - `複製 Flickr 連結` 複製的是 Flickr 原始照片頁，用於傳遞來源、授權與下載入口；`複製本頁連結` 複製的是 finder deep link，用於討論欄位、標籤與使用判斷是否合適。
@@ -26,8 +26,8 @@
 ```bash
 rg -n "gtag|G-|google analytics|GA4|analytics|dataLayer|clipboard|copy_flickr_link|copy_finder_link|download_image_size|open_image_size|open_flickr|measurement" app docs data config scripts README.md package.json
 sed -n '1,220p' config/project.json
-sed -n '1,220p' app/index.html
-sed -n '1,880p' app/main.js
+sed -n '1,220p' app-react/index.html
+sed -n '1,220p' app-react/src/analytics.ts
 pnpm finder:build
 pnpm finder:check
 ```
