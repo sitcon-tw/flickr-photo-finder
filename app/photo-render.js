@@ -115,8 +115,12 @@ function buildSizedImageUrl(previewUrl, suffix) {
   }
 }
 
-function largeImageUrl(photo) {
+export function largeImageUrl(photo) {
   return buildSizedImageUrl(photo.image_preview_url, "b");
+}
+
+export function displayImageUrl(photo) {
+  return buildSizedImageUrl(photo.image_preview_url, "z") || photo.image_preview_url;
 }
 
 function imageFileExtension(url) {
@@ -137,13 +141,13 @@ function safeFilenamePart(value) {
     .slice(0, 80);
 }
 
-function imageDownloadFilename(photo, url) {
+export function imageDownloadFilename(photo, url) {
   const title = safeFilenamePart(photoTitle(photo));
   const id = safeFilenamePart(photo.photo_id) || "photo";
   return `${id}${title ? `-${title}` : ""}.${imageFileExtension(url)}`;
 }
 
-async function downloadImageUrl(url, filename) {
+export async function downloadImageUrl(url, filename) {
   const response = await fetch(url, { mode: "cors" });
   if (!response.ok) {
     throw new Error("圖片下載失敗");
@@ -159,7 +163,7 @@ async function downloadImageUrl(url, filename) {
   window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
 }
 
-function originalSizePageUrl(photo) {
+export function originalSizePageUrl(photo) {
   if (!photo.photo_url) {
     return "";
   }
@@ -295,11 +299,6 @@ function sortingSignals(photo, { task, searchValue, labelFor }) {
   if (photo.priority_level === "high") {
     appendSignal(signals, labelFor("priority_level", "high"));
   }
-  if (photo.public_use_status === "needs_review") {
-    appendSignal(signals, labelFor("public_use_status", "needs_review"));
-  } else if (photo.public_use_status === "avoid") {
-    appendSignal(signals, labelFor("public_use_status", "avoid"));
-  }
   return signals.slice(0, 4);
 }
 
@@ -343,10 +342,11 @@ function appendBadges(container, badges) {
 }
 
 export function renderPhotoCard(photo, resultRank, resultCount, context) {
-  const { template, selectedPhotoIds, projectConfig, labelFor, toggleCandidate, trackEvent } = context;
+  const { template, selectedPhotoIds, projectConfig, labelFor, toggleCandidate, trackEvent, openPreview } = context;
   const fragment = template.content.cloneNode(true);
   const card = fragment.querySelector(".photo-card");
   const link = fragment.querySelector(".photo-link");
+  const linkHint = fragment.querySelector(".photo-link-hint");
   const image = fragment.querySelector("img");
   const title = fragment.querySelector(".photo-title");
   const year = fragment.querySelector(".photo-year");
@@ -366,19 +366,26 @@ export function renderPhotoCard(photo, resultRank, resultCount, context) {
   const detailOptions = { labelFor };
 
   card.id = photoAnchorId(photo.photo_id);
-  const openFlickrLabel = `開啟 Flickr 原頁：${photoTitle(photo)}`;
+  const openFlickrLabel = `預覽照片：${photoTitle(photo)}`;
   setActionLink(link, photo.photo_url);
   link.setAttribute("aria-label", openFlickrLabel);
   link.title = openFlickrLabel;
+  linkHint.textContent = openPreview ? "預覽" : "開啟 Flickr";
   link.addEventListener("click", (event) => {
+    if (openPreview) {
+      event.preventDefault();
+      openPreview(photo);
+      return;
+    }
     if (!photo.photo_url) {
       event.preventDefault();
       return;
     }
     trackOpenFlickr(photo, resultRank, resultCount, context);
   });
+  link.classList.toggle("is-preview-link", Boolean(openPreview));
 
-  image.src = photo.image_preview_url;
+  image.src = displayImageUrl(photo);
   image.alt = [photoTitle(photo), photo.event_year].filter(Boolean).join(" ");
   title.textContent = photoTitle(photo);
   year.textContent = photo.event_year || "";
@@ -419,7 +426,6 @@ export function renderPhotoCard(photo, resultRank, resultCount, context) {
   candidateButton.addEventListener("click", () => {
     toggleCandidate(photo.photo_id);
   });
-
   downloadLargeButton.title = "直接下載 Flickr large-1024 圖片";
   setActionButton(downloadLargeButton, Boolean(largeUrl));
   downloadLargeButton.addEventListener("click", async () => {

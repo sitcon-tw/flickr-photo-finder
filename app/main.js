@@ -29,7 +29,12 @@ import { loadFinderData, optionLabelsFor } from "./data-loader.js";
 import { renderOverview as renderOverviewPanel } from "./overview-render.js";
 import {
   copyTextToClipboard,
+  displayImageUrl,
+  downloadImageUrl,
   finderLink,
+  imageDownloadFilename,
+  largeImageUrl,
+  originalSizePageUrl,
   photoAnchorId,
   photoTitle,
   renderPhotoCard,
@@ -70,6 +75,8 @@ let projectConfig = {};
 let optionLabelMaps = new Map();
 let searchTokensForField = () => [];
 let filterControlEventsBound = false;
+let activePreviewPhoto = null;
+let sheetDragState = null;
 
 const state = {
   taskMode: "all",
@@ -158,6 +165,129 @@ function setExternalLink(link, href) {
   link.removeAttribute("aria-disabled");
 }
 
+function setModalOpen(open) {
+  elements.modalBackdrop.hidden = !open;
+  document.body.classList.toggle("has-modal-open", open);
+}
+
+function closeFilterSheet() {
+  resetSheetDragState();
+  elements.searchPanel.classList.remove("is-filter-open");
+  if (!elements.photoPreviewDialog.hidden || elements.sidePanel.classList.contains("is-candidate-open")) {
+    return;
+  }
+  setModalOpen(false);
+}
+
+function openFilterSheet() {
+  closeCandidateSheet();
+  closePreview();
+  elements.searchPanel.classList.add("is-filter-open");
+  setModalOpen(true);
+}
+
+function closeCandidateSheet() {
+  resetSheetDragState();
+  elements.sidePanel.classList.remove("is-candidate-open");
+  if (!elements.photoPreviewDialog.hidden || elements.searchPanel.classList.contains("is-filter-open")) {
+    return;
+  }
+  setModalOpen(false);
+}
+
+function openCandidateSheet() {
+  closeFilterSheet();
+  closePreview();
+  elements.sidePanel.classList.add("is-candidate-open");
+  setModalOpen(true);
+}
+
+function closePreview() {
+  resetSheetDragState();
+  elements.photoPreviewDialog.hidden = true;
+  activePreviewPhoto = null;
+  if (!elements.searchPanel.classList.contains("is-filter-open") && !elements.sidePanel.classList.contains("is-candidate-open")) {
+    setModalOpen(false);
+  }
+}
+
+function closeMobileOverlays() {
+  resetSheetDragState();
+  elements.searchPanel.classList.remove("is-filter-open");
+  elements.sidePanel.classList.remove("is-candidate-open");
+  elements.photoPreviewDialog.hidden = true;
+  activePreviewPhoto = null;
+  setModalOpen(false);
+}
+
+function isMobileSheet() {
+  return window.matchMedia("(max-width: 760px)").matches;
+}
+
+function resetSheetDragState() {
+  if (sheetDragState?.sheet) {
+    sheetDragState.sheet.style.transform = "";
+  }
+  sheetDragState = null;
+}
+
+function touchFromList(touches, identifier) {
+  return Array.from(touches).find((touch) => touch.identifier === identifier) ?? null;
+}
+
+function shouldIgnoreSheetDragStart(event) {
+  return Boolean(event.target.closest(".enhanced-select-panel, .candidate-list"));
+}
+
+function onSheetTouchStart(event, { sheet, isOpen, close }) {
+  if (!isOpen() || !isMobileSheet() || event.touches.length !== 1 || shouldIgnoreSheetDragStart(event)) {
+    return;
+  }
+  const touch = event.touches[0];
+  sheetDragState = {
+    sheet,
+    close,
+    touchId: touch.identifier,
+    startY: touch.clientY,
+    startScrollTop: sheet.scrollTop,
+  };
+}
+
+function onSheetTouchMove(event) {
+  if (!sheetDragState) {
+    return;
+  }
+  const touch = touchFromList(event.touches, sheetDragState.touchId);
+  if (!touch) {
+    return;
+  }
+  const deltaY = touch.clientY - sheetDragState.startY;
+  if (sheetDragState.startScrollTop > 0 || deltaY <= 0) {
+    return;
+  }
+  event.preventDefault();
+  const dragOffset = Math.min(deltaY, 160);
+  sheetDragState.sheet.style.transform = `translateY(${Math.round(dragOffset)}px)`;
+}
+
+function onSheetTouchEnd(event) {
+  if (!sheetDragState) {
+    return;
+  }
+  const touch = touchFromList(event.changedTouches, sheetDragState.touchId);
+  if (!touch) {
+    resetSheetDragState();
+    return;
+  }
+  const deltaY = touch.clientY - sheetDragState.startY;
+  const shouldClose = sheetDragState.startScrollTop <= 0 && deltaY >= 96;
+  const close = sheetDragState.close;
+  resetSheetDragState();
+  if (shouldClose) {
+    close();
+  }
+}
+
 function currentFilterSnapshot() {
   const filterCounts = Object.fromEntries(Object.entries(state.filters).map(([key, values]) => [`${key}Count`, values.length]));
   return {
@@ -223,8 +353,38 @@ function labelFor(fieldName, value) {
   return optionLabels(fieldName).get(value) ?? value;
 }
 
+function appendPreviewDetail(label, values, { fieldName = "" } = {}) {
+  const normalized = (Array.isArray(values) ? values : [values]).filter(Boolean);
+  if (normalized.length === 0) {
+    return;
+  }
+  const row = document.createElement("div");
+  row.className = "detail-row";
+  const term = document.createElement("dt");
+  term.textContent = label;
+  const description = document.createElement("dd");
+  for (const value of normalized) {
+    const tag = document.createElement("span");
+    tag.className = "tag";
+    tag.textContent = fieldName ? labelFor(fieldName, value) : value;
+    description.append(tag);
+  }
+  row.append(term, description);
+  elements.previewDetails.append(row);
+}
+
 function activeTask() {
   return taskModes.find((task) => task.id === state.taskMode) ?? taskModes[0];
+}
+
+function updateTaskModeSummary() {
+  elements.taskModeSummary.textContent = activeTask().label;
+}
+
+function initializeMobileTaskModePanel() {
+  if (window.matchMedia("(max-width: 760px)").matches) {
+    elements.taskModeDetails.removeAttribute("open");
+  }
 }
 
 function currentPhotoFilters() {
@@ -253,10 +413,66 @@ function sheetRowLink(photo) {
   return buildSheetRowLink(photo, projectConfig);
 }
 
+function openPreview(photo) {
+  closeFilterSheet();
+  closeCandidateSheet();
+  activePreviewPhoto = photo;
+  const largeUrl = largeImageUrl(photo);
+  const originalUrl = originalSizePageUrl(photo);
+  const previewUrl = largeUrl || photo.image_preview_url;
+  elements.previewTitle.textContent = photoTitle(photo);
+  elements.previewMeta.textContent = [photo.event_year, photo.album_title, `photo_id: ${photo.photo_id}`].filter(Boolean).join(" / ");
+  elements.previewImage.src = previewUrl;
+  elements.previewImage.alt = [photoTitle(photo), photo.event_year].filter(Boolean).join(" ");
+  elements.previewDetails.replaceChildren();
+  appendPreviewDetail("構圖", [photo.orientation], { fieldName: "orientation" });
+  appendPreviewDetail("留白", photo.has_negative_space, { fieldName: "has_negative_space" });
+  appendPreviewDetail("裁切", photo.safe_crop);
+  appendPreviewDetail("用途", photo.recommended_uses.slice(0, 4));
+  appendPreviewDetail("場景", photo.scene_tags.slice(0, 4));
+  appendPreviewDetail("贊助品項", photo.sponsorship_items.slice(0, 4));
+  appendPreviewDetail("贊助價值", photo.sponsorship_tags.slice(0, 4));
+  appendPreviewDetail("畫面描述", photo.visual_description);
+  appendPreviewDetail("整理狀態", photo.curation_status, { fieldName: "curation_status" });
+  appendPreviewDetail("使用提醒", photo.public_use_status, { fieldName: "public_use_status" });
+  controls.previewLarge.disabled = !largeUrl;
+  controls.previewLarge.dataset.largeImageUrl = largeUrl;
+  setExternalLink(elements.previewImageLink, photo.photo_url);
+  elements.previewImageLink.title = photo.photo_url ? "開啟 Flickr 照片頁" : "";
+  setExternalLink(elements.previewOriginalLink, originalUrl);
+  setExternalLink(elements.previewSheetLink, sheetRowLink(photo));
+  updatePreviewCandidateButton();
+  elements.photoPreviewDialog.hidden = false;
+  setModalOpen(true);
+  controls.closePreview.focus({ preventScroll: true });
+}
+
+function updatePreviewCandidateButton() {
+  if (!activePreviewPhoto) {
+    return;
+  }
+  const selected = state.selectedPhotoIds.has(activePreviewPhoto.photo_id);
+  controls.previewCandidate.textContent = selected ? "已加入候選" : "加入候選";
+  controls.previewCandidate.setAttribute("aria-pressed", selected ? "true" : "false");
+  controls.previewCandidate.classList.toggle("is-selected", selected);
+}
+
 function candidateListLink() {
   const url = new URL(window.location.href);
   url.hash = "";
   return url.toString();
+}
+
+function activeFilterCount() {
+  return activeFilterEntries().filter(([key]) => key !== "task" && key !== "search").length;
+}
+
+function updateMobileSummary() {
+  const selectedCount = state.selectedPhotoIds.size;
+  controls.mobileFilter.textContent = activeFilterCount() > 0 ? `篩選 ${activeFilterCount()}` : "篩選";
+  controls.mobileCandidate.textContent = `候選 ${selectedCount}`;
+  elements.selectedNotice.hidden = selectedCount === 0;
+  elements.selectedNotice.textContent = selectedCount === 0 ? "" : `目前已有 ${selectedCount} 張候選照片，可從「候選 ${selectedCount}」查看。`;
 }
 
 function renderPhoto(photo, resultRank, resultCount) {
@@ -270,6 +486,7 @@ function renderPhoto(photo, resultRank, resultCount) {
     taskMode: state.taskMode,
     sortMode: controls.sort.value,
     toggleCandidate,
+    openPreview,
     trackEvent,
   });
 }
@@ -283,6 +500,7 @@ function toggleCandidate(photoId) {
     state.selectedPhotoIds.add(photoId);
     trackEvent("add_candidate", { photo_id: photoId, task_mode: state.taskMode, sort_mode: controls.sort.value });
   }
+  updatePreviewCandidateButton();
   render({ preservePage: true, preserveScroll: true, source: "candidate" });
 }
 
@@ -308,6 +526,31 @@ async function copyCandidateList() {
     }
   } catch {
     setTemporaryButtonText(controls.copyCandidates, "複製失敗");
+  }
+}
+
+async function downloadPreviewLargeImage() {
+  if (!activePreviewPhoto) {
+    return;
+  }
+  const largeUrl = controls.previewLarge.dataset.largeImageUrl || largeImageUrl(activePreviewPhoto);
+  if (!largeUrl) {
+    return;
+  }
+  const originalText = controls.previewLarge.textContent;
+  try {
+    controls.previewLarge.disabled = true;
+    controls.previewLarge.textContent = "下載中";
+    await downloadImageUrl(largeUrl, imageDownloadFilename(activePreviewPhoto, largeUrl));
+    controls.previewLarge.textContent = "已下載";
+    trackEvent("download_preview_large_image", { photo_id: activePreviewPhoto.photo_id });
+  } catch {
+    controls.previewLarge.textContent = "下載失敗";
+  } finally {
+    window.setTimeout(() => {
+      controls.previewLarge.disabled = false;
+      controls.previewLarge.textContent = originalText;
+    }, 1900);
   }
 }
 
@@ -377,6 +620,7 @@ function render({ resetPage = false, preservePage = false, preserveScroll = fals
   }
 
   updateTaskButtons({ elements, taskMode: state.taskMode });
+  updateTaskModeSummary();
   updateFilterLayout({ controls, elements, taskMode: state.taskMode });
   renderActiveFilters({ elements, activeFilterEntries });
   renderCandidates({
@@ -388,7 +632,10 @@ function render({ resetPage = false, preservePage = false, preserveScroll = fals
     finderLink,
     labelFor,
     toggleCandidate,
+    openPreview,
+    displayImageUrl,
   });
+  updateMobileSummary();
   elements.grid.replaceChildren();
   elements.summary.textContent = `${filtered.length} / ${photos.length} 張照片`;
   elements.context.textContent = resultContextText({ photos, filtered, controls, activeTask, activeFilterEntries });
@@ -520,6 +767,7 @@ async function loadData() {
   albums = loadedData.albums;
   photos = loadedData.photos;
   setupTaskModes(elements.taskModes, taskModes);
+  initializeMobileTaskModePanel();
   setupFilters({
     controls,
     elements,
@@ -550,7 +798,21 @@ function bindFilterControlEvents() {
   }
   filterControlEventsBound = true;
   for (const [key, control] of Object.entries(controls)) {
-    if (["reset", "loadMore", "copyCandidates", "clearCandidates", "candidateCopyTemplate", "copyAiAssistantPrompt"].includes(key)) {
+    if ([
+      "reset",
+      "loadMore",
+      "copyCandidates",
+      "clearCandidates",
+      "candidateCopyTemplate",
+      "copyAiAssistantPrompt",
+      "mobileFilter",
+      "mobileCandidate",
+      "closeFilterSheet",
+      "closeCandidateSheet",
+      "closePreview",
+      "previewCandidate",
+      "previewLarge",
+    ].includes(key)) {
       continue;
     }
     const filterDefinition = filterDefinitions.find((definition) => definition.control === key);
@@ -598,10 +860,59 @@ controls.loadMore.addEventListener("click", () => {
 controls.copyCandidates.addEventListener("click", copyCandidateList);
 controls.clearCandidates.addEventListener("click", clearCandidates);
 controls.copyAiAssistantPrompt.addEventListener("click", copyAiAssistantPrompt);
+controls.mobileFilter.addEventListener("click", openFilterSheet);
+controls.mobileCandidate.addEventListener("click", openCandidateSheet);
+controls.closeFilterSheet.addEventListener("click", closeFilterSheet);
+controls.closeCandidateSheet.addEventListener("click", closeCandidateSheet);
+controls.closePreview.addEventListener("click", closePreview);
+elements.searchPanel.addEventListener(
+  "touchstart",
+  (event) => onSheetTouchStart(event, {
+    sheet: elements.searchPanel,
+    isOpen: () => elements.searchPanel.classList.contains("is-filter-open"),
+    close: closeFilterSheet,
+  }),
+  { passive: true },
+);
+elements.sidePanel.addEventListener(
+  "touchstart",
+  (event) => onSheetTouchStart(event, {
+    sheet: elements.sidePanel,
+    isOpen: () => elements.sidePanel.classList.contains("is-candidate-open"),
+    close: closeCandidateSheet,
+  }),
+  { passive: true },
+);
+elements.photoPreviewDialog.addEventListener(
+  "touchstart",
+  (event) => onSheetTouchStart(event, {
+    sheet: elements.photoPreviewDialog,
+    isOpen: () => !elements.photoPreviewDialog.hidden,
+    close: closePreview,
+  }),
+  { passive: true },
+);
+for (const sheet of [elements.searchPanel, elements.sidePanel, elements.photoPreviewDialog]) {
+  sheet.addEventListener("touchmove", onSheetTouchMove, { passive: false });
+  sheet.addEventListener("touchend", onSheetTouchEnd);
+  sheet.addEventListener("touchcancel", onSheetTouchEnd);
+}
+controls.previewLarge.addEventListener("click", downloadPreviewLargeImage);
+controls.previewCandidate.addEventListener("click", () => {
+  if (activePreviewPhoto) {
+    toggleCandidate(activePreviewPhoto.photo_id);
+  }
+});
+elements.modalBackdrop.addEventListener("click", closeMobileOverlays);
 elements.aiAssistantSheetLink.addEventListener("click", () => {
   trackEvent("open_sheets_for_ai_assistant", currentAiAssistantEventParams());
 });
 window.addEventListener("hashchange", revealPhotoFromHash);
+window.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    closeMobileOverlays();
+  }
+});
 
 try {
   await loadData();

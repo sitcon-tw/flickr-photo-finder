@@ -51,6 +51,13 @@ export function queryControls() {
     candidateCopyTemplate: document.querySelector("#candidateCopyTemplateSelect"),
     clearCandidates: document.querySelector("#clearCandidatesButton"),
     copyAiAssistantPrompt: document.querySelector("#copyAiAssistantPromptButton"),
+    mobileFilter: document.querySelector("#mobileFilterButton"),
+    mobileCandidate: document.querySelector("#mobileCandidateButton"),
+    closeFilterSheet: document.querySelector("#closeFilterSheetButton"),
+    closeCandidateSheet: document.querySelector("#closeCandidateSheetButton"),
+    closePreview: document.querySelector("#closePreviewButton"),
+    previewCandidate: document.querySelector("#previewCandidateButton"),
+    previewLarge: document.querySelector("#previewLargeButton"),
   };
 }
 
@@ -66,7 +73,11 @@ export function queryElements() {
     appTitle: document.querySelector("#appTitle"),
     sourceLink: document.querySelector("#sourceLink"),
     repositoryLink: document.querySelector("#repositoryLink"),
+    taskModeDetails: document.querySelector("#taskModeDetails"),
+    taskModeSummary: document.querySelector("#taskModeSummary"),
     taskModes: document.querySelector("#taskModes"),
+    searchPanel: document.querySelector(".search-panel"),
+    sidePanel: document.querySelector(".side-panel"),
     taskFilterGrid: document.querySelector("#taskFilterGrid"),
     advancedFilters: document.querySelector("#advancedFilters"),
     advancedFilterGrid: document.querySelector("#advancedFilterGrid"),
@@ -75,7 +86,18 @@ export function queryElements() {
     loadMoreSummary: document.querySelector("#loadMoreSummary"),
     candidateSummary: document.querySelector("#candidateSummary"),
     candidateList: document.querySelector("#candidateList"),
+    selectedNotice: document.querySelector("#selectedNotice"),
     aiAssistantSheetLink: document.querySelector("#aiAssistantSheetLink"),
+    modalBackdrop: document.querySelector("#modalBackdrop"),
+    photoPreviewDialog: document.querySelector("#photoPreviewDialog"),
+    previewImageLink: document.querySelector("#previewImageLink"),
+    previewTitle: document.querySelector("#previewTitle"),
+    previewMeta: document.querySelector("#previewMeta"),
+    previewImage: document.querySelector("#previewImage"),
+    previewDetails: document.querySelector("#previewDetails"),
+    previewLargeButton: document.querySelector("#previewLargeButton"),
+    previewOriginalLink: document.querySelector("#previewOriginalLink"),
+    previewSheetLink: document.querySelector("#previewSheetLink"),
   };
 }
 
@@ -160,6 +182,10 @@ function syncEnhancedSelectValue(control) {
   control.trigger.classList.toggle("is-empty", values.length === 0);
 }
 
+function shouldFocusEnhancedSelectSearch() {
+  return window.matchMedia("(pointer: fine)").matches && !window.matchMedia("(max-width: 760px)").matches;
+}
+
 function syncEnhancedSelectValueForSelect(select) {
   const control = enhancedSelects.get(select);
   if (control) {
@@ -218,10 +244,13 @@ function openEnhancedSelect(control) {
   renderEnhancedSelectOptions(control);
   control.panel.hidden = false;
   control.trigger.setAttribute("aria-expanded", "true");
-  window.requestAnimationFrame(() => control.search.focus({ preventScroll: true }));
+  if (shouldFocusEnhancedSelectSearch()) {
+    window.requestAnimationFrame(() => control.search.focus({ preventScroll: true }));
+  }
 }
 
 function toggleEnhancedSelectValue(control, value) {
+  const optionScrollTop = control.options.scrollTop;
   if (!value) {
     for (const option of control.select.options) {
       option.selected = false;
@@ -237,6 +266,7 @@ function toggleEnhancedSelectValue(control, value) {
   }
   syncEnhancedSelectValue(control);
   renderEnhancedSelectOptions(control);
+  control.options.scrollTop = optionScrollTop;
   control.select.dispatchEvent(new Event("input", { bubbles: true }));
 }
 

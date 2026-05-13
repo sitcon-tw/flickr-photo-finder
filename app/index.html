@@ -49,14 +49,25 @@
       </header>
 
       <section class="task-panel" aria-label="找圖任務">
-        <div class="section-heading">
-          <h2>任務模式</h2>
-          <p>只調整推薦排序，不會排除照片。</p>
-        </div>
-        <div id="taskModes" class="task-modes"></div>
+        <details id="taskModeDetails" class="task-mode-details" open>
+          <summary>
+            <span>任務模式</span>
+            <strong id="taskModeSummary">全部照片</strong>
+          </summary>
+          <div class="section-heading">
+            <h2>任務模式</h2>
+            <p>只調整推薦排序，不會排除照片。</p>
+          </div>
+          <div id="taskModes" class="task-modes"></div>
+        </details>
       </section>
 
       <section class="search-panel" aria-label="搜尋與篩選">
+        <div class="mobile-sheet-header">
+          <strong>篩選照片</strong>
+          <button id="closeFilterSheetButton" type="button">完成</button>
+        </div>
+
         <div class="primary-search">
           <label class="search-field">
             <span>搜尋</span>
@@ -166,22 +177,32 @@
         <div>
           <strong id="resultSummary">載入中</strong>
           <p id="resultContext">準備讀取資料</p>
+          <p id="selectedNotice" class="selected-notice" hidden></p>
         </div>
         <div id="activeFilters" class="active-filters" aria-label="已套用條件"></div>
       </section>
+
+      <div class="mobile-action-bar" aria-label="手機快捷操作">
+        <button id="mobileFilterButton" type="button">篩選</button>
+        <button id="mobileCandidateButton" type="button">候選 0</button>
+      </div>
 
       <section class="workspace">
         <aside class="side-panel" aria-label="候選與資料概覽">
           <section class="candidate-panel" aria-label="候選清單">
             <div class="section-heading">
-              <h2>候選清單</h2>
-              <p id="candidateSummary">0 張候選</p>
+              <div>
+                <h2>候選清單</h2>
+                <p id="candidateSummary">0 張候選</p>
+              </div>
+              <button id="closeCandidateSheetButton" class="mobile-sheet-close-button" type="button">完成</button>
             </div>
             <div id="candidateList" class="candidate-list"></div>
             <label class="candidate-copy-template">
               <span>複製用途</span>
               <select id="candidateCopyTemplateSelect">
                 <option value="im">IM 討論版</option>
+                <option value="sponsor">贊助佐證版</option>
                 <option value="collaboration">協作檢查版</option>
                 <option value="flickr_urls">純 Flickr URL</option>
               </select>
@@ -258,6 +279,31 @@
         </div>
       </article>
     </template>
+
+    <div id="modalBackdrop" class="modal-backdrop" hidden></div>
+
+    <section id="photoPreviewDialog" class="photo-preview-dialog" aria-label="照片預覽" aria-modal="true" role="dialog" hidden>
+      <div class="dialog-header">
+        <div>
+          <h2 id="previewTitle">照片預覽</h2>
+          <p id="previewMeta"></p>
+        </div>
+        <button id="closePreviewButton" type="button">關閉</button>
+      </div>
+      <div class="preview-image-frame">
+        <a id="previewImageLink" class="preview-image-link" target="_blank" rel="noreferrer">
+          <img id="previewImage" alt="" />
+          <span class="preview-image-hint">Flickr</span>
+        </a>
+      </div>
+      <dl id="previewDetails" class="preview-details"></dl>
+      <div class="preview-actions">
+        <button id="previewCandidateButton" class="candidate-toggle-button" type="button">候選</button>
+        <button id="previewLargeButton" class="download-large-image-button" type="button">下載大圖</button>
+        <a id="previewOriginalLink" class="photo-action original-image-link" target="_blank" rel="noreferrer">原圖</a>
+        <a id="previewSheetLink" class="photo-action sheet-row-link" target="_blank" rel="noreferrer">Sheets</a>
+      </div>
+    </section>
 
     <script type="module" src="./main.js"></script>
   </body>
