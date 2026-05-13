@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useReducer, useState } from "react";
 import { loadFinderData } from "../../app-core/data-loader";
 import { applySearchRegistry, filterAndSortPhotos } from "../../app-core/search-sort";
+import { applyUrlStateRegistry, decodeUrlState } from "../../app-core/url-state";
 
 type PhotoValue = string | string[] | number | boolean | null | undefined;
 type PhotoRecord = Record<string, PhotoValue> & {
@@ -36,6 +37,17 @@ type FinderSettings = {
   discoverHistorySize?: number;
   discoverWindowSize?: number;
 };
+type FinderViewState = {
+  searchTerm: string;
+  sortMode: SortModeValue;
+  taskModeId: string;
+};
+type FinderViewAction =
+  | { type: "hydrate"; state: Partial<FinderViewState>; validTaskModes: string[] }
+  | { type: "setSearchTerm"; value: string }
+  | { type: "setSortMode"; value: string }
+  | { type: "setTaskMode"; value: string; validTaskModes: string[] }
+  | { type: "reset" };
 
 const previewDataSources = {
   albumsCsvUrl: "./fixtures/albums.csv",
@@ -58,6 +70,11 @@ type SortModeValue = (typeof sortModes)[number]["value"];
 
 const fallbackTaskModes: TaskMode[] = [{ id: "all", label: "全部照片", description: "不套任務權重" }];
 const previewResultLimit = 12;
+const initialViewState: FinderViewState = {
+  searchTerm: "",
+  sortMode: "recommended",
+  taskModeId: "all",
+};
 
 function photoTitle(photo: PhotoRecord) {
   return photo.event_name || photo.album_title || photo.photo_id;
@@ -111,6 +128,60 @@ function isSortModeValue(value: string): value is SortModeValue {
   return sortModes.some((mode) => mode.value === value);
 }
 
+function normalizeTaskModeId(value: string, validTaskModes: string[]) {
+  return validTaskModes.includes(value) ? value : "all";
+}
+
+function normalizeViewState(state: Partial<FinderViewState>, validTaskModes: string[]) {
+  return {
+    searchTerm: String(state.searchTerm ?? "").trim(),
+    sortMode: state.sortMode && isSortModeValue(state.sortMode) ? state.sortMode : "recommended",
+    taskModeId: normalizeTaskModeId(String(state.taskModeId ?? "all"), validTaskModes),
+  };
+}
+
+function finderViewReducer(state: FinderViewState, action: FinderViewAction): FinderViewState {
+  if (action.type === "hydrate") {
+    return normalizeViewState({ ...state, ...action.state }, action.validTaskModes);
+  }
+  if (action.type === "setSearchTerm") {
+    return { ...state, searchTerm: action.value };
+  }
+  if (action.type === "setSortMode") {
+    return { ...state, sortMode: isSortModeValue(action.value) ? action.value : "recommended" };
+  }
+  if (action.type === "setTaskMode") {
+    return { ...state, taskModeId: normalizeTaskModeId(action.value, action.validTaskModes) };
+  }
+  if (action.type === "reset") {
+    return initialViewState;
+  }
+  return state;
+}
+
+function buildPartialFinderUrl(state: FinderViewState) {
+  const params = new URLSearchParams(window.location.search);
+  if (state.taskModeId && state.taskModeId !== "all") {
+    params.set("task", state.taskModeId);
+  } else {
+    params.delete("task");
+  }
+  const searchTerm = state.searchTerm.trim();
+  if (searchTerm) {
+    params.set("q", searchTerm);
+  } else {
+    params.delete("q");
+  }
+  if (state.sortMode && state.sortMode !== "recommended") {
+    params.set("sort", state.sortMode);
+  } else {
+    params.delete("sort");
+  }
+
+  const nextSearch = params.toString();
+  return `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ""}${window.location.hash}`;
+}
+
 function resultContextText({
   allCount,
   resultCount,
@@ -141,9 +212,8 @@ function resultContextText({
 export function App() {
   const [data, setData] = useState<FinderData | null>(null);
   const [error, setError] = useState<string>("");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [sortMode, setSortMode] = useState<SortModeValue>("recommended");
-  const [taskModeId, setTaskModeId] = useState("all");
+  const [viewState, dispatch] = useReducer(finderViewReducer, initialViewState);
+  const [urlStateReady, setUrlStateReady] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -154,6 +224,7 @@ export function App() {
       .then((loadedData) => {
         if (!cancelled) {
           applySearchRegistry(loadedData.interfaceRegistry);
+          applyUrlStateRegistry(loadedData.interfaceRegistry);
           setData(loadedData);
         }
       })
@@ -170,11 +241,65 @@ export function App() {
 
   const photos = useMemo(() => (data?.photos ?? []) as PhotoRecord[], [data]);
   const taskModes = useMemo(() => registryTaskModes(data), [data]);
+  const validTaskModes = useMemo(() => taskModes.map((mode) => mode.id), [taskModes]);
+  const normalizedViewState = useMemo(
+    () => normalizeViewState(viewState, validTaskModes),
+    [validTaskModes, viewState],
+  );
+  const { searchTerm, sortMode, taskModeId } = normalizedViewState;
   const activeTask = useMemo(
     () => taskModes.find((mode) => mode.id === taskModeId) ?? taskModes[0] ?? fallbackTaskModes[0],
     [taskModeId, taskModes],
   );
   const settings = registrySettings(data);
+
+  useEffect(() => {
+    if (!data || urlStateReady) {
+      return;
+    }
+    const urlState = decodeUrlState(new URLSearchParams(window.location.search));
+    dispatch({
+      type: "hydrate",
+      state: {
+        searchTerm: urlState.search,
+        sortMode: isSortModeValue(urlState.sort) ? urlState.sort : "recommended",
+        taskModeId: urlState.taskMode || "all",
+      },
+      validTaskModes,
+    });
+    setUrlStateReady(true);
+  }, [data, urlStateReady, validTaskModes]);
+
+  useEffect(() => {
+    if (!data || !urlStateReady) {
+      return;
+    }
+    const nextUrl = buildPartialFinderUrl({ searchTerm, sortMode, taskModeId });
+    if (nextUrl !== `${window.location.pathname}${window.location.search}${window.location.hash}`) {
+      window.history.replaceState(null, "", nextUrl);
+    }
+  }, [data, searchTerm, sortMode, taskModeId, urlStateReady]);
+
+  useEffect(() => {
+    if (!data) {
+      return;
+    }
+    const handlePopState = () => {
+      const urlState = decodeUrlState(new URLSearchParams(window.location.search));
+      dispatch({
+        type: "hydrate",
+        state: {
+          searchTerm: urlState.search,
+          sortMode: isSortModeValue(urlState.sort) ? urlState.sort : "recommended",
+          taskModeId: urlState.taskMode || "all",
+        },
+        validTaskModes,
+      });
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [data, validTaskModes]);
+
   const filteredPhotos = useMemo(
     () =>
       filterAndSortPhotos(photos, {
@@ -217,7 +342,7 @@ export function App() {
             value={searchTerm}
             placeholder="可放字、品牌露出、友善交流、舞台講者"
             autoComplete="off"
-            onChange={(event) => setSearchTerm(event.target.value)}
+            onChange={(event) => dispatch({ type: "setSearchTerm", value: event.target.value })}
           />
         </label>
 
@@ -226,8 +351,7 @@ export function App() {
           <select
             value={sortMode}
             onChange={(event) => {
-              const nextSortMode = event.target.value;
-              setSortMode(isSortModeValue(nextSortMode) ? nextSortMode : "recommended");
+              dispatch({ type: "setSortMode", value: event.target.value });
             }}
           >
             {sortModes.map((mode) => (
@@ -242,11 +366,7 @@ export function App() {
           className="finder-reset"
           type="button"
           disabled={!searchTerm && sortMode === "recommended" && activeTask.id === "all"}
-          onClick={() => {
-            setSearchTerm("");
-            setSortMode("recommended");
-            setTaskModeId("all");
-          }}
+          onClick={() => dispatch({ type: "reset" })}
         >
           清除
         </button>
@@ -263,7 +383,7 @@ export function App() {
               key={mode.id}
               type="button"
               className={mode.id === activeTask.id ? "task-mode is-active" : "task-mode"}
-              onClick={() => setTaskModeId(mode.id)}
+              onClick={() => dispatch({ type: "setTaskMode", value: mode.id, validTaskModes })}
             >
               <strong>{mode.label}</strong>
               {mode.description ? <span>{mode.description}</span> : null}
