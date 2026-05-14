@@ -241,7 +241,16 @@
         </aside>
 
         <section class="results-area" aria-label="照片結果">
-          <section id="photoGrid" class="photo-grid" aria-live="polite"></section>
+          <section id="photoGrid" class="photo-grid" aria-live="polite" aria-busy="true">
+            <div class="loading-state" role="status">
+              <span class="loading-spinner" aria-hidden="true"></span>
+              <strong>正在載入照片索引</strong>
+            </div>
+            <div class="loading-card" aria-hidden="true"></div>
+            <div class="loading-card" aria-hidden="true"></div>
+            <div class="loading-card" aria-hidden="true"></div>
+            <div class="loading-card" aria-hidden="true"></div>
+          </section>
           <div id="loadMorePanel" class="load-more-panel" hidden>
             <p id="loadMoreSummary"></p>
             <button id="loadMoreButton" type="button">載入更多</button>

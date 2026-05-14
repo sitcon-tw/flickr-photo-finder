@@ -1364,6 +1364,68 @@ select {
   text-align: center;
 }
 
+.loading-state {
+  grid-column: 1 / -1;
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 32px 18px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--muted);
+  text-align: center;
+}
+
+.loading-state strong {
+  color: var(--text);
+  font-size: 15px;
+}
+
+.loading-state p {
+  margin: 0;
+  font-size: 13px;
+}
+
+.loading-spinner {
+  display: inline-block;
+  width: 28px;
+  height: 28px;
+  border: 3px solid var(--line);
+  border-top-color: var(--accent);
+  border-radius: 999px;
+  animation: loading-spin 840ms linear infinite;
+}
+
+.loading-card {
+  min-height: 188px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background:
+    linear-gradient(90deg, transparent, rgb(255 255 255 / 70%), transparent),
+    linear-gradient(135deg, #e9eef3, #f7f9fb);
+  background-size: 180px 100%, 100% 100%;
+  box-shadow: var(--shadow);
+  animation: loading-shimmer 1200ms ease-in-out infinite;
+}
+
+@keyframes loading-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes loading-shimmer {
+  0% {
+    background-position: -180px 0, 0 0;
+  }
+
+  100% {
+    background-position: calc(100% + 180px) 0, 0 0;
+  }
+}
+
 .photo-card:target {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgb(15 118 110 / 18%);

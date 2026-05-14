@@ -651,6 +651,7 @@ function render({ resetPage = false, preservePage = false, preserveScroll = fals
   });
   updateMobileSummary();
   elements.grid.replaceChildren();
+  elements.grid.setAttribute("aria-busy", "false");
   elements.summary.textContent = `${filtered.length} / ${photos.length} 張照片`;
   elements.context.textContent = resultContextText({ photos, filtered, controls, activeTask, activeFilterEntries });
 
@@ -935,10 +936,11 @@ window.addEventListener("keydown", (event) => {
 try {
   await loadData();
 } catch (error) {
+  elements.grid.setAttribute("aria-busy", "false");
   elements.summary.textContent = "資料載入失敗";
   elements.context.textContent = "請確認資料來源與公開讀取權限";
   elements.overviewSummary.textContent = "資料載入失敗";
   elements.overviewGrid.replaceChildren();
   elements.grid.replaceChildren();
-  renderEmpty(error.message);
+  renderEmpty(elements.grid, error.message);
 }
