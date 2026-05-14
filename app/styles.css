@@ -342,6 +342,11 @@ select {
   color: var(--muted);
 }
 
+.enhanced-select-trigger[aria-expanded="true"] {
+  border-color: var(--accent);
+  box-shadow: var(--focus);
+}
+
 .enhanced-select-panel {
   position: absolute;
   z-index: 40;
@@ -1639,17 +1644,8 @@ select {
     padding: 10px;
   }
 
-  .search-panel.is-filter-open .enhanced-select-panel {
-    position: fixed;
-    z-index: 110;
-    inset: auto 12px max(12px, env(safe-area-inset-bottom)) 12px;
-    width: auto;
-    max-width: none;
-    max-height: min(62vh, 430px);
-  }
-
   .search-panel.is-filter-open .enhanced-select-options {
-    max-height: min(46vh, 340px);
+    max-height: min(38vh, 300px);
   }
 
   .autocomplete-token {

@@ -186,6 +186,10 @@ function shouldFocusEnhancedSelectSearch() {
   return window.matchMedia("(pointer: fine)").matches && !window.matchMedia("(max-width: 760px)").matches;
 }
 
+function isMobileViewport() {
+  return window.matchMedia("(max-width: 760px)").matches;
+}
+
 function syncEnhancedSelectValueForSelect(select) {
   const control = enhancedSelects.get(select);
   if (control) {
@@ -244,6 +248,11 @@ function openEnhancedSelect(control) {
   renderEnhancedSelectOptions(control);
   control.panel.hidden = false;
   control.trigger.setAttribute("aria-expanded", "true");
+  if (isMobileViewport()) {
+    window.requestAnimationFrame(() => {
+      control.panel.scrollIntoView({ block: "nearest", inline: "nearest" });
+    });
+  }
   if (shouldFocusEnhancedSelectSearch()) {
     window.requestAnimationFrame(() => control.search.focus({ preventScroll: true }));
   }
