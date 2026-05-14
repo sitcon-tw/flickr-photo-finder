@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { googleSheetsSpreadsheetId, projectConfig } from "../lib/core/project-config.mjs";
@@ -10,20 +10,6 @@ function buildCoreModules() {
   const result = spawnSync(process.execPath, ["node_modules/typescript/bin/tsc", "-p", "app-core/tsconfig.json"], { stdio: "inherit" });
   if (result.status !== 0) {
     throw new Error("Could not build finder core TypeScript modules");
-  }
-}
-
-function buildReactPages(outputDir) {
-  const result = spawnSync(process.execPath, ["node_modules/vite/bin/vite.js", "build", "--config", "app-react/vite.config.ts"], {
-    env: {
-      ...process.env,
-      PAGES_REACT_OUT_DIR: outputDir,
-      PAGES_REACT_INCLUDE_FIXTURES: "0",
-    },
-    stdio: "inherit",
-  });
-  if (result.status !== 0) {
-    throw new Error("Could not build React GitHub Pages artifact");
   }
 }
 
@@ -171,14 +157,14 @@ function renderMetadataHtml() {
 }
 
 async function writeIndexHtml(outputDir) {
-  const source = await readFile(join(outputDir, "index.html"), "utf8");
+  const source = await readFile("app/index.html", "utf8");
   const startMarker = "    <!-- app-metadata:start -->";
   const endMarker = "    <!-- app-metadata:end -->";
   const startIndex = source.indexOf(startMarker);
   const endIndex = source.indexOf(endMarker);
 
   if (startIndex === -1 || endIndex === -1 || endIndex <= startIndex) {
-    throw new Error("app-react/index.html must contain app-metadata markers");
+    throw new Error("app/index.html must contain app-metadata markers");
   }
 
   const before = source.slice(0, startIndex);
@@ -204,9 +190,31 @@ export async function buildPagesArtifact({
   const resolvedPhotosCsvUrl = photosCsvUrl || googleSheetsCsvUrl(spreadsheetId, "photos");
 
   buildCoreModules();
-  buildReactPages(outputDir);
+  await rm(outputDir, { recursive: true, force: true });
+  await mkdir(outputDir, { recursive: true });
   await writeIndexHtml(outputDir);
+  await copyIntoArtifact("app/analytics-core.js", outputDir, "analytics-core.js");
+  await copyIntoArtifact("app/analytics.js", outputDir, "analytics.js");
+  await copyIntoArtifact("app/ai-assistant.js", outputDir, "ai-assistant.js");
+  await copyIntoArtifact("app/candidate-copy.js", outputDir, "candidate-copy.js");
+  await copyIntoArtifact("app/candidates.js", outputDir, "candidates.js");
+  await copyIntoArtifact("app/controls.js", outputDir, "controls.js");
+  await copyIntoArtifact("app/data-loader.js", outputDir, "data-loader.js");
+  await copyIntoArtifact("app/data-utils.js", outputDir, "data-utils.js");
+  await copyIntoArtifact("app/main.js", outputDir, "main.js");
+  await copyIntoArtifact("app/overview-render.js", outputDir, "overview-render.js");
+  await copyIntoArtifact("app/photo-render.js", outputDir, "photo-render.js");
+  await copyIntoArtifact("app/result-render.js", outputDir, "result-render.js");
+  await copyIntoArtifact("app/search-sort.js", outputDir, "search-sort.js");
+  await copyIntoArtifact("app/task-modes.js", outputDir, "task-modes.js");
+  await copyIntoArtifact("app/url-state.js", outputDir, "url-state.js");
+  await copyIntoArtifact("app/styles.css", outputDir, "styles.css");
   await copyIntoArtifact("app/assets/og-image.png", outputDir, "assets/og-image.png");
+  await copyIntoArtifact("config/project.json", outputDir);
+  await copyIntoArtifact("data/interface-registry.json", outputDir);
+  await copyIntoArtifact("data/photo-schema.json", outputDir);
+  await copyIntoArtifact("data/search-aliases.json", outputDir);
+  await copyIntoArtifact("data/tag-taxonomy.json", outputDir);
   await writePagesConfig(outputDir, { albumsCsvUrl: resolvedAlbumsCsvUrl, photosCsvUrl: resolvedPhotosCsvUrl });
   await writeFile(join(outputDir, ".nojekyll"), "");
 

@@ -4,7 +4,7 @@
 
 這份 brief 依據 `docs/public-frontend-agent-research.md` 的代理使用者研究建立。它不是最終 UI 設計稿；目前應視為 GitHub Pages 前端重構的歷史需求基準與驗收 baseline，不是最新缺口清單。
 
-截至 2026-05-11，當時的 vanilla 前端已完成多數 P0/P1 方向，包含任務模式、搜尋 debounce、分批 render、載入更多、lazy loading、結果數、構圖與贊助篩選、候選清單、可解釋的排序訊號、Sheets/Flickr/下載操作、AI 助手找圖入口與 GA4 事件。React final cutover 後，這段只保留為歷史 baseline；目前 production 狀態應以 `docs/public-frontend-architecture.md` 與實際 React artifact 為準。仍應保留為後續驗證或 P2 的項目包含：
+截至 2026-05-11，目前前端已完成多數 P0/P1 方向，包含任務模式、搜尋 debounce、分批 render、載入更多、lazy loading、結果數、構圖與贊助篩選、候選清單、可解釋的排序訊號、Sheets/Flickr/下載操作、AI 助手找圖入口與 GA4 事件。仍應保留為後續驗證或 P2 的項目包含：
 
 - 用正式或合成 10k 級資料重新驗證搜尋、篩選、載入更多與候選清單的效能。
 - 用手機與桌機實際走完社群貼文、網站橫幅、贊助成果等任務。

@@ -4,13 +4,13 @@
 
 Accepted
 
-Final cutover in progress. Production Pages artifact is being switched to the Vite + React + TypeScript + React Aria app; the vanilla ES modules app remains only as a rollback surface until legacy cleanup.
+Implementation pending. Production Pages frontend remains the vanilla ES modules app until the final cutover phase is explicitly merged.
 
 ## 背景
 
 GitHub Pages frontend 已是 SITCON Flickr Photo Finder 的長期主要產品介面。它不只展示資料，也承擔任務模式、搜尋、篩選、候選清單、preview/detail、GA4 事件、Sheets row link、mobile bottom sheet 與觸控互動。
 
-遷移前 master 以 vanilla ES modules 與 imperative DOM shell 維護這些互動。既有模組拆分已經讓 search/sort、URL state、data loader、candidate copy 等核心邏輯可測，但 overlay、popover positioning、focus management、scroll lock、mobile keyboard、touch gesture 與 accessible select/listbox 仍需要大量自製補丁。
+目前 master 仍以 vanilla ES modules 與 imperative DOM shell 維護這些互動。既有模組拆分已經讓 search/sort、URL state、data loader、candidate copy 等核心邏輯可測，但 overlay、popover positioning、focus management、scroll lock、mobile keyboard、touch gesture 與 accessible select/listbox 仍需要大量自製補丁。
 
 2026-05-14 前的 prototype 已封存為 tag `archive/pages-react-aria-migration-prototype-2026-05-14`，目前指向 commit `ad1003097b252b479474ce92bfcd1b44f2cc1ce7`。該 prototype 證明 Vite + React + TypeScript + React Aria 方向可行，也暴露出執行方式問題：不能邊實作邊補規格、邊 QA 邊修正。後續遷移需從 master 重新開始，先建立追蹤 issue、ADR、migration plan 與 acceptance gates，再分階段實作。
 
@@ -50,9 +50,9 @@ Pages 前端長期 UI 架構採用 Vite + React + TypeScript + React Aria Compon
 接受的成本：
 
 - 增加 frontend build step 與 dependencies。
-- `build-pages.mjs` 成為 build orchestrator：先 build core modules，再 build React app、注入 metadata、寫入 runtime config 並執行 artifact check。
+- `build-pages.mjs` 需要逐步成為 build orchestrator。
 - 需要 component / responsive / mobile regression gates。
-- final cutover 到 legacy cleanup 之間會同時存在 vanilla shell 與 React shell；正式 artifact 使用 React，vanilla 只作 rollback surface。
+- 遷移期會同時存在 vanilla shell 與 React shell。
 
 暫不採用大型視覺 UI kit 的理由：
 
@@ -64,13 +64,13 @@ Pages 前端長期 UI 架構採用 Vite + React + TypeScript + React Aria Compon
 - GitHub tracking issue #44 是遷移進度來源。
 - `docs/public-frontend-react-migration-plan.md` 是 phase 與 acceptance gate 的穩定規格。
 - `docs/public-frontend-architecture.md` 仍記錄目前 Pages 資料流、部署 artifact 與現況模組邊界。
-- final cutover 後 production Pages 若出現 P0 blocker，優先修 React artifact；若判斷需要回退，revert cutover PR 回到 vanilla artifact。
+- production Pages 若出現 P0 blocker，可以在 master vanilla UI 做最小 hotfix。
 - P1/P2 UX、非緊急 polish 與新功能進 migration milestones，不再擴張 vanilla overlay/select/sheet 邏輯。
 - 若 hotfix 影響 URL、candidate、analytics、filter 或 Pages artifact contract，必須同步更新 tracking issue #44 與 `docs/public-frontend-react-migration-plan.md`。
-- legacy cleanup 前，vanilla Pages surface 必須維持可 rollback；cleanup 必須是 final cutover 穩定後的獨立 phase。
+- final cutover 前，vanilla Pages surface 必須維持可 rollback；legacy cleanup 必須是最後獨立 phase。
 
 ## Rollback
 
 每個 phase 應是可 review 的小 PR。若任一 phase 造成 Pages build、artifact check、URL/candidate contract 或 mobile P0 regression，應 revert 該 phase，而不是在同一 PR 內累積補丁。
 
-final cutover 與 legacy cleanup 必須分開。cutover 合併後若發現 production blocker，可 revert cutover PR 回到 vanilla artifact；只有在 cutover 穩定且 issue #44 記錄驗收證據後，才移除 vanilla surface。
+final cutover 前，正式 Pages 應可回到 master vanilla artifact。cutover 與 legacy cleanup 必須分開，方便回退。

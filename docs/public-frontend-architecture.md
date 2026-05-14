@@ -101,31 +101,35 @@ https://docs.google.com/spreadsheets/d/<spreadsheetId>/gviz/tq?tqx=out:csv&sheet
 
 ## 前端資料來源設定
 
-本機開發前端應明確選擇資料來源，不應靠 runtime `config.js` 和部署 artifact 的隱含差異判斷：
+本機開發前端應明確選擇資料來源，不應靠 `app/config.js` 和部署 artifact 的隱含差異判斷：
 
 - `pnpm finder:dev`：預設讀正式 Google Sheets `photos` 公開 CSV，適合真實資料規模下的 UX、排序、篩選與效能檢查。
 - `pnpm finder:dev:fixture`：讀 `fixtures/photos.csv`，適合最小樣本、離線 smoke test 與 regression 檢查。
 - `pnpm finder:dev:export`：讀 `tmp/sheets-export/photos.csv`，適合使用最近一次正式 Sheets 匯出快照開發；若檔案不存在，先執行 `pnpm sheets:export`。
 
-這三種入口都會先產生本機 React dev artifact，預設放在 `tmp/pages-dev/<source>/`，並在 terminal 印出 `Data source` 與實際 `Photos CSV URL`。這是貼近 production artifact 的靜態伺服器流程，不是 Vite HMR；需要快速開發 React component 時可用 `pnpm finder:react:dev`。部署到 GitHub Pages 時，使用 `pnpm finder:build` 產生 `tmp/pages/`，讓 `photosCsvUrl` 指向 `config/project.json` 中 `googleSheets.spreadsheetId` 的 Google Sheets `photos` 公開 CSV 輸出。
+這三種入口都會先產生本機 dev artifact，預設放在 `tmp/pages-dev/<source>/`，並在 terminal 印出 `Data source` 與實際 `Photos CSV URL`。部署到 GitHub Pages 時，仍使用 `pnpm finder:build` 產生 `tmp/pages/`，讓 `photosCsvUrl` 指向 `config/project.json` 中 `googleSheets.spreadsheetId` 的 Google Sheets `photos` 公開 CSV 輸出。
 
 前端可以讀公開資料 URL，但不能使用任何需要保密的 token、API key 或 OAuth credential。
 
 ## 前端模組邊界
 
-正式公開前端目前採用 Vite + React + TypeScript + React Aria。`pnpm finder:build` 會先編譯 `app-core/*.ts`，再用 `app-react/vite.config.ts` 產生 React Pages artifact。`app/` 下的 vanilla ES modules 在 legacy cleanup 前仍保留為 rollback surface，但不是正式 `tmp/pages/` 的入口。
+公開前端目前維持原生 ES modules 與 Functional Core / Imperative Shell。長期 UI 架構已由 ADR 0007 決定遷移至 Vite + React + TypeScript + React Aria；執行進度與 phase gate 以 tracking issue #44 與 `docs/public-frontend-react-migration-plan.md` 為準。
 
-目前拆分原則：
+在 final cutover 前，目前的拆分原則仍是 Functional Core / Imperative Shell：
 
-- `app-react/src/App.tsx` 目前組合正式 React shell、資料載入、finder state、URL state、搜尋篩選排序、候選清單、AI assistant、索引概覽、preview/detail、mobile sheets 與 desktop/mobile layout。它不應把 DOM 當作 canonical state source。
-- 後續若 `App.tsx` 持續擴張，應抽出 `app-react/src/components/` 與 `app-react/src/hooks/`：可重用 React UI component 放在 components，跨 sheet 手勢、focus/scroll 或 responsive state 放在 hooks。React Aria primitive 應封裝在 component 或 hook 中，不散落到資料處理模組。
-- `app-core/search-sort.ts` 是可測試純函式核心，負責 search text、篩選、scoring、推薦排序與探索排序；不得直接讀 DOM 或 React component state。
-- `app-core/url-state.ts` 負責 URL query encode/decode。底層使用標準 `URLSearchParams`，但 query schema 是 finder 產品 contract：filter URL 使用重複 query 參數表示多選，例如 `scene=攤位&scene=會眾`，候選清單使用 `selected=200,100` 保留順序；早期單值 query 格式不保證相容。未來 React router 或 search-param helper 可接管 state 同步 plumbing，但不能取代這裡定義的 URL 語意。
-- `app-core/candidate-copy.ts` 負責候選清單資料選取、Markdown 與 copy template；React UI 只決定何時呼叫與如何呈現。
-- `app-core/data-loader.ts` 與 `app-core/data-utils.ts` 負責讀取 project config、schema、taxonomy、search aliases 與 `photos` CSV，並依 schema 正規化 list 欄位、sheet row number 與 `search_text`。
-- `app-core/analytics-core.ts` 保留事件參數整理、搜尋字串清理、measurement ID 正規化與結果 snapshot 轉 event params。若 React UI 要新增或改名 analytics 事件，需同步更新 `docs/frontend-analytics-design.md`。
+- `app/search-sort.js` 由 `app-core/search-sort.ts` 產出，是可測試純函式核心，負責 search text、篩選、scoring、推薦排序與探索排序；不得直接讀 DOM 或全域控制項。修改時應先改 TypeScript source，再執行 `pnpm finder:core:build`。
+- `app/url-state.js` 由 `app-core/url-state.ts` 產出，負責 URL query encode/decode；selected ids、filters 與 sort deep link 行為應先改 TypeScript source，再執行 `pnpm finder:core:build`。底層使用標準 `URLSearchParams`，但 query schema 是 finder 產品 contract：filter URL 使用重複 query 參數表示多選，例如 `scene=攤位&scene=會眾`，候選清單使用 `selected=200,100` 保留順序；早期單值 query 格式不保證相容。未來 React router 或 search-param helper 可接管 state 同步 plumbing，但不能取代這裡定義的 URL 語意。
+- `app/analytics-core.js` 由 `app-core/analytics-core.ts` 產出，負責事件參數整理、搜尋字串清理、measurement ID 正規化與結果 snapshot 轉 event params。`app/analytics.js` 負責 GA4 setup、`window.gtag` dispatch、結果追蹤去重與 timer；前端其他模組只呼叫 `trackEvent` 或傳入 snapshot。
+- `app/ai-assistant.js` 負責 AI 助手提示詞與事件參數的純資料組裝，不處理 clipboard 或 DOM。
+- `app/candidate-copy.js` 由 `app-core/candidate-copy.ts` 產出，負責候選清單資料選取、Markdown 與 copy template。`app/candidates.js` 保留候選清單 DOM render；兩者都不改變搜尋或排序結果。
+- `app/data-loader.js` 與 `app/data-utils.js` 由 `app-core/data-loader.ts`、`app-core/data-utils.ts` 產出，負責讀取 project config、schema、taxonomy、search aliases 與 `photos` CSV，並依 schema 正規化 list 欄位、sheet row number 與 `search_text`。
+- `app/controls.js` 負責查詢 DOM controls/elements、建立可搜尋 multi-select / token autocomplete、填入篩選選項、任務模式按鈕、任務感知篩選分層與 active filter entry。控制項狀態仍由 `main.js` 的 finder state 組合進 render loop。
+- `app/overview-render.js` 負責索引概覽統計與 DOM render；統計規則應從 `photoSchema`、`option_labels` 與照片資料推導。
+- `app/photo-render.js` 負責主照片卡、Flickr / Finder / Sheets 連結、圖片尺寸下載、狀態 badge、排序訊號與卡片內 action。它接受目前 task/search/sort state 與 callback，不自行讀全域控制項。
+- `app/result-render.js` 負責結果狀態文字、active filter chips、task mode active state、load-more panel 與 empty state。
+- `app/main.js` 保留 bootstrap、專案設定套用、state、URL state、資料載入順序、事件 wiring 與 render loop 組合。新增前端行為時，先判斷是否屬於上述模組；只有跨模組協調才留在 `main.js`。
 
-新增正式前端模組時，需同步 `scripts/commands/build-pages.mjs`、`scripts/commands/check-pages-artifact.mjs` 或 React preview check，確保 GitHub Pages artifact 包含必要檔案且不包含 source map、fixtures、repo scripts、docs、tmp data 或 credential。可測試的純邏輯應加入 `pnpm finder:test`，並納入 `pnpm project:check`。
+新增前端模組時，需同步 `scripts/commands/build-pages.mjs` 與 `scripts/commands/check-pages-artifact.mjs`，確保 GitHub Pages artifact 包含新檔案。可測試的純邏輯應加入 `pnpm finder:test`，並納入 `pnpm project:check`。
 
 公開前端右上角的外部連結由 `config/project.json` 控制。除了 Flickr 來源連結，也應提供 GitHub 專案連結，讓使用者能回到 repo 了解專案細節或回報問題。
 
@@ -161,7 +165,7 @@ GitHub Pages 應透過 GitHub Actions 發布乾淨的 Pages artifact，不應直
 
 `pnpm finder:build` 產生的 artifact 應只包含：
 
-- 公開搜尋前端所需的 HTML、Vite hashed CSS 與 JavaScript bundle。
+- 公開搜尋前端所需的 HTML、CSS、JavaScript。
 - 經過資料流程產生或指定的公開資料來源設定。
 - `data/photo-schema.json`、`data/tag-taxonomy.json` 與 `data/search-aliases.json`，讓前端用同一份欄位、受控字彙、顯示文字與資料值搜尋同義詞來源理解資料。
 - 必要的靜態資源。
@@ -174,7 +178,7 @@ artifact 不應包含：
 - credential、token 或任何需要交接但不應公開的設定。
 
 前端檔案應使用相對路徑，避免專案頁部署在 `https://<org>.github.io/<repo>/` 時因絕對路徑失效。
-`pnpm finder:build` 會把 React app build 到 `tmp/pages/`，寫入 production runtime `config.js`，複製 `config/project.json`、公開資料 contract JSON 與 `assets/og-image.png`，並確保正式 artifact 不包含 fixture data。HTML metadata 需要 crawler 在執行 JavaScript 前就能讀到，因此 build 會依 `config/project.json` 的 `frontend.metadata` 取代 `app-react/index.html` 的 metadata marker，產生 `<title>`、description、canonical、Open Graph 與 Twitter card tags。`frontend.metadata.siteUrl` 應填正式對外發布網址，例如 `https://sitcon.org/flickr-photo-finder/`；`frontend.metadata.imagePath` 目前指向 artifact 內的 `assets/og-image.png`，讓分享預覽可以使用 1200x630 的正式活動照片拼貼。
+HTML metadata 則需要 crawler 在執行 JavaScript 前就能讀到，因此 `pnpm finder:build` 會依 `config/project.json` 的 `frontend.metadata` 產生 `<title>`、description、canonical、Open Graph 與 Twitter card tags。`frontend.metadata.siteUrl` 應填正式對外發布網址，例如 `https://sitcon.org/flickr-photo-finder/`；`frontend.metadata.imagePath` 目前指向 artifact 內的 `assets/og-image.png`，讓分享預覽可以使用 1200x630 的正式活動照片拼貼。
 
 目前 repo 內的 `.github/workflows/pages.yml` 會在 pull request 執行 build/check，並在 `master` push 或手動觸發時部署：
 
