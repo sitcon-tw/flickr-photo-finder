@@ -1037,6 +1037,169 @@ GPT 的 review warnings：
 - 兩個有效 attempt 都缺 confidence；若後續要比較採用率或校準模型，這輪只能靠人工抽查與欄位分布，不能做 confidence calibration。
 - 本輪最直接的工具改進是：`ai:report --runs` 應更醒目標示每個 run 的 proposal hash 是否與 summary hash 一致，並在任一 run `ai:validate` 失敗時，把該 run 從「可比較品質」降級成「合約失敗」。這可以避免 stale summary 讓無效 proposal 看起來仍有可採用的 review 統計。
 
+## 2026-05-14 bulk unprocessed 4,339 張兩輪比較
+
+本輪比較同一批 `unprocessed` 照片的兩次大批量初標：
+
+```text
+tmp/ai-runs/ai-prepare-bulk-unprocessed-01-16-2026-05-14/
+tmp/ai-runs/ai-prepare-bulk-unprocessed-01-16-2026-05-14-attempt-gpt-r2/
+```
+
+兩個 run 都包含 4,339 張照片，`photo_id` 集合完全一致，圖片尺寸同為 `large-1024`，且 `manifest.json` 記錄的 prompt hash 同為：
+
+```text
+bb35e36f03903785a38b1b52c3f5617d13bd16152e7f338d6aa007875260483c
+```
+
+因此這輪可以視為同資料、同 prompt 下的 attempt 比較。但本輪沒有人工 gold label，所以以下數字是分布、穩定性與風險分析，不應解讀成模型準確率。尤其 `people_count` 的兩輪差異只能指出第一輪有明顯批次化失敗，不能保證第二輪每張人數都正確。
+
+### 比較基底
+
+| run | producer | 操作者紀錄耗時 | items | planned updates | review warnings |
+| --- | --- | ---: | ---: | ---: | ---: |
+| `ai-prepare-bulk-unprocessed-01-16-2026-05-14` | `sharded-ai-agents` | 約 35m | 4,339 | 38,941 | 約 1,633 |
+| `ai-prepare-bulk-unprocessed-01-16-2026-05-14-attempt-gpt-r2` | `sharded-ai-agents-gpt-r2` | 1h 57m 35s | 4,339 | 36,892 | 34 |
+
+第一輪的 review notes 大量來自同值同 reason 重複，例如 `people_count`、`visual_description`、`scene_tags`、`mood_tags`、`recommended_uses` 都出現多組 13 到 20 張以上共用同一句 reason 的情況。第二輪仍有 review warning，但主要集中在 `visual_description` 近似重複、orientation reason 重複、公開使用風險待抽查與少數 `people_count = 0` 矛盾。
+
+耗時是操作者紀錄的牆鐘時間，混合了平台併發限制、worker 啟動、分片讀圖、修補、merge、validate 與 review 成本，不應直接解讀成模型單張推論速度。
+
+### Codex token 與執行成本紀錄
+
+本輪另外從 Codex session JSONL 補做 token 估算。Codex CLI 顯示的 `total` 不是 JSONL raw `total_tokens`，而是：
+
+```text
+shown total = input_tokens - cached_input_tokens + output_tokens
+```
+
+因此下表把 shown tokens 與 cached input 分開紀錄。這些數字是依 session boundary 與 shard worker session 加總得到的操作估算，不是 billing statement；若同一條 Codex 對話前後混入其他任務，整串最後的 token usage 不能直接當成本次初標成本。
+
+| run | token 口徑 | shown tokens | cached input | output tokens | reasoning tokens | 備註 |
+| --- | --- | ---: | ---: | ---: | ---: | --- |
+| 第一輪 | shard labeling only | 3,831,485 | 35,885,952 | 128,194 | 30,653 | 只加總 6 個 shard worker session，最接近讀圖初標成本。 |
+| 第一輪 | through temp review | 約 4,259,805 | 約 45,321,088 | 不完整拆分 | 不完整拆分 | shard worker 加上 parent session 從分片準備到暫存 review 完成的 boundary delta。 |
+| 第一輪 | prepare through formal review | 約 4,475,276 | 約 48,068,480 | 不完整拆分 | 不完整拆分 | 再納入 `ai:prepare`、正式 write-run、正式 review/report 附近操作。 |
+| 第二輪 | shard labeling only | 6,126,181 | 63,016,448 | 746,668 | 91,569 | 加總 33 個 shard worker session。 |
+| 第二輪 | parent task-end + shards | 7,210,012 | 98,144,512 | 823,277 | 98,972 | 使用操作者結束時紀錄的 parent snapshot，不採用後續混入分析工作的 session 末端值。 |
+| 第二輪 | with smoke/other session | 約 7,261,091 | 約 98,520,960 | 約 826,537 | 約 99,829 | 若把早期 smoke / other Codex session 也算入。 |
+
+第一輪的 parent session 是多日混合對話，整串結束時顯示 `7,151,691` shown tokens，包含其他任務，不能拿來代表這次 bulk labeling。第二輪 parent session 在初標結束時顯示 `1,083,831` shown tokens，但同一 session 後續又進行分析與文件討論，JSONL 最末端已成長到更高數字；因此本輪採用操作者在結束當下記錄的 snapshot 作為 parent boundary。
+
+未來若要讓 eval 成本可比較，應由工具在 run 開始、shard worker 開始、shard worker 完成與 run review 完成時自動記錄 Codex session token snapshot，並在報表中固定分成 `labeling worker only`、`parent orchestration` 與 `total run estimate`，避免人工事後翻找混合 session。
+
+### 採用的統計方法
+
+這輪使用幾類常見統計檢查，而不是只看 `pnpm ai:review` 是否通過：
+
+- 配對比較：用相同 `photo_id` 對齊兩輪 proposal，計算同一張照片的欄位差異。
+- 邊際分布：比較每個欄位的覆蓋率、top values、平均數、中位數與分位數。
+- 集中度：用 HHI / entropy 和 top value 觀察是否有單一值過度集中。
+- 差異幅度：對 `people_count` 計算 exact match、平均差、平均絕對差與大幅變動張數。
+- 多值欄位相似度：對 `scene_tags`、`mood_tags`、`recommended_uses`、`safe_crop` 使用平均 Jaccard similarity。
+- failure-focused sample：針對第一輪 `people_count = 5`、review warning、同 reason 重複群與高集中相簿做重點檢查。
+
+### `people_count` 主要結論
+
+第一輪 `people_count = 5` 是嚴重錯誤訊號。它不是正常估計誤差，而是與同 reason 重複、相簿集中和模板化描述一起出現的批次化失敗。
+
+| 指標 | 第一輪 | 第二輪 |
+| --- | ---: | ---: |
+| mean | 7.49 | 7.99 |
+| median | 5 | 4 |
+| p25 / p75 | 2 / 8 | 1 / 7 |
+| p90 / p95 | 12 / 25 | 18 / 30 |
+| max | 90 | 130 |
+| `people_count = 5` | 675 | 390 |
+
+第一輪 top values：
+
+| value | count |
+| ---: | ---: |
+| 8 | 725 |
+| 1 | 699 |
+| 5 | 675 |
+| 0 | 373 |
+| 6 | 351 |
+
+第二輪 top values：
+
+| value | count |
+| ---: | ---: |
+| 1 | 898 |
+| 3 | 473 |
+| 2 | 441 |
+| 4 | 434 |
+| 5 | 390 |
+
+兩輪配對後，`people_count` 完全相同只有 792/4,339 張，也就是 18.3%。平均差為第二輪比第一輪高 0.50 人，但平均絕對差達 6.81 人；`|delta| >= 3` 有 2,304 張，`|delta| >= 10` 有 685 張。這代表兩輪在數人策略上差異很大，應優先抽查人數，而不是把任一輪直接視為可靠。
+
+第一輪 675 張 `people_count = 5` 中，第二輪仍為 5 的只有 107 張，568 張改成其他值。第二輪對這 675 張的分布為：`5` 107 張、`3` 97 張、`4` 92 張、`2` 74 張、`6` 60 張、`1` 58 張、`8` 51 張、`7` 44 張。這支持使用者觀察：第一輪大量 5 不是正常照片群分布，而是模型或分片流程把 5 當成常見小組照片 fallback。
+
+第一輪 `people_count = 5` 在部分相簿高度集中：
+
+| album | total | 第一輪 `5` | 佔比 | 第二輪仍為 `5` | 第二輪對這些照片平均 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `2022 SITCON x OSCVPass Workshop` | 40 | 32 | 80.0% | 3 | 9.13 |
+| `2021 SITCON Hour of Code 桃園場` | 20 | 16 | 80.0% | 1 | 8.69 |
+| `2021 SITCON Hour of Code 新竹場` | 49 | 31 | 63.3% | 16 | 3.81 |
+| `2021 SITCON Hour of Code 台南場` | 21 | 7 | 33.3% | 0 | 1.71 |
+| `SITCON Summer Camp 2024` | 1,183 | 368 | 31.1% | 60 | 5.80 |
+| `2023 SITCON Hour of Code 新竹場` | 161 | 18 | 11.2% | 1 | 5.17 |
+| `SITCON 2022` | 778 | 85 | 10.9% | 5 | 5.61 |
+| `SITCON 2024` | 974 | 98 | 10.1% | 17 | 4.72 |
+
+判斷：第一輪不應作為 `people_count` 回寫基底。第二輪明顯降低 `5` 的異常集中，但仍需要人工抽查，尤其是兩輪差距大、第二輪人數很高、或 review summary 指出的 `people_count = 0` 但 reason / scene tags 有人物線索的照片。
+
+### 欄位覆蓋與策略差異
+
+第二輪整體比第一輪保守，planned updates 少 2,049 筆。核心欄位兩輪都完整覆蓋，但 optional 欄位差異明顯：
+
+| field | 第一輪 | 第二輪 | 判讀 |
+| --- | ---: | ---: | --- |
+| `scene_tags` | 4,333 | 4,293 | 兩輪都高召回 |
+| `mood_tags` | 4,021 | 3,486 | 第二輪較保守，避免 mood 變成預設分類 |
+| `recommended_uses` | 3,096 | 2,237 | 第二輪較少把用途硬填到一般照片 |
+| `safe_crop` | 801 | 576 | 第二輪較保守，但仍需抽查裁切安全性 |
+| `public_use_status` | 656 | 240 | 第二輪較少提出風險，review 仍提示 429 張可能需人工抽查 |
+| `priority_level` | 0 | 2 | 兩輪都沒有把 priority 當成預設欄位 |
+| `sponsorship_items` | 0 | 12 | 第二輪開始提出少量贊助品項 |
+| `sponsorship_tags` | 0 | 12 | 第二輪開始提出少量贊助價值 |
+
+多值欄位的 exact match 不高，代表兩輪不只是 coverage 不同，實際標籤選擇也差異大：
+
+| field | both have field | exact match | avg Jaccard |
+| --- | ---: | ---: | ---: |
+| `scene_tags` | 4,292 | 1,075 | 0.457 |
+| `mood_tags` | 3,295 | 1,160 | 0.411 |
+| `recommended_uses` | 1,649 | 441 | 0.435 |
+| `safe_crop` | 49 | 30 | 0.735 |
+
+`subject_type` 與 `orientation` 較穩定，分別有 86.0% 與 95.9% 一致；`has_negative_space` 一致率只有 71.4%，仍屬需人工抽查的版型欄位。
+
+### reason 與描述品質
+
+第一輪最嚴重的問題是 reason 與描述模板化。這會讓人工 review 難以判斷模型是否真的看過每張照片。
+
+| field | 第一輪 unique reason | 第一輪最大重複群 | 第二輪 unique reason | 第二輪最大重複群 |
+| --- | ---: | ---: | ---: | ---: |
+| `people_count` | 1,329 | 91 | 4,301 | 4 |
+| `visual_description` | 443 | 789 | 3,298 | 132 |
+| `scene_tags` | 1,146 | 160 | 4,283 | 2 |
+| `mood_tags` | 864 | 263 | 3,474 | 3 |
+| `recommended_uses` | 812 | 263 | 2,227 | 3 |
+| `has_negative_space` | 884 | 603 | 4,334 | 2 |
+
+第二輪不是完全沒有品質問題：`visual_description` 仍有多組近似重複、57 張偏短、78 張偏長、21 張可搜尋視覺詞偏少；orientation 也有 120 張 landscape 與 10 張 portrait 使用相同 reason。但與第一輪相比，第二輪更像逐張產生候選值，第一輪則明顯帶有 archetype / template 批量套用痕跡。
+
+### 本輪採用建議
+
+- 第一輪 `ai-prepare-bulk-unprocessed-01-16-2026-05-14` 不應作為回寫基底，尤其不應採用它的 `people_count`、`visual_description`、`scene_tags` reason、`mood_tags` reason 與 `recommended_uses` reason。
+- 第二輪 `ai-prepare-bulk-unprocessed-01-16-2026-05-14-attempt-gpt-r2` 可以作為人工 review 起點，但不能直接整包寫回。優先抽查：`people_count` 大幅變動、第二輪高人數、第一輪 `people_count = 5` 高集中相簿、review focus 中 `people_count = 0` 但有人物線索、以及 public-use risk warning。
+- 第二輪的 optional 欄位策略較健康：`recommended_uses`、`safe_crop`、`public_use_status` 都較少被當成預設填空；少量 sponsorship 候選也比第一輪完全缺席更有助於人工找贊助佐證照片。但贊助欄位仍應逐張看圖確認外部品牌與 CFS 品項依據。
+- 未來大批量比較不應只看 coverage 或 planned updates。必須同時看配對差異、值分布尖峰、reason 重複、review focus 與 failure-focused sample；`people_count = 5` 這類尖峰應列為高風險 warning。
+- 若要把這輪升級成品質評估，需要建立人工抽樣 gold label。建議用雙軌樣本：隨機樣本估整體錯誤率，外加 failure-focused sample 估 `people_count=5`、高 delta、人數 0 矛盾、public-use risk、safe_crop 與 sponsorship 的錯誤型態。
+
 ## 目前已知容易失準的欄位
 
 ### `safe_crop`
