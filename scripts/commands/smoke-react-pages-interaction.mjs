@@ -335,7 +335,11 @@ async function runInteractionSmoke({ url }) {
           candidateButton: dialog?.querySelector('.preview-actions button')?.textContent,
           actionCount: dialog?.querySelectorAll('.preview-actions > *').length,
           detailLabels: [...(dialog?.querySelectorAll('.preview-detail-row dt') ?? [])].map((item) => item.textContent),
-          bodyOverflow: document.body.style.overflow
+          bodyOverflow: document.body.style.overflow,
+          htmlOverflow: document.documentElement.style.overflow,
+          appHidden: document.querySelector('#root')?.getAttribute('aria-hidden'),
+          appInert: document.querySelector('#root')?.hasAttribute('inert'),
+          activeClass: document.activeElement?.className || document.activeElement?.tagName
         };
       })()`,
     );
@@ -355,21 +359,118 @@ async function runInteractionSmoke({ url }) {
     if (!previewOpenValue.detailLabels.includes("構圖") || !previewOpenValue.detailLabels.includes("整理狀態")) {
       throw new Error(`Expected preview detail labels, got ${JSON.stringify(previewOpenValue.detailLabels)}`);
     }
-    if (previewOpenValue.bodyOverflow !== "hidden") {
-      throw new Error(`Expected preview dialog to lock body scroll, got ${previewOpenValue.bodyOverflow}`);
+    if (previewOpenValue.htmlOverflow !== "hidden" && previewOpenValue.bodyOverflow !== "hidden") {
+      throw new Error(`Expected preview dialog to lock page scroll, got ${JSON.stringify(previewOpenValue)}`);
     }
-    await evaluate(ws, 36, "window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))");
+    if (previewOpenValue.appHidden !== "true" && !previewOpenValue.appInert) {
+      throw new Error(`Expected preview dialog to make app root non-interactive, got ${JSON.stringify(previewOpenValue)}`);
+    }
+    await send(ws, 36, "Input.dispatchKeyEvent", {
+      type: "keyDown",
+      key: "Escape",
+      code: "Escape",
+      windowsVirtualKeyCode: 27,
+      nativeVirtualKeyCode: 27,
+    });
+    await send(ws, 42, "Input.dispatchKeyEvent", {
+      type: "keyUp",
+      key: "Escape",
+      code: "Escape",
+      windowsVirtualKeyCode: 27,
+      nativeVirtualKeyCode: 27,
+    });
     await delay(400);
     const previewClosed = await evaluate(
       ws,
       37,
       `(() => ({
         hasDialog: Boolean(document.querySelector('.photo-preview-dialog')),
-        bodyOverflow: document.body.style.overflow
+        bodyOverflow: document.body.style.overflow,
+        htmlOverflow: document.documentElement.style.overflow,
+        appHidden: document.querySelector('#root')?.getAttribute('aria-hidden'),
+        appInert: document.querySelector('#root')?.hasAttribute('inert'),
+        activeClass: document.activeElement?.className || document.activeElement?.tagName
       }))()`,
     );
-    if (previewClosed.result.value.hasDialog || previewClosed.result.value.bodyOverflow === "hidden") {
-      throw new Error(`Expected Escape to close preview and restore scroll, got ${JSON.stringify(previewClosed.result.value)}`);
+    if (
+      previewClosed.result.value.hasDialog ||
+      previewClosed.result.value.htmlOverflow === "hidden" ||
+      previewClosed.result.value.bodyOverflow === "hidden" ||
+      previewClosed.result.value.appHidden === "true" ||
+      previewClosed.result.value.appInert
+    ) {
+      throw new Error(`Expected Escape to close preview and restore background, got ${JSON.stringify(previewClosed.result.value)}`);
+    }
+    if (!String(previewClosed.result.value.activeClass).includes("photo-card__preview")) {
+      throw new Error(`Expected Escape to restore focus to preview trigger, got ${previewClosed.result.value.activeClass}`);
+    }
+
+    const outsidePreviewButtonBox = await evaluate(
+      ws,
+      43,
+      `(() => {
+        const button = document.querySelector('.photo-card__preview');
+        button?.scrollIntoView({ block: 'center', inline: 'center' });
+        const rect = button?.getBoundingClientRect();
+        return rect ? { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 } : null;
+      })()`,
+    );
+    if (!outsidePreviewButtonBox.result.value) {
+      throw new Error("Expected preview image button before outside-click smoke");
+    }
+    await send(ws, 44, "Input.dispatchMouseEvent", {
+      type: "mousePressed",
+      x: outsidePreviewButtonBox.result.value.x,
+      y: outsidePreviewButtonBox.result.value.y,
+      button: "left",
+      clickCount: 1,
+    });
+    await send(ws, 45, "Input.dispatchMouseEvent", {
+      type: "mouseReleased",
+      x: outsidePreviewButtonBox.result.value.x,
+      y: outsidePreviewButtonBox.result.value.y,
+      button: "left",
+      clickCount: 1,
+    });
+    await delay(400);
+    const outsidePoint = await evaluate(
+      ws,
+      46,
+      `(() => {
+        const overlay = document.querySelector('.photo-preview-layer')?.getBoundingClientRect();
+        const dialog = document.querySelector('.photo-preview-dialog')?.getBoundingClientRect();
+        return overlay && dialog ? { x: overlay.left + 8, y: overlay.top + 8 } : null;
+      })()`,
+    );
+    if (!outsidePoint.result.value) {
+      throw new Error("Expected preview dialog before outside-click dismiss smoke");
+    }
+    await send(ws, 47, "Input.dispatchMouseEvent", {
+      type: "mousePressed",
+      x: outsidePoint.result.value.x,
+      y: outsidePoint.result.value.y,
+      button: "left",
+      clickCount: 1,
+    });
+    await send(ws, 48, "Input.dispatchMouseEvent", {
+      type: "mouseReleased",
+      x: outsidePoint.result.value.x,
+      y: outsidePoint.result.value.y,
+      button: "left",
+      clickCount: 1,
+    });
+    await delay(400);
+    const outsideClosed = await evaluate(
+      ws,
+      49,
+      `(() => ({
+        hasDialog: Boolean(document.querySelector('.photo-preview-dialog')),
+        htmlOverflow: document.documentElement.style.overflow,
+        appInert: document.querySelector('#root')?.hasAttribute('inert')
+      }))()`,
+    );
+    if (outsideClosed.result.value.hasDialog || outsideClosed.result.value.htmlOverflow === "hidden" || outsideClosed.result.value.appInert) {
+      throw new Error(`Expected outside click to close preview and restore background, got ${JSON.stringify(outsideClosed.result.value)}`);
     }
 
     await evaluate(ws, 38, "[...document.querySelectorAll('.load-more-panel button')].find((button) => button.textContent.includes('載入更多'))?.click()");
