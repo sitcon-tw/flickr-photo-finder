@@ -947,6 +947,58 @@ function FilterSelect({
   );
 }
 
+function FilterSheetDialog({
+  definitions,
+  data,
+  photos,
+  filters,
+  onChange,
+  onClose,
+}: {
+  definitions: FilterDefinition[];
+  data: FinderData | null;
+  photos: PhotoRecord[];
+  filters: FinderFilters;
+  onChange: (key: string, values: string[]) => void;
+  onClose: () => void;
+}) {
+  return (
+    <ModalOverlay
+      isOpen
+      isDismissable
+      onOpenChange={(isOpen) => {
+        if (!isOpen) {
+          onClose();
+        }
+      }}
+      className="filter-sheet-layer"
+    >
+      <Modal className="filter-sheet-dialog">
+        <Dialog className="filter-sheet-dialog__content" aria-label="主要篩選">
+          <div className="filter-sheet-handle" aria-hidden="true" />
+          <header className="filter-sheet-header">
+            <h2>主要篩選</h2>
+            <button type="button" className="filter-sheet-close" onClick={onClose} aria-label="關閉主要篩選">
+              關閉
+            </button>
+          </header>
+          <div className="filter-grid">
+            {definitions.map((definition) => (
+              <FilterSelect
+                key={definition.key}
+                definition={definition}
+                options={filterOptions(data, definition, photos)}
+                values={filters[definition.key] ?? []}
+                onChange={(values) => onChange(definition.key, values)}
+              />
+            ))}
+          </div>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
+  );
+}
+
 function resultContextText({
   allCount,
   resultCount,
@@ -983,6 +1035,7 @@ export function App() {
   const [copyStatus, setCopyStatus] = useState("");
   const [visibleResultLimit, setVisibleResultLimit] = useState(resultPageSize);
   const [candidateSheetOpen, setCandidateSheetOpen] = useState(false);
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -1153,6 +1206,7 @@ export function App() {
     taskMode: activeTask,
   });
   const hasActiveFilters = activeFilterKeys.some((key) => (normalizedViewState.filters[key] ?? []).length > 0);
+  const activeFilterCount = activeFilterKeys.reduce((count, key) => count + (normalizedViewState.filters[key] ?? []).length, 0);
   async function copyCandidates() {
     const candidateListUrl = new URL(window.location.href);
     candidateListUrl.hash = "";
@@ -1278,9 +1332,14 @@ export function App() {
         onClear={() => dispatch({ type: "clearCandidates" })}
       />
 
-      <button type="button" className="mobile-candidate-entry" onClick={() => setCandidateSheetOpen(true)}>
-        候選 {candidatePhotos.length}
-      </button>
+      <div className="mobile-action-bar" aria-label="手機主要操作">
+        <button type="button" className="mobile-filter-entry" onClick={() => setFilterSheetOpen(true)}>
+          篩選 {activeFilterCount}
+        </button>
+        <button type="button" className="mobile-candidate-entry" onClick={() => setCandidateSheetOpen(true)}>
+          候選 {candidatePhotos.length}
+        </button>
+      </div>
 
       <section className="finder-status" aria-live="polite">
         {error ? (
@@ -1345,6 +1404,17 @@ export function App() {
           onCopy={copyCandidates}
           onClear={() => dispatch({ type: "clearCandidates" })}
           onClose={() => setCandidateSheetOpen(false)}
+        />
+      ) : null}
+
+      {filterSheetOpen ? (
+        <FilterSheetDialog
+          definitions={activeFilterDefinitions}
+          data={data}
+          photos={photos}
+          filters={normalizedViewState.filters}
+          onChange={(key, values) => dispatch({ type: "setFilterValues", key, values })}
+          onClose={() => setFilterSheetOpen(false)}
         />
       ) : null}
     </main>
