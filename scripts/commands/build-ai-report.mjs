@@ -1,5 +1,6 @@
 import { access, mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
 import { basename, join, relative, sep } from "node:path";
+import { pathToFileURL } from "node:url";
 import { getAiLabelingPromptMetadata } from "../lib/ai/ai-labeling-prompt.mjs";
 import { aiFieldLayerName, allowedAiFields } from "../lib/core/photo-schema.mjs";
 import { defaultMetadataDisplayContext, fieldLabel } from "../lib/core/metadata-display.mjs";
@@ -16,6 +17,8 @@ const disagreementWatchFields = new Set(["safe_crop", "recommended_uses", "publi
 const majorityOutlierFields = new Set(["people_count", "subject_type", "orientation"]);
 const largePeopleCountGap = 10;
 const extremePeopleCountGap = 20;
+const peopleCountSpikeValues = new Set([3, 4, 5, 6, 7, 8, 9, 10]);
+const peopleCountSpikeThreshold = 0.15;
 const lowDescriptionOverlapThreshold = 0.08;
 const descriptionPairOverlapThreshold = 0.12;
 
@@ -212,6 +215,46 @@ function countStableValues(values) {
     .map(([value, count]) => ({ count, value }));
 }
 
+function formatPercent(value) {
+  return `${Math.round(value * 100)}%`;
+}
+
+export function peopleCountDistribution(items) {
+  const values = items
+    .map((item) => item.fields?.people_count?.value)
+    .filter((value) => Number.isInteger(value) && value >= 0);
+  const topValues = countStableValues(values).slice(0, 8).map((entry) => ({
+    count: entry.count,
+    ratio: values.length > 0 ? entry.count / values.length : 0,
+    value: entry.value,
+  }));
+  return {
+    count: values.length,
+    spike_values: topValues.filter((entry) =>
+      values.length >= 200
+      && peopleCountSpikeValues.has(Number(entry.value))
+      && entry.ratio >= peopleCountSpikeThreshold,
+    ),
+    top_values: topValues,
+  };
+}
+
+export function runQualityStatus(run) {
+  if (run.validation.status === "invalid") {
+    return "invalid";
+  }
+  if (run.validation.status === "missing") {
+    return "missing";
+  }
+  if (run.isReviewSummaryStale) {
+    return "stale-review";
+  }
+  if (run.validation.warning_count > 0) {
+    return "valid-with-warnings";
+  }
+  return "valid";
+}
+
 function fieldValue(attempt, field) {
   const proposal = attempt.fields[field];
   return proposal && Object.prototype.hasOwnProperty.call(proposal, "value") ? proposal.value : undefined;
@@ -392,6 +435,7 @@ async function loadRun(runDir) {
   }
 
   const planUpdates = Array.isArray(updatePlan?.updates) ? updatePlan.updates.length : null;
+  const peopleCountDistributionForRun = peopleCountDistribution(proposals?.items ?? []);
 
   return {
     attempt,
@@ -405,6 +449,7 @@ async function loadRun(runDir) {
     photoIds: new Set(Array.isArray(photos) ? photos.map((photo) => photo.photo_id).filter(Boolean) : []),
     photos: Array.isArray(photos) ? photos : [],
     planUpdates,
+    peopleCountDistribution: peopleCountDistributionForRun,
     proposals,
     reviewFocus,
     runDir,
@@ -499,7 +544,7 @@ function buildWarnings(runs) {
 
   for (const run of runs) {
     if (run.validation.status === "invalid") {
-      warnings.push(`${run.label} has ${run.validation.error_count} validation error(s).`);
+      warnings.push(`${run.label} has ${run.validation.error_count} validation error(s); mark it as contract failed and do not use it for quality comparison.`);
     }
     if (run.validation.warning_count > 0) {
       warnings.push(`${run.label} has ${run.validation.warning_count} review warning(s).`);
@@ -511,7 +556,10 @@ function buildWarnings(runs) {
       warnings.push(`${run.label} has proposals but no metadata-review-summary.md yet.`);
     }
     if (run.isReviewSummaryStale) {
-      warnings.push(`${run.label} 的 metadata-review-summary.md 比 metadata-proposals.json 舊；使用 Review Focus 前請先重新執行 pnpm ai:review。`);
+      warnings.push(`${run.label} 的 metadata-review-summary.md 比 metadata-proposals.json 舊；這個 run 的 Review Focus 視為 stale，品質比較前請先重新執行 pnpm ai:review。`);
+    }
+    for (const spike of run.peopleCountDistribution?.spike_values ?? []) {
+      warnings.push(`${run.label} 的 people_count = ${spike.value} 出現在 ${spike.count}/${run.peopleCountDistribution.count} 張（${formatPercent(spike.ratio)}），可能是批次化 fallback，請看 Review Focus 或重跑抽查。`);
     }
   }
 
@@ -672,6 +720,35 @@ function buildDiagnosticSummary(photos) {
   };
 }
 
+export function buildPeopleCountPairSummary(photos, runLabels) {
+  const deltas = [];
+  for (const photo of photos) {
+    const values = photo.attempts
+      .map((attempt, index) => ({ index, value: attempt.fields.people_count?.value }))
+      .filter((entry) => Number.isFinite(entry.value));
+    if (values.length < 2) {
+      continue;
+    }
+    const counts = values.map((entry) => Number(entry.value));
+    const min = Math.min(...counts);
+    const max = Math.max(...counts);
+    deltas.push({
+      max,
+      min,
+      photo_id: photo.photo_id,
+      range: max - min,
+      values: values.map((entry) => `${runLabels[entry.index]}=${entry.value}`).join(", "),
+    });
+  }
+  return {
+    exact_match_count: deltas.filter((entry) => entry.range === 0).length,
+    extreme_delta_count: deltas.filter((entry) => entry.range >= extremePeopleCountGap).length,
+    large_delta_count: deltas.filter((entry) => entry.range >= largePeopleCountGap).length,
+    paired_count: deltas.length,
+    top_deltas: deltas.sort((left, right) => right.range - left.range || left.photo_id.localeCompare(right.photo_id)).slice(0, 10),
+  };
+}
+
 function buildReportData(runs, options) {
   const fieldSet = new Set(runs.flatMap((run) => [...run.fields]));
   const orderedFields = fieldOrder(fieldSet);
@@ -709,6 +786,9 @@ function buildReportData(runs, options) {
   const diagnosticSummary = mode === "compare"
     ? buildDiagnosticSummary(photos)
     : { alignment_suspect_count: 0, high_disagreement_count: 0, issue_counts: [], top_photos: [] };
+  const peopleCountPairSummary = mode === "compare"
+    ? buildPeopleCountPairSummary(photos, runLabels)
+    : { exact_match_count: 0, extreme_delta_count: 0, large_delta_count: 0, paired_count: 0, top_deltas: [] };
 
   return {
     attempts: runs.map((run) => ({
@@ -723,12 +803,14 @@ function buildReportData(runs, options) {
       label: run.label,
       model: run.attempt?.model || "",
       plan_updates: run.planUpdates,
+      people_count_distribution: run.peopleCountDistribution,
       proposal_count: run.proposals?.items?.length ?? 0,
       prompt_template_path: run.manifest.prompt_template_path || "",
       prompt_template_sha256: run.manifest.prompt_template_sha256 || "",
       round: run.attempt?.round || "",
       run_dir: run.runDir,
       run_id: run.manifest.run_id || "",
+      quality_status: runQualityStatus(run),
       status: run.validation.status,
       warning_count: run.validation.warning_count,
     })),
@@ -740,6 +822,7 @@ function buildReportData(runs, options) {
     mode,
     option_labels: defaultMetadataDisplayContext.taxonomy.option_labels ?? {},
     photos,
+    people_count_pair_summary: peopleCountPairSummary,
     title: options.title || (mode === "single" ? "AI 初標單次檢視報表" : "AI 初標比較報表"),
     watch_fields: [...watchFields],
     warnings: buildWarnings(runs),
@@ -1210,9 +1293,12 @@ function renderHtml(reportData) {
         el("span", focusCount ? "pill warn" : "pill good", "需抽查 " + focusCount + " 項"),
       );
       if (!isSingleMode) {
+        const peopleSummary = data.people_count_pair_summary || {};
         summary.append(
           el("span", data.diagnostic_summary?.high_disagreement_count ? "pill warn" : "pill good", "高分歧 " + (data.diagnostic_summary?.high_disagreement_count || 0) + " 張"),
           el("span", data.diagnostic_summary?.alignment_suspect_count ? "pill bad" : "pill good", "疑似錯圖 " + (data.diagnostic_summary?.alignment_suspect_count || 0) + " 張"),
+          el("span", peopleSummary.large_delta_count ? "pill warn" : "pill good", "人數差距>=10 " + (peopleSummary.large_delta_count || 0) + " 張"),
+          el("span", "pill", "人數配對 " + (peopleSummary.exact_match_count || 0) + "/" + (peopleSummary.paired_count || 0) + " 相同"),
         );
       }
     }
@@ -1220,20 +1306,28 @@ function renderHtml(reportData) {
     function renderAttemptPills() {
       attempts.replaceChildren();
       for (const attempt of data.attempts) {
-        const statusClass = attempt.status === "valid" && !attempt.is_review_summary_stale
+        const statusClass = attempt.quality_status === "valid"
           ? "good"
-          : attempt.status === "missing"
+          : attempt.quality_status === "missing" || attempt.quality_status === "valid-with-warnings" || attempt.quality_status === "stale-review"
             ? "warn"
-            : attempt.is_review_summary_stale
-              ? "warn"
-              : "bad";
-        const statusLabel = attempt.status === "valid" ? "valid" : attempt.status === "missing" ? "missing proposal" : "invalid";
+            : "bad";
+        const statusLabel = attempt.quality_status === "valid"
+          ? "valid"
+          : attempt.quality_status === "valid-with-warnings"
+            ? "valid with warnings"
+            : attempt.quality_status === "stale-review"
+              ? "stale review"
+              : attempt.quality_status === "missing"
+                ? "missing proposal"
+                : "contract failed";
         const promptHash = attempt.prompt_template_sha256 ? "prompt " + attempt.prompt_template_sha256.slice(0, 12) : "prompt unknown";
+        const peopleSpike = (attempt.people_count_distribution?.spike_values || []).map((entry) => "people_count=" + entry.value + " " + Math.round(entry.ratio * 100) + "%").join(", ");
         const parts = [
           attempt.label || attempt.run_id,
           statusLabel,
           promptHash,
           attempt.is_review_summary_stale ? "review summary 過期" : "",
+          peopleSpike,
           attempt.proposal_count === undefined ? "" : attempt.proposal_count + " proposals",
           attempt.plan_updates === null ? "" : attempt.plan_updates + " updates",
         ].filter(Boolean);
@@ -1267,6 +1361,12 @@ function renderHtml(reportData) {
       if (!isSingleMode && (data.diagnostic_summary?.top_photos || []).length > 0) {
         const top = data.diagnostic_summary.top_photos.slice(0, 8);
         warnings.append(el("div", "warning", "多模型分歧最高：" + top.map((photo) => photo.photo_id + "（" + photo.issues.slice(0, 2).join("、") + "）").join("；")));
+      }
+      if (!isSingleMode && (data.people_count_pair_summary?.top_deltas || []).length > 0) {
+        const topDeltas = data.people_count_pair_summary.top_deltas.slice(0, 6).filter((entry) => entry.range >= 10);
+        if (topDeltas.length > 0) {
+          warnings.append(el("div", "warning", "people_count 最大差距：" + topDeltas.map((entry) => entry.photo_id + "（差距 " + entry.range + "；" + entry.values + "）").join("；")));
+        }
       }
       for (const attempt of data.attempts) {
         if (attempt.errors.length > 0) {
@@ -1677,9 +1777,11 @@ async function main() {
   console.log(`- warnings: ${result.warningCount}`);
 }
 
-try {
-  await main();
-} catch (error) {
-  console.error(`Could not build AI report: ${error.message}`);
-  process.exitCode = 1;
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  try {
+    await main();
+  } catch (error) {
+    console.error(`Could not build AI report: ${error.message}`);
+    process.exitCode = 1;
+  }
 }

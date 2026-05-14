@@ -53,6 +53,19 @@ const lowSceneDensityThreshold = 1;
 const highSceneDensityThreshold = 2.5;
 const runTagConcentrationThreshold = 0.4;
 const scopeTagConcentrationThreshold = 0.8;
+const peopleCountSpikeValues = new Set([3, 4, 5, 6, 7, 8, 9, 10]);
+const peopleCountSpikeThreshold = 0.15;
+const peopleCountScopeMinimumItems = 20;
+const peopleCountScopeConcentrationThreshold = 0.5;
+const reasonReuseFields = new Set([
+  "people_count",
+  "visual_description",
+  "scene_tags",
+  "mood_tags",
+  "recommended_uses",
+  "has_negative_space",
+]);
+const reasonReuseQaWarningMinimum = 5;
 const reviewFocusMaxRows = 25;
 const balancedSampleMaxRows = 40;
 const asciiWordPattern = /[A-Za-z][A-Za-z0-9'_-]{2,}(?:\s+[A-Za-z][A-Za-z0-9'_-]{2,}){4,}/;
@@ -203,6 +216,18 @@ function formatPercent(value) {
   return `${Math.round(value * 100)}%`;
 }
 
+function repeatedReasonWarningMinimum() {
+  return reasonReuseQaWarningMinimum;
+}
+
+function quantile(sortedValues, percentile) {
+  if (sortedValues.length === 0) {
+    return "";
+  }
+  const index = Math.min(sortedValues.length - 1, Math.max(0, Math.floor((sortedValues.length - 1) * percentile)));
+  return sortedValues[index];
+}
+
 function valuesForField(item, field) {
   const proposal = item.fields[field];
   if (!proposal) {
@@ -350,6 +375,119 @@ function confidenceByFieldRows(items) {
 function mostCommonValue(items, field) {
   const counts = countValues(items.flatMap((item) => valuesForField(item, field)));
   return counts[0] ?? { count: 0, value: "" };
+}
+
+function peopleCountValues(items) {
+  return items
+    .map((item) => item.fields.people_count?.value)
+    .filter((value) => Number.isInteger(value) && value >= 0);
+}
+
+export function peopleCountStats(items) {
+  const values = peopleCountValues(items).sort((left, right) => left - right);
+  if (values.length === 0) {
+    return {
+      count: 0,
+      max: "",
+      mean: "",
+      median: "",
+      p25: "",
+      p75: "",
+      p90: "",
+      p95: "",
+      topValues: [],
+    };
+  }
+  const sum = values.reduce((total, value) => total + value, 0);
+  return {
+    count: values.length,
+    max: values.at(-1),
+    mean: (sum / values.length).toFixed(2),
+    median: quantile(values, 0.5),
+    p25: quantile(values, 0.25),
+    p75: quantile(values, 0.75),
+    p90: quantile(values, 0.9),
+    p95: quantile(values, 0.95),
+    topValues: countValues(values).slice(0, 8),
+  };
+}
+
+export function peopleCountSpikeRows(items, photos, shardMap) {
+  const rows = [];
+  const allStats = peopleCountStats(items);
+  for (const entry of allStats.topValues) {
+    if (!peopleCountSpikeValues.has(Number(entry.value))) {
+      continue;
+    }
+    const ratio = allStats.count > 0 ? entry.count / allStats.count : 0;
+    if (items.length >= largeRunMinimumItems && ratio >= peopleCountSpikeThreshold) {
+      rows.push(["run", "all", allStats.count, entry.value, entry.count, formatPercent(ratio), "中段 people_count 值異常集中，可能是 fallback 或模板化數人"]);
+    }
+  }
+
+  const photosById = buildPhotoLookup(photos);
+  const scopeGroups = [
+    ...[...groupItemsBy(items, (item) => photosById.get(item.photo_id)?.album_title || "unknown").entries()].map(([name, group]) => ["album", name, group]),
+    ...[...groupItemsBy(items, (item) => shardMap.get(item.photo_id) || "unknown").entries()].map(([name, group]) => ["shard", name, group]),
+  ];
+  for (const [scope, name, group] of scopeGroups) {
+    if (group.length < peopleCountScopeMinimumItems || name === "unknown") {
+      continue;
+    }
+    const stats = peopleCountStats(group);
+    const top = stats.topValues[0];
+    if (!top) {
+      continue;
+    }
+    const ratio = stats.count > 0 ? top.count / stats.count : 0;
+    if (peopleCountSpikeValues.has(Number(top.value)) && ratio >= peopleCountScopeConcentrationThreshold) {
+      rows.push([scope, name, stats.count, top.value, top.count, formatPercent(ratio), "scope 內單一中段 people_count 過度集中"]);
+    }
+  }
+
+  return rows.sort((left, right) => Number(right[4]) - Number(left[4]) || String(left[1]).localeCompare(String(right[1]), "zh-Hant"));
+}
+
+function normalizeReasonForQa(reason) {
+  return String(reason ?? "").replace(/\s+/g, " ").trim();
+}
+
+function stableProposalValue(value) {
+  return JSON.stringify(value);
+}
+
+export function reasonReuseRows(items) {
+  const byField = new Map();
+  for (const item of items) {
+    for (const [field, proposal] of Object.entries(item.fields)) {
+      if (!reasonReuseFields.has(field) || typeof proposal?.reason !== "string" || !proposal.reason.trim()) {
+        continue;
+      }
+      const rows = byField.get(field) ?? [];
+      rows.push({ item, proposal, reason: normalizeReasonForQa(proposal.reason) });
+      byField.set(field, rows);
+    }
+  }
+
+  const rows = [];
+  for (const [field, entries] of byField.entries()) {
+    const reasonCounts = countValues(entries.map((entry) => entry.reason));
+    const valueReasonCounts = countValues(entries.map((entry) => `${stableProposalValue(entry.proposal.value)}\u0000${entry.reason}`));
+    const topReason = reasonCounts[0] ?? { count: 0, value: "" };
+    const topValueReason = valueReasonCounts[0] ?? { count: 0, value: "" };
+    rows.push([
+      fieldLabel(field, { includeRaw: true }),
+      entries.length,
+      new Set(entries.map((entry) => entry.reason)).size,
+      topReason.count,
+      entries.length > 0 ? formatPercent(topReason.count / entries.length) : "0%",
+      topValueReason.count,
+      entries.length > 0 ? formatPercent(topValueReason.count / entries.length) : "0%",
+      topReason.value,
+    ]);
+  }
+
+  return rows.sort((left, right) => Number(right[3]) - Number(left[3]) || String(left[0]).localeCompare(String(right[0]), "zh-Hant"));
 }
 
 function allReasonText(item) {
@@ -550,6 +688,20 @@ function pushSampleRows(rows, seen, source, items, preferredFields, maxRows = 8)
   }
 }
 
+function uniqueRows(rows) {
+  const seen = new Set();
+  const unique = [];
+  for (const row of rows) {
+    const key = row.join("\u0000");
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    unique.push(row);
+  }
+  return unique;
+}
+
 function buildSceneQaRows(items, photos, shardMap) {
   const rows = [
     sceneQaRow("run", "all", items, { minimumItems: largeRunMinimumItems, scope: "整批" }),
@@ -676,6 +828,46 @@ function buildReviewFocusRows(items) {
   return rows.slice(0, reviewFocusMaxRows);
 }
 
+function pushPeopleCountSpikeFocus(rows, seen, items, peopleCountRows) {
+  for (const row of peopleCountRows.slice(0, 4)) {
+    const [, scopeName, , value] = row;
+    const spikeItems = items.filter((item) => item.fields.people_count?.value === value);
+    pushFocusRows(
+      rows,
+      seen,
+      `people_count = ${value} 集中：${scopeName}`,
+      stableSample(spikeItems, 4, `people-count-spike-${scopeName}-${value}`),
+      "people_count",
+      4,
+    );
+    if (rows.length >= reviewFocusMaxRows) {
+      return;
+    }
+  }
+}
+
+function pushReasonReuseFocus(rows, seen, items, reasonRows) {
+  for (const row of reasonRows.slice(0, 4)) {
+    const field = String(row[0]).match(/\(([^()]+)\)$/)?.[1] ?? String(row[0]);
+    if (!reasonReuseFields.has(field)) {
+      continue;
+    }
+    const reason = row[7];
+    const reuseItems = items.filter((item) => normalizeReasonForQa(item.fields[field]?.reason) === reason);
+    pushFocusRows(
+      rows,
+      seen,
+      `reason 重複：${field}`,
+      stableSample(reuseItems, 3, `reason-reuse-${field}-${reason}`),
+      field,
+      3,
+    );
+    if (rows.length >= reviewFocusMaxRows) {
+      return;
+    }
+  }
+}
+
 function buildBalancedSampleRows(items, { focusRows = [], shardMap = new Map() } = {}) {
   const rows = [];
   const seen = new Set();
@@ -739,7 +931,7 @@ function buildBalancedSampleRows(items, { focusRows = [], shardMap = new Map() }
   return rows.slice(0, balancedSampleMaxRows);
 }
 
-function buildReviewNotes(items, { sceneQaRows = [] } = {}) {
+function buildReviewNotes(items, { peopleCountQaRows = [], reasonReuseQaRows = [], sceneQaRows = [] } = {}) {
   const notes = [];
   const itemCount = items.length;
   const priorityCount = items.filter((item) => item.fields.priority_level).length;
@@ -771,6 +963,18 @@ function buildReviewNotes(items, { sceneQaRows = [] } = {}) {
   const confidenceTotalFields = confidenceRows.length;
   const publicRiskItems = publicUseRiskItems(items);
   const sceneCount = items.filter((item) => valuesForField(item, "scene_tags").length > 0).length;
+
+  for (const row of peopleCountQaRows.slice(0, 8)) {
+    notes.push(
+      `${row[0]} \`${row[1]}\`: \`people_count = ${row[3]}\` 出現在 ${row[4]}/${row[2]} 張（${row[5]}）；${row[6]}。`,
+    );
+  }
+
+  for (const row of reasonReuseQaRows.filter((entry) => Number(entry[3]) >= repeatedReasonWarningMinimum()).slice(0, 8)) {
+    notes.push(
+      `${row[0]} 的 reason 重複偏高：最大重複群 ${row[3]}/${row[1]}（${row[4]}），請抽查是否逐張描述可見證據。`,
+    );
+  }
 
   if (priorityCount === itemCount && itemCount > 0) {
     notes.push("`priority_level` 每張都有候選值，請確認模型是否把它當成預設欄位。");
@@ -941,7 +1145,7 @@ function buildPromptVersionNotes(manifest) {
   return [];
 }
 
-function renderSummary({ artifactRows, diffPath, layerRows, manifest, notes, outputDir, plan, proposals, runDir, sample, sceneQaRows, shardMap, shardRows, summaryPath }) {
+function renderSummary({ artifactRows, diffPath, layerRows, manifest, notes, outputDir, peopleCountQaRows, plan, proposals, reasonReuseQaRows, runDir, sample, sceneQaRows, shardMap, shardRows, summaryPath }) {
   const items = proposals.items;
   const fieldCountRows = fieldCounts(items).map(({ field, count }) => [
     fieldLabel(field, { includeRaw: true }),
@@ -956,7 +1160,20 @@ function renderSummary({ artifactRows, diffPath, layerRows, manifest, notes, out
     ]),
   );
   const focusRows = buildReviewFocusRows(items);
-  const balancedSampleRows = buildBalancedSampleRows(items, { focusRows, shardMap });
+  pushPeopleCountSpikeFocus(focusRows, new Set(focusRows.map((row) => `${row[0]}\0${row[1]}\0${row[2]}`)), items, peopleCountQaRows);
+  pushReasonReuseFocus(focusRows, new Set(focusRows.map((row) => `${row[0]}\0${row[1]}\0${row[2]}`)), items, reasonReuseQaRows);
+  const uniqueFocusRows = uniqueRows(focusRows).slice(0, reviewFocusMaxRows);
+  const balancedSampleRows = buildBalancedSampleRows(items, { focusRows: uniqueFocusRows, shardMap });
+  const peopleStats = peopleCountStats(items);
+  const peopleSummaryRows = [
+    ["count", peopleStats.count],
+    ["mean", peopleStats.mean],
+    ["median", peopleStats.median],
+    ["p25 / p75", `${peopleStats.p25} / ${peopleStats.p75}`],
+    ["p90 / p95", `${peopleStats.p90} / ${peopleStats.p95}`],
+    ["max", peopleStats.max],
+    ["top values", peopleStats.topValues.map((entry) => `${entry.value}: ${entry.count}`).join(", ")],
+  ];
   const promptTemplate = manifest.prompt_template_path || "unknown";
   const promptHash = manifest.prompt_template_sha256 ? manifest.prompt_template_sha256.slice(0, 12) : "unknown";
   const sampleRows = plan.updates.slice(0, sample).map((update) => [
@@ -992,8 +1209,8 @@ function renderSummary({ artifactRows, diffPath, layerRows, manifest, notes, out
     "",
     "## Review Focus",
     "",
-    focusRows.length > 0
-      ? table(["issue", "photo_id", "field", "proposed", "reason"], focusRows)
+    uniqueFocusRows.length > 0
+      ? table(["issue", "photo_id", "field", "proposed", "reason"], uniqueFocusRows)
       : "No specific focus rows were generated from review warnings.",
     "",
     "## Balanced Review Sample",
@@ -1021,6 +1238,20 @@ function renderSummary({ artifactRows, diffPath, layerRows, manifest, notes, out
     sceneQaRows.length > 0
       ? table(["scope", "name", "items", "with scene_tags", "coverage", "tag density", "top tag", "issue"], sceneQaRows)
       : "No scene QA rows were generated.",
+    "",
+    "## People Count QA",
+    "",
+    table(["metric", "value"], peopleSummaryRows),
+    "",
+    peopleCountQaRows.length > 0
+      ? table(["scope", "name", "items with people_count", "top value", "count", "ratio", "issue"], peopleCountQaRows)
+      : "No people_count concentration rows were generated.",
+    "",
+    "## Reason Reuse QA",
+    "",
+    reasonReuseQaRows.length > 0
+      ? table(["field", "proposal count", "unique reasons", "top reason count", "top reason ratio", "top value+reason count", "top value+reason ratio", "top reason / sample"], reasonReuseQaRows)
+      : "No reason reuse QA rows were generated.",
     "",
     "## Field Coverage",
     "",
@@ -1121,6 +1352,8 @@ async function reviewAiRun(options) {
   const shardMap = await buildShardMap(options.runDir, manifest.run_id);
   const shardInspection = await inspectShardArtifacts(options.runDir, manifest.run_id);
   const sceneQaRows = buildSceneQaRows(proposals.items, photos, shardMap);
+  const peopleCountQaRows = peopleCountSpikeRows(proposals.items, photos, shardMap);
+  const reasonReuseQaRows = reasonReuseRows(proposals.items);
   const layerRows = layerCoverageRows(proposals.items);
   const artifactRows = [
     ["final proposals", options.proposalsPath],
@@ -1136,7 +1369,7 @@ async function reviewAiRun(options) {
     ...buildPromptVersionNotes(manifest),
     ...shardInspection.warnings,
     ...validation.warnings,
-    ...buildReviewNotes(proposals.items, { sceneQaRows }),
+    ...buildReviewNotes(proposals.items, { peopleCountQaRows, reasonReuseQaRows, sceneQaRows }),
   ];
   const summary = renderSummary({
     artifactRows,
@@ -1145,8 +1378,10 @@ async function reviewAiRun(options) {
     manifest,
     notes,
     outputDir: options.outputDir,
+    peopleCountQaRows,
     plan,
     proposals,
+    reasonReuseQaRows,
     runDir: options.runDir,
     sample: options.sample,
     sceneQaRows,
