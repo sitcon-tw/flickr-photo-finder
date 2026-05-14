@@ -3,6 +3,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { startStaticServer } from "../lib/finder/serve.mjs";
 
 const defaultUrl = "http://127.0.0.1:4932/";
 
@@ -17,12 +18,12 @@ Default URL: ${defaultUrl}`);
 function parseArgs(argv) {
   const args = argv.slice(2).filter((arg) => arg !== "--");
   if (args.includes("--help") || args.includes("-h")) {
-    return { help: true, url: defaultUrl };
+    return { help: true, url: null };
   }
   if (args.length > 1) {
     throw new Error(`Expected at most one URL, got ${args.length}`);
   }
-  return { help: false, url: args[0] ?? defaultUrl };
+  return { help: false, url: args[0] ?? null };
 }
 
 function delay(ms) {
@@ -99,8 +100,31 @@ async function openDevtoolsTarget(debugPort, url) {
   throw new Error(`Could not open Chrome DevTools target: ${endpoint}`);
 }
 
+async function waitForHttp(url) {
+  for (let attempt = 0; attempt < 30; attempt += 1) {
+    try {
+      const response = await fetch(url);
+      if (response.ok) {
+        return;
+      }
+    } catch {
+      // Server is still starting.
+    }
+    await delay(100);
+  }
+  throw new Error(`Timed out waiting for React preview server: ${url}`);
+}
+
 async function runInteractionSmoke({ url }) {
   const debugPort = await findOpenPort();
+  const serverPort = url ? null : await findOpenPort();
+  const server = serverPort
+    ? startStaticServer({ rootDir: "tmp/pages-react", port: serverPort, title: "React preview interaction smoke" })
+    : null;
+  const targetUrl = url ?? `http://127.0.0.1:${serverPort}/`;
+  if (server) {
+    await waitForHttp(targetUrl);
+  }
   const userDataDir = await mkdtemp(join(tmpdir(), "react-preview-chrome-"));
   let ws = null;
   const chrome = spawn("google-chrome", [
@@ -121,7 +145,7 @@ async function runInteractionSmoke({ url }) {
   });
 
   try {
-    const initialUrl = new URL(url);
+    const initialUrl = new URL(targetUrl);
     initialUrl.searchParams.set("q", "品牌");
     initialUrl.searchParams.set("sort", "newest");
     initialUrl.searchParams.set("task", "social");
@@ -271,6 +295,83 @@ async function runInteractionSmoke({ url }) {
       throw new Error(`Expected preserved URL selected order to promote result cards, got ${JSON.stringify(updatedValue.firstPhotoIds)}`);
     }
 
+    const previewButtonBox = await evaluate(
+      ws,
+      32,
+      `(() => {
+        const button = document.querySelector('.photo-card__preview');
+        button?.scrollIntoView({ block: 'center', inline: 'center' });
+        const rect = button?.getBoundingClientRect();
+        return rect ? { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 } : null;
+      })()`,
+    );
+    if (!previewButtonBox.result.value) {
+      throw new Error("Expected at least one preview image button after reset");
+    }
+    await send(ws, 33, "Input.dispatchMouseEvent", {
+      type: "mousePressed",
+      x: previewButtonBox.result.value.x,
+      y: previewButtonBox.result.value.y,
+      button: "left",
+      clickCount: 1,
+    });
+    await send(ws, 34, "Input.dispatchMouseEvent", {
+      type: "mouseReleased",
+      x: previewButtonBox.result.value.x,
+      y: previewButtonBox.result.value.y,
+      button: "left",
+      clickCount: 1,
+    });
+    await delay(400);
+    const previewOpen = await evaluate(
+      ws,
+      35,
+      `(() => {
+        const dialog = document.querySelector('.photo-preview-dialog');
+        return {
+          title: dialog?.querySelector('h2')?.textContent,
+          imageHref: dialog?.querySelector('.preview-image-link')?.href,
+          imageHint: dialog?.querySelector('.preview-image-hint')?.textContent,
+          candidateButton: dialog?.querySelector('.preview-actions button')?.textContent,
+          actionCount: dialog?.querySelectorAll('.preview-actions > *').length,
+          detailLabels: [...(dialog?.querySelectorAll('.preview-detail-row dt') ?? [])].map((item) => item.textContent),
+          bodyOverflow: document.body.style.overflow
+        };
+      })()`,
+    );
+    const previewOpenValue = previewOpen.result.value;
+    if (!previewOpenValue.title || previewOpenValue.imageHint !== "Flickr") {
+      throw new Error(`Expected preview dialog with Flickr image hint, got ${JSON.stringify(previewOpenValue)}`);
+    }
+    if (!String(previewOpenValue.imageHref).includes("flickr.com/photos/sitcon/")) {
+      throw new Error(`Expected preview image link to open Flickr photo page, got ${previewOpenValue.imageHref}`);
+    }
+    if (previewOpenValue.candidateButton !== "已加入候選") {
+      throw new Error(`Expected preview candidate button to reflect selected state, got ${previewOpenValue.candidateButton}`);
+    }
+    if (previewOpenValue.actionCount !== 4) {
+      throw new Error(`Expected four preview actions, got ${previewOpenValue.actionCount}`);
+    }
+    if (!previewOpenValue.detailLabels.includes("構圖") || !previewOpenValue.detailLabels.includes("整理狀態")) {
+      throw new Error(`Expected preview detail labels, got ${JSON.stringify(previewOpenValue.detailLabels)}`);
+    }
+    if (previewOpenValue.bodyOverflow !== "hidden") {
+      throw new Error(`Expected preview dialog to lock body scroll, got ${previewOpenValue.bodyOverflow}`);
+    }
+    await evaluate(ws, 36, "window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))");
+    await delay(400);
+    const previewClosed = await evaluate(
+      ws,
+      37,
+      `(() => ({
+        hasDialog: Boolean(document.querySelector('.photo-preview-dialog')),
+        bodyOverflow: document.body.style.overflow
+      }))()`,
+    );
+    if (previewClosed.result.value.hasDialog || previewClosed.result.value.bodyOverflow === "hidden") {
+      throw new Error(`Expected Escape to close preview and restore scroll, got ${JSON.stringify(previewClosed.result.value)}`);
+    }
+
     const filterOnly = await evaluate(
       ws,
       6,
@@ -325,7 +426,7 @@ async function runInteractionSmoke({ url }) {
     }
 
     ws.close();
-    console.log(`React preview interaction smoke passed: ${url}`);
+    console.log(`React preview interaction smoke passed: ${targetUrl}`);
   } finally {
     ws?.close();
     chrome.kill("SIGTERM");
@@ -336,6 +437,9 @@ async function runInteractionSmoke({ url }) {
     });
     if (chrome.exitCode && chrome.exitCode !== 0) {
       console.error(chromeStderr);
+    }
+    if (server) {
+      await new Promise((resolve) => server.close(resolve));
     }
   }
 }

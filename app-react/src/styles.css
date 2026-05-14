@@ -269,12 +269,43 @@ p {
   background: #ffffff;
 }
 
+.photo-card__preview,
 .photo-card img,
 .photo-card__empty {
   width: 100%;
   aspect-ratio: 4 / 3;
   background: #e4e7eb;
+}
+
+.photo-card__preview {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+}
+
+.photo-card__preview img,
+.photo-card__empty {
   object-fit: cover;
+}
+
+.photo-card__preview-hint {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  border: 1px solid rgb(255 255 255 / 72%);
+  border-radius: 6px;
+  background: rgb(15 23 42 / 76%);
+  color: #ffffff;
+  font-size: 0.8125rem;
+  font-weight: 800;
+  padding: 0 9px;
 }
 
 .photo-card__empty {
@@ -448,6 +479,153 @@ p {
   margin-left: 8px;
 }
 
+.photo-preview-layer {
+  position: fixed;
+  z-index: 50;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  overflow: auto;
+  background: rgb(15 23 42 / 52%);
+  padding: 18px;
+}
+
+.photo-preview-dialog {
+  display: grid;
+  gap: 14px;
+  width: min(920px, 100%);
+  max-height: calc(100vh - 36px);
+  overflow: auto;
+  border: 1px solid #bcccdc;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 24px 60px rgb(15 23 42 / 24%);
+  padding: 16px;
+}
+
+.preview-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+}
+
+.preview-header h2 {
+  font-size: 1.125rem;
+  line-height: 1.3;
+}
+
+.preview-header p {
+  margin-top: 3px;
+  color: #52606d;
+  font-size: 0.875rem;
+}
+
+.preview-close {
+  min-height: 44px;
+  border: 1px solid #bcccdc;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #1f2933;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  padding: 0 12px;
+}
+
+.preview-image-link {
+  position: relative;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #111827;
+  color: inherit;
+}
+
+.preview-image-link img {
+  display: block;
+  width: 100%;
+  max-height: min(62vh, 620px);
+  object-fit: contain;
+}
+
+.preview-image-hint {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  border: 1px solid rgb(255 255 255 / 72%);
+  border-radius: 6px;
+  background: rgb(15 23 42 / 76%);
+  color: #ffffff;
+  font-size: 0.8125rem;
+  font-weight: 800;
+  padding: 0 9px;
+}
+
+.preview-image-empty {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-height: 240px;
+  color: #ffffff;
+  font-weight: 800;
+}
+
+.preview-details {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.preview-detail-row {
+  display: grid;
+  grid-template-columns: 92px 1fr;
+  gap: 10px;
+  border-bottom: 1px solid #edf1f5;
+  padding-bottom: 8px;
+}
+
+.preview-detail-row dt {
+  color: #52606d;
+  font-weight: 700;
+}
+
+.preview-detail-row dd {
+  margin: 0;
+  color: #1f2933;
+}
+
+.preview-actions {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.preview-actions a,
+.preview-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  border: 1px solid #bcccdc;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #1f2933;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 700;
+  padding: 0 10px;
+}
+
+.preview-actions a[aria-disabled="true"] {
+  color: #9aa5b1;
+  pointer-events: none;
+}
+
 .empty-result {
   min-height: 140px;
   border: 1px solid #d7dee8;
@@ -505,6 +683,38 @@ p {
   .candidate-panel__actions {
     display: grid;
     justify-content: stretch;
+  }
+
+  .photo-preview-layer {
+    align-items: end;
+    padding: 0;
+  }
+
+  .photo-preview-dialog {
+    width: 100%;
+    max-height: 92vh;
+    border-radius: 14px 14px 0 0;
+    padding-bottom: 18px;
+  }
+
+  .preview-header {
+    grid-template-columns: 1fr;
+  }
+
+  .preview-actions {
+    position: sticky;
+    bottom: -18px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-right: -16px;
+    margin-bottom: -18px;
+    margin-left: -16px;
+    border-top: 1px solid #d7dee8;
+    background: #ffffff;
+    padding: 10px 16px;
+  }
+
+  .preview-detail-row {
+    grid-template-columns: 76px 1fr;
   }
 
   .photo-grid {

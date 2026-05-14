@@ -15,6 +15,10 @@ type PhotoRecord = Record<string, PhotoValue> & {
   event_year: string;
   recommended_uses: string[];
   scene_tags: string[];
+  mood_tags: string[];
+  safe_crop: string[];
+  orientation: string;
+  has_negative_space: string;
   public_use_status: string;
   priority_level: string;
   curation_status: string;
@@ -66,6 +70,7 @@ type FinderViewState = {
   taskModeId: string;
   filters: FinderFilters;
   selectedPhotoIds: string[];
+  activePreviewPhotoId: string;
 };
 type FinderViewAction =
   | { type: "hydrate"; state: Partial<FinderViewState>; validTaskModes: string[] }
@@ -76,6 +81,8 @@ type FinderViewAction =
   | { type: "clearFilterValue"; key: string; value: string }
   | { type: "toggleCandidate"; photoId: string }
   | { type: "clearCandidates" }
+  | { type: "openPreview"; photoId: string }
+  | { type: "closePreview" }
   | { type: "reset"; filterKeys: string[] };
 
 const previewDataSources = {
@@ -105,6 +112,7 @@ const initialViewState: FinderViewState = {
   taskModeId: "all",
   filters: {},
   selectedPhotoIds: [],
+  activePreviewPhotoId: "",
 };
 
 function photoTitle(photo: PhotoRecord) {
@@ -117,6 +125,48 @@ function candidatePhotoTitle(photo: { photo_id: string; event_name?: unknown; al
 
 function statusText(photo: PhotoRecord) {
   return [photo.public_use_status, photo.priority_level, photo.curation_status].filter(Boolean).join(" / ");
+}
+
+function buildSizedImageUrl(previewUrl: string, suffix: string) {
+  if (!previewUrl) {
+    return "";
+  }
+
+  try {
+    const url = new URL(previewUrl);
+    const match = url.pathname.match(/^(.*\/\d+_[^/_]+)(?:_(?:s|q|t|m|n|w|z|c|b))?(\.[A-Za-z0-9]+)$/);
+    if (!match) {
+      return "";
+    }
+    url.pathname = `${match[1]}_${suffix}${match[2]}`;
+    return url.toString();
+  } catch {
+    return "";
+  }
+}
+
+function displayImageUrl(photo: PhotoRecord) {
+  return buildSizedImageUrl(photo.image_preview_url, "z") || photo.image_preview_url;
+}
+
+function largeImageUrl(photo: PhotoRecord) {
+  return buildSizedImageUrl(photo.image_preview_url, "b");
+}
+
+function originalSizePageUrl(photo: PhotoRecord) {
+  if (!photo.photo_url) {
+    return "";
+  }
+
+  try {
+    const url = new URL(photo.photo_url);
+    url.hash = "";
+    url.search = "";
+    url.pathname = `${url.pathname.replace(/\/$/, "")}/sizes/o/`;
+    return url.toString();
+  } catch {
+    return "";
+  }
 }
 
 function finderLink(photo: { photo_id: string }) {
@@ -215,18 +265,23 @@ function PhotoCard({
   photo,
   selected,
   onToggleCandidate,
+  onOpenPreview,
 }: {
   photo: PhotoRecord;
   selected: boolean;
   onToggleCandidate: (photoId: string) => void;
+  onOpenPreview: (photoId: string) => void;
 }) {
   return (
     <article className="photo-card" data-photo-id={photo.photo_id}>
-      {photo.image_preview_url ? (
-        <img src={photo.image_preview_url} alt={photoTitle(photo)} loading="lazy" decoding="async" />
-      ) : (
-        <div className="photo-card__empty">No preview</div>
-      )}
+      <button type="button" className="photo-card__preview" onClick={() => onOpenPreview(photo.photo_id)}>
+        {photo.image_preview_url ? (
+          <img src={photo.image_preview_url} alt={photoTitle(photo)} loading="lazy" decoding="async" />
+        ) : (
+          <span className="photo-card__empty">No preview</span>
+        )}
+        <span className="photo-card__preview-hint">預覽</span>
+      </button>
       <div className="photo-card__body">
         <div className="photo-card__meta">{[photo.event_year, photo.album_title].filter(Boolean).join(" / ")}</div>
         <h2>{photoTitle(photo)}</h2>
@@ -313,6 +368,106 @@ function CandidatePanel({
   );
 }
 
+function detailValues(data: FinderData | null, fieldName: string, values: PhotoValue) {
+  const items = Array.isArray(values) ? values : [values].filter(Boolean);
+  return items
+    .map((value) =>
+      optionLabelFor(
+        data,
+        { key: fieldName, field: fieldName, label: fieldName, source: { labels: true } },
+        String(value ?? ""),
+      ),
+    )
+    .filter(Boolean)
+    .join("、");
+}
+
+function asStringArray(values: PhotoValue) {
+  return Array.isArray(values) ? values.map((value) => String(value ?? "")).filter(Boolean) : [];
+}
+
+function PhotoPreviewDialog({
+  photo,
+  data,
+  selected,
+  onClose,
+  onToggleCandidate,
+}: {
+  photo: PhotoRecord;
+  data: FinderData | null;
+  selected: boolean;
+  onClose: () => void;
+  onToggleCandidate: (photoId: string) => void;
+}) {
+  const previewUrl = largeImageUrl(photo) || displayImageUrl(photo);
+  const largeUrl = largeImageUrl(photo);
+  const details = [
+    ["構圖", detailValues(data, "orientation", photo.orientation)],
+    ["留白", detailValues(data, "has_negative_space", photo.has_negative_space)],
+    ["裁切", detailValues(data, "safe_crop", asStringArray(photo.safe_crop))],
+    ["用途", detailValues(data, "recommended_uses", asStringArray(photo.recommended_uses).slice(0, 4))],
+    ["場景", detailValues(data, "scene_tags", asStringArray(photo.scene_tags).slice(0, 4))],
+    ["贊助品項", detailValues(data, "sponsorship_items", asStringArray(photo.sponsorship_items).slice(0, 4))],
+    ["贊助價值", detailValues(data, "sponsorship_tags", asStringArray(photo.sponsorship_tags).slice(0, 4))],
+    ["畫面描述", photo.visual_description],
+    ["整理狀態", detailValues(data, "curation_status", photo.curation_status)],
+    ["使用提醒", detailValues(data, "public_use_status", photo.public_use_status)],
+  ].filter(([, value]) => Boolean(value));
+  const originalUrl = originalSizePageUrl(photo);
+  const rowLink = sheetRowLink(photo, data);
+
+  return (
+    <div className="photo-preview-layer" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
+      <section className="photo-preview-dialog" role="dialog" aria-modal="true" aria-label="照片預覽">
+        <header className="preview-header">
+          <div>
+            <h2>{photoTitle(photo)}</h2>
+            <p>{[photo.event_year, photo.album_title].filter(Boolean).join(" / ")}</p>
+          </div>
+          <button type="button" className="preview-close" onClick={onClose} aria-label="關閉照片預覽">
+            關閉
+          </button>
+        </header>
+        <a className="preview-image-link" href={photo.photo_url} target="_blank" rel="noreferrer">
+          {previewUrl ? (
+            <img src={previewUrl} alt={[photoTitle(photo), photo.event_year].filter(Boolean).join(" ")} />
+          ) : (
+            <span className="preview-image-empty">No preview image</span>
+          )}
+          <span className="preview-image-hint">Flickr</span>
+        </a>
+        <dl className="preview-details">
+          {details.map(([label, value]) => (
+            <div key={label} className="preview-detail-row">
+              <dt>{label}</dt>
+              <dd>{value}</dd>
+            </div>
+          ))}
+        </dl>
+        <div className="preview-actions">
+          <button
+            type="button"
+            className={selected ? "candidate-toggle is-selected" : "candidate-toggle"}
+            aria-pressed={selected}
+            onClick={() => onToggleCandidate(photo.photo_id)}
+          >
+            {selected ? "已加入候選" : "加入候選"}
+          </button>
+          <a href={largeUrl || undefined} aria-disabled={!largeUrl}>
+            大圖
+          </a>
+          <a href={originalUrl || undefined} aria-disabled={!originalUrl}>
+            原圖
+          </a>
+          <a href={rowLink || undefined} aria-disabled={!rowLink}>
+            Sheets
+          </a>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 function registryTaskModes(data: FinderData | null) {
   const modes = data?.interfaceRegistry?.pages?.taskModes;
   return Array.isArray(modes) && modes.length > 0 ? (modes as TaskMode[]) : fallbackTaskModes;
@@ -391,6 +546,7 @@ function normalizeViewState(state: Partial<FinderViewState>, validTaskModes: str
       Object.entries(state.filters ?? {}).map(([key, values]) => [key, cleanValues(values)]),
     ),
     selectedPhotoIds: cleanValues(state.selectedPhotoIds ?? []),
+    activePreviewPhotoId: String(state.activePreviewPhotoId ?? "").trim(),
   };
 }
 
@@ -440,6 +596,12 @@ function finderViewReducer(state: FinderViewState, action: FinderViewAction): Fi
   if (action.type === "clearCandidates") {
     return { ...state, selectedPhotoIds: [] };
   }
+  if (action.type === "openPreview") {
+    return { ...state, activePreviewPhotoId: action.photoId.trim() };
+  }
+  if (action.type === "closePreview") {
+    return { ...state, activePreviewPhotoId: "" };
+  }
   if (action.type === "reset") {
     return {
       ...initialViewState,
@@ -450,7 +612,10 @@ function finderViewReducer(state: FinderViewState, action: FinderViewAction): Fi
   return state;
 }
 
-function buildPartialFinderUrl(state: FinderViewState, ownedFilterDefinitions: FilterDefinition[]) {
+function buildPartialFinderUrl(
+  state: Pick<FinderViewState, "searchTerm" | "sortMode" | "taskModeId" | "filters" | "selectedPhotoIds">,
+  ownedFilterDefinitions: FilterDefinition[],
+) {
   const params = new URLSearchParams(window.location.search);
   if (state.taskModeId && state.taskModeId !== "all") {
     params.set("task", state.taskModeId);
@@ -742,6 +907,10 @@ export function App() {
     () => selectedPhotos(normalizedViewState.selectedPhotoIds, photos) as PhotoRecord[],
     [normalizedViewState.selectedPhotoIds, photos],
   );
+  const activePreviewPhoto = useMemo(
+    () => photos.find((photo) => photo.photo_id === normalizedViewState.activePreviewPhotoId) ?? null,
+    [normalizedViewState.activePreviewPhotoId, photos],
+  );
   const visibleSummary =
     filteredPhotos.length > previewPhotos.length
       ? `顯示前 ${previewPhotos.length} 張，尚有 ${filteredPhotos.length - previewPhotos.length} 張`
@@ -753,6 +922,24 @@ export function App() {
     taskMode: activeTask,
   });
   const hasActiveFilters = activeFilterKeys.some((key) => (normalizedViewState.filters[key] ?? []).length > 0);
+  useEffect(() => {
+    if (!activePreviewPhoto) {
+      return undefined;
+    }
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        dispatch({ type: "closePreview" });
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [activePreviewPhoto]);
+
   async function copyCandidates() {
     const candidateListUrl = new URL(window.location.href);
     candidateListUrl.hash = "";
@@ -903,12 +1090,23 @@ export function App() {
               photo={photo}
               selected={selectedPhotoIdSet.has(photo.photo_id)}
               onToggleCandidate={(photoId) => dispatch({ type: "toggleCandidate", photoId })}
+              onOpenPreview={(photoId) => dispatch({ type: "openPreview", photoId })}
             />
           ))
         ) : (
           <div className="empty-result">沒有符合目前搜尋的照片</div>
         )}
       </section>
+
+      {activePreviewPhoto ? (
+        <PhotoPreviewDialog
+          photo={activePreviewPhoto}
+          data={data}
+          selected={selectedPhotoIdSet.has(activePreviewPhoto.photo_id)}
+          onClose={() => dispatch({ type: "closePreview" })}
+          onToggleCandidate={(photoId) => dispatch({ type: "toggleCandidate", photoId })}
+        />
+      ) : null}
     </main>
   );
 }
