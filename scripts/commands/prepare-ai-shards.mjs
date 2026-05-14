@@ -208,6 +208,11 @@ async function prepareAiShards(options) {
     shards: shards.map((shard) => ({
       agent_name: "",
       completed_at: "",
+      codex_end_snapshot: null,
+      codex_home: "",
+      codex_session: "",
+      codex_start_snapshot: null,
+      codex_usage_delta: null,
       duration_ms: null,
       input_path: shard.input_path,
       model_name: "",

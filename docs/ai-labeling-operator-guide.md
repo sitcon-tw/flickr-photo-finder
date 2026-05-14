@@ -125,6 +125,51 @@ pnpm ai:shard:log -- --run-dir tmp/ai-runs/<run-id> --shard 03 --mark-completed 
 
 這個紀錄只描述操作歷程，不會驗證 proposal 或修改正式 run。`ai:shard:merge` 會再把每個 output 的 item count、sha256 與 merged proposal hash 補回 execution log。
 
+#### Codex eval / bulk labeling 紀錄 checklist
+
+若初標是由 Codex 操作者或 Codex worker 執行，請把 Codex session 視為可觀測但不乾淨的操作紀錄；重點是主動建立邊界，而不是事後把整串 token usage 當成本次 run 成本。
+
+開始前：
+
+- 儘量一個 eval / bulk labeling run 使用一條獨立 Codex session。
+- 若無法避免混用，在開始前先用 `ai:codex:meter --mark-start` 留下 parent phase 邊界。
+- 大型 shard run 先確認 `ai:shard:prepare` 已建立 execution log。
+- 記錄本次要採用的成本口徑：`labeling worker only`、`parent orchestration`、或 `total run estimate`。
+
+執行中：
+
+- 每個 Codex worker 開始 shard 時，用 `ai:shard:log --codex-session ... --mark-started`。
+- worker 完成 shard output 後，用 `ai:shard:log --codex-session ... --mark-completed`。
+- parent session 負責分片、合併、validate、review、修補時，視需要用不同 `--phase` 標出 `orchestration`、`validate`、`review` 或 `repair`。
+
+完成時：
+
+- proposals 完成、validate 完成、review 完成應分開記錄時間邊界。
+- `ai:validate` 和 `ai:review` 可加上 `--codex-session <parent-session-id>`，自動在 `codex-execution-metrics.json` 記錄 runtime phase、狀態與可取得的 token snapshot。
+- 事後檢討、文件撰寫、PR review 或分析討論不應併入 labeling 成本；若必須在同一 session 繼續做，先用 `ai:codex:meter --mark-end` 結束本次 run phase。
+
+工具化打點範例：
+
+```bash
+pnpm ai:codex:meter -- --run-dir tmp/ai-runs/<run-id> --session <parent-session-id> --phase orchestration --label "parent orchestration" --mark-start
+pnpm ai:shard:log -- --run-dir tmp/ai-runs/<run-id> --shard 03 --codex-session <worker-session-id> --mark-started
+pnpm ai:shard:log -- --run-dir tmp/ai-runs/<run-id> --shard 03 --codex-session <worker-session-id> --mark-completed --validate-status passed
+pnpm ai:validate -- --run-dir tmp/ai-runs/<run-id> --codex-session <parent-session-id>
+pnpm ai:review -- --run-dir tmp/ai-runs/<run-id> --codex-session <parent-session-id>
+pnpm ai:codex:meter -- --run-dir tmp/ai-runs/<run-id> --session <parent-session-id> --phase orchestration --mark-end
+```
+
+`ai:codex:meter` 會在 run 目錄寫入 `codex-execution-metrics.json`，`ai:shard:log --codex-session` 則把 worker token delta 寫入 shard execution log。兩者都只記錄操作成本，不代表 proposal 品質，也不會修改 `metadata-proposals.json`。Codex JSONL 的 raw `input_tokens` 包含 cached input；工具顯示與彙總的 shown tokens 使用 `input_tokens - cached_input_tokens + output_tokens`，並另外保留 cached input。
+
+`ai:validate --codex-session` 與 `ai:review --codex-session` 主要用來補完整流程狀態與牆鐘時間。由於 Codex 會在工具呼叫完成後才把下一筆 `token_count` 寫回 session JSONL，這兩個指令不應被視為單獨精準 token 計量；精準 token 邊界仍應使用 `ai:codex:meter --mark-start/--mark-end` 在 phase 前後打點。
+
+若沒有事前打點，也可以用 `--started-at` / `--completed-at` 做事後估算；這種結果應視為 approximate，因為同一條 Codex 對話可能混有其他任務：
+
+```bash
+pnpm ai:codex:meter -- --run-dir tmp/ai-runs/<run-id> --session <session-id> --phase orchestration --started-at 2026-05-14T10:00:00+08:00 --completed-at 2026-05-14T11:00:00+08:00
+pnpm ai:codex:meter -- --run-dir tmp/ai-runs/<run-id> --summary
+```
+
 大型 run 中途可隨時查狀態：
 
 ```bash

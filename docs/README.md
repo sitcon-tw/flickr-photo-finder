@@ -130,6 +130,7 @@
 - `pnpm ai:review -- --run-dir <dir>`，檢查 AI 候選 `metadata-proposals.json`，並一次產生 `metadata-review-summary.md`、`metadata-diff.md`、`metadata-update-plan.json` 與 CSV；大型 run summary 會附 artifact provenance、AI layer coverage 與 scene QA。
 - `pnpm ai:validate -- --run-dir <dir>`，只檢查 AI 候選 `metadata-proposals.json` 是否符合 schema、taxonomy 與人工 review 邊界。
 - `pnpm ai:shard:prepare -- --run-dir <dir>` / `pnpm ai:shard:log -- --run-dir <dir> --shard <id>` / `pnpm ai:shard:merge -- --run-dir <dir>`，大型 AI run 的分片準備、執行紀錄與暫存合併工具。預設使用 `/tmp/ai-labeling-shards/<run-id>/`，避免多 agent 在正式 run 目錄反覆寫中間檔，並保留 shard 狀態、模型、耗時、retry/repair 與 output hash。
+- `pnpm ai:codex:meter -- --run-dir <dir> --session <codex-session> --mark-start/--mark-end`，記錄 Codex 操作者或 parent orchestration 的 token snapshot；大型 worker 可搭配 `ai:shard:log --codex-session <id>`，`ai:validate` / `ai:review` 也可加 `--codex-session <id>` 記錄流程 phase，讓 `ai:bulk:status` 彙總 shown tokens、cached input、output、reasoning 與 runtime 狀態。
 - `pnpm ai:bulk:status -- --run-dir <dir>`，檢查大型 AI run 的 root proposal、shard workspace、暫存合併結果與 review summary 狀態，不修改檔案。
 - `pnpm eval:validate-fixtures`，檢查 AI proposal valid/invalid 範例是否仍符合目前 validator 邊界。
 - `pnpm ai:diff -- --run-dir <dir>`，只將已驗證的 AI 候選 metadata 轉成 `metadata-diff.md`，供人類審核，不寫入 Sheets。

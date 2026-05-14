@@ -3,6 +3,7 @@ import { access, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { getAiLabelingPromptMetadata } from "../lib/ai/ai-labeling-prompt.mjs";
+import { updateCodexRunMetrics } from "../lib/ai/codex-run-metrics.mjs";
 import { aiBaselineFields, aiOptionalFields, aiRecallFields } from "../lib/core/photo-schema.mjs";
 import { buildPlan } from "./plan-ai-updates.mjs";
 import { renderDiff } from "./render-ai-diff.mjs";
@@ -80,6 +81,8 @@ Options:
   --output-dir <dir>    Directory for review artifacts. Default: <run-dir>.
   --summary <path>      Markdown summary path. Default: <run-dir>/metadata-review-summary.md.
   --sample <number>     Number of planned updates to preview in the summary. Default: 20.
+  --codex-session <id>  Record review runtime in codex-execution-metrics.json.
+  --codex-home <dir>    Codex home. Default: CODEX_HOME or ~/.codex.
   --help, -h            Show this help.
 
 This command validates the AI proposals, renders metadata-diff.md, renders
@@ -90,6 +93,8 @@ not read or write Google Sheets.`);
 function parseArgs(argv) {
   const args = argv.slice(2).filter((arg) => arg !== "--");
   const options = {
+    codexHome: "",
+    codexSession: "",
     help: false,
     outputDir: "",
     proposalsPath: "",
@@ -116,6 +121,12 @@ function parseArgs(argv) {
       index += 1;
     } else if (arg === "--sample") {
       options.sample = Number(args[index + 1] ?? "");
+      index += 1;
+    } else if (arg === "--codex-session") {
+      options.codexSession = args[index + 1] ?? "";
+      index += 1;
+    } else if (arg === "--codex-home") {
+      options.codexHome = args[index + 1] ?? "";
       index += 1;
     } else {
       throw new Error(`Unknown option: ${arg}`);
@@ -1411,7 +1422,51 @@ async function main() {
     return;
   }
 
-  const result = await reviewAiRun(options);
+  if (options.codexSession) {
+    await updateCodexRunMetrics({
+      codexHome: options.codexHome,
+      label: "ai:review",
+      markStart: true,
+      phase: "review",
+      role: "parent",
+      runDir: options.runDir,
+      sessionId: options.codexSession,
+      status: "running",
+    });
+  }
+
+  let result;
+  try {
+    result = await reviewAiRun(options);
+  } catch (error) {
+    if (options.codexSession) {
+      await updateCodexRunMetrics({
+        codexHome: options.codexHome,
+        completedNow: true,
+        label: "ai:review",
+        markEnd: true,
+        phase: "review",
+        role: "parent",
+        runDir: options.runDir,
+        sessionId: options.codexSession,
+        status: "failed",
+      });
+    }
+    throw error;
+  }
+  if (options.codexSession) {
+    await updateCodexRunMetrics({
+      codexHome: options.codexHome,
+      completedNow: true,
+      label: "ai:review",
+      markEnd: true,
+      phase: "review",
+      role: "parent",
+      runDir: options.runDir,
+      sessionId: options.codexSession,
+      status: "completed",
+    });
+  }
   console.log(`AI run reviewed: ${result.runId}`);
   console.log(`- proposals: ${result.itemCount}`);
   console.log(`- diff rows: ${result.diffRows}`);
