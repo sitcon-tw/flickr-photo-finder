@@ -3,8 +3,7 @@ import { copyFile, mkdir, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { defineConfig, type Plugin } from "vite";
 
-const outputDir = resolve(import.meta.dirname, "..", process.env.PAGES_REACT_OUT_DIR || "tmp/pages-react");
-const includeFixtures = process.env.PAGES_REACT_INCLUDE_FIXTURES !== "0";
+const outputDir = resolve(import.meta.dirname, "../tmp/pages-react");
 
 const publicFiles = [
   "config/project.json",
@@ -12,8 +11,9 @@ const publicFiles = [
   "data/photo-schema.json",
   "data/search-aliases.json",
   "data/tag-taxonomy.json",
+  "fixtures/albums.csv",
+  "fixtures/photos.csv",
 ];
-const fixtureFiles = ["fixtures/albums.csv", "fixtures/photos.csv"];
 
 async function copyIntoPreviewArtifact(sourcePath: string, outputRoot: string) {
   const destination = join(outputRoot, sourcePath);
@@ -25,24 +25,8 @@ function previewDataContractsPlugin(): Plugin {
   return {
     name: "preview-data-contracts",
     async closeBundle() {
-      for (const file of includeFixtures ? [...publicFiles, ...fixtureFiles] : publicFiles) {
+      for (const file of publicFiles) {
         await copyIntoPreviewArtifact(file, outputDir);
-      }
-      if (includeFixtures) {
-        await writeFile(
-          join(outputDir, "config.js"),
-          `export const projectConfigUrl = "./config/project.json";
-
-export const dataSources = {
-  albumsCsvUrl: "./fixtures/albums.csv",
-  photosCsvUrl: "./fixtures/photos.csv",
-  interfaceRegistryJsonUrl: "./data/interface-registry.json",
-  schemaJsonUrl: "./data/photo-schema.json",
-  searchAliasesJsonUrl: "./data/search-aliases.json",
-  taxonomyJsonUrl: "./data/tag-taxonomy.json",
-};
-`,
-        );
       }
       await writeFile(join(outputDir, ".nojekyll"), "");
     },
