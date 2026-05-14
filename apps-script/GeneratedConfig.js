@@ -1344,6 +1344,22 @@ var SITCON_PHOTO_FINDER_CONFIG = {
           "searchPlaceholder": "搜尋用途"
         },
         {
+          "key": "subjectType",
+          "field": "subject_type",
+          "filterParam": "subjectType",
+          "label": "主體",
+          "group": "general",
+          "control": "subjectType",
+          "urlKey": "subject",
+          "source": {
+            "type": "taxonomy",
+            "key": "subject_type",
+            "labels": true
+          },
+          "emptyLabel": "全部主體",
+          "searchPlaceholder": "搜尋主體"
+        },
+        {
           "key": "mood",
           "field": "mood_tags",
           "filterParam": "mood",
@@ -1386,22 +1402,6 @@ var SITCON_PHOTO_FINDER_CONFIG = {
           },
           "emptyLabel": "全部人數",
           "searchPlaceholder": "搜尋人數"
-        },
-        {
-          "key": "subjectType",
-          "field": "subject_type",
-          "filterParam": "subjectType",
-          "label": "主體",
-          "group": "details",
-          "control": "subjectType",
-          "urlKey": "subject",
-          "source": {
-            "type": "taxonomy",
-            "key": "subject_type",
-            "labels": true
-          },
-          "emptyLabel": "全部主體",
-          "searchPlaceholder": "搜尋主體"
         },
         {
           "key": "orientation",
@@ -1546,11 +1546,12 @@ var SITCON_PHOTO_FINDER_CONFIG = {
       ],
       "defaultPrimaryFilters": [
         "use",
+        "subjectType",
+        "mood",
         "scene",
         "orientation",
         "safeCrop",
-        "negativeSpace",
-        "mood"
+        "negativeSpace"
       ],
       "peopleCountBuckets": [
         {

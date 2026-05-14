@@ -11,10 +11,10 @@
     "filters": [
       { "key": "album", "label": "活動/相簿", "group": "core", "control": "album", "urlKey": "album", "source": { "type": "album" }, "emptyLabel": "全部活動/相簿", "searchPlaceholder": "搜尋活動或相簿" },
       { "key": "use", "field": "recommended_uses", "filterParam": "recommendedUse", "label": "用途", "group": "general", "control": "use", "urlKey": "use", "source": { "type": "taxonomy", "key": "recommended_uses" }, "emptyLabel": "全部用途", "searchPlaceholder": "搜尋用途" },
+      { "key": "subjectType", "field": "subject_type", "filterParam": "subjectType", "label": "主體", "group": "general", "control": "subjectType", "urlKey": "subject", "source": { "type": "taxonomy", "key": "subject_type", "labels": true }, "emptyLabel": "全部主體", "searchPlaceholder": "搜尋主體" },
       { "key": "mood", "field": "mood_tags", "filterParam": "mood", "label": "氛圍", "group": "general", "control": "mood", "urlKey": "mood", "source": { "type": "taxonomy", "key": "mood_tags" }, "emptyLabel": "全部氛圍", "searchPlaceholder": "搜尋氛圍" },
       { "key": "scene", "field": "scene_tags", "filterParam": "scene", "label": "場景", "group": "general", "control": "scene", "urlKey": "scene", "source": { "type": "taxonomy", "key": "scene_tags" }, "emptyLabel": "全部場景", "searchPlaceholder": "搜尋場景" },
       { "key": "peopleCount", "field": "people_count", "filterParam": "peopleCount", "label": "人數", "group": "details", "control": "peopleCount", "urlKey": "people", "source": { "type": "people_count_buckets" }, "emptyLabel": "全部人數", "searchPlaceholder": "搜尋人數" },
-      { "key": "subjectType", "field": "subject_type", "filterParam": "subjectType", "label": "主體", "group": "details", "control": "subjectType", "urlKey": "subject", "source": { "type": "taxonomy", "key": "subject_type", "labels": true }, "emptyLabel": "全部主體", "searchPlaceholder": "搜尋主體" },
       { "key": "orientation", "field": "orientation", "filterParam": "orientation", "label": "方向", "group": "visual", "control": "orientation", "urlKey": "orientation", "source": { "type": "taxonomy", "key": "orientation", "labels": true }, "emptyLabel": "全部方向", "searchPlaceholder": "搜尋方向" },
       { "key": "negativeSpace", "field": "has_negative_space", "filterParam": "negativeSpace", "label": "留白", "group": "visual", "control": "negativeSpace", "urlKey": "negative", "source": { "type": "boolean", "labels": true }, "emptyLabel": "全部留白狀態", "searchPlaceholder": "搜尋留白狀態" },
       { "key": "safeCrop", "field": "safe_crop", "filterParam": "safeCrop", "label": "裁切", "group": "visual", "control": "safeCrop", "urlKey": "crop", "source": { "type": "taxonomy", "key": "safe_crop" }, "emptyLabel": "全部裁切", "searchPlaceholder": "搜尋裁切" },
@@ -25,7 +25,7 @@
       { "key": "curationStatus", "field": "curation_status", "filterParam": "curationStatus", "label": "整理狀態", "group": "status", "control": "curationStatus", "urlKey": "curation", "source": { "type": "taxonomy", "key": "curation_status", "labels": true }, "emptyLabel": "全部整理狀態", "searchPlaceholder": "搜尋整理狀態", "lowLevel": true },
       { "key": "collection", "field": "collections", "filterParam": "collection", "label": "素材包", "group": "details", "control": "collection", "urlKey": "collection", "source": { "type": "photo_values" }, "emptyLabel": "全部素材包", "searchPlaceholder": "搜尋素材包" }
     ],
-    "defaultPrimaryFilters": ["use", "scene", "orientation", "safeCrop", "negativeSpace", "mood"],
+    "defaultPrimaryFilters": ["use", "subjectType", "mood", "scene", "orientation", "safeCrop", "negativeSpace"],
     "peopleCountBuckets": [
       { "label": "全部人數", "value": "" },
       { "label": "未標記", "value": "unknown", "missing": true },

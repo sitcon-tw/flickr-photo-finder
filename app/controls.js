@@ -9,10 +9,10 @@ const autocompleteInputs = new Map();
 export let filterDefinitions = [
   { key: "album", label: "活動/相簿", group: "core", control: "album" },
   { key: "use", label: "用途", group: "general", control: "use" },
+  { key: "subjectType", label: "主體", group: "general", control: "subjectType" },
   { key: "mood", label: "氛圍", group: "general", control: "mood" },
   { key: "scene", label: "場景", group: "general", control: "scene" },
   { key: "peopleCount", label: "人數", group: "details", control: "peopleCount" },
-  { key: "subjectType", label: "主體", group: "details", control: "subjectType" },
   { key: "orientation", label: "方向", group: "visual", control: "orientation" },
   { key: "negativeSpace", label: "留白", group: "visual", control: "negativeSpace" },
   { key: "safeCrop", label: "裁切", group: "visual", control: "safeCrop" },
@@ -536,7 +536,7 @@ let taskPrimaryFilters = {
   recap: ["use", "scene", "mood", "orientation"],
 };
 
-let defaultPrimaryFilters = ["use", "scene", "orientation", "safeCrop", "negativeSpace", "mood"];
+let defaultPrimaryFilters = ["use", "subjectType", "mood", "scene", "orientation", "safeCrop", "negativeSpace"];
 let lowLevelFilters = new Set(["publicStatus", "priority", "curationStatus"]);
 
 export function applyControlsRegistry(interfaceRegistry) {
