@@ -17,6 +17,24 @@ Pages frontend 從 master 重新啟動長期遷移。目標是把長期 UI shell
 
 封存 tag `archive/pages-react-aria-migration-prototype-2026-05-14` 目前指向 commit `ad1003097b252b479474ce92bfcd1b44f2cc1ce7`。它只作 reference，不 cherry-pick prototype 實作 commit。後續每個 phase 都必須先定義目標、不改什麼、驗收 gate 與 rollback 條件。
 
+## Current status
+
+截至 2026-05-14，#44 的 React cutover 曾透過 #68 / #69 合入，但因 final cutover 早於 #44 milestone body、responsive/mobile regression 與 owner manual QA 完成，已回退 production cutover。正式 GitHub Pages artifact 目前仍由 `pnpm finder:build` 輸出 vanilla frontend，`index.html` 仍引用 `./main.js`。
+
+已完成並保留在 master 的範圍：
+
+- PR 1-3 governance、build scaffold 與 contract tests。
+- PR 4 pure finder core TypeScript migration。
+- PR 5 read-only React shell preview path。
+
+不得視為完成的範圍：
+
+- PR 8 responsive/mobile regression coverage。
+- PR 9 final Pages cutover。
+- PR 10 legacy vanilla surface cleanup。
+
+重新切換 production artifact 前，必須先更新 #44 body 與本文件，並補齊 responsive/mobile regression、fixture/export/sheets manual QA、owner review 與 rollback 記錄。
+
 ## Phase Plan
 
 ### Phase 0: Governance
