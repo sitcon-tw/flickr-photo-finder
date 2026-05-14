@@ -1,14 +1,8 @@
-import { access, readFile, writeFile } from "node:fs/promises";
-import { basename, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import {
-  addTokenUsage,
-  computeTokenDelta,
-  defaultCodexHome,
-  getCodexTokenSnapshot,
-} from "../lib/ai/codex-session-usage.mjs";
-
-const metricsFile = "codex-execution-metrics.json";
+  formatCodexUsage,
+  updateCodexRunMetrics,
+} from "../lib/ai/codex-run-metrics.mjs";
 
 function printUsage() {
   console.log(`Usage:
@@ -123,156 +117,6 @@ function parseArgs(argv) {
   return options;
 }
 
-async function pathExists(path) {
-  try {
-    await access(path);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-async function readJson(path) {
-  return JSON.parse(await readFile(path, "utf8"));
-}
-
-async function readJsonIfExists(path) {
-  if (!(await pathExists(path))) {
-    return null;
-  }
-  return readJson(path);
-}
-
-function serializeSnapshot(snapshot) {
-  if (!snapshot) {
-    return null;
-  }
-  return {
-    line_number: snapshot.line_number,
-    path: snapshot.path,
-    session_files: snapshot.session_files,
-    session_id: snapshot.session_id,
-    timestamp: snapshot.timestamp,
-    usage: snapshot.usage,
-  };
-}
-
-function phaseKey(entry) {
-  return `${entry.role || "parent"}:${entry.phase || "parent"}:${entry.session_id || ""}`;
-}
-
-function summarizeMetrics(metrics) {
-  const phases = Array.isArray(metrics?.phases) ? metrics.phases : [];
-  const completed = phases.filter((phase) => phase.usage_delta);
-  const byRole = {};
-  for (const role of ["parent", "worker", "other"]) {
-    byRole[role] = addTokenUsage(completed.filter((phase) => phase.role === role).map((phase) => phase.usage_delta));
-  }
-  return {
-    by_role: byRole,
-    completed_phases: completed.length,
-    phase_count: phases.length,
-    total_usage_delta: addTokenUsage(completed.map((phase) => phase.usage_delta)),
-  };
-}
-
-async function loadMetrics(runDir, manifest) {
-  const path = join(runDir, metricsFile);
-  const existing = await readJsonIfExists(path);
-  if (existing) {
-    return { metrics: existing, path };
-  }
-  return {
-    metrics: {
-      version: 1,
-      created_at: new Date().toISOString(),
-      phases: [],
-      run_dir: runDir,
-      run_id: manifest.run_id || basename(runDir),
-      updated_at: new Date().toISOString(),
-    },
-    path,
-  };
-}
-
-function findOrCreatePhase(metrics, options) {
-  const candidate = {
-    phase: options.phase,
-    role: options.role,
-    session_id: options.sessionId,
-  };
-  const key = phaseKey(candidate);
-  let entry = metrics.phases.find((phase) => phaseKey(phase) === key);
-  if (!entry) {
-    entry = {
-      codex_home: options.codexHome,
-      completed_at: "",
-      end_snapshot: null,
-      label: options.label || options.phase,
-      phase: options.phase,
-      role: options.role,
-      session_id: options.sessionId,
-      start_snapshot: null,
-      started_at: "",
-      usage_delta: null,
-    };
-    metrics.phases.push(entry);
-  }
-  if (options.label) entry.label = options.label;
-  if (options.codexHome) entry.codex_home = options.codexHome;
-  return entry;
-}
-
-async function snapshotFor(options, at) {
-  return getCodexTokenSnapshot(options.sessionId, {
-    at,
-    codexHome: options.codexHome,
-  });
-}
-
-async function updateMetrics(options) {
-  const runDir = resolve(options.runDir);
-  const manifest = await readJson(join(runDir, "manifest.json"));
-  const codexHome = resolve(options.codexHome || defaultCodexHome());
-  const { metrics, path } = await loadMetrics(runDir, manifest);
-  metrics.run_dir = runDir;
-  metrics.run_id = manifest.run_id || basename(runDir);
-
-  if (options.summary) {
-    return { metrics, path, summary: summarizeMetrics(metrics), wrote: false };
-  }
-
-  const normalizedOptions = { ...options, codexHome };
-  const entry = findOrCreatePhase(metrics, normalizedOptions);
-  const now = new Date().toISOString();
-
-  if (options.markStart || options.startedAt) {
-    const snapshot = await snapshotFor(normalizedOptions, options.startedAt);
-    entry.started_at = options.startedAt || snapshot.timestamp || now;
-    entry.start_snapshot = serializeSnapshot(snapshot);
-  }
-
-  if (options.markEnd || options.completedAt) {
-    const snapshot = await snapshotFor(normalizedOptions, options.completedAt);
-    entry.completed_at = options.completedAt || snapshot.timestamp || now;
-    entry.end_snapshot = serializeSnapshot(snapshot);
-  }
-
-  entry.approximate = Boolean(options.startedAt || options.completedAt);
-  entry.usage_delta = computeTokenDelta(entry.start_snapshot, entry.end_snapshot);
-  metrics.updated_at = now;
-  metrics.summary = summarizeMetrics(metrics);
-  await writeFile(path, `${JSON.stringify(metrics, null, 2)}\n`);
-  return { entry, metrics, path, summary: metrics.summary, wrote: true };
-}
-
-function formatUsage(usage) {
-  if (!usage) {
-    return "not available";
-  }
-  return `shown=${usage.shown_total_tokens}, cached=${usage.cached_input_tokens}, output=${usage.output_tokens}, reasoning=${usage.reasoning_output_tokens}`;
-}
-
 function printResult(result, options) {
   if (options.json) {
     console.log(JSON.stringify(result, null, 2));
@@ -282,12 +126,14 @@ function printResult(result, options) {
   console.log(`- metrics: ${result.path}`);
   console.log(`- phases: ${result.summary.phase_count}`);
   console.log(`- completed phases: ${result.summary.completed_phases}`);
-  console.log(`- total delta: ${formatUsage(result.summary.total_usage_delta)}`);
-  console.log(`- parent delta: ${formatUsage(result.summary.by_role.parent)}`);
-  console.log(`- worker delta: ${formatUsage(result.summary.by_role.worker)}`);
+  console.log(`- token completed phases: ${result.summary.token_completed_phases}`);
+  console.log(`- total delta: ${formatCodexUsage(result.summary.total_usage_delta)}`);
+  console.log(`- parent delta: ${formatCodexUsage(result.summary.by_role.parent)}`);
+  console.log(`- worker delta: ${formatCodexUsage(result.summary.by_role.worker)}`);
   if (result.entry) {
     console.log(`- updated phase: ${result.entry.role}/${result.entry.phase}`);
-    console.log(`- phase delta: ${formatUsage(result.entry.usage_delta)}`);
+    console.log(`- phase status: ${result.entry.status}`);
+    console.log(`- phase delta: ${formatCodexUsage(result.entry.usage_delta)}`);
   }
 }
 
@@ -297,7 +143,7 @@ async function main() {
     printUsage();
     return;
   }
-  const result = await updateMetrics(options);
+  const result = await updateCodexRunMetrics(options);
   printResult(result, options);
 }
 

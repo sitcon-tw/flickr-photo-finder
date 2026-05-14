@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
+import { updateCodexRunMetrics } from "../lib/ai/codex-run-metrics.mjs";
 import {
   aiBaselineFields,
   aiValueConstraints,
@@ -43,6 +44,8 @@ function printUsage() {
 Options:
   --run-dir <dir>       AI run directory containing manifest.json and photos.json.
   --proposals <path>    Proposal JSON path. Default: <run-dir>/metadata-proposals.json.
+  --codex-session <id>  Record validate runtime in codex-execution-metrics.json.
+  --codex-home <dir>    Codex home. Default: CODEX_HOME or ~/.codex.
   --help, -h            Show this help.
 
 Expected metadata-proposals.json shape:
@@ -73,6 +76,8 @@ function parseArgs(argv) {
   const args = argv.slice(2).filter((arg) => arg !== "--");
   const options = {
     help: false,
+    codexHome: "",
+    codexSession: "",
     proposalsPath: "",
     runDir: "",
   };
@@ -86,6 +91,12 @@ function parseArgs(argv) {
       index += 1;
     } else if (arg === "--proposals") {
       options.proposalsPath = args[index + 1] ?? "";
+      index += 1;
+    } else if (arg === "--codex-session") {
+      options.codexSession = args[index + 1] ?? "";
+      index += 1;
+    } else if (arg === "--codex-home") {
+      options.codexHome = args[index + 1] ?? "";
       index += 1;
     } else {
       throw new Error(`Unknown option: ${arg}`);
@@ -678,7 +689,51 @@ async function main() {
     return;
   }
 
-  const result = await validateAiProposals(options);
+  if (options.codexSession) {
+    await updateCodexRunMetrics({
+      codexHome: options.codexHome,
+      label: "ai:validate",
+      markStart: true,
+      phase: "validate",
+      role: "parent",
+      runDir: options.runDir,
+      sessionId: options.codexSession,
+      status: "running",
+    });
+  }
+
+  let result;
+  try {
+    result = await validateAiProposals(options);
+  } catch (error) {
+    if (options.codexSession) {
+      await updateCodexRunMetrics({
+        codexHome: options.codexHome,
+        completedNow: true,
+        label: "ai:validate",
+        markEnd: true,
+        phase: "validate",
+        role: "parent",
+        runDir: options.runDir,
+        sessionId: options.codexSession,
+        status: "failed",
+      });
+    }
+    throw error;
+  }
+  if (options.codexSession) {
+    await updateCodexRunMetrics({
+      codexHome: options.codexHome,
+      completedNow: true,
+      label: "ai:validate",
+      markEnd: true,
+      phase: "validate",
+      role: "parent",
+      runDir: options.runDir,
+      sessionId: options.codexSession,
+      status: "completed",
+    });
+  }
   console.log(`AI proposals are valid for ${result.runId} (${result.itemCount} item(s)).`);
   if (result.warnings.length > 0) {
     console.warn(`AI proposal review warnings (${result.warnings.length}):`);

@@ -1,10 +1,14 @@
 import { access, readFile, readdir, stat } from "node:fs/promises";
 import { basename, join, resolve } from "node:path";
 import { addTokenUsage } from "../lib/ai/codex-session-usage.mjs";
+import {
+  codexMetricsFile,
+  formatCodexUsage,
+  summarizeCodexMetrics,
+} from "../lib/ai/codex-run-metrics.mjs";
 
 const defaultProposalFile = "metadata-proposals.json";
 const defaultReviewSummaryFile = "metadata-review-summary.md";
-const codexMetricsFile = "codex-execution-metrics.json";
 const defaultTempRoot = "/tmp/ai-labeling-shards";
 const executionLogFile = "shard-execution-log.json";
 
@@ -123,24 +127,6 @@ function summarizeExecutionLog(log) {
   };
 }
 
-function summarizeCodexMetrics(metrics) {
-  const phases = Array.isArray(metrics?.phases) ? metrics.phases : [];
-  const completed = phases.filter((phase) => phase.usage_delta);
-  return {
-    completed_phases: completed.length,
-    exists: Boolean(metrics),
-    phase_count: phases.length,
-    total_usage_delta: addTokenUsage(completed.map((phase) => phase.usage_delta)),
-  };
-}
-
-function formatUsage(usage) {
-  if (!usage) {
-    return "not available";
-  }
-  return `shown=${usage.shown_total_tokens}, cached=${usage.cached_input_tokens}, output=${usage.output_tokens}, reasoning=${usage.reasoning_output_tokens}`;
-}
-
 async function inspectBulkStatus(options) {
   const runDir = resolve(options.runDir);
   const [manifest, photos] = await Promise.all([
@@ -219,10 +205,10 @@ function printStatus(status) {
     console.log(`- shard execution status: ${JSON.stringify(status.shard_execution_log_summary.status_counts)}`);
     console.log(`- shard retries/repairs: ${status.shard_execution_log_summary.retry_count}/${status.shard_execution_log_summary.repair_count}`);
     if (status.shard_execution_log_summary.codex_completed_shards > 0) {
-      console.log(`- shard Codex token delta: ${formatUsage(status.shard_execution_log_summary.codex_usage_delta)} (${status.shard_execution_log_summary.codex_completed_shards} shard(s))`);
+      console.log(`- shard Codex token delta: ${formatCodexUsage(status.shard_execution_log_summary.codex_usage_delta)} (${status.shard_execution_log_summary.codex_completed_shards} shard(s))`);
     }
   }
-  console.log(`- Codex run metrics: ${status.codex_metrics_exists ? `${status.codex_metrics_summary.completed_phases} completed phase(s), ${formatUsage(status.codex_metrics_summary.total_usage_delta)}` : "missing"}`);
+  console.log(`- Codex run metrics: ${status.codex_metrics_exists ? `${status.codex_metrics_summary.completed_phases} completed phase(s), ${status.codex_metrics_summary.token_completed_phases} token phase(s), ${formatCodexUsage(status.codex_metrics_summary.total_usage_delta)}` : "missing"}`);
   console.log(`- shard inputs: ${status.input_shards}`);
   console.log(`- shard outputs: ${status.existing_outputs}/${status.expected_outputs}`);
   console.log(`- merged shard proposal: ${status.shard_merged_proposal_exists ? `${status.shard_merged_proposal_items} item(s)` : "missing"}`);

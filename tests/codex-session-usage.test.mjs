@@ -4,6 +4,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import {
+  summarizeCodexMetrics,
+  updateCodexRunMetrics,
+} from "../scripts/lib/ai/codex-run-metrics.mjs";
+import {
   computeTokenDelta,
   findCodexSessionFiles,
   getCodexTokenSnapshot,
@@ -132,4 +136,68 @@ test("reports missing Codex session files clearly", async () => {
     () => getCodexTokenSnapshot("019e-missing", { codexHome }),
     /Could not find Codex session JSONL/,
   );
+});
+
+test("records run phase metrics and summarizes token and runtime phases", async () => {
+  const root = await mkdtemp(join(tmpdir(), "codex-run-metrics-"));
+  const runDir = join(root, "run");
+  const codexHome = join(root, "codex-home");
+  const sessionDir = join(codexHome, "sessions", "2026", "05", "14");
+  await mkdir(runDir, { recursive: true });
+  await mkdir(sessionDir, { recursive: true });
+  await writeFile(join(runDir, "manifest.json"), JSON.stringify({ run_id: "test-run" }));
+
+  const sessionId = "019e-metrics-session";
+  await writeFile(
+    join(sessionDir, `rollout-${sessionId}.jsonl`),
+    [
+      tokenLine("2026-05-14T00:01:00.000Z", {
+        cached_input_tokens: 100,
+        input_tokens: 300,
+        output_tokens: 20,
+        reasoning_output_tokens: 5,
+        total_tokens: 320,
+      }),
+      tokenLine("2026-05-14T00:02:00.000Z", {
+        cached_input_tokens: 150,
+        input_tokens: 500,
+        output_tokens: 40,
+        reasoning_output_tokens: 9,
+        total_tokens: 540,
+      }),
+      "",
+    ].join("\n"),
+  );
+
+  await updateCodexRunMetrics({
+    codexHome,
+    phase: "orchestration",
+    role: "parent",
+    runDir,
+    sessionId,
+    startedAt: "2026-05-14T00:01:30.000Z",
+    status: "running",
+  });
+  const result = await updateCodexRunMetrics({
+    codexHome,
+    completedAt: "2026-05-14T00:02:30.000Z",
+    phase: "orchestration",
+    role: "parent",
+    runDir,
+    sessionId,
+    status: "completed",
+  });
+
+  assert.equal(result.entry.duration_ms, 60000);
+  assert.equal(result.entry.usage_delta.shown_total_tokens, 170);
+  assert.equal(result.summary.completed_phases, 1);
+  assert.equal(result.summary.token_completed_phases, 1);
+  assert.equal(result.summary.by_role.parent.shown_total_tokens, 170);
+
+  const runtimeOnly = summarizeCodexMetrics({
+    phases: [{ completed_at: "2026-05-14T00:03:00.000Z", phase: "validate", role: "parent", status: "completed" }],
+  });
+  assert.equal(runtimeOnly.completed_phases, 1);
+  assert.equal(runtimeOnly.token_completed_phases, 0);
+  assert.deepEqual(runtimeOnly.status_counts, { completed: 1 });
 });
