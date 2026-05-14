@@ -1,8 +1,10 @@
 import { access, readFile, readdir, stat } from "node:fs/promises";
 import { basename, join, resolve } from "node:path";
+import { addTokenUsage } from "../lib/ai/codex-session-usage.mjs";
 
 const defaultProposalFile = "metadata-proposals.json";
 const defaultReviewSummaryFile = "metadata-review-summary.md";
+const codexMetricsFile = "codex-execution-metrics.json";
 const defaultTempRoot = "/tmp/ai-labeling-shards";
 const executionLogFile = "shard-execution-log.json";
 
@@ -106,7 +108,10 @@ function countValues(values) {
 
 function summarizeExecutionLog(log) {
   const shards = Array.isArray(log?.shards) ? log.shards : [];
+  const codexUsageDeltas = shards.map((shard) => shard.codex_usage_delta).filter(Boolean);
   return {
+    codex_completed_shards: codexUsageDeltas.length,
+    codex_usage_delta: addTokenUsage(codexUsageDeltas),
     completed_shards: shards.filter((shard) => shard.status === "completed").length,
     logged_shards: shards.length,
     merged_output_path: log?.merged_output_path ?? "",
@@ -116,6 +121,24 @@ function summarizeExecutionLog(log) {
     status_counts: countValues(shards.map((shard) => shard.status)),
     validate_status_counts: countValues(shards.map((shard) => shard.validate_status)),
   };
+}
+
+function summarizeCodexMetrics(metrics) {
+  const phases = Array.isArray(metrics?.phases) ? metrics.phases : [];
+  const completed = phases.filter((phase) => phase.usage_delta);
+  return {
+    completed_phases: completed.length,
+    exists: Boolean(metrics),
+    phase_count: phases.length,
+    total_usage_delta: addTokenUsage(completed.map((phase) => phase.usage_delta)),
+  };
+}
+
+function formatUsage(usage) {
+  if (!usage) {
+    return "not available";
+  }
+  return `shown=${usage.shown_total_tokens}, cached=${usage.cached_input_tokens}, output=${usage.output_tokens}, reasoning=${usage.reasoning_output_tokens}`;
 }
 
 async function inspectBulkStatus(options) {
@@ -129,6 +152,8 @@ async function inspectBulkStatus(options) {
   const shardManifest = await readJsonIfExists(join(shardDir, "shard-manifest.json"));
   const shardExecutionLogPath = join(shardDir, executionLogFile);
   const shardExecutionLog = await readJsonIfExists(shardExecutionLogPath);
+  const codexMetricsPath = join(runDir, codexMetricsFile);
+  const codexMetrics = await readJsonIfExists(codexMetricsPath);
   const shardEntries = Array.isArray(shardManifest?.shards) ? shardManifest.shards : [];
 
   const inputFiles = shardEntries.length > 0
@@ -169,6 +194,9 @@ async function inspectBulkStatus(options) {
     run_dir: runDir,
     run_id: runId,
     shard_dir: shardDir,
+    codex_metrics_exists: Boolean(codexMetrics),
+    codex_metrics_path: codexMetricsPath,
+    codex_metrics_summary: summarizeCodexMetrics(codexMetrics),
     shard_execution_log_exists: Boolean(shardExecutionLog),
     shard_execution_log_path: shardExecutionLogPath,
     shard_execution_log_summary: summarizeExecutionLog(shardExecutionLog),
@@ -190,7 +218,11 @@ function printStatus(status) {
   if (status.shard_execution_log_exists) {
     console.log(`- shard execution status: ${JSON.stringify(status.shard_execution_log_summary.status_counts)}`);
     console.log(`- shard retries/repairs: ${status.shard_execution_log_summary.retry_count}/${status.shard_execution_log_summary.repair_count}`);
+    if (status.shard_execution_log_summary.codex_completed_shards > 0) {
+      console.log(`- shard Codex token delta: ${formatUsage(status.shard_execution_log_summary.codex_usage_delta)} (${status.shard_execution_log_summary.codex_completed_shards} shard(s))`);
+    }
   }
+  console.log(`- Codex run metrics: ${status.codex_metrics_exists ? `${status.codex_metrics_summary.completed_phases} completed phase(s), ${formatUsage(status.codex_metrics_summary.total_usage_delta)}` : "missing"}`);
   console.log(`- shard inputs: ${status.input_shards}`);
   console.log(`- shard outputs: ${status.existing_outputs}/${status.expected_outputs}`);
   console.log(`- merged shard proposal: ${status.shard_merged_proposal_exists ? `${status.shard_merged_proposal_items} item(s)` : "missing"}`);
@@ -211,6 +243,9 @@ function printStatus(status) {
     console.log(`- Rebuild review artifacts: pnpm ai:review -- --run-dir ${status.run_dir}`);
   } else if (status.root_proposal_exists) {
     console.log("- Review artifacts are current. Continue with HTML report or Sheets dry-run.");
+    if (!status.codex_metrics_exists) {
+      console.log(`- Optional metering: pnpm ai:codex:meter -- --run-dir ${status.run_dir} --session <codex-session> --mark-start/--mark-end`);
+    }
   } else if (status.input_shards === 0) {
     console.log(`- Prepare shard workspace: pnpm ai:shard:prepare -- --run-dir ${status.run_dir}`);
   } else if (status.existing_outputs < status.expected_outputs) {

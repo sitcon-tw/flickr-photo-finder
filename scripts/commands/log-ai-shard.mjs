@@ -1,6 +1,11 @@
 import { access, readFile, writeFile } from "node:fs/promises";
 import { basename, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import {
+  computeTokenDelta,
+  defaultCodexHome,
+  getCodexTokenSnapshot,
+} from "../lib/ai/codex-session-usage.mjs";
 
 const defaultTempRoot = "/tmp/ai-labeling-shards";
 const executionLogFile = "shard-execution-log.json";
@@ -16,6 +21,8 @@ Options:
   --status <status>            pending, running, completed, failed, or repaired.
   --agent-name <name>          Agent or worker name.
   --model-name <name>          Model name.
+  --codex-session <id>         Codex session id for token metering.
+  --codex-home <dir>           Codex home. Default: CODEX_HOME or ~/.codex.
   --mark-started               Set started_at to now and status to running unless --status is supplied.
   --mark-completed             Set completed_at to now and status to completed unless --status is supplied.
   --started-at <iso-date>      Explicit started_at timestamp.
@@ -39,6 +46,8 @@ function parseArgs(argv) {
     addRepair: false,
     addRetry: false,
     agentName: "",
+    codexHome: "",
+    codexSession: "",
     completedAt: "",
     durationMs: null,
     help: false,
@@ -85,6 +94,12 @@ function parseArgs(argv) {
       index += 1;
     } else if (arg === "--model-name") {
       options.modelName = nextValue(index, arg);
+      index += 1;
+    } else if (arg === "--codex-session") {
+      options.codexSession = nextValue(index, arg);
+      index += 1;
+    } else if (arg === "--codex-home") {
+      options.codexHome = nextValue(index, arg);
       index += 1;
     } else if (arg === "--mark-started") {
       options.markStarted = true;
@@ -177,6 +192,30 @@ function durationMs(startedAt, completedAt) {
   return Number.isFinite(duration) && duration >= 0 ? duration : null;
 }
 
+function serializeSnapshot(snapshot) {
+  if (!snapshot) {
+    return null;
+  }
+  return {
+    line_number: snapshot.line_number,
+    path: snapshot.path,
+    session_files: snapshot.session_files,
+    session_id: snapshot.session_id,
+    timestamp: snapshot.timestamp,
+    usage: snapshot.usage,
+  };
+}
+
+async function codexSnapshot(options, at) {
+  if (!options.codexSession) {
+    return null;
+  }
+  return getCodexTokenSnapshot(options.codexSession, {
+    at,
+    codexHome: resolve(options.codexHome || defaultCodexHome()),
+  });
+}
+
 async function updateShardLog(options) {
   const runDir = resolve(options.runDir);
   const manifest = await readJson(join(runDir, "manifest.json"));
@@ -197,6 +236,8 @@ async function updateShardLog(options) {
   const now = new Date().toISOString();
   if (options.agentName) entry.agent_name = options.agentName;
   if (options.modelName) entry.model_name = options.modelName;
+  if (options.codexSession) entry.codex_session = options.codexSession;
+  if (options.codexHome) entry.codex_home = resolve(options.codexHome);
   if (options.markStarted) {
     entry.started_at = now;
     if (!options.status) entry.status = "running";
@@ -219,6 +260,14 @@ async function updateShardLog(options) {
   } else {
     entry.duration_ms = durationMs(entry.started_at, entry.completed_at);
   }
+
+  if (options.codexSession && (options.markStarted || options.startedAt)) {
+    entry.codex_start_snapshot = serializeSnapshot(await codexSnapshot(options, options.startedAt));
+  }
+  if (options.codexSession && (options.markCompleted || options.completedAt)) {
+    entry.codex_end_snapshot = serializeSnapshot(await codexSnapshot(options, options.completedAt));
+  }
+  entry.codex_usage_delta = computeTokenDelta(entry.codex_start_snapshot, entry.codex_end_snapshot);
 
   log.updated_at = now;
   await writeFile(logPath, `${JSON.stringify(log, null, 2)}\n`);
