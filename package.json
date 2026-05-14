@@ -55,6 +55,7 @@
     "finder:react:dev": "vite --config app-react/vite.config.ts --host 127.0.0.1",
     "finder:react:build": "vite build --config app-react/vite.config.ts",
     "finder:react:check": "node scripts/commands/check-react-pages-artifact.mjs",
+    "finder:react:interaction-smoke": "node scripts/commands/smoke-react-pages-interaction.mjs",
     "finder:react:smoke": "node scripts/commands/smoke-react-pages-artifact.mjs",
     "finder:react:typecheck": "tsc -p app-react/tsconfig.json",
     "finder:test": "node --test tests/*.test.mjs",
@@ -90,6 +91,7 @@
     "@inquirer/prompts": "^8.4.3",
     "googleapis": "^171.4.0",
     "react": "^19.2.6",
+    "react-aria-components": "^1.17.0",
     "react-dom": "^19.2.6"
   },
   "devDependencies": {

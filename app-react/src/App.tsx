@@ -1,22 +1,105 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useReducer, useRef, useState, type CSSProperties, type PointerEvent, type TouchEvent } from "react";
+import { Button, Dialog, ListBox, ListBoxItem, Modal, ModalOverlay, Popover, type Selection } from "react-aria-components";
+import { candidateCopyText, selectedPhotos } from "../../app-core/candidate-copy";
 import { loadFinderData } from "../../app-core/data-loader";
+import { sanitizeSearchTerm } from "../../app-core/analytics-core";
+import { applySearchRegistry, filterAndSortPhotos, isFilled } from "../../app-core/search-sort";
+import { applyUrlStateRegistry, decodeUrlState } from "../../app-core/url-state";
 
-type PhotoRecord = Record<string, unknown> & {
+type PhotoValue = string | string[] | number | boolean | null | undefined;
+type PhotoRecord = Record<string, PhotoValue> & {
   photo_id: string;
   photo_url: string;
   image_preview_url: string;
+  album_ids: string[];
   album_title: string;
   event_name: string;
   event_year: string;
   recommended_uses: string[];
   scene_tags: string[];
+  mood_tags: string[];
+  safe_crop: string[];
+  orientation: string;
+  has_negative_space: string;
   public_use_status: string;
   priority_level: string;
   curation_status: string;
   visual_description: string;
+  search_text: string;
+  _sheet_row_number?: number;
+  sponsorship_items: string[];
+  sponsorship_tags: string[];
 };
 
 type FinderData = Awaited<ReturnType<typeof loadFinderData>>;
+type TaskMode = {
+  id: string;
+  label: string;
+  description?: string;
+  recommendedUses?: string[];
+  moods?: string[];
+  scenes?: string[];
+  sponsorshipTags?: string[];
+  orientations?: string[];
+  safeCrops?: string[];
+  prefersNegativeSpace?: boolean;
+};
+type FinderSettings = {
+  discoverHistorySize?: number;
+  discoverWindowSize?: number;
+};
+type FinderDataSources = {
+  albumsCsvUrl?: string;
+  photosCsvUrl: string;
+  interfaceRegistryJsonUrl: string;
+  schemaJsonUrl: string;
+  taxonomyJsonUrl: string;
+  searchAliasesJsonUrl: string;
+};
+type RuntimeConfig = {
+  projectConfigUrl: string;
+  dataSources: FinderDataSources;
+};
+type FilterDefinition = {
+  key: string;
+  urlKey?: string;
+  filterParam?: string;
+  field?: string;
+  label: string;
+  source?: {
+    type?: string;
+    key?: string;
+    labels?: boolean;
+  };
+  emptyLabel?: string;
+};
+type FilterOption = {
+  value: string;
+  label: string;
+};
+type FinderFilters = Record<string, string[]>;
+type FinderViewState = {
+  searchTerm: string;
+  sortMode: SortModeValue;
+  taskModeId: string;
+  filters: FinderFilters;
+  selectedPhotoIds: string[];
+  activePreviewPhotoId: string;
+};
+type FinderViewAction =
+  | { type: "hydrate"; state: Partial<FinderViewState>; validTaskModes: string[] }
+  | { type: "setSearchTerm"; value: string }
+  | { type: "setSortMode"; value: string }
+  | { type: "setTaskMode"; value: string; validTaskModes: string[]; nextFilterKeys: string[] }
+  | { type: "setFilterValues"; key: string; values: string[] }
+  | { type: "clearFilterValue"; key: string; value: string }
+  | { type: "clearFilters"; filterKeys: string[] }
+  | { type: "toggleCandidate"; photoId: string }
+  | { type: "removeCandidate"; photoId: string }
+  | { type: "clearCandidates" }
+  | { type: "openPreview"; photoId: string }
+  | { type: "closePreview" }
+  | { type: "reset"; filterKeys: string[] };
 
 const previewDataSources = {
   albumsCsvUrl: "./fixtures/albums.csv",
@@ -26,23 +109,341 @@ const previewDataSources = {
   taxonomyJsonUrl: "./data/tag-taxonomy.json",
   searchAliasesJsonUrl: "./data/search-aliases.json",
 };
+const fallbackRuntimeConfig: RuntimeConfig = {
+  projectConfigUrl: "./config/project.json",
+  dataSources: previewDataSources,
+};
+
+const sortModes = [
+  { value: "recommended", label: "推薦排序" },
+  { value: "discover", label: "探索更多" },
+  { value: "newest", label: "年份新到舊" },
+  { value: "oldest", label: "年份舊到新" },
+  { value: "people-desc", label: "人數多到少" },
+  { value: "people-asc", label: "人數少到多" },
+] as const;
+type SortModeValue = (typeof sortModes)[number]["value"];
+
+const fallbackTaskModes: TaskMode[] = [{ id: "all", label: "全部照片", description: "不套任務權重" }];
+const resultPageSize = 12;
+const initialViewState: FinderViewState = {
+  searchTerm: "",
+  sortMode: "recommended",
+  taskModeId: "all",
+  filters: {},
+  selectedPhotoIds: [],
+  activePreviewPhotoId: "",
+};
 
 function photoTitle(photo: PhotoRecord) {
   return photo.event_name || photo.album_title || photo.photo_id;
+}
+
+function candidatePhotoTitle(photo: { photo_id: string; event_name?: unknown; album_title?: unknown }) {
+  return String(photo.event_name || photo.album_title || photo.photo_id);
 }
 
 function statusText(photo: PhotoRecord) {
   return [photo.public_use_status, photo.priority_level, photo.curation_status].filter(Boolean).join(" / ");
 }
 
-function PhotoCard({ photo }: { photo: PhotoRecord }) {
+function buildSizedImageUrl(previewUrl: string, suffix: string) {
+  if (!previewUrl) {
+    return "";
+  }
+
+  try {
+    const url = new URL(previewUrl);
+    const match = url.pathname.match(/^(.*\/\d+_[^/_]+)(?:_(?:s|q|t|m|n|w|z|c|b))?(\.[A-Za-z0-9]+)$/);
+    if (!match) {
+      return "";
+    }
+    url.pathname = `${match[1]}_${suffix}${match[2]}`;
+    return url.toString();
+  } catch {
+    return "";
+  }
+}
+
+function displayImageUrl(photo: PhotoRecord) {
+  return buildSizedImageUrl(photo.image_preview_url, "z") || photo.image_preview_url;
+}
+
+function largeImageUrl(photo: PhotoRecord) {
+  return buildSizedImageUrl(photo.image_preview_url, "b");
+}
+
+function originalSizePageUrl(photo: PhotoRecord) {
+  if (!photo.photo_url) {
+    return "";
+  }
+
+  try {
+    const url = new URL(photo.photo_url);
+    url.hash = "";
+    url.search = "";
+    url.pathname = `${url.pathname.replace(/\/$/, "")}/sizes/o/`;
+    return url.toString();
+  } catch {
+    return "";
+  }
+}
+
+function imageFileExtension(url: string) {
+  try {
+    const pathname = new URL(url).pathname;
+    return pathname.match(/\.([a-z0-9]+)$/i)?.[1]?.toLowerCase() || "jpg";
+  } catch {
+    return "jpg";
+  }
+}
+
+function safeFilenamePart(value: unknown) {
+  return String(value ?? "")
+    .trim()
+    .replace(/[^A-Za-z0-9_-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
+}
+
+function imageDownloadFilename(photo: PhotoRecord, url: string) {
+  const title = safeFilenamePart(photoTitle(photo));
+  const id = safeFilenamePart(photo.photo_id) || "photo";
+  return `${id}${title ? `-${title}` : ""}.${imageFileExtension(url)}`;
+}
+
+async function downloadImageUrl(url: string, filename: string) {
+  const response = await fetch(url, { mode: "cors" });
+  if (!response.ok) {
+    throw new Error("圖片下載失敗");
+  }
+  const blob = await response.blob();
+  const objectUrl = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = objectUrl;
+  link.download = filename;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+}
+
+function finderLink(photo: { photo_id: string }) {
+  const url = new URL(window.location.href);
+  url.hash = `photo-${photo.photo_id}`;
+  return url.toString();
+}
+
+function photoAnchorId(photoId: string) {
+  return `photo-${photoId}`;
+}
+
+function sheetRowLink(photo: PhotoRecord, data: FinderData | null) {
+  const spreadsheetId = String(data?.projectConfig?.googleSheets?.spreadsheetId ?? "").trim();
+  if (!spreadsheetId || !photo._sheet_row_number) {
+    return "";
+  }
+  const gid = encodeURIComponent(String(data?.projectConfig?.googleSheets?.photosSheetGid ?? 0));
+  const range = encodeURIComponent(`A${photo._sheet_row_number}`);
+  return `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit?gid=${gid}#gid=${gid}&range=${range}`;
+}
+
+function projectSheetUrl(data: FinderData | null) {
+  const spreadsheetId = String(data?.projectConfig?.googleSheets?.spreadsheetId ?? "").trim();
+  return spreadsheetId ? `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit` : "";
+}
+
+function copyTextToClipboard(text: string) {
+  if (navigator.clipboard?.writeText) {
+    return navigator.clipboard.writeText(text).then(() => true);
+  }
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.opacity = "0";
+  document.body.append(textarea);
+  textarea.select();
+  const copied = document.execCommand("copy");
+  textarea.remove();
+  return Promise.resolve(copied);
+}
+
+function buildAiAssistantPrompt({
+  sheetUrl,
+  taskLabel,
+  searchValue,
+  filterEntries,
+}: {
+  sheetUrl: string;
+  taskLabel: string;
+  searchValue: string;
+  filterEntries: Array<[string, string, string]>;
+}) {
+  const resolvedSheetUrl = sheetUrl || "請貼上正式 Google Sheets 連結";
+  const searchTerm = sanitizeSearchTerm(searchValue);
+  const filterText = filterEntries.map(([, label, value]) => `${label}: ${value}`).join("；");
+  const needText = searchTerm || "請在這裡描述想找的畫面、用途、比例、情緒或限制。";
+
+  return `請讀取這份 Google Sheets 的 photos 工作表：
+${resolvedSheetUrl}
+
+協助我找 SITCON Flickr 照片。
+任務情境：${taskLabel}
+我的需求：${needText}
+目前已知條件：${filterText || "無，請先用自然語言探索。"}
+
+如果你無法直接讀取 Google Sheets，請先告訴我，並請我提供 photos CSV。
+
+請不要只找 reviewed 照片；ai_labeled 和 unreviewed 也可以列為候選，但請標示整理狀態。public_use_status 是整理提醒，不是 Flickr 是否公開；avoid 預設不要推薦。
+
+每個候選請提供：
+- photo_id
+- photo_url
+- 為什麼符合需求
+- curation_status
+- public_use_status
+
+請不要自行推測缺少的攝影師、授權、活動身份或照片外脈絡。`;
+}
+
+async function loadRuntimeConfig(): Promise<RuntimeConfig> {
+  try {
+    const runtimeConfigUrl = new URL("./config.js", window.location.href).toString();
+    const module = (await import(/* @vite-ignore */ runtimeConfigUrl)) as Partial<RuntimeConfig>;
+    if (module.projectConfigUrl && module.dataSources?.photosCsvUrl) {
+      return {
+        projectConfigUrl: module.projectConfigUrl,
+        dataSources: module.dataSources as FinderDataSources,
+      };
+    }
+  } catch {
+    // Local tests may render the React app before a runtime config has been generated.
+  }
+  if (import.meta.env.DEV) {
+    return fallbackRuntimeConfig;
+  }
+  throw new Error("Production runtime config.js is required");
+}
+
+function compactLabelParts(parts: unknown[]) {
+  const seen = new Set<string>();
+  return parts
+    .map((part) => String(part ?? "").trim())
+    .filter(Boolean)
+    .filter((part) => {
+      const key = part.toLowerCase();
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    });
+}
+
+function countFilled(photos: PhotoRecord[], fieldName: string) {
+  return photos.filter((photo) => isFilled(photo[fieldName])).length;
+}
+
+function formatCountRatio(count: number, total: number) {
+  if (total === 0) {
+    return "0 / 0";
+  }
+  return `${count} / ${total} (${Math.round((count / total) * 100)}%)`;
+}
+
+function countByField(photos: PhotoRecord[], fieldName: string, data: FinderData | null) {
+  const counts = new Map<string, number>();
+  for (const photo of photos) {
+    const rawValue = photo[fieldName];
+    const values = Array.isArray(rawValue) ? rawValue : [rawValue];
+    const normalizedValues = values.map((value) => String(value ?? "").trim()).filter(Boolean);
+    if (normalizedValues.length === 0) {
+      counts.set("未填", (counts.get("未填") ?? 0) + 1);
+      continue;
+    }
+    for (const value of normalizedValues) {
+      const label = optionLabelFor(data, { key: fieldName, field: fieldName, label: fieldName, source: { labels: true } }, value);
+      counts.set(label, (counts.get(label) ?? 0) + 1);
+    }
+  }
+  return [...counts.entries()].sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0], "zh-Hant-TW")).slice(0, 5);
+}
+
+function reviewedCompletenessCount(photos: PhotoRecord[], data: FinderData | null) {
+  const photosSchema = data?.photoSchema?.tables?.photos as { reviewed_required_fields?: string[] } | undefined;
+  const requiredFields = photosSchema?.reviewed_required_fields ?? [];
+  return photos.filter((photo) => requiredFields.every((fieldName: string) => isFilled(photo[fieldName]))).length;
+}
+
+function albumOptionFromRecord(record: Record<string, PhotoValue>, value: string) {
+  const labelParts = compactLabelParts([record.event_year, record.event_name, record.album_title]);
+  return { value, label: labelParts.join(" · ") || value };
+}
+
+function albumFilterOptions(photos: PhotoRecord[], albums: Record<string, PhotoValue>[] = []) {
+  const options = new Map<string, FilterOption>();
+  for (const photo of photos) {
+    for (const albumId of photo.album_ids ?? []) {
+      const id = String(albumId ?? "").trim();
+      if (!id) {
+        continue;
+      }
+      const key = `id:${id}`;
+      const next = albumOptionFromRecord(photo, key);
+      const current = options.get(key);
+      if (!current || next.label.length > current.label.length) {
+        options.set(key, next);
+      }
+    }
+    if (!photo.album_ids?.length && photo.album_title) {
+      const key = `title:${photo.album_title}`;
+      options.set(key, albumOptionFromRecord(photo, key));
+    }
+  }
+
+  const orderedOptions: FilterOption[] = [];
+  const usedKeys = new Set<string>();
+  for (const album of albums) {
+    const albumId = String(album.album_id ?? "").trim();
+    const key = albumId ? `id:${albumId}` : "";
+    if (!key || !options.has(key)) {
+      continue;
+    }
+    orderedOptions.push(albumOptionFromRecord(album, key));
+    usedKeys.add(key);
+  }
+  for (const [key, option] of options) {
+    if (!usedKeys.has(key)) {
+      orderedOptions.push(option);
+    }
+  }
+  return orderedOptions;
+}
+
+function PhotoCard({
+  photo,
+  selected,
+  onToggleCandidate,
+  onOpenPreview,
+  onDownloadLarge,
+}: {
+  photo: PhotoRecord;
+  selected: boolean;
+  onToggleCandidate: (photoId: string) => void;
+  onOpenPreview: (photoId: string) => void;
+  onDownloadLarge: (photo: PhotoRecord) => void;
+}) {
   return (
-    <article className="photo-card">
-      {photo.image_preview_url ? (
-        <img src={photo.image_preview_url} alt={photoTitle(photo)} loading="lazy" decoding="async" />
-      ) : (
-        <div className="photo-card__empty">No preview</div>
-      )}
+    <article id={photoAnchorId(photo.photo_id)} className="photo-card" data-photo-id={photo.photo_id}>
+      <button type="button" className="photo-card__preview" onClick={() => onOpenPreview(photo.photo_id)}>
+        {photo.image_preview_url ? (
+          <img src={photo.image_preview_url} alt={photoTitle(photo)} loading="lazy" decoding="async" />
+        ) : (
+          <span className="photo-card__empty">No preview</span>
+        )}
+        <span className="photo-card__preview-hint">預覽</span>
+      </button>
       <div className="photo-card__body">
         <div className="photo-card__meta">{[photo.event_year, photo.album_title].filter(Boolean).join(" / ")}</div>
         <h2>{photoTitle(photo)}</h2>
@@ -59,25 +460,987 @@ function PhotoCard({ photo }: { photo: PhotoRecord }) {
         </dl>
         <div className="photo-card__footer">
           <span>{statusText(photo)}</span>
-          <a href={photo.photo_url}>Flickr</a>
+          <div className="photo-card__actions">
+            <button
+              type="button"
+              className={selected ? "candidate-toggle is-selected" : "candidate-toggle"}
+              aria-pressed={selected}
+              onClick={() => onToggleCandidate(photo.photo_id)}
+            >
+              {selected ? "已候選" : "候選"}
+            </button>
+            <button type="button" onClick={() => onDownloadLarge(photo)}>
+              大圖
+            </button>
+          </div>
         </div>
       </div>
     </article>
   );
 }
 
+function CandidatePanel({
+  candidates,
+  copyTemplate,
+  copyStatus,
+  onCopyTemplateChange,
+  onCopy,
+  onClear,
+  onRemove,
+}: {
+  candidates: PhotoRecord[];
+  copyTemplate: string;
+  copyStatus: string;
+  onCopyTemplateChange: (template: string) => void;
+  onCopy: () => void;
+  onClear: () => void;
+  onRemove: (photoId: string) => void;
+}) {
+  return (
+    <section className="candidate-panel" aria-label="候選照片">
+      <CandidateContent
+        candidates={candidates}
+        copyTemplate={copyTemplate}
+        copyStatus={copyStatus}
+        onCopyTemplateChange={onCopyTemplateChange}
+        onCopy={onCopy}
+        onClear={onClear}
+        onRemove={onRemove}
+      />
+    </section>
+  );
+}
+
+function CandidateContent({
+  candidates,
+  copyTemplate,
+  copyStatus,
+  onCopyTemplateChange,
+  onCopy,
+  onClear,
+  onRemove,
+}: {
+  candidates: PhotoRecord[];
+  copyTemplate: string;
+  copyStatus: string;
+  onCopyTemplateChange: (template: string) => void;
+  onCopy: () => void;
+  onClear: () => void;
+  onRemove: (photoId: string) => void;
+}) {
+  return (
+    <>
+      <div className="candidate-panel__heading">
+        <h2>候選 {candidates.length}</h2>
+        <div className="candidate-panel__actions">
+          <label>
+            <span>複製格式</span>
+            <select value={copyTemplate} onChange={(event) => onCopyTemplateChange(event.target.value)} disabled={candidates.length === 0}>
+              <option value="im">IM 討論版</option>
+              <option value="sponsor">贊助佐證版</option>
+              <option value="collaboration">協作檢查版</option>
+              <option value="flickr_urls">純 Flickr URL</option>
+            </select>
+          </label>
+          <button type="button" onClick={onCopy} disabled={candidates.length === 0}>
+            {copyStatus || "複製"}
+          </button>
+          <button type="button" onClick={onClear} disabled={candidates.length === 0}>
+            清空
+          </button>
+        </div>
+      </div>
+      {candidates.length === 0 ? (
+        <p className="candidate-empty">尚無候選照片</p>
+      ) : (
+        <ol className="candidate-list">
+          {candidates.map((photo) => (
+            <li key={photo.photo_id}>
+              {photo.image_preview_url ? (
+                <img src={photo.image_preview_url} alt="" loading="lazy" decoding="async" />
+              ) : null}
+              <span>{photoTitle(photo)}</span>
+              <a href={photo.photo_url}>Flickr</a>
+              <button type="button" onClick={() => onRemove(photo.photo_id)}>
+                移除
+              </button>
+            </li>
+          ))}
+        </ol>
+      )}
+    </>
+  );
+}
+
+function CandidateSheetDialog({
+  candidates,
+  copyTemplate,
+  copyStatus,
+  onCopyTemplateChange,
+  onCopy,
+  onClear,
+  onRemove,
+  onClose,
+}: {
+  candidates: PhotoRecord[];
+  copyTemplate: string;
+  copyStatus: string;
+  onCopyTemplateChange: (template: string) => void;
+  onCopy: () => void;
+  onClear: () => void;
+  onRemove: (photoId: string) => void;
+  onClose: () => void;
+}) {
+  return (
+    <ModalOverlay
+      isOpen
+      isDismissable
+      onOpenChange={(isOpen) => {
+        if (!isOpen) {
+          onClose();
+        }
+      }}
+      className="candidate-sheet-layer"
+    >
+      <Modal className="candidate-sheet-dialog">
+        <Dialog className="candidate-sheet-dialog__content" aria-label="候選照片">
+          <div className="candidate-sheet-handle" aria-hidden="true" />
+          <button type="button" className="candidate-sheet-close" onClick={onClose} aria-label="關閉候選照片">
+            關閉
+          </button>
+          <CandidateContent
+            candidates={candidates}
+            copyTemplate={copyTemplate}
+            copyStatus={copyStatus}
+            onCopyTemplateChange={onCopyTemplateChange}
+            onCopy={onCopy}
+            onClear={onClear}
+            onRemove={onRemove}
+          />
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
+  );
+}
+
+function AiAssistantPanel({
+  sheetUrl,
+  prompt,
+  copyStatus,
+  onCopy,
+}: {
+  sheetUrl: string;
+  prompt: string;
+  copyStatus: string;
+  onCopy: () => void;
+}) {
+  return (
+    <section className="ai-assistant-panel" aria-label="用 AI 助手找照片">
+      <div>
+        <h2>用 AI 助手找照片</h2>
+        <p>把正式 photos 工作表與目前條件交給熟悉的 AI 助手，補足固定篩選難以描述的需求。</p>
+      </div>
+      <div className="ai-assistant-panel__actions">
+        <a href={sheetUrl || undefined} aria-disabled={!sheetUrl}>
+          開啟 Sheets
+        </a>
+        <button type="button" onClick={onCopy}>
+          {copyStatus || "複製提示詞"}
+        </button>
+      </div>
+      <textarea value={prompt} readOnly aria-label="AI 助手提示詞" rows={8} />
+    </section>
+  );
+}
+
+function OverviewPanel({ photos, data }: { photos: PhotoRecord[]; data: FinderData | null }) {
+  const total = photos.length;
+  const reviewedComplete = reviewedCompletenessCount(photos, data);
+  const missingPreview = photos.filter((photo) => !isFilled(photo.image_preview_url)).length;
+  const items = [
+    { title: "照片總數", value: `${total}`, detail: `${missingPreview} 張缺少縮圖 URL。` },
+    {
+      title: "整理狀態",
+      value: formatCountRatio(countFilled(photos, "curation_status"), total),
+      detail: "metadata 是否人工確認。",
+      values: countByField(photos, "curation_status", data),
+    },
+    {
+      title: "使用提醒",
+      value: formatCountRatio(countFilled(photos, "public_use_status"), total),
+      detail: "整理者留下的使用提醒。",
+      values: countByField(photos, "public_use_status", data),
+    },
+    {
+      title: "Reviewed 欄位完整度",
+      value: formatCountRatio(reviewedComplete, total),
+      detail: "依 photo-schema.json 計算。",
+    },
+    {
+      title: "主要視覺主體",
+      value: formatCountRatio(countFilled(photos, "subject_type"), total),
+      detail: "照片海初篩用的粗分類。",
+      values: countByField(photos, "subject_type", data),
+    },
+    {
+      title: "贊助價值",
+      value: formatCountRatio(countFilled(photos, "sponsorship_tags"), total),
+      detail: "品牌露出、互動、佐證等用途。",
+    },
+  ];
+
+  return (
+    <section className="overview-panel" aria-label="索引概覽">
+      <div className="overview-panel__heading">
+        <h2>索引概覽</h2>
+        <p>共 {total} 張照片，{reviewedComplete} 張已具備 reviewed 必要欄位。</p>
+      </div>
+      <div className="overview-grid">
+        {items.map((item) => (
+          <article className="overview-item" key={item.title}>
+            <h3>{item.title}</h3>
+            <strong>{item.value}</strong>
+            <p>{item.detail}</p>
+            {item.values?.length ? (
+              <dl>
+                {item.values.map(([label, count]) => (
+                  <div key={label}>
+                    <dt>{label}</dt>
+                    <dd>{count}</dd>
+                  </div>
+                ))}
+              </dl>
+            ) : null}
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function detailValues(data: FinderData | null, fieldName: string, values: PhotoValue) {
+  const items = Array.isArray(values) ? values : [values].filter(Boolean);
+  return items
+    .map((value) =>
+      optionLabelFor(
+        data,
+        { key: fieldName, field: fieldName, label: fieldName, source: { labels: true } },
+        String(value ?? ""),
+      ),
+    )
+    .filter(Boolean)
+    .join("、");
+}
+
+function asStringArray(values: PhotoValue) {
+  return Array.isArray(values) ? values.map((value) => String(value ?? "")).filter(Boolean) : [];
+}
+
+function PhotoPreviewDialog({
+  photo,
+  data,
+  selected,
+  onClose,
+  onToggleCandidate,
+  onDownloadLarge,
+}: {
+  photo: PhotoRecord;
+  data: FinderData | null;
+  selected: boolean;
+  onClose: () => void;
+  onToggleCandidate: (photoId: string) => void;
+  onDownloadLarge: (photo: PhotoRecord) => void;
+}) {
+  const sheetRef = useRef<HTMLDivElement | null>(null);
+  const dragRef = useRef<{ pointerId: number | "touch"; startX: number; startY: number; offsetY: number } | null>(null);
+  const [sheetOffset, setSheetOffset] = useState(0);
+  const [isDraggingSheet, setIsDraggingSheet] = useState(false);
+  const previewUrl = largeImageUrl(photo) || displayImageUrl(photo);
+  const details = [
+    ["構圖", detailValues(data, "orientation", photo.orientation)],
+    ["留白", detailValues(data, "has_negative_space", photo.has_negative_space)],
+    ["裁切", detailValues(data, "safe_crop", asStringArray(photo.safe_crop))],
+    ["用途", detailValues(data, "recommended_uses", asStringArray(photo.recommended_uses).slice(0, 4))],
+    ["場景", detailValues(data, "scene_tags", asStringArray(photo.scene_tags).slice(0, 4))],
+    ["贊助品項", detailValues(data, "sponsorship_items", asStringArray(photo.sponsorship_items).slice(0, 4))],
+    ["贊助價值", detailValues(data, "sponsorship_tags", asStringArray(photo.sponsorship_tags).slice(0, 4))],
+    ["畫面描述", photo.visual_description],
+    ["整理狀態", detailValues(data, "curation_status", photo.curation_status)],
+    ["使用提醒", detailValues(data, "public_use_status", photo.public_use_status)],
+  ].filter(([, value]) => Boolean(value));
+  const originalUrl = originalSizePageUrl(photo);
+  const rowLink = sheetRowLink(photo, data);
+  const sheetStyle = { "--preview-sheet-offset": `${sheetOffset}px` } as CSSProperties;
+
+  function resetSheetDrag() {
+    dragRef.current = null;
+    setSheetOffset(0);
+    setIsDraggingSheet(false);
+  }
+
+  function canStartSheetDrag(target: EventTarget | null) {
+    return target instanceof Element && !target.closest(".preview-close") && Boolean(target.closest(".preview-drag-region"));
+  }
+
+  function updateSheetDrag(clientY: number) {
+    const drag = dragRef.current;
+    if (!drag) {
+      return;
+    }
+    const deltaY = clientY - drag.startY;
+    if (deltaY <= 0) {
+      drag.offsetY = 0;
+      setSheetOffset(0);
+      return;
+    }
+    const nextOffset = Math.min(deltaY, 240);
+    drag.offsetY = nextOffset;
+    setIsDraggingSheet(nextOffset > 6);
+    setSheetOffset(nextOffset);
+  }
+
+  function finishSheetDrag(clientX: number) {
+    const drag = dragRef.current;
+    if (!drag) {
+      return false;
+    }
+    const deltaX = Math.abs(clientX - drag.startX);
+    if (drag.offsetY >= 112 && deltaX < 96) {
+      onClose();
+      return true;
+    }
+    resetSheetDrag();
+    return false;
+  }
+
+  function handleSheetPointerDown(event: PointerEvent<HTMLDivElement>) {
+    if (event.pointerType === "touch") {
+      return;
+    }
+    if (!window.matchMedia("(max-width: 640px)").matches) {
+      return;
+    }
+    if (event.button !== 0) {
+      return;
+    }
+    if (!canStartSheetDrag(event.target)) {
+      return;
+    }
+    dragRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      offsetY: 0,
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function handleSheetPointerMove(event: PointerEvent<HTMLDivElement>) {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) {
+      return;
+    }
+    updateSheetDrag(event.clientY);
+  }
+
+  function handleSheetPointerUp(event: PointerEvent<HTMLDivElement>) {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) {
+      return;
+    }
+    event.currentTarget.releasePointerCapture(event.pointerId);
+    finishSheetDrag(event.clientX);
+  }
+
+  function handleSheetTouchStart(event: TouchEvent<HTMLDivElement>) {
+    if (!window.matchMedia("(max-width: 640px)").matches || event.touches.length !== 1 || !canStartSheetDrag(event.target)) {
+      return;
+    }
+    const touch = event.touches[0];
+    dragRef.current = {
+      pointerId: "touch",
+      startX: touch.clientX,
+      startY: touch.clientY,
+      offsetY: 0,
+    };
+  }
+
+  function handleSheetTouchMove(event: TouchEvent<HTMLDivElement>) {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== "touch" || event.touches.length !== 1) {
+      return;
+    }
+    updateSheetDrag(event.touches[0].clientY);
+    if (drag.offsetY > 0) {
+      event.preventDefault();
+    }
+  }
+
+  function handleSheetTouchEnd(event: TouchEvent<HTMLDivElement>) {
+    const drag = dragRef.current;
+    const touch = event.changedTouches[0];
+    if (!drag || drag.pointerId !== "touch" || !touch) {
+      return;
+    }
+    finishSheetDrag(touch.clientX);
+  }
+
+  return (
+    <ModalOverlay
+      isOpen
+      isDismissable
+      onOpenChange={(isOpen) => {
+        if (!isOpen) {
+          onClose();
+        }
+      }}
+      className="photo-preview-layer"
+    >
+      <Modal
+        ref={sheetRef}
+        className="photo-preview-dialog"
+        data-dragging={isDraggingSheet ? "true" : undefined}
+        style={sheetStyle}
+        onPointerDown={handleSheetPointerDown}
+        onPointerMove={handleSheetPointerMove}
+        onPointerUp={handleSheetPointerUp}
+        onPointerCancel={resetSheetDrag}
+        onTouchStart={handleSheetTouchStart}
+        onTouchMove={handleSheetTouchMove}
+        onTouchEnd={handleSheetTouchEnd}
+        onTouchCancel={resetSheetDrag}
+      >
+        <Dialog className="photo-preview-dialog__content" aria-label="照片預覽">
+          <div className="preview-sheet-handle preview-drag-region" aria-hidden="true" />
+          <header className="preview-header preview-drag-region">
+            <div>
+              <h2>{photoTitle(photo)}</h2>
+              <p>{[photo.event_year, photo.album_title].filter(Boolean).join(" / ")}</p>
+            </div>
+            <button type="button" className="preview-close" onClick={onClose} aria-label="關閉照片預覽">
+              關閉
+            </button>
+          </header>
+          <a className="preview-image-link" href={photo.photo_url} target="_blank" rel="noreferrer">
+            {previewUrl ? (
+              <img src={previewUrl} alt={[photoTitle(photo), photo.event_year].filter(Boolean).join(" ")} />
+            ) : (
+              <span className="preview-image-empty">No preview image</span>
+            )}
+            <span className="preview-image-hint">Flickr</span>
+          </a>
+          <dl className="preview-details">
+            {details.map(([label, value]) => (
+              <div key={label} className="preview-detail-row">
+                <dt>{label}</dt>
+                <dd>{value}</dd>
+              </div>
+            ))}
+          </dl>
+          <div className="preview-actions">
+            <button
+              type="button"
+              className={selected ? "candidate-toggle is-selected" : "candidate-toggle"}
+              aria-pressed={selected}
+              onClick={() => onToggleCandidate(photo.photo_id)}
+            >
+              {selected ? "已加入候選" : "加入候選"}
+            </button>
+            <button type="button" onClick={() => onDownloadLarge(photo)}>
+              大圖
+            </button>
+            <a href={originalUrl || undefined} aria-disabled={!originalUrl}>
+              原圖
+            </a>
+            <a href={rowLink || undefined} aria-disabled={!rowLink}>
+              Sheets
+            </a>
+          </div>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
+  );
+}
+
+function registryTaskModes(data: FinderData | null) {
+  const modes = data?.interfaceRegistry?.pages?.taskModes;
+  return Array.isArray(modes) && modes.length > 0 ? (modes as TaskMode[]) : fallbackTaskModes;
+}
+
+function registrySettings(data: FinderData | null) {
+  return (data?.interfaceRegistry?.pages?.settings ?? {}) as FinderSettings;
+}
+
+function registryFilterDefinitions(data: FinderData | null) {
+  const filters = data?.interfaceRegistry?.pages?.filters;
+  return Array.isArray(filters) ? (filters as FilterDefinition[]) : [];
+}
+
+function primaryFilterDefinitions(data: FinderData | null, taskModeId: string) {
+  const definitions = registryFilterDefinitions(data);
+  if (definitions.length === 0) {
+    return [];
+  }
+  const pages = data?.interfaceRegistry?.pages;
+  const taskModes = Array.isArray(pages?.taskModes) ? (pages.taskModes as Array<TaskMode & { primaryFilters?: string[] }>) : [];
+  const taskPrimaryFilters = taskModes.find((mode) => mode.id === taskModeId)?.primaryFilters;
+  const defaultPrimaryFilters = Array.isArray(pages?.defaultPrimaryFilters)
+    ? (pages.defaultPrimaryFilters as string[])
+    : ["use", "scene", "orientation", "safeCrop", "negativeSpace", "mood"];
+  const primaryKeys = ["album", ...(taskPrimaryFilters ?? defaultPrimaryFilters)];
+  const primaryKeySet = new Set(primaryKeys);
+  return definitions
+    .filter((definition) => primaryKeySet.has(definition.key))
+    .sort((left, right) => primaryKeys.indexOf(left.key) - primaryKeys.indexOf(right.key))
+    .slice(0, 7);
+}
+
+function allReactOwnedFilterDefinitions(data: FinderData | null) {
+  const definitions = registryFilterDefinitions(data);
+  return definitions;
+}
+
+function isSortModeValue(value: string): value is SortModeValue {
+  return sortModes.some((mode) => mode.value === value);
+}
+
+function cleanValues(values: string[]) {
+  const seen = new Set<string>();
+  return values
+    .map((value) => String(value ?? "").trim())
+    .filter(Boolean)
+    .filter((value) => {
+      const key = value.toLowerCase();
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    });
+}
+
+function normalizeTaskModeId(value: string, validTaskModes: string[]) {
+  return validTaskModes.includes(value) ? value : "all";
+}
+
+function normalizeViewState(state: Partial<FinderViewState>, validTaskModes: string[]) {
+  return {
+    searchTerm: String(state.searchTerm ?? "").trim(),
+    sortMode: state.sortMode && isSortModeValue(state.sortMode) ? state.sortMode : "recommended",
+    taskModeId: normalizeTaskModeId(String(state.taskModeId ?? "all"), validTaskModes),
+    filters: Object.fromEntries(
+      Object.entries(state.filters ?? {}).map(([key, values]) => [key, cleanValues(values)]),
+    ),
+    selectedPhotoIds: cleanValues(state.selectedPhotoIds ?? []),
+    activePreviewPhotoId: String(state.activePreviewPhotoId ?? "").trim(),
+  };
+}
+
+function finderViewReducer(state: FinderViewState, action: FinderViewAction): FinderViewState {
+  if (action.type === "hydrate") {
+    return normalizeViewState({ ...state, ...action.state }, action.validTaskModes);
+  }
+  if (action.type === "setSearchTerm") {
+    return { ...state, searchTerm: action.value };
+  }
+  if (action.type === "setSortMode") {
+    return { ...state, sortMode: isSortModeValue(action.value) ? action.value : "recommended" };
+  }
+  if (action.type === "setTaskMode") {
+    return {
+      ...state,
+      taskModeId: normalizeTaskModeId(action.value, action.validTaskModes),
+    };
+  }
+  if (action.type === "setFilterValues") {
+    return { ...state, filters: { ...state.filters, [action.key]: cleanValues(action.values) } };
+  }
+  if (action.type === "clearFilterValue") {
+    const target = action.value.trim().toLowerCase();
+    return {
+      ...state,
+      filters: {
+        ...state.filters,
+        [action.key]: cleanValues(state.filters[action.key] ?? []).filter((value) => value.toLowerCase() !== target),
+      },
+    };
+  }
+  if (action.type === "clearFilters") {
+    return {
+      ...state,
+      filters: {
+        ...state.filters,
+        ...Object.fromEntries(action.filterKeys.map((key) => [key, []])),
+      },
+    };
+  }
+  if (action.type === "toggleCandidate") {
+    const photoId = action.photoId.trim();
+    if (!photoId) {
+      return state;
+    }
+    if (state.selectedPhotoIds.includes(photoId)) {
+      return { ...state, selectedPhotoIds: state.selectedPhotoIds.filter((item) => item !== photoId) };
+    }
+    return { ...state, selectedPhotoIds: [...state.selectedPhotoIds, photoId] };
+  }
+  if (action.type === "removeCandidate") {
+    const photoId = action.photoId.trim();
+    return { ...state, selectedPhotoIds: state.selectedPhotoIds.filter((item) => item !== photoId) };
+  }
+  if (action.type === "clearCandidates") {
+    return { ...state, selectedPhotoIds: [] };
+  }
+  if (action.type === "openPreview") {
+    return { ...state, activePreviewPhotoId: action.photoId.trim() };
+  }
+  if (action.type === "closePreview") {
+    return { ...state, activePreviewPhotoId: "" };
+  }
+  if (action.type === "reset") {
+    return {
+      ...initialViewState,
+      filters: Object.fromEntries(action.filterKeys.map((key) => [key, []])),
+      selectedPhotoIds: state.selectedPhotoIds,
+    };
+  }
+  return state;
+}
+
+function buildPartialFinderUrl(
+  state: Pick<FinderViewState, "searchTerm" | "sortMode" | "taskModeId" | "filters" | "selectedPhotoIds">,
+  ownedFilterDefinitions: FilterDefinition[],
+) {
+  const params = new URLSearchParams(window.location.search);
+  if (state.taskModeId && state.taskModeId !== "all") {
+    params.set("task", state.taskModeId);
+  } else {
+    params.delete("task");
+  }
+  const searchTerm = state.searchTerm.trim();
+  if (searchTerm) {
+    params.set("q", searchTerm);
+  } else {
+    params.delete("q");
+  }
+  if (state.sortMode && state.sortMode !== "recommended") {
+    params.set("sort", state.sortMode);
+  } else {
+    params.delete("sort");
+  }
+  for (const definition of ownedFilterDefinitions) {
+    const key = definition.key;
+    const urlKey = definition.urlKey ?? definition.key;
+    params.delete(urlKey);
+    for (const value of cleanValues(state.filters[key] ?? [])) {
+      params.append(urlKey, value);
+    }
+  }
+  if (state.selectedPhotoIds.length > 0) {
+    params.set("selected", state.selectedPhotoIds.join(","));
+  } else {
+    params.delete("selected");
+  }
+
+  const nextSearch = params.toString();
+  return `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ""}${window.location.hash}`;
+}
+
+function filtersForSearch(definitions: FilterDefinition[], filters: FinderFilters) {
+  return Object.fromEntries(
+    definitions.map((definition) => [definition.filterParam ?? definition.key, filters[definition.key] ?? []]),
+  );
+}
+
+function optionLabelFor(data: FinderData | null, definition: FilterDefinition, value: string) {
+  if (!definition.source?.labels || !definition.field || !data) {
+    return value;
+  }
+  return data.optionLabelMaps.get(definition.field)?.get(value) ?? value;
+}
+
+function uniqueSorted(values: unknown[]) {
+  return [...new Set(values.map((value) => String(value ?? "").trim()).filter(Boolean))].sort((left, right) =>
+    left.localeCompare(right, "zh-Hant-TW"),
+  );
+}
+
+function filterOptions(data: FinderData | null, definition: FilterDefinition, photos: PhotoRecord[]) {
+  if (!data) {
+    return [];
+  }
+  const source = definition.source ?? {};
+  if (source.type === "album") {
+    return albumFilterOptions(photos, data.albums as Record<string, PhotoValue>[]);
+  }
+  if (source.type === "boolean") {
+    return ["true", "false"].map((value) => ({ value, label: optionLabelFor(data, definition, value) }));
+  }
+  if (source.type === "photo_values" && definition.field) {
+    return uniqueSorted(photos.flatMap((photo) => photo[definition.field ?? ""] ?? [])).map((value) => ({
+      value,
+      label: optionLabelFor(data, definition, value),
+    }));
+  }
+  if (source.key) {
+    const values = ((data.taxonomy as Record<string, string[]>)[source.key] ?? []) as string[];
+    return values.map((value) => ({ value, label: optionLabelFor(data, definition, value) }));
+  }
+  return [];
+}
+
+function FilterSelect({
+  definition,
+  options,
+  values,
+  onChange,
+}: {
+  definition: FilterDefinition;
+  options: FilterOption[];
+  values: string[];
+  onChange: (values: string[]) => void;
+}) {
+  return (
+    <label className="filter-control">
+      <span>{definition.label}</span>
+      <select
+        multiple
+        value={values}
+        aria-label={definition.label}
+        onChange={(event) => {
+          onChange([...event.currentTarget.selectedOptions].map((option) => option.value).filter(Boolean));
+        }}
+      >
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+function FilterMultiSelect({
+  definition,
+  options,
+  values,
+  onChange,
+}: {
+  definition: FilterDefinition;
+  options: FilterOption[];
+  values: string[];
+  onChange: (values: string[]) => void;
+}) {
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const selectedLabels = values
+    .map((value) => options.find((option) => option.value === value)?.label ?? value)
+    .filter(Boolean);
+  const summary = selectedLabels.length > 0 ? selectedLabels.slice(0, 2).join("、") : "不限";
+  const extraCount = selectedLabels.length > 2 ? ` +${selectedLabels.length - 2}` : "";
+  const selectedKeys = new Set(values);
+  const normalizedQuery = query.trim().toLowerCase();
+  const visibleOptions = normalizedQuery
+    ? options.filter((option) => `${option.label} ${option.value}`.toLowerCase().includes(normalizedQuery))
+    : options;
+
+  function setPopoverOpen(nextOpen: boolean) {
+    setOpen(nextOpen);
+    if (!nextOpen) {
+      window.requestAnimationFrame(() => triggerRef.current?.focus());
+    }
+  }
+
+  function updateSelection(selection: Selection) {
+    if (selection === "all") {
+      onChange(options.map((option) => option.value));
+      return;
+    }
+    onChange([...selection].map((key) => String(key)));
+  }
+
+  return (
+    <div className="filter-multiselect">
+      <span className="filter-multiselect__label">{definition.label}</span>
+      <Button
+        ref={triggerRef}
+        className="filter-multiselect__trigger"
+        aria-label={`${definition.label}：${selectedLabels.length > 0 ? selectedLabels.join("、") : "不限"}`}
+        aria-expanded={open}
+        onPress={() => setPopoverOpen(!open)}
+      >
+        <span>{summary}{extraCount}</span>
+        <span aria-hidden="true">▾</span>
+      </Button>
+      {open ? (
+        <Popover
+          className="filter-multiselect__popover"
+          triggerRef={triggerRef}
+          isOpen={open}
+          onOpenChange={setPopoverOpen}
+          placement="bottom start"
+          shouldFlip
+          offset={6}
+        >
+          <div className="filter-multiselect__search">
+            <input
+              type="search"
+              value={query}
+              placeholder={definition.emptyLabel ?? `搜尋${definition.label}`}
+              autoComplete="off"
+              onChange={(event) => setQuery(event.target.value)}
+            />
+          </div>
+          <ListBox
+            className="filter-multiselect__list"
+            aria-label={definition.label}
+            selectionMode="multiple"
+            selectionBehavior="toggle"
+            selectedKeys={selectedKeys}
+            onSelectionChange={updateSelection}
+          >
+            {visibleOptions.map((option) => (
+              <ListBoxItem key={option.value} id={option.value} textValue={option.label} className="filter-multiselect__option">
+                {({ isSelected }) => (
+                  <>
+                    <span className="filter-multiselect__mark" aria-hidden="true">
+                      {isSelected ? "✓" : ""}
+                    </span>
+                    <span>{option.label}</span>
+                  </>
+                )}
+              </ListBoxItem>
+            ))}
+            {visibleOptions.length === 0 ? (
+              <ListBoxItem id="__empty" className="filter-multiselect__option" isDisabled>
+                沒有符合的選項
+              </ListBoxItem>
+            ) : null}
+          </ListBox>
+        </Popover>
+      ) : null}
+    </div>
+  );
+}
+
+function FilterSheetDialog({
+  definitions,
+  data,
+  photos,
+  filters,
+  activeFilterCount,
+  onChange,
+  onClear,
+  onClose,
+}: {
+  definitions: FilterDefinition[];
+  data: FinderData | null;
+  photos: PhotoRecord[];
+  filters: FinderFilters;
+  activeFilterCount: number;
+  onChange: (key: string, values: string[]) => void;
+  onClear: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <ModalOverlay
+      isOpen
+      isDismissable
+      onOpenChange={(isOpen) => {
+        if (!isOpen) {
+          onClose();
+        }
+      }}
+      className="filter-sheet-layer"
+    >
+      <Modal className="filter-sheet-dialog">
+        <Dialog className="filter-sheet-dialog__content" aria-label="主要篩選">
+          <div className="filter-sheet-handle" aria-hidden="true" />
+          <header className="filter-sheet-header">
+            <h2>主要篩選</h2>
+            <button type="button" className="filter-sheet-close" onClick={onClose} aria-label="關閉主要篩選">
+              關閉
+            </button>
+          </header>
+          <div className="filter-grid">
+            {definitions.map((definition) => (
+              <FilterMultiSelect
+                key={definition.key}
+                definition={definition}
+                options={filterOptions(data, definition, photos)}
+                values={filters[definition.key] ?? []}
+                onChange={(values) => onChange(definition.key, values)}
+              />
+            ))}
+          </div>
+          <div className="filter-sheet-actions">
+            <button type="button" className="filter-sheet-clear" onClick={onClear} disabled={activeFilterCount === 0}>
+              清除篩選
+            </button>
+            <button type="button" className="filter-sheet-done" onClick={onClose}>
+              完成
+            </button>
+          </div>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
+  );
+}
+
+function resultContextText({
+  allCount,
+  resultCount,
+  sortMode,
+  taskMode,
+}: {
+  allCount: number;
+  resultCount: number;
+  sortMode: SortModeValue;
+  taskMode: TaskMode;
+}) {
+  if (allCount === 0) {
+    return "尚未載入照片";
+  }
+  if (resultCount === 0) {
+    return "目前條件沒有結果，可先移除搜尋字或改用其他任務情境。";
+  }
+  if (sortMode === "discover") {
+    return `以「${taskMode.label}」探索更多排序，分散年份、活動、相簿與素材包來源。`;
+  }
+  const sortLabel = sortModes.find((mode) => mode.value === sortMode)?.label ?? "推薦排序";
+  if (sortMode === "recommended" && taskMode.id !== "all") {
+    return `以「${taskMode.label}」情境推薦排序，仍顯示符合搜尋的照片。`;
+  }
+  return `以${sortLabel}顯示符合搜尋的照片。`;
+}
+
 export function App() {
   const [data, setData] = useState<FinderData | null>(null);
   const [error, setError] = useState<string>("");
+  const [viewState, dispatch] = useReducer(finderViewReducer, initialViewState);
+  const [urlStateReady, setUrlStateReady] = useState(false);
+  const [copyTemplate, setCopyTemplate] = useState("im");
+  const [copyStatus, setCopyStatus] = useState("");
+  const [aiCopyStatus, setAiCopyStatus] = useState("");
+  const [visibleResultLimit, setVisibleResultLimit] = useState(resultPageSize);
+  const [candidateSheetOpen, setCandidateSheetOpen] = useState(false);
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    loadFinderData({
-      dataSources: previewDataSources,
-      projectConfigUrl: "./config/project.json",
-    })
+    loadRuntimeConfig()
+      .then((runtimeConfig) =>
+        loadFinderData({
+          dataSources: runtimeConfig.dataSources,
+          projectConfigUrl: runtimeConfig.projectConfigUrl,
+        }),
+      )
       .then((loadedData) => {
         if (!cancelled) {
+          applySearchRegistry(loadedData.interfaceRegistry);
+          applyUrlStateRegistry(loadedData.interfaceRegistry);
           setData(loadedData);
         }
       })
@@ -93,38 +1456,444 @@ export function App() {
   }, []);
 
   const photos = useMemo(() => (data?.photos ?? []) as PhotoRecord[], [data]);
-  const previewPhotos = photos.slice(0, 12);
+  const taskModes = useMemo(() => registryTaskModes(data), [data]);
+  const validTaskModes = useMemo(() => taskModes.map((mode) => mode.id), [taskModes]);
+  const normalizedViewState = useMemo(
+    () => normalizeViewState(viewState, validTaskModes),
+    [validTaskModes, viewState],
+  );
+  const { searchTerm, sortMode, taskModeId } = normalizedViewState;
+  const selectedPhotoIdSet = useMemo(() => new Set(normalizedViewState.selectedPhotoIds), [normalizedViewState.selectedPhotoIds]);
+  const activeFilterDefinitions = useMemo(() => primaryFilterDefinitions(data, taskModeId), [data, taskModeId]);
+  const ownedFilterDefinitions = useMemo(() => allReactOwnedFilterDefinitions(data), [data]);
+  const advancedFilterDefinitions = useMemo(
+    () => ownedFilterDefinitions.filter((definition) => !activeFilterDefinitions.some((activeDefinition) => activeDefinition.key === definition.key)),
+    [activeFilterDefinitions, ownedFilterDefinitions],
+  );
+  const activeFilterSignature = useMemo(
+    () => JSON.stringify(ownedFilterDefinitions.map((definition) => [definition.key, normalizedViewState.filters[definition.key] ?? []])),
+    [ownedFilterDefinitions, normalizedViewState.filters],
+  );
+  const activeTask = useMemo(
+    () => taskModes.find((mode) => mode.id === taskModeId) ?? taskModes[0] ?? fallbackTaskModes[0],
+    [taskModeId, taskModes],
+  );
+  const settings = registrySettings(data);
+
+  useEffect(() => {
+    if (!data || urlStateReady) {
+      return;
+    }
+    const urlState = decodeUrlState(new URLSearchParams(window.location.search));
+    const nextTaskModeId = normalizeTaskModeId(urlState.taskMode || "all", validTaskModes);
+    const nextFilterKeys = allReactOwnedFilterDefinitions(data).map((definition) => definition.key);
+    dispatch({
+      type: "hydrate",
+      state: {
+        searchTerm: urlState.search,
+        sortMode: isSortModeValue(urlState.sort) ? urlState.sort : "recommended",
+        taskModeId: nextTaskModeId,
+        filters: Object.fromEntries(nextFilterKeys.map((key) => [key, urlState.filters[key] ?? []])),
+        selectedPhotoIds: urlState.selectedPhotoIds,
+      },
+      validTaskModes,
+    });
+    setUrlStateReady(true);
+  }, [data, urlStateReady, validTaskModes]);
+
+  useEffect(() => {
+    if (!data || !urlStateReady) {
+      return;
+    }
+    const nextUrl = buildPartialFinderUrl(
+      {
+        searchTerm,
+        sortMode,
+        taskModeId,
+        filters: Object.fromEntries(ownedFilterDefinitions.map((definition) => [definition.key, normalizedViewState.filters[definition.key] ?? []])),
+        selectedPhotoIds: normalizedViewState.selectedPhotoIds,
+      },
+      ownedFilterDefinitions,
+    );
+    if (nextUrl !== `${window.location.pathname}${window.location.search}${window.location.hash}`) {
+      window.history.replaceState(null, "", nextUrl);
+    }
+  }, [
+    data,
+    normalizedViewState.filters,
+    normalizedViewState.selectedPhotoIds,
+    ownedFilterDefinitions,
+    searchTerm,
+    sortMode,
+    taskModeId,
+    urlStateReady,
+  ]);
+
+  useEffect(() => {
+    if (!data) {
+      return;
+    }
+    const handlePopState = () => {
+      const urlState = decodeUrlState(new URLSearchParams(window.location.search));
+      const nextTaskModeId = normalizeTaskModeId(urlState.taskMode || "all", validTaskModes);
+      const nextFilterKeys = allReactOwnedFilterDefinitions(data).map((definition) => definition.key);
+      dispatch({
+        type: "hydrate",
+        state: {
+          searchTerm: urlState.search,
+          sortMode: isSortModeValue(urlState.sort) ? urlState.sort : "recommended",
+          taskModeId: nextTaskModeId,
+          filters: Object.fromEntries(nextFilterKeys.map((key) => [key, urlState.filters[key] ?? []])),
+          selectedPhotoIds: urlState.selectedPhotoIds,
+        },
+        validTaskModes,
+      });
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [data, validTaskModes]);
+
+  const filteredPhotos = useMemo(
+    () =>
+      filterAndSortPhotos(photos, {
+        filters: { search: searchTerm, ...filtersForSearch(ownedFilterDefinitions, normalizedViewState.filters) },
+        sortMode,
+        task: activeTask.id === "all" ? {} : activeTask,
+        discoverHistorySize: settings.discoverHistorySize,
+        discoverWindowSize: settings.discoverWindowSize,
+        selectedPhotoIds: normalizedViewState.selectedPhotoIds,
+      }) as unknown as PhotoRecord[],
+    [
+      activeTask,
+      normalizedViewState.filters,
+      normalizedViewState.selectedPhotoIds,
+      ownedFilterDefinitions,
+      photos,
+      searchTerm,
+      settings.discoverHistorySize,
+      settings.discoverWindowSize,
+      sortMode,
+    ],
+  );
+  useEffect(() => {
+    setVisibleResultLimit(resultPageSize);
+  }, [activeFilterSignature, searchTerm, sortMode, taskModeId]);
+
+  const previewPhotos = filteredPhotos.slice(0, visibleResultLimit);
+  const candidatePhotos = useMemo(
+    () => selectedPhotos(normalizedViewState.selectedPhotoIds, photos) as PhotoRecord[],
+    [normalizedViewState.selectedPhotoIds, photos],
+  );
+  const activePreviewPhoto = useMemo(
+    () => photos.find((photo) => photo.photo_id === normalizedViewState.activePreviewPhotoId) ?? null,
+    [normalizedViewState.activePreviewPhotoId, photos],
+  );
+  const visibleSummary =
+    filteredPhotos.length > previewPhotos.length
+      ? `顯示前 ${previewPhotos.length} 張，尚有 ${filteredPhotos.length - previewPhotos.length} 張`
+      : `顯示 ${previewPhotos.length} 張`;
+  const contextText = resultContextText({
+    allCount: photos.length,
+    resultCount: filteredPhotos.length,
+    sortMode,
+    taskMode: activeTask,
+  });
+  const hasActiveFilters = ownedFilterDefinitions.some((definition) => (normalizedViewState.filters[definition.key] ?? []).length > 0);
+  const activeFilterEntries = ownedFilterDefinitions.flatMap((definition) =>
+    (normalizedViewState.filters[definition.key] ?? []).map((value) => ({
+      key: definition.key,
+      value,
+      label: definition.label,
+      valueLabel: optionLabelFor(data, definition, value),
+    })),
+  );
+  const activeFilterCount = activeFilterEntries.length;
+  const sheetUrl = projectSheetUrl(data);
+  const flickrProfileUrl = String(data?.projectConfig?.flickr?.profileUrl ?? "").trim();
+  const repositoryUrl = String(data?.projectConfig?.repository?.url ?? "").trim();
+  const aiAssistantPrompt = buildAiAssistantPrompt({
+    sheetUrl,
+    taskLabel: activeTask.label,
+    searchValue: searchTerm,
+    filterEntries: activeFilterEntries.map((entry) => [entry.key, entry.label, entry.valueLabel]),
+  });
+  async function copyCandidates() {
+    const candidateListUrl = new URL(window.location.href);
+    candidateListUrl.hash = "";
+    const text = candidateCopyText(
+      candidatePhotos,
+      {
+        photoTitle: candidatePhotoTitle,
+        finderLink,
+        candidateListLink: () => candidateListUrl.toString(),
+        sheetRowLink: (photo) => sheetRowLink(photo as PhotoRecord, data),
+        labelFor: (fieldName, value) => optionLabelFor(data, { key: fieldName, field: fieldName, label: fieldName, source: { labels: true } }, String(value ?? "")),
+      },
+      copyTemplate,
+    );
+    try {
+      const copied = await copyTextToClipboard(text);
+      setCopyStatus(copied ? "已複製" : "複製失敗");
+    } catch {
+      setCopyStatus("複製失敗");
+    }
+    window.setTimeout(() => setCopyStatus(""), 1600);
+  }
+
+  async function copyAiAssistantPrompt() {
+    try {
+      const copied = await copyTextToClipboard(aiAssistantPrompt);
+      setAiCopyStatus(copied ? "已複製" : "複製失敗");
+    } catch {
+      setAiCopyStatus("複製失敗");
+    }
+    window.setTimeout(() => setAiCopyStatus(""), 1600);
+  }
+
+  function downloadLargePhoto(photo: PhotoRecord) {
+    const url = largeImageUrl(photo);
+    if (!url) {
+      return;
+    }
+    downloadImageUrl(url, imageDownloadFilename(photo, url)).catch(() => {
+      window.open(url, "_blank", "noopener,noreferrer");
+    });
+  }
 
   return (
     <main className="finder-shell">
       <header className="finder-header">
-        <p className="finder-kicker">React preview artifact</p>
+        <p className="finder-kicker">SITCON public photo finder</p>
         <h1>SITCON Flickr Photo Finder</h1>
         <p>
-          React shell is reading the same public contracts and fixture CSV through the migrated TypeScript core. The
-          formal Pages artifact remains the vanilla finder until cutover.
+          依任務、篩選與候選清單快速整理 SITCON 公開 Flickr 照片。
         </p>
+        <div className="finder-header__links">
+          <a href={flickrProfileUrl || "https://www.flickr.com/photos/sitcon/"}>Flickr</a>
+          <a href={repositoryUrl || "https://github.com/sitcon-tw/flickr-photo-finder"}>GitHub 專案</a>
+        </div>
       </header>
+
+      <section className="finder-controls" aria-label="搜尋與排序">
+        <label className="finder-search">
+          <span>搜尋</span>
+          <input
+            type="search"
+            value={searchTerm}
+            placeholder="可放字、品牌露出、友善交流、舞台講者"
+            autoComplete="off"
+            onChange={(event) => dispatch({ type: "setSearchTerm", value: event.target.value })}
+          />
+        </label>
+
+        <label className="finder-sort">
+          <span>排序</span>
+          <select
+            value={sortMode}
+            onChange={(event) => {
+              dispatch({ type: "setSortMode", value: event.target.value });
+            }}
+          >
+            {sortModes.map((mode) => (
+              <option key={mode.value} value={mode.value}>
+                {mode.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <button
+          className="finder-reset"
+          type="button"
+          disabled={!searchTerm && sortMode === "recommended" && activeTask.id === "all" && !hasActiveFilters}
+          onClick={() => dispatch({ type: "reset", filterKeys: ownedFilterDefinitions.map((definition) => definition.key) })}
+        >
+          清除
+        </button>
+      </section>
+
+      <section className="task-mode-panel" aria-label="任務模式">
+        <div className="task-mode-heading">
+          <h2>任務模式</h2>
+          <p>只調整推薦排序，不會排除照片。</p>
+        </div>
+        <div className="task-modes">
+          {taskModes.map((mode) => (
+            <button
+              key={mode.id}
+              type="button"
+              className={mode.id === activeTask.id ? "task-mode is-active" : "task-mode"}
+              onClick={() =>
+                dispatch({
+                  type: "setTaskMode",
+                  value: mode.id,
+                  validTaskModes,
+                  nextFilterKeys: primaryFilterDefinitions(data, mode.id).map((definition) => definition.key),
+                })
+              }
+            >
+              <strong>{mode.label}</strong>
+              {mode.description ? <span>{mode.description}</span> : null}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="filter-panel" aria-label="主要篩選">
+        <div className="filter-panel__heading">
+          <h2>主要篩選</h2>
+        </div>
+        <div className="filter-grid">
+          {activeFilterDefinitions.map((definition) => (
+            <FilterSelect
+              key={definition.key}
+              definition={definition}
+              options={filterOptions(data, definition, photos)}
+              values={normalizedViewState.filters[definition.key] ?? []}
+              onChange={(values) => dispatch({ type: "setFilterValues", key: definition.key, values })}
+            />
+          ))}
+        </div>
+        {activeFilterEntries.length > 0 ? (
+          <div className="active-filter-list" aria-label="已套用篩選">
+            {activeFilterEntries.map((entry) => (
+              <button
+                key={`${entry.key}:${entry.value}`}
+                type="button"
+                onClick={() => dispatch({ type: "clearFilterValue", key: entry.key, value: entry.value })}
+              >
+                {entry.label}: {entry.valueLabel} ×
+              </button>
+            ))}
+          </div>
+        ) : null}
+        {advancedFilterDefinitions.length > 0 ? (
+          <details className="advanced-filter-panel">
+            <summary>進階篩選</summary>
+            <div className="filter-grid">
+              {advancedFilterDefinitions.map((definition) => (
+                <FilterSelect
+                  key={definition.key}
+                  definition={definition}
+                  options={filterOptions(data, definition, photos)}
+                  values={normalizedViewState.filters[definition.key] ?? []}
+                  onChange={(values) => dispatch({ type: "setFilterValues", key: definition.key, values })}
+                />
+              ))}
+            </div>
+          </details>
+        ) : null}
+      </section>
+
+      <CandidatePanel
+        candidates={candidatePhotos}
+        copyTemplate={copyTemplate}
+        copyStatus={copyStatus}
+        onCopyTemplateChange={setCopyTemplate}
+        onCopy={copyCandidates}
+        onClear={() => dispatch({ type: "clearCandidates" })}
+        onRemove={(photoId) => dispatch({ type: "removeCandidate", photoId })}
+      />
+
+      <AiAssistantPanel
+        sheetUrl={sheetUrl}
+        prompt={aiAssistantPrompt}
+        copyStatus={aiCopyStatus}
+        onCopy={copyAiAssistantPrompt}
+      />
+
+      <OverviewPanel photos={photos} data={data} />
+
+      <div className="mobile-action-bar" aria-label="手機主要操作">
+        <button type="button" className="mobile-filter-entry" onClick={() => setFilterSheetOpen(true)}>
+          篩選 {activeFilterCount}
+        </button>
+        <button type="button" className="mobile-candidate-entry" onClick={() => setCandidateSheetOpen(true)}>
+          候選 {candidatePhotos.length}
+        </button>
+      </div>
 
       <section className="finder-status" aria-live="polite">
         {error ? (
           <strong>資料載入失敗：{error}</strong>
         ) : data ? (
           <>
-            <strong>{photos.length} 張照片</strong>
+            <strong>{filteredPhotos.length} / {photos.length} 張照片</strong>
             <span>{data.albums.length} 個相簿</span>
             <span>{data.photoSchema.tables.photos.fields.length} 個照片欄位</span>
+            <span>{visibleSummary}</span>
           </>
         ) : (
           <strong>載入資料中</strong>
         )}
       </section>
 
+      <p className="result-context">{contextText}</p>
+
       <section className="photo-grid" aria-label="照片預覽">
-        {previewPhotos.map((photo) => (
-          <PhotoCard key={photo.photo_id} photo={photo} />
-        ))}
+        {previewPhotos.length > 0 ? (
+          previewPhotos.map((photo) => (
+            <PhotoCard
+              key={photo.photo_id}
+              photo={photo}
+              selected={selectedPhotoIdSet.has(photo.photo_id)}
+              onToggleCandidate={(photoId) => dispatch({ type: "toggleCandidate", photoId })}
+              onOpenPreview={(photoId) => dispatch({ type: "openPreview", photoId })}
+              onDownloadLarge={downloadLargePhoto}
+            />
+          ))
+        ) : (
+          <div className="empty-result">沒有符合目前搜尋的照片</div>
+        )}
       </section>
+
+      {filteredPhotos.length > previewPhotos.length ? (
+        <div className="load-more-panel">
+          <p>
+            已顯示 {previewPhotos.length} 張，尚有 {filteredPhotos.length - previewPhotos.length} 張。
+          </p>
+          <button type="button" onClick={() => setVisibleResultLimit((current) => current + resultPageSize)}>
+            載入更多
+          </button>
+        </div>
+      ) : null}
+
+      {activePreviewPhoto ? (
+        <PhotoPreviewDialog
+          photo={activePreviewPhoto}
+          data={data}
+          selected={selectedPhotoIdSet.has(activePreviewPhoto.photo_id)}
+          onClose={() => dispatch({ type: "closePreview" })}
+          onToggleCandidate={(photoId) => dispatch({ type: "toggleCandidate", photoId })}
+          onDownloadLarge={downloadLargePhoto}
+        />
+      ) : null}
+
+      {candidateSheetOpen ? (
+        <CandidateSheetDialog
+          candidates={candidatePhotos}
+          copyTemplate={copyTemplate}
+          copyStatus={copyStatus}
+          onCopyTemplateChange={setCopyTemplate}
+          onCopy={copyCandidates}
+          onClear={() => dispatch({ type: "clearCandidates" })}
+          onRemove={(photoId) => dispatch({ type: "removeCandidate", photoId })}
+          onClose={() => setCandidateSheetOpen(false)}
+        />
+      ) : null}
+
+      {filterSheetOpen ? (
+        <FilterSheetDialog
+          definitions={ownedFilterDefinitions}
+          data={data}
+          photos={photos}
+          filters={normalizedViewState.filters}
+          activeFilterCount={activeFilterCount}
+          onChange={(key, values) => dispatch({ type: "setFilterValues", key, values })}
+          onClear={() => dispatch({ type: "clearFilters", filterKeys: ownedFilterDefinitions.map((definition) => definition.key) })}
+          onClose={() => setFilterSheetOpen(false)}
+        />
+      ) : null}
     </main>
   );
 }
