@@ -703,7 +703,20 @@ async function runInteractionSmoke({ url }) {
     ) {
       throw new Error(`Expected React Aria mobile filter sheet with locked background, got ${JSON.stringify(mobileFilterSheet.result.value)}`);
     }
-    await evaluate(ws, 78, "document.querySelector('.filter-sheet-close')?.click()");
+    await send(ws, 86, "Input.dispatchKeyEvent", {
+      type: "keyDown",
+      key: "Escape",
+      code: "Escape",
+      windowsVirtualKeyCode: 27,
+      nativeVirtualKeyCode: 27,
+    });
+    await send(ws, 87, "Input.dispatchKeyEvent", {
+      type: "keyUp",
+      key: "Escape",
+      code: "Escape",
+      windowsVirtualKeyCode: 27,
+      nativeVirtualKeyCode: 27,
+    });
     await delay(400);
     const mobileFilterClosed = await evaluate(
       ws,
@@ -719,7 +732,51 @@ async function runInteractionSmoke({ url }) {
       mobileFilterClosed.result.value.htmlOverflow === "hidden" ||
       mobileFilterClosed.result.value.appInert
     ) {
-      throw new Error(`Expected filter sheet close to restore background, got ${JSON.stringify(mobileFilterClosed.result.value)}`);
+      throw new Error(`Expected Escape to close filter sheet and restore background, got ${JSON.stringify(mobileFilterClosed.result.value)}`);
+    }
+    await evaluate(ws, 88, "document.querySelector('.mobile-filter-entry')?.click()");
+    await delay(400);
+    const filterOutsidePoint = await evaluate(
+      ws,
+      89,
+      `(() => {
+        const overlay = document.querySelector('.filter-sheet-layer')?.getBoundingClientRect();
+        return overlay ? { x: overlay.left + 8, y: overlay.top + 8 } : null;
+      })()`,
+    );
+    if (!filterOutsidePoint.result.value) {
+      throw new Error("Expected filter sheet before outside-click dismiss smoke");
+    }
+    await send(ws, 90, "Input.dispatchMouseEvent", {
+      type: "mousePressed",
+      x: filterOutsidePoint.result.value.x,
+      y: filterOutsidePoint.result.value.y,
+      button: "left",
+      clickCount: 1,
+    });
+    await send(ws, 91, "Input.dispatchMouseEvent", {
+      type: "mouseReleased",
+      x: filterOutsidePoint.result.value.x,
+      y: filterOutsidePoint.result.value.y,
+      button: "left",
+      clickCount: 1,
+    });
+    await delay(400);
+    const mobileFilterOutsideClosed = await evaluate(
+      ws,
+      92,
+      `(() => ({
+        hasSheet: Boolean(document.querySelector('.filter-sheet-dialog')),
+        htmlOverflow: document.documentElement.style.overflow,
+        appInert: document.querySelector('#root')?.hasAttribute('inert')
+      }))()`,
+    );
+    if (
+      mobileFilterOutsideClosed.result.value.hasSheet ||
+      mobileFilterOutsideClosed.result.value.htmlOverflow === "hidden" ||
+      mobileFilterOutsideClosed.result.value.appInert
+    ) {
+      throw new Error(`Expected outside click to close filter sheet and restore background, got ${JSON.stringify(mobileFilterOutsideClosed.result.value)}`);
     }
     await send(ws, 70, "Input.dispatchMouseEvent", {
       type: "mousePressed",
@@ -763,7 +820,20 @@ async function runInteractionSmoke({ url }) {
     ) {
       throw new Error(`Expected React Aria mobile candidate sheet with locked background, got ${JSON.stringify(mobileCandidateSheet.result.value)}`);
     }
-    await evaluate(ws, 73, "document.querySelector('.candidate-sheet-close')?.click()");
+    await send(ws, 93, "Input.dispatchKeyEvent", {
+      type: "keyDown",
+      key: "Escape",
+      code: "Escape",
+      windowsVirtualKeyCode: 27,
+      nativeVirtualKeyCode: 27,
+    });
+    await send(ws, 94, "Input.dispatchKeyEvent", {
+      type: "keyUp",
+      key: "Escape",
+      code: "Escape",
+      windowsVirtualKeyCode: 27,
+      nativeVirtualKeyCode: 27,
+    });
     await delay(400);
     const mobileCandidateClosed = await evaluate(
       ws,
@@ -779,7 +849,51 @@ async function runInteractionSmoke({ url }) {
       mobileCandidateClosed.result.value.htmlOverflow === "hidden" ||
       mobileCandidateClosed.result.value.appInert
     ) {
-      throw new Error(`Expected candidate sheet close to restore background, got ${JSON.stringify(mobileCandidateClosed.result.value)}`);
+      throw new Error(`Expected Escape to close candidate sheet and restore background, got ${JSON.stringify(mobileCandidateClosed.result.value)}`);
+    }
+    await evaluate(ws, 95, "document.querySelector('.mobile-candidate-entry')?.click()");
+    await delay(400);
+    const candidateOutsidePoint = await evaluate(
+      ws,
+      96,
+      `(() => {
+        const overlay = document.querySelector('.candidate-sheet-layer')?.getBoundingClientRect();
+        return overlay ? { x: overlay.left + 8, y: overlay.top + 8 } : null;
+      })()`,
+    );
+    if (!candidateOutsidePoint.result.value) {
+      throw new Error("Expected candidate sheet before outside-click dismiss smoke");
+    }
+    await send(ws, 97, "Input.dispatchMouseEvent", {
+      type: "mousePressed",
+      x: candidateOutsidePoint.result.value.x,
+      y: candidateOutsidePoint.result.value.y,
+      button: "left",
+      clickCount: 1,
+    });
+    await send(ws, 98, "Input.dispatchMouseEvent", {
+      type: "mouseReleased",
+      x: candidateOutsidePoint.result.value.x,
+      y: candidateOutsidePoint.result.value.y,
+      button: "left",
+      clickCount: 1,
+    });
+    await delay(400);
+    const mobileCandidateOutsideClosed = await evaluate(
+      ws,
+      99,
+      `(() => ({
+        hasSheet: Boolean(document.querySelector('.candidate-sheet-dialog')),
+        htmlOverflow: document.documentElement.style.overflow,
+        appInert: document.querySelector('#root')?.hasAttribute('inert')
+      }))()`,
+    );
+    if (
+      mobileCandidateOutsideClosed.result.value.hasSheet ||
+      mobileCandidateOutsideClosed.result.value.htmlOverflow === "hidden" ||
+      mobileCandidateOutsideClosed.result.value.appInert
+    ) {
+      throw new Error(`Expected outside click to close candidate sheet and restore background, got ${JSON.stringify(mobileCandidateOutsideClosed.result.value)}`);
     }
 
     await evaluate(ws, 38, "[...document.querySelectorAll('.load-more-panel button')].find((button) => button.textContent.includes('載入更多'))?.click()");
@@ -917,25 +1031,34 @@ async function runInteractionSmoke({ url }) {
     if (filterOnly.result.value.filterEntryText !== "篩選 1") {
       throw new Error(`Expected mobile filter entry to reflect active filter count, got ${filterOnly.result.value.filterEntryText}`);
     }
-    await evaluate(ws, 81, "document.querySelector('.filter-sheet-close')?.click()");
-    await delay(400);
-    await evaluate(ws, 7, "document.querySelector('.finder-reset').click()");
+    await evaluate(ws, 7, "document.querySelector('.filter-sheet-clear')?.click()");
     await delay(400);
     const filterReset = await evaluate(
       ws,
       8,
       `(() => ({
         searchParams: window.location.search,
-        anySelectedFilter: [...document.querySelectorAll('.filter-control select')]
-          .some((select) => [...select.selectedOptions].some((option) => option.value))
+        sort: document.querySelector('select')?.value,
+        filterEntryText: document.querySelector('.mobile-filter-entry')?.textContent,
+        clearDisabled: document.querySelector('.filter-sheet-clear')?.disabled,
+        sceneSummary: [...document.querySelectorAll('.filter-sheet-dialog .filter-multiselect')]
+          .find((control) => control.querySelector('.filter-multiselect__label')?.textContent?.includes('場景'))
+          ?.querySelector('.filter-multiselect__trigger span:first-child')?.textContent
       }))()`,
     );
     if (new URLSearchParams(filterReset.result.value.searchParams).has("scene")) {
       throw new Error(`Expected filter-only reset to clear scene query, got ${filterReset.result.value.searchParams}`);
     }
-    if (filterReset.result.value.anySelectedFilter) {
-      throw new Error("Expected filter-only reset to clear selected filter controls");
+    if (
+      filterReset.result.value.sort !== "oldest" ||
+      filterReset.result.value.filterEntryText !== "篩選 0" ||
+      !filterReset.result.value.clearDisabled ||
+      filterReset.result.value.sceneSummary !== "不限"
+    ) {
+      throw new Error(`Expected sheet filter clear to update sheet and entry state, got ${JSON.stringify(filterReset.result.value)}`);
     }
+    await evaluate(ws, 81, "document.querySelector('.filter-sheet-done')?.click()");
+    await delay(400);
 
     await evaluate(ws, 9, "document.querySelector('.mobile-candidate-entry')?.click()");
     await delay(400);

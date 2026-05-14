@@ -733,6 +733,43 @@ p {
   padding: 0 12px;
 }
 
+.filter-sheet-actions {
+  position: sticky;
+  bottom: -18px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-right: -16px;
+  margin-bottom: -18px;
+  margin-left: -16px;
+  border-top: 1px solid #d7dee8;
+  background: #ffffff;
+  padding: 10px 16px;
+}
+
+.filter-sheet-actions button {
+  min-height: 44px;
+  border: 1px solid #bcccdc;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #1f2933;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 800;
+  padding: 0 12px;
+}
+
+.filter-sheet-actions button:disabled {
+  color: #9aa5b1;
+  cursor: not-allowed;
+}
+
+.filter-sheet-actions .filter-sheet-done {
+  border-color: #1a5fb4;
+  background: #1a5fb4;
+  color: #ffffff;
+}
+
 .photo-preview-layer {
   position: fixed;
   z-index: 50;
