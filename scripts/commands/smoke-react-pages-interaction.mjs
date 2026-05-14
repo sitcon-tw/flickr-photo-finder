@@ -372,6 +372,51 @@ async function runInteractionSmoke({ url }) {
       throw new Error(`Expected Escape to close preview and restore scroll, got ${JSON.stringify(previewClosed.result.value)}`);
     }
 
+    await evaluate(ws, 38, "[...document.querySelectorAll('.load-more-panel button')].find((button) => button.textContent.includes('載入更多'))?.click()");
+    await delay(400);
+    const loadMore = await evaluate(
+      ws,
+      39,
+      `(() => ({
+        cardCount: document.querySelectorAll('.photo-card').length,
+        visibleText: [...document.querySelectorAll('.finder-status span')].map((item) => item.textContent).find((text) => text.includes('顯示前'))
+      }))()`,
+    );
+    if (loadMore.result.value.cardCount !== 24) {
+      throw new Error(`Expected load more to render 24 cards, got ${loadMore.result.value.cardCount}`);
+    }
+    if (!String(loadMore.result.value.visibleText).includes("顯示前 24 張")) {
+      throw new Error(`Expected load more summary to show 24 visible photos, got ${loadMore.result.value.visibleText}`);
+    }
+
+    const loadMoreReset = await evaluate(
+      ws,
+      40,
+      `(() => {
+        const select = document.querySelector('select');
+        const selectValueSetter = Object.getOwnPropertyDescriptor(window.HTMLSelectElement.prototype, 'value').set;
+        selectValueSetter.call(select, 'oldest');
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+        return { sort: select.value };
+      })()`,
+    );
+    await delay(400);
+    const loadMoreResetResult = await evaluate(
+      ws,
+      41,
+      `(() => ({
+        sort: ${JSON.stringify(loadMoreReset.result.value.sort)},
+        cardCount: document.querySelectorAll('.photo-card').length,
+        visibleText: [...document.querySelectorAll('.finder-status span')].map((item) => item.textContent).find((text) => text.includes('顯示前'))
+      }))()`,
+    );
+    if (loadMoreResetResult.result.value.cardCount !== 12) {
+      throw new Error(`Expected sort change after load-more to reset rendered cards to 12, got ${loadMoreResetResult.result.value.cardCount}`);
+    }
+    if (!String(loadMoreResetResult.result.value.visibleText).includes("顯示前 12 張")) {
+      throw new Error(`Expected sort change after load-more to reset visible summary, got ${loadMoreResetResult.result.value.visibleText}`);
+    }
+
     const filterOnly = await evaluate(
       ws,
       6,

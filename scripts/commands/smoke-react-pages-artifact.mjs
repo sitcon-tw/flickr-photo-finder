@@ -114,6 +114,7 @@ async function main() {
     assertIncludes(dom, "主要篩選", "primary filter controls");
     assertIncludes(dom, "候選 0", "candidate panel");
     assertIncludes(dom, "顯示前 12 張", "visible result summary");
+    assertIncludes(dom, "載入更多", "load more control");
     assertIncludes(dom, "photo-card", "photo card markup");
     assertIncludes(dom, "photo-card__preview", "photo preview entry");
     assertIncludes(dom, "https://www.flickr.com/photos/sitcon/", "Flickr photo links");
