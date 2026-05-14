@@ -91,6 +91,7 @@ async function main() {
 
   const requiredFiles = [
     ".nojekyll",
+    "config.js",
     "config/project.json",
     "data/interface-registry.json",
     "data/photo-schema.json",

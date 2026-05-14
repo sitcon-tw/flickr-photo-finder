@@ -115,7 +115,7 @@ pnpm shared-values:check
 pnpm data:validate
 ```
 
-更動 JavaScript 後，請至少執行對應的語法檢查：
+更動 legacy vanilla JavaScript 後，請至少執行對應的語法檢查：
 
 ```bash
 node --check scripts/commands/validate-data.mjs
@@ -132,15 +132,18 @@ node --check app/result-render.js
 
 依實際更動範圍選擇需要檢查的檔案，不需要每次全部重跑。
 
-更動 GitHub Pages 前端時，先讀 `docs/public-frontend-architecture.md` 的模組邊界。若改到搜尋、篩選、排序、URL state、候選清單或 AI 助手提示詞，至少執行：
+更動 GitHub Pages 前端時，先讀 `docs/public-frontend-architecture.md` 的模組邊界。正式 Pages artifact 目前由 `app-react/` 與 `app-core/` 產生；`app/` 的 vanilla ES modules 在 legacy cleanup 前只作 rollback surface。若改到搜尋、篩選、排序、URL state、候選清單、React UI 或 AI 助手提示詞，至少執行：
 
 ```bash
 pnpm finder:test
+pnpm finder:react:typecheck
+pnpm finder:react:build
+pnpm finder:react:check
 pnpm finder:build
 pnpm finder:check
 ```
 
-前端純邏輯應優先放在可測試模組。`analytics-core`、`candidate-copy`、`data-loader`、`data-utils`、`search-sort` 與 URL state 的 source 分別在 `app-core/*.ts`，`app/analytics-core.js`、`app/candidate-copy.js`、`app/data-loader.js`、`app/data-utils.js`、`app/search-sort.js` 與 `app/url-state.js` 是 `pnpm finder:core:build` 的產物；其他尚未遷移的純邏輯仍在 `app/result-render.js`。GA4 setup 與 dispatch 放在 `app/analytics.js`，DOM control 行為放在 `app/controls.js`，照片卡片 DOM 與 action 放在 `app/photo-render.js`，候選清單 DOM render 放在 `app/candidates.js`。`app/main.js` 應維持 bootstrap、state、URL state、資料載入順序、事件 wiring 與 render loop 組合，避免再把 domain logic 或大型 DOM render 寫回主檔。
+前端純邏輯應優先放在可測試模組。`analytics-core`、`candidate-copy`、`data-loader`、`data-utils`、`search-sort` 與 URL state 的 source 分別在 `app-core/*.ts`；正式 React UI 目前從 `app-react/src/App.tsx` 組合，後續再依需要抽出 components/hooks。不要讓 React component、DOM control 或 sheet gesture 成為 filter/candidate/URL 的 canonical state source。
 
 ## 文件優先順序
 
