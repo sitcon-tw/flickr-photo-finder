@@ -645,27 +645,81 @@ async function runInteractionSmoke({ url }) {
       ws,
       69,
       `(() => {
-        const button = document.querySelector('.mobile-candidate-entry');
-        const rect = button?.getBoundingClientRect();
-        const style = button ? getComputedStyle(button) : null;
-        return rect && style ? {
-          text: button.textContent,
-          position: style.position,
-          minHeight: Math.round(rect.height),
-          x: rect.left + rect.width / 2,
-          y: rect.top + rect.height / 2
+        const bar = document.querySelector('.mobile-action-bar');
+        const filterButton = document.querySelector('.mobile-filter-entry');
+        const candidateButton = document.querySelector('.mobile-candidate-entry');
+        const barStyle = bar ? getComputedStyle(bar) : null;
+        const filterRect = filterButton?.getBoundingClientRect();
+        const candidateRect = candidateButton?.getBoundingClientRect();
+        return bar && barStyle && filterRect && candidateRect ? {
+          filterText: filterButton.textContent,
+          candidateText: candidateButton.textContent,
+          position: barStyle.position,
+          filterHeight: Math.round(filterRect.height),
+          candidateHeight: Math.round(candidateRect.height),
+          x: candidateRect.left + candidateRect.width / 2,
+          y: candidateRect.top + candidateRect.height / 2
         } : null;
       })()`,
     );
     if (!mobileCandidateEntry.result.value) {
-      throw new Error("Expected mobile candidate entry after preview sheet closes");
+      throw new Error("Expected mobile action bar after preview sheet closes");
     }
     if (
-      mobileCandidateEntry.result.value.text !== "候選 2" ||
+      mobileCandidateEntry.result.value.filterText !== "篩選 0" ||
+      mobileCandidateEntry.result.value.candidateText !== "候選 2" ||
       mobileCandidateEntry.result.value.position !== "fixed" ||
-      mobileCandidateEntry.result.value.minHeight < 44
+      mobileCandidateEntry.result.value.filterHeight < 44 ||
+      mobileCandidateEntry.result.value.candidateHeight < 44
     ) {
-      throw new Error(`Expected fixed mobile candidate entry with 44px target, got ${JSON.stringify(mobileCandidateEntry.result.value)}`);
+      throw new Error(`Expected fixed mobile action bar with 44px targets, got ${JSON.stringify(mobileCandidateEntry.result.value)}`);
+    }
+    await evaluate(ws, 76, "document.querySelector('.mobile-filter-entry')?.click()");
+    await delay(400);
+    const mobileFilterSheet = await evaluate(
+      ws,
+      77,
+      `(() => {
+        const sheet = document.querySelector('.filter-sheet-dialog');
+        const rect = sheet?.getBoundingClientRect();
+        return rect ? {
+          title: sheet.querySelector('h2')?.textContent,
+          selectCount: sheet.querySelectorAll('.filter-control select').length,
+          bottomGap: Math.round(window.innerHeight - rect.bottom),
+          htmlOverflow: document.documentElement.style.overflow,
+          appInert: document.querySelector('#root')?.hasAttribute('inert')
+        } : null;
+      })()`,
+    );
+    if (!mobileFilterSheet.result.value) {
+      throw new Error("Expected mobile filter sheet to open");
+    }
+    if (
+      mobileFilterSheet.result.value.title !== "主要篩選" ||
+      mobileFilterSheet.result.value.selectCount < 1 ||
+      Math.abs(mobileFilterSheet.result.value.bottomGap) > 2 ||
+      mobileFilterSheet.result.value.htmlOverflow !== "hidden" ||
+      !mobileFilterSheet.result.value.appInert
+    ) {
+      throw new Error(`Expected React Aria mobile filter sheet with locked background, got ${JSON.stringify(mobileFilterSheet.result.value)}`);
+    }
+    await evaluate(ws, 78, "document.querySelector('.filter-sheet-close')?.click()");
+    await delay(400);
+    const mobileFilterClosed = await evaluate(
+      ws,
+      79,
+      `(() => ({
+        hasSheet: Boolean(document.querySelector('.filter-sheet-dialog')),
+        htmlOverflow: document.documentElement.style.overflow,
+        appInert: document.querySelector('#root')?.hasAttribute('inert')
+      }))()`,
+    );
+    if (
+      mobileFilterClosed.result.value.hasSheet ||
+      mobileFilterClosed.result.value.htmlOverflow === "hidden" ||
+      mobileFilterClosed.result.value.appInert
+    ) {
+      throw new Error(`Expected filter sheet close to restore background, got ${JSON.stringify(mobileFilterClosed.result.value)}`);
     }
     await send(ws, 70, "Input.dispatchMouseEvent", {
       type: "mousePressed",
@@ -773,24 +827,32 @@ async function runInteractionSmoke({ url }) {
       throw new Error(`Expected sort change after load-more to reset visible summary, got ${loadMoreResetResult.result.value.visibleText}`);
     }
 
+    await evaluate(ws, 80, "document.querySelector('.mobile-filter-entry')?.click()");
+    await delay(400);
     const filterOnly = await evaluate(
       ws,
       6,
       `(() => {
-        const sceneSelect = [...document.querySelectorAll('.filter-control select')]
+        const sceneSelect = [...document.querySelectorAll('.filter-sheet-dialog .filter-control select')]
           .find((select) => [...select.options].some((option) => option.value === '攤位'));
         const option = [...sceneSelect.options].find((item) => item.value === '攤位');
         option.selected = true;
         sceneSelect.dispatchEvent(new Event('change', { bubbles: true }));
         return {
           resetDisabledBeforeClick: document.querySelector('.finder-reset').disabled,
-          sceneValueBeforeClick: sceneSelect.value
+          sceneValueBeforeClick: sceneSelect.value,
+          filterEntryText: document.querySelector('.mobile-filter-entry')?.textContent
         };
       })()`,
     );
     if (filterOnly.result.value.resetDisabledBeforeClick) {
       throw new Error("Expected reset to remain enabled for filter-only state");
     }
+    if (filterOnly.result.value.filterEntryText !== "篩選 1") {
+      throw new Error(`Expected mobile filter entry to reflect active filter count, got ${filterOnly.result.value.filterEntryText}`);
+    }
+    await evaluate(ws, 81, "document.querySelector('.filter-sheet-close')?.click()");
+    await delay(400);
     await evaluate(ws, 7, "document.querySelector('.finder-reset').click()");
     await delay(400);
     const filterReset = await evaluate(
