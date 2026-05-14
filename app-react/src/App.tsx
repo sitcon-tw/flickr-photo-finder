@@ -105,7 +105,7 @@ const sortModes = [
 type SortModeValue = (typeof sortModes)[number]["value"];
 
 const fallbackTaskModes: TaskMode[] = [{ id: "all", label: "全部照片", description: "不套任務權重" }];
-const previewResultLimit = 12;
+const resultPageSize = 12;
 const initialViewState: FinderViewState = {
   searchTerm: "",
   sortMode: "recommended",
@@ -760,6 +760,7 @@ export function App() {
   const [urlStateReady, setUrlStateReady] = useState(false);
   const [copyTemplate, setCopyTemplate] = useState("im");
   const [copyStatus, setCopyStatus] = useState("");
+  const [visibleResultLimit, setVisibleResultLimit] = useState(resultPageSize);
 
   useEffect(() => {
     let cancelled = false;
@@ -799,6 +800,10 @@ export function App() {
   const activeFilterKeys = useMemo(
     () => activeFilterDefinitions.map((definition) => definition.key),
     [activeFilterDefinitions],
+  );
+  const activeFilterSignature = useMemo(
+    () => JSON.stringify(activeFilterKeys.map((key) => [key, normalizedViewState.filters[key] ?? []])),
+    [activeFilterKeys, normalizedViewState.filters],
   );
   const activeTask = useMemo(
     () => taskModes.find((mode) => mode.id === taskModeId) ?? taskModes[0] ?? fallbackTaskModes[0],
@@ -902,7 +907,11 @@ export function App() {
       sortMode,
     ],
   );
-  const previewPhotos = filteredPhotos.slice(0, previewResultLimit);
+  useEffect(() => {
+    setVisibleResultLimit(resultPageSize);
+  }, [activeFilterSignature, searchTerm, sortMode, taskModeId]);
+
+  const previewPhotos = filteredPhotos.slice(0, visibleResultLimit);
   const candidatePhotos = useMemo(
     () => selectedPhotos(normalizedViewState.selectedPhotoIds, photos) as PhotoRecord[],
     [normalizedViewState.selectedPhotoIds, photos],
@@ -1097,6 +1106,17 @@ export function App() {
           <div className="empty-result">沒有符合目前搜尋的照片</div>
         )}
       </section>
+
+      {filteredPhotos.length > previewPhotos.length ? (
+        <div className="load-more-panel">
+          <p>
+            已顯示 {previewPhotos.length} 張，尚有 {filteredPhotos.length - previewPhotos.length} 張。
+          </p>
+          <button type="button" onClick={() => setVisibleResultLimit((current) => current + resultPageSize)}>
+            載入更多
+          </button>
+        </div>
+      ) : null}
 
       {activePreviewPhoto ? (
         <PhotoPreviewDialog
