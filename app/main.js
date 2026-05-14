@@ -593,6 +593,11 @@ function activeFilterEntries() {
   return buildActiveFilterEntries({ state, controls, activeTask: activeTask() });
 }
 
+function updateResetButtonState() {
+  const hasResettableState = activeFilterEntries().length > 0 || controls.sort.value !== "recommended";
+  controls.reset.classList.toggle("is-active", hasResettableState);
+}
+
 function clearFilter(key, value = "") {
   if (key === "task") {
     state.taskMode = "all";
@@ -623,6 +628,7 @@ function render({ resetPage = false, preservePage = false, preserveScroll = fals
   updateTaskModeSummary();
   updateFilterLayout({ controls, elements, taskMode: state.taskMode });
   renderActiveFilters({ elements, activeFilterEntries });
+  updateResetButtonState();
   renderCandidates({
     selectedPhotoIds: state.selectedPhotoIds,
     photos,

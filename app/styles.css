@@ -110,6 +110,19 @@ button:not(:disabled):hover,
   color: var(--accent-strong);
 }
 
+#resetButton.is-active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-weight: 750;
+}
+
+#resetButton.is-active:not(:disabled):hover {
+  border-color: var(--accent-strong);
+  background: var(--accent);
+  color: #fff;
+}
+
 .shell {
   width: min(1500px, 100%);
   margin: 0 auto;
