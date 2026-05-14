@@ -170,7 +170,7 @@ pnpm ai:review -- --run-dir tmp/ai-runs/<run-id>
 
 大型或分片 run 的 summary 會額外顯示 `Artifact Provenance`、`Layer Coverage`、`Scene QA`、`Balanced Review Sample` 與 `Confidence By Field`。`Artifact Provenance` 用來確認 final proposals 來源、hash、圖片連結模式、shard artifacts 與 execution log 摘要；`Layer Coverage` 用 schema 分層看 baseline、recall、optional 覆蓋率；`Scene QA` 用整體、相簿與分片層級檢查 `scene_tags` 是否低召回、過度集中或平均過密；`Balanced Review Sample` 會混合 review focus、shard 抽樣、主體邊界、高風險 optional 欄位與 deterministic random，避免只看工具已知警訊；`Confidence By Field` 用來檢查信心分數是否只集中在少數欄位。
 
-大型 run 也會顯示 `People Count QA` 與 `Reason Reuse QA`。`People Count QA` 會列出 `people_count` 的平均、中位數、分位數、top values，並標出大型 run 中 `3..10` 的中段人數值是否異常集中；相簿或 shard 內若單一中段人數值超過半數，也會列入 QA。這類警訊不代表該人數一定錯，而是提示模型可能把常見小組人數當成 fallback，應從 Review Focus 抽查。`Reason Reuse QA` 會列出各欄位 unique reason 數、最大 reason 重複群與最大 value+reason 重複群；若最大群偏大，代表可能有模板化或 archetype 套用，需要確認 reason 是否真的描述每張照片的可見證據。
+每次 `ai:review` 都會顯示 `People Count QA` 與 `Reason Reuse QA`，不只限於大型 run。`People Count QA` 的分布摘要會列出 `people_count` 的平均、中位數、分位數與 top values；警訊列則只在達到門檻時產生：整批至少 200 張且 `3..10` 任一中段人數值佔比達 15%，或相簿 / shard 至少 20 張且最常見的 `3..10` 中段人數值佔比達 50%。只有這些警訊列會進入 Review Notes 與 Review Focus。這類警訊不代表該人數一定錯，而是提示模型可能把常見小組人數當成 fallback，應從 Review Focus 抽查。`Reason Reuse QA` 會列出各欄位 unique reason 數、最大 reason 重複群與最大 value+reason 重複群；若最大群偏大，代表可能有模板化或 archetype 套用，需要確認 reason 是否真的描述每張照片的可見證據。
 
 照片量很大時，不預期每一張 `ai_labeled` 照片都會被人工 review 完畢。大型 run 的 review 目標是先建立可追溯的候選資料、找出批次品質風險，並產生足夠好的抽查入口；不要把「未全量 review」視為流程失敗。若未來新增 AI proposal outcome 報表，必須分開呈現三類指標：
 
@@ -221,7 +221,7 @@ pnpm ai:report -- --runs tmp/ai-runs/<attempt-a> tmp/ai-runs/<attempt-b> tmp/ai-
 
 這會產生 `tmp/ai-reports/<timestamp>/index.html`。報表是唯讀靜態 HTML；單一 run 會以每張照片為單位呈現縮圖、欄位覆蓋率與各 proposal 細節，多個 run 會並排顯示 value、reason、confidence、validator 狀態與差異。它不修改 proposal，也不寫入 Sheets。
 
-若 `ai:review` 已產生 `Review Focus`，HTML report 會讀取該抽查清單，並在摘要顯示需抽查項數，也可用狀態篩選切到「需優先抽查」。這是人工檢視 warning 的主要入口；不需要先手動從 summary 複製 photo_id 搜尋。報表也能依相簿、shard、AI field layer、欄位與 focus issue 篩選，適合大型分片 run 檢查某個 agent 或某一層欄位是否系統性漏標。多 run/attempt 報表會額外列出 `people_count` 大差距、`subject_type` 不一致、majority/outlier、`safe_crop` / `recommended_uses` / `public_use_status` 高分歧，以及由人數極端分歧、全模型主體不同或描述 outlier 組成的「疑似錯圖」弱訊號。這些訊號不能判定誰對，只是把值得人工對圖的照片往前排。若 `metadata-review-summary.md` 比 `metadata-proposals.json` 舊，report 會提示先重新執行 `pnpm ai:review`，避免使用過期抽查清單。多 run/attempt 報表也會檢查 `prompt_template_sha256` 是否一致，以及是否和目前 repo prompt 相同；若不一致或缺少紀錄，應先釐清 prompt 版本差異再解讀模型比較。
+若 `ai:review` 已產生 `Review Focus`，HTML report 會讀取該抽查清單，並在摘要顯示需抽查項數，也可用狀態篩選切到「需優先抽查」。這是人工檢視 warning 的主要入口；不需要先手動從 summary 複製 photo_id 搜尋。報表也能依相簿、shard、AI field layer、欄位與 focus issue 篩選，適合大型分片 run 檢查某個 agent 或某一層欄位是否系統性漏標。多 run/attempt 報表會額外列出 `people_count` 大差距、達門檻的 run-level `people_count` 尖峰、`subject_type` 不一致、majority/outlier、`safe_crop` / `recommended_uses` / `public_use_status` 高分歧，以及由人數極端分歧、全模型主體不同或描述 outlier 組成的「疑似錯圖」弱訊號。這些訊號不能判定誰對，只是把值得人工對圖的照片往前排。若 `metadata-review-summary.md` 比 `metadata-proposals.json` 舊，report 會提示先重新執行 `pnpm ai:review`，避免使用過期抽查清單。多 run/attempt 報表也會檢查 `prompt_template_sha256` 是否一致，以及是否和目前 repo prompt 相同；若不一致或缺少紀錄，應先釐清 prompt 版本差異再解讀模型比較。
 
 若這次要驗證 `visual_description` 對自然語言找圖是否真的有幫助，可在寫回 Sheets 前跑離線搜尋比較：
 

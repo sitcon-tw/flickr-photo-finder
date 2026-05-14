@@ -1202,9 +1202,9 @@ shown total = input_tokens - cached_input_tokens + output_tokens
 
 ### 已工具化的 follow-up
 
-- `ai:review` 已新增 `People Count QA`，會在大型 run 中列出 `people_count` 分布、top values、整批中段人數尖峰，以及相簿 / shard 內的單一中段人數集中。第一輪這種 `people_count = 5` 大量集中會進入 review notes 與 Review Focus。
+- `ai:review` 已新增 `People Count QA`。每次 review 都會列出 `people_count` 分布與 top values；警訊列只在達門檻時產生：整批至少 200 張且 `3..10` 任一中段人數值佔比達 15%，或相簿 / shard 至少 20 張且最常見的 `3..10` 中段人數值佔比達 50%。第一輪這種 `people_count = 5` 大量集中會進入 review notes 與 Review Focus。
 - `ai:review` 已新增 `Reason Reuse QA`，讓 `people_count`、`visual_description`、`scene_tags`、`mood_tags`、`recommended_uses`、`has_negative_space` 的 reason 重複群不只停留在 validator warning 文字裡，而是成為可掃描表格與抽查入口；`visual_description` 近似重複仍由既有 validator warning 守備。
-- `ai:report --runs` 已把 invalid run 標示為 contract failed，把 stale review summary 從一般 valid 狀態降級，並在比較摘要中顯示 `people_count` 配對差距與 run-level 人數尖峰，避免無效或過期 summary 仍看似可比較。
+- `ai:report --runs` 已把 invalid run 標示為 contract failed，把 stale review summary 從一般 valid 狀態降級，並在比較摘要中顯示 `people_count` 配對差距與達門檻的 run-level 人數尖峰，避免無效或過期 summary 仍看似可比較。
 
 ## 目前已知容易失準的欄位
 
