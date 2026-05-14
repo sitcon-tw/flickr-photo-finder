@@ -91,6 +91,7 @@
     "@inquirer/prompts": "^8.4.3",
     "googleapis": "^171.4.0",
     "react": "^19.2.6",
+    "react-aria-components": "^1.17.0",
     "react-dom": "^19.2.6"
   },
   "devDependencies": {

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useReducer, useState } from "react";
+import { Dialog, Modal, ModalOverlay } from "react-aria-components";
 import { candidateCopyText, selectedPhotos } from "../../app-core/candidate-copy";
 import { loadFinderData } from "../../app-core/data-loader";
 import { applySearchRegistry, filterAndSortPhotos } from "../../app-core/search-sort";
@@ -417,54 +418,65 @@ function PhotoPreviewDialog({
   const rowLink = sheetRowLink(photo, data);
 
   return (
-    <div className="photo-preview-layer" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
-      <section className="photo-preview-dialog" role="dialog" aria-modal="true" aria-label="照片預覽">
-        <header className="preview-header">
-          <div>
-            <h2>{photoTitle(photo)}</h2>
-            <p>{[photo.event_year, photo.album_title].filter(Boolean).join(" / ")}</p>
-          </div>
-          <button type="button" className="preview-close" onClick={onClose} aria-label="關閉照片預覽">
-            關閉
-          </button>
-        </header>
-        <a className="preview-image-link" href={photo.photo_url} target="_blank" rel="noreferrer">
-          {previewUrl ? (
-            <img src={previewUrl} alt={[photoTitle(photo), photo.event_year].filter(Boolean).join(" ")} />
-          ) : (
-            <span className="preview-image-empty">No preview image</span>
-          )}
-          <span className="preview-image-hint">Flickr</span>
-        </a>
-        <dl className="preview-details">
-          {details.map(([label, value]) => (
-            <div key={label} className="preview-detail-row">
-              <dt>{label}</dt>
-              <dd>{value}</dd>
+    <ModalOverlay
+      isOpen
+      isDismissable
+      onOpenChange={(isOpen) => {
+        if (!isOpen) {
+          onClose();
+        }
+      }}
+      className="photo-preview-layer"
+    >
+      <Modal className="photo-preview-dialog">
+        <Dialog className="photo-preview-dialog__content" aria-label="照片預覽">
+          <header className="preview-header">
+            <div>
+              <h2>{photoTitle(photo)}</h2>
+              <p>{[photo.event_year, photo.album_title].filter(Boolean).join(" / ")}</p>
             </div>
-          ))}
-        </dl>
-        <div className="preview-actions">
-          <button
-            type="button"
-            className={selected ? "candidate-toggle is-selected" : "candidate-toggle"}
-            aria-pressed={selected}
-            onClick={() => onToggleCandidate(photo.photo_id)}
-          >
-            {selected ? "已加入候選" : "加入候選"}
-          </button>
-          <a href={largeUrl || undefined} aria-disabled={!largeUrl}>
-            大圖
+            <button type="button" className="preview-close" onClick={onClose} aria-label="關閉照片預覽">
+              關閉
+            </button>
+          </header>
+          <a className="preview-image-link" href={photo.photo_url} target="_blank" rel="noreferrer">
+            {previewUrl ? (
+              <img src={previewUrl} alt={[photoTitle(photo), photo.event_year].filter(Boolean).join(" ")} />
+            ) : (
+              <span className="preview-image-empty">No preview image</span>
+            )}
+            <span className="preview-image-hint">Flickr</span>
           </a>
-          <a href={originalUrl || undefined} aria-disabled={!originalUrl}>
-            原圖
-          </a>
-          <a href={rowLink || undefined} aria-disabled={!rowLink}>
-            Sheets
-          </a>
-        </div>
-      </section>
-    </div>
+          <dl className="preview-details">
+            {details.map(([label, value]) => (
+              <div key={label} className="preview-detail-row">
+                <dt>{label}</dt>
+                <dd>{value}</dd>
+              </div>
+            ))}
+          </dl>
+          <div className="preview-actions">
+            <button
+              type="button"
+              className={selected ? "candidate-toggle is-selected" : "candidate-toggle"}
+              aria-pressed={selected}
+              onClick={() => onToggleCandidate(photo.photo_id)}
+            >
+              {selected ? "已加入候選" : "加入候選"}
+            </button>
+            <a href={largeUrl || undefined} aria-disabled={!largeUrl}>
+              大圖
+            </a>
+            <a href={originalUrl || undefined} aria-disabled={!originalUrl}>
+              原圖
+            </a>
+            <a href={rowLink || undefined} aria-disabled={!rowLink}>
+              Sheets
+            </a>
+          </div>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
   );
 }
 
@@ -931,24 +943,6 @@ export function App() {
     taskMode: activeTask,
   });
   const hasActiveFilters = activeFilterKeys.some((key) => (normalizedViewState.filters[key] ?? []).length > 0);
-  useEffect(() => {
-    if (!activePreviewPhoto) {
-      return undefined;
-    }
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        dispatch({ type: "closePreview" });
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener("keydown", onKeyDown);
-    };
-  }, [activePreviewPhoto]);
-
   async function copyCandidates() {
     const candidateListUrl = new URL(window.location.href);
     candidateListUrl.hash = "";

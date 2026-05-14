@@ -513,7 +513,6 @@ p {
 
 .photo-preview-dialog {
   display: grid;
-  gap: 14px;
   width: min(920px, 100%);
   max-height: calc(100vh - 36px);
   overflow: auto;
@@ -522,6 +521,15 @@ p {
   background: #ffffff;
   box-shadow: 0 24px 60px rgb(15 23 42 / 24%);
   padding: 16px;
+}
+
+.photo-preview-dialog__content {
+  display: grid;
+  gap: 14px;
+}
+
+.photo-preview-dialog__content:focus {
+  outline: none;
 }
 
 .preview-header {
