@@ -684,7 +684,7 @@ async function runInteractionSmoke({ url }) {
         const rect = sheet?.getBoundingClientRect();
         return rect ? {
           title: sheet.querySelector('h2')?.textContent,
-          selectCount: sheet.querySelectorAll('.filter-control select').length,
+          controlCount: sheet.querySelectorAll('.filter-multiselect').length,
           bottomGap: Math.round(window.innerHeight - rect.bottom),
           htmlOverflow: document.documentElement.style.overflow,
           appInert: document.querySelector('#root')?.hasAttribute('inert')
@@ -696,7 +696,7 @@ async function runInteractionSmoke({ url }) {
     }
     if (
       mobileFilterSheet.result.value.title !== "主要篩選" ||
-      mobileFilterSheet.result.value.selectCount < 1 ||
+      mobileFilterSheet.result.value.controlCount < 1 ||
       Math.abs(mobileFilterSheet.result.value.bottomGap) > 2 ||
       mobileFilterSheet.result.value.htmlOverflow !== "hidden" ||
       !mobileFilterSheet.result.value.appInert
@@ -829,18 +829,84 @@ async function runInteractionSmoke({ url }) {
 
     await evaluate(ws, 80, "document.querySelector('.mobile-filter-entry')?.click()");
     await delay(400);
+    const filterPopoverOpen = await evaluate(
+      ws,
+      82,
+      `(async () => {
+        const sceneControl = [...document.querySelectorAll('.filter-sheet-dialog .filter-multiselect')]
+          .find((control) => control.querySelector('.filter-multiselect__label')?.textContent?.includes('場景'));
+        const trigger = sceneControl?.querySelector('.filter-multiselect__trigger');
+        trigger?.click();
+        window.__reactFilterTrigger = trigger;
+        await new Promise((resolve) => window.setTimeout(resolve, 120));
+        const popover = document.querySelector('.filter-multiselect__popover')?.getBoundingClientRect();
+        return popover ? {
+          top: Math.round(popover.top),
+          right: Math.round(popover.right),
+          bottom: Math.round(popover.bottom),
+          left: Math.round(popover.left),
+          viewportWidth: window.innerWidth,
+          viewportHeight: window.innerHeight
+        } : null;
+      })()`,
+    );
+    if (!filterPopoverOpen.result.value) {
+      throw new Error("Expected mobile filter popover to open from FilterSheet");
+    }
+    if (
+      filterPopoverOpen.result.value.left < 0 ||
+      filterPopoverOpen.result.value.top < 0 ||
+      filterPopoverOpen.result.value.right > filterPopoverOpen.result.value.viewportWidth ||
+      filterPopoverOpen.result.value.bottom > filterPopoverOpen.result.value.viewportHeight
+    ) {
+      throw new Error(`Expected mobile filter popover to stay inside viewport, got ${JSON.stringify(filterPopoverOpen.result.value)}`);
+    }
+    await send(ws, 83, "Input.dispatchKeyEvent", {
+      type: "keyDown",
+      key: "Escape",
+      code: "Escape",
+      windowsVirtualKeyCode: 27,
+      nativeVirtualKeyCode: 27,
+    });
+    await send(ws, 84, "Input.dispatchKeyEvent", {
+      type: "keyUp",
+      key: "Escape",
+      code: "Escape",
+      windowsVirtualKeyCode: 27,
+      nativeVirtualKeyCode: 27,
+    });
+    await delay(200);
+    const filterPopoverClosed = await evaluate(
+      ws,
+      85,
+      `(() => ({
+        hasPopover: Boolean(document.querySelector('.filter-multiselect__popover')),
+        hasSheet: Boolean(document.querySelector('.filter-sheet-dialog')),
+        focusRestored: document.activeElement === window.__reactFilterTrigger
+      }))()`,
+    );
+    if (
+      filterPopoverClosed.result.value.hasPopover ||
+      !filterPopoverClosed.result.value.hasSheet ||
+      !filterPopoverClosed.result.value.focusRestored
+    ) {
+      throw new Error(`Expected Escape to close filter popover and restore trigger focus without closing sheet, got ${JSON.stringify(filterPopoverClosed.result.value)}`);
+    }
     const filterOnly = await evaluate(
       ws,
       6,
-      `(() => {
-        const sceneSelect = [...document.querySelectorAll('.filter-sheet-dialog .filter-control select')]
-          .find((select) => [...select.options].some((option) => option.value === '攤位'));
-        const option = [...sceneSelect.options].find((item) => item.value === '攤位');
-        option.selected = true;
-        sceneSelect.dispatchEvent(new Event('change', { bubbles: true }));
+      `(async () => {
+        const sceneControl = [...document.querySelectorAll('.filter-sheet-dialog .filter-multiselect')]
+          .find((control) => control.querySelector('.filter-multiselect__label')?.textContent?.includes('場景'));
+        sceneControl?.querySelector('.filter-multiselect__trigger')?.click();
+        await new Promise((resolve) => window.setTimeout(resolve, 100));
+        const option = [...document.querySelectorAll('.filter-multiselect__option')]
+          .find((item) => item.textContent.includes('攤位'));
+        option?.click();
+        await new Promise((resolve) => window.setTimeout(resolve, 100));
         return {
           resetDisabledBeforeClick: document.querySelector('.finder-reset').disabled,
-          sceneValueBeforeClick: sceneSelect.value,
+          selectedOptionText: option?.textContent,
           filterEntryText: document.querySelector('.mobile-filter-entry')?.textContent
         };
       })()`,
