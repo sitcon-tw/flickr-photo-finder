@@ -1200,6 +1200,12 @@ shown total = input_tokens - cached_input_tokens + output_tokens
 - 未來大批量比較不應只看 coverage 或 planned updates。必須同時看配對差異、值分布尖峰、reason 重複、review focus 與 failure-focused sample；`people_count = 5` 這類尖峰應列為高風險 warning。
 - 若要把這輪升級成品質評估，需要建立人工抽樣 gold label。建議用雙軌樣本：隨機樣本估整體錯誤率，外加 failure-focused sample 估 `people_count=5`、高 delta、人數 0 矛盾、public-use risk、safe_crop 與 sponsorship 的錯誤型態。
 
+### 已工具化的 follow-up
+
+- `ai:review` 已新增 `People Count QA`，會在大型 run 中列出 `people_count` 分布、top values、整批中段人數尖峰，以及相簿 / shard 內的單一中段人數集中。第一輪這種 `people_count = 5` 大量集中會進入 review notes 與 Review Focus。
+- `ai:review` 已新增 `Reason Reuse QA`，讓 `people_count`、`visual_description`、`scene_tags`、`mood_tags`、`recommended_uses`、`has_negative_space` 的 reason 重複群不只停留在 validator warning 文字裡，而是成為可掃描表格與抽查入口；`visual_description` 近似重複仍由既有 validator warning 守備。
+- `ai:report --runs` 已把 invalid run 標示為 contract failed，把 stale review summary 從一般 valid 狀態降級，並在比較摘要中顯示 `people_count` 配對差距與 run-level 人數尖峰，避免無效或過期 summary 仍看似可比較。
+
 ## 目前已知容易失準的欄位
 
 ### `safe_crop`

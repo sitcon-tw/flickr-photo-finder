@@ -170,6 +170,8 @@ pnpm ai:review -- --run-dir tmp/ai-runs/<run-id>
 
 大型或分片 run 的 summary 會額外顯示 `Artifact Provenance`、`Layer Coverage`、`Scene QA`、`Balanced Review Sample` 與 `Confidence By Field`。`Artifact Provenance` 用來確認 final proposals 來源、hash、圖片連結模式、shard artifacts 與 execution log 摘要；`Layer Coverage` 用 schema 分層看 baseline、recall、optional 覆蓋率；`Scene QA` 用整體、相簿與分片層級檢查 `scene_tags` 是否低召回、過度集中或平均過密；`Balanced Review Sample` 會混合 review focus、shard 抽樣、主體邊界、高風險 optional 欄位與 deterministic random，避免只看工具已知警訊；`Confidence By Field` 用來檢查信心分數是否只集中在少數欄位。
 
+大型 run 也會顯示 `People Count QA` 與 `Reason Reuse QA`。`People Count QA` 會列出 `people_count` 的平均、中位數、分位數、top values，並標出大型 run 中 `3..10` 的中段人數值是否異常集中；相簿或 shard 內若單一中段人數值超過半數，也會列入 QA。這類警訊不代表該人數一定錯，而是提示模型可能把常見小組人數當成 fallback，應從 Review Focus 抽查。`Reason Reuse QA` 會列出各欄位 unique reason 數、最大 reason 重複群與最大 value+reason 重複群；若最大群偏大，代表可能有模板化或 archetype 套用，需要確認 reason 是否真的描述每張照片的可見證據。
+
 照片量很大時，不預期每一張 `ai_labeled` 照片都會被人工 review 完畢。大型 run 的 review 目標是先建立可追溯的候選資料、找出批次品質風險，並產生足夠好的抽查入口；不要把「未全量 review」視為流程失敗。若未來新增 AI proposal outcome 報表，必須分開呈現三類指標：
 
 - Coverage：整批 proposal 的欄位覆蓋、缺漏與值分布。
