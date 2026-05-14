@@ -31,7 +31,7 @@ for (const file of coreFiles) {
   const path = join("app-core", file);
   const content = await readFile(path, "utf8");
   if (/\b(?:window|document)\b/.test(content)) {
-    console.error(`${path} must stay independent from direct window/document access. Keep runtime DOM and GA4 setup in app/*.js modules.`);
+    console.error(`${path} must stay independent from direct window/document access. Keep runtime DOM, React UI, and analytics dispatch in frontend shell modules.`);
     process.exit(1);
   }
 }

@@ -2,7 +2,8 @@ import { useEffect, useMemo, useReducer, useRef, useState, type CSSProperties, t
 import { Button, Dialog, ListBox, ListBoxItem, Modal, ModalOverlay, Popover, type Selection } from "react-aria-components";
 import { candidateCopyText, selectedPhotos } from "../../app-core/candidate-copy";
 import { loadFinderData } from "../../app-core/data-loader";
-import { applySearchRegistry, filterAndSortPhotos } from "../../app-core/search-sort";
+import { sanitizeSearchTerm } from "../../app-core/analytics-core";
+import { applySearchRegistry, filterAndSortPhotos, isFilled } from "../../app-core/search-sort";
 import { applyUrlStateRegistry, decodeUrlState } from "../../app-core/url-state";
 
 type PhotoValue = string | string[] | number | boolean | null | undefined;
@@ -47,6 +48,18 @@ type FinderSettings = {
   discoverHistorySize?: number;
   discoverWindowSize?: number;
 };
+type FinderDataSources = {
+  albumsCsvUrl?: string;
+  photosCsvUrl: string;
+  interfaceRegistryJsonUrl: string;
+  schemaJsonUrl: string;
+  taxonomyJsonUrl: string;
+  searchAliasesJsonUrl: string;
+};
+type RuntimeConfig = {
+  projectConfigUrl: string;
+  dataSources: FinderDataSources;
+};
 type FilterDefinition = {
   key: string;
   urlKey?: string;
@@ -82,6 +95,7 @@ type FinderViewAction =
   | { type: "clearFilterValue"; key: string; value: string }
   | { type: "clearFilters"; filterKeys: string[] }
   | { type: "toggleCandidate"; photoId: string }
+  | { type: "removeCandidate"; photoId: string }
   | { type: "clearCandidates" }
   | { type: "openPreview"; photoId: string }
   | { type: "closePreview" }
@@ -94,6 +108,10 @@ const previewDataSources = {
   schemaJsonUrl: "./data/photo-schema.json",
   taxonomyJsonUrl: "./data/tag-taxonomy.json",
   searchAliasesJsonUrl: "./data/search-aliases.json",
+};
+const fallbackRuntimeConfig: RuntimeConfig = {
+  projectConfigUrl: "./config/project.json",
+  dataSources: previewDataSources,
 };
 
 const sortModes = [
@@ -171,10 +189,53 @@ function originalSizePageUrl(photo: PhotoRecord) {
   }
 }
 
+function imageFileExtension(url: string) {
+  try {
+    const pathname = new URL(url).pathname;
+    return pathname.match(/\.([a-z0-9]+)$/i)?.[1]?.toLowerCase() || "jpg";
+  } catch {
+    return "jpg";
+  }
+}
+
+function safeFilenamePart(value: unknown) {
+  return String(value ?? "")
+    .trim()
+    .replace(/[^A-Za-z0-9_-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
+}
+
+function imageDownloadFilename(photo: PhotoRecord, url: string) {
+  const title = safeFilenamePart(photoTitle(photo));
+  const id = safeFilenamePart(photo.photo_id) || "photo";
+  return `${id}${title ? `-${title}` : ""}.${imageFileExtension(url)}`;
+}
+
+async function downloadImageUrl(url: string, filename: string) {
+  const response = await fetch(url, { mode: "cors" });
+  if (!response.ok) {
+    throw new Error("圖片下載失敗");
+  }
+  const blob = await response.blob();
+  const objectUrl = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = objectUrl;
+  link.download = filename;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+}
+
 function finderLink(photo: { photo_id: string }) {
   const url = new URL(window.location.href);
   url.hash = `photo-${photo.photo_id}`;
   return url.toString();
+}
+
+function photoAnchorId(photoId: string) {
+  return `photo-${photoId}`;
 }
 
 function sheetRowLink(photo: PhotoRecord, data: FinderData | null) {
@@ -185,6 +246,11 @@ function sheetRowLink(photo: PhotoRecord, data: FinderData | null) {
   const gid = encodeURIComponent(String(data?.projectConfig?.googleSheets?.photosSheetGid ?? 0));
   const range = encodeURIComponent(`A${photo._sheet_row_number}`);
   return `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit?gid=${gid}#gid=${gid}&range=${range}`;
+}
+
+function projectSheetUrl(data: FinderData | null) {
+  const spreadsheetId = String(data?.projectConfig?.googleSheets?.spreadsheetId ?? "").trim();
+  return spreadsheetId ? `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit` : "";
 }
 
 function copyTextToClipboard(text: string) {
@@ -203,6 +269,63 @@ function copyTextToClipboard(text: string) {
   return Promise.resolve(copied);
 }
 
+function buildAiAssistantPrompt({
+  sheetUrl,
+  taskLabel,
+  searchValue,
+  filterEntries,
+}: {
+  sheetUrl: string;
+  taskLabel: string;
+  searchValue: string;
+  filterEntries: Array<[string, string, string]>;
+}) {
+  const resolvedSheetUrl = sheetUrl || "請貼上正式 Google Sheets 連結";
+  const searchTerm = sanitizeSearchTerm(searchValue);
+  const filterText = filterEntries.map(([, label, value]) => `${label}: ${value}`).join("；");
+  const needText = searchTerm || "請在這裡描述想找的畫面、用途、比例、情緒或限制。";
+
+  return `請讀取這份 Google Sheets 的 photos 工作表：
+${resolvedSheetUrl}
+
+協助我找 SITCON Flickr 照片。
+任務情境：${taskLabel}
+我的需求：${needText}
+目前已知條件：${filterText || "無，請先用自然語言探索。"}
+
+如果你無法直接讀取 Google Sheets，請先告訴我，並請我提供 photos CSV。
+
+請不要只找 reviewed 照片；ai_labeled 和 unreviewed 也可以列為候選，但請標示整理狀態。public_use_status 是整理提醒，不是 Flickr 是否公開；avoid 預設不要推薦。
+
+每個候選請提供：
+- photo_id
+- photo_url
+- 為什麼符合需求
+- curation_status
+- public_use_status
+
+請不要自行推測缺少的攝影師、授權、活動身份或照片外脈絡。`;
+}
+
+async function loadRuntimeConfig(): Promise<RuntimeConfig> {
+  try {
+    const runtimeConfigUrl = new URL("./config.js", window.location.href).toString();
+    const module = (await import(/* @vite-ignore */ runtimeConfigUrl)) as Partial<RuntimeConfig>;
+    if (module.projectConfigUrl && module.dataSources?.photosCsvUrl) {
+      return {
+        projectConfigUrl: module.projectConfigUrl,
+        dataSources: module.dataSources as FinderDataSources,
+      };
+    }
+  } catch {
+    // Local tests may render the React app before a runtime config has been generated.
+  }
+  if (import.meta.env.DEV) {
+    return fallbackRuntimeConfig;
+  }
+  throw new Error("Production runtime config.js is required");
+}
+
 function compactLabelParts(parts: unknown[]) {
   const seen = new Set<string>();
   return parts
@@ -216,6 +339,41 @@ function compactLabelParts(parts: unknown[]) {
       seen.add(key);
       return true;
     });
+}
+
+function countFilled(photos: PhotoRecord[], fieldName: string) {
+  return photos.filter((photo) => isFilled(photo[fieldName])).length;
+}
+
+function formatCountRatio(count: number, total: number) {
+  if (total === 0) {
+    return "0 / 0";
+  }
+  return `${count} / ${total} (${Math.round((count / total) * 100)}%)`;
+}
+
+function countByField(photos: PhotoRecord[], fieldName: string, data: FinderData | null) {
+  const counts = new Map<string, number>();
+  for (const photo of photos) {
+    const rawValue = photo[fieldName];
+    const values = Array.isArray(rawValue) ? rawValue : [rawValue];
+    const normalizedValues = values.map((value) => String(value ?? "").trim()).filter(Boolean);
+    if (normalizedValues.length === 0) {
+      counts.set("未填", (counts.get("未填") ?? 0) + 1);
+      continue;
+    }
+    for (const value of normalizedValues) {
+      const label = optionLabelFor(data, { key: fieldName, field: fieldName, label: fieldName, source: { labels: true } }, value);
+      counts.set(label, (counts.get(label) ?? 0) + 1);
+    }
+  }
+  return [...counts.entries()].sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0], "zh-Hant-TW")).slice(0, 5);
+}
+
+function reviewedCompletenessCount(photos: PhotoRecord[], data: FinderData | null) {
+  const photosSchema = data?.photoSchema?.tables?.photos as { reviewed_required_fields?: string[] } | undefined;
+  const requiredFields = photosSchema?.reviewed_required_fields ?? [];
+  return photos.filter((photo) => requiredFields.every((fieldName: string) => isFilled(photo[fieldName]))).length;
 }
 
 function albumOptionFromRecord(record: Record<string, PhotoValue>, value: string) {
@@ -268,14 +426,16 @@ function PhotoCard({
   selected,
   onToggleCandidate,
   onOpenPreview,
+  onDownloadLarge,
 }: {
   photo: PhotoRecord;
   selected: boolean;
   onToggleCandidate: (photoId: string) => void;
   onOpenPreview: (photoId: string) => void;
+  onDownloadLarge: (photo: PhotoRecord) => void;
 }) {
   return (
-    <article className="photo-card" data-photo-id={photo.photo_id}>
+    <article id={photoAnchorId(photo.photo_id)} className="photo-card" data-photo-id={photo.photo_id}>
       <button type="button" className="photo-card__preview" onClick={() => onOpenPreview(photo.photo_id)}>
         {photo.image_preview_url ? (
           <img src={photo.image_preview_url} alt={photoTitle(photo)} loading="lazy" decoding="async" />
@@ -309,7 +469,9 @@ function PhotoCard({
             >
               {selected ? "已候選" : "候選"}
             </button>
-            <a href={photo.photo_url}>Flickr</a>
+            <button type="button" onClick={() => onDownloadLarge(photo)}>
+              大圖
+            </button>
           </div>
         </div>
       </div>
@@ -324,6 +486,7 @@ function CandidatePanel({
   onCopyTemplateChange,
   onCopy,
   onClear,
+  onRemove,
 }: {
   candidates: PhotoRecord[];
   copyTemplate: string;
@@ -331,6 +494,7 @@ function CandidatePanel({
   onCopyTemplateChange: (template: string) => void;
   onCopy: () => void;
   onClear: () => void;
+  onRemove: (photoId: string) => void;
 }) {
   return (
     <section className="candidate-panel" aria-label="候選照片">
@@ -341,6 +505,7 @@ function CandidatePanel({
         onCopyTemplateChange={onCopyTemplateChange}
         onCopy={onCopy}
         onClear={onClear}
+        onRemove={onRemove}
       />
     </section>
   );
@@ -353,6 +518,7 @@ function CandidateContent({
   onCopyTemplateChange,
   onCopy,
   onClear,
+  onRemove,
 }: {
   candidates: PhotoRecord[];
   copyTemplate: string;
@@ -360,6 +526,7 @@ function CandidateContent({
   onCopyTemplateChange: (template: string) => void;
   onCopy: () => void;
   onClear: () => void;
+  onRemove: (photoId: string) => void;
 }) {
   return (
     <>
@@ -389,8 +556,14 @@ function CandidateContent({
         <ol className="candidate-list">
           {candidates.map((photo) => (
             <li key={photo.photo_id}>
+              {photo.image_preview_url ? (
+                <img src={photo.image_preview_url} alt="" loading="lazy" decoding="async" />
+              ) : null}
               <span>{photoTitle(photo)}</span>
               <a href={photo.photo_url}>Flickr</a>
+              <button type="button" onClick={() => onRemove(photo.photo_id)}>
+                移除
+              </button>
             </li>
           ))}
         </ol>
@@ -406,6 +579,7 @@ function CandidateSheetDialog({
   onCopyTemplateChange,
   onCopy,
   onClear,
+  onRemove,
   onClose,
 }: {
   candidates: PhotoRecord[];
@@ -414,6 +588,7 @@ function CandidateSheetDialog({
   onCopyTemplateChange: (template: string) => void;
   onCopy: () => void;
   onClear: () => void;
+  onRemove: (photoId: string) => void;
   onClose: () => void;
 }) {
   return (
@@ -440,10 +615,106 @@ function CandidateSheetDialog({
             onCopyTemplateChange={onCopyTemplateChange}
             onCopy={onCopy}
             onClear={onClear}
+            onRemove={onRemove}
           />
         </Dialog>
       </Modal>
     </ModalOverlay>
+  );
+}
+
+function AiAssistantPanel({
+  sheetUrl,
+  prompt,
+  copyStatus,
+  onCopy,
+}: {
+  sheetUrl: string;
+  prompt: string;
+  copyStatus: string;
+  onCopy: () => void;
+}) {
+  return (
+    <section className="ai-assistant-panel" aria-label="用 AI 助手找照片">
+      <div>
+        <h2>用 AI 助手找照片</h2>
+        <p>把正式 photos 工作表與目前條件交給熟悉的 AI 助手，補足固定篩選難以描述的需求。</p>
+      </div>
+      <div className="ai-assistant-panel__actions">
+        <a href={sheetUrl || undefined} aria-disabled={!sheetUrl}>
+          開啟 Sheets
+        </a>
+        <button type="button" onClick={onCopy}>
+          {copyStatus || "複製提示詞"}
+        </button>
+      </div>
+      <textarea value={prompt} readOnly aria-label="AI 助手提示詞" rows={8} />
+    </section>
+  );
+}
+
+function OverviewPanel({ photos, data }: { photos: PhotoRecord[]; data: FinderData | null }) {
+  const total = photos.length;
+  const reviewedComplete = reviewedCompletenessCount(photos, data);
+  const missingPreview = photos.filter((photo) => !isFilled(photo.image_preview_url)).length;
+  const items = [
+    { title: "照片總數", value: `${total}`, detail: `${missingPreview} 張缺少縮圖 URL。` },
+    {
+      title: "整理狀態",
+      value: formatCountRatio(countFilled(photos, "curation_status"), total),
+      detail: "metadata 是否人工確認。",
+      values: countByField(photos, "curation_status", data),
+    },
+    {
+      title: "使用提醒",
+      value: formatCountRatio(countFilled(photos, "public_use_status"), total),
+      detail: "整理者留下的使用提醒。",
+      values: countByField(photos, "public_use_status", data),
+    },
+    {
+      title: "Reviewed 欄位完整度",
+      value: formatCountRatio(reviewedComplete, total),
+      detail: "依 photo-schema.json 計算。",
+    },
+    {
+      title: "主要視覺主體",
+      value: formatCountRatio(countFilled(photos, "subject_type"), total),
+      detail: "照片海初篩用的粗分類。",
+      values: countByField(photos, "subject_type", data),
+    },
+    {
+      title: "贊助價值",
+      value: formatCountRatio(countFilled(photos, "sponsorship_tags"), total),
+      detail: "品牌露出、互動、佐證等用途。",
+    },
+  ];
+
+  return (
+    <section className="overview-panel" aria-label="索引概覽">
+      <div className="overview-panel__heading">
+        <h2>索引概覽</h2>
+        <p>共 {total} 張照片，{reviewedComplete} 張已具備 reviewed 必要欄位。</p>
+      </div>
+      <div className="overview-grid">
+        {items.map((item) => (
+          <article className="overview-item" key={item.title}>
+            <h3>{item.title}</h3>
+            <strong>{item.value}</strong>
+            <p>{item.detail}</p>
+            {item.values?.length ? (
+              <dl>
+                {item.values.map(([label, count]) => (
+                  <div key={label}>
+                    <dt>{label}</dt>
+                    <dd>{count}</dd>
+                  </div>
+                ))}
+              </dl>
+            ) : null}
+          </article>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -471,19 +742,20 @@ function PhotoPreviewDialog({
   selected,
   onClose,
   onToggleCandidate,
+  onDownloadLarge,
 }: {
   photo: PhotoRecord;
   data: FinderData | null;
   selected: boolean;
   onClose: () => void;
   onToggleCandidate: (photoId: string) => void;
+  onDownloadLarge: (photo: PhotoRecord) => void;
 }) {
   const sheetRef = useRef<HTMLDivElement | null>(null);
   const dragRef = useRef<{ pointerId: number | "touch"; startX: number; startY: number; offsetY: number } | null>(null);
   const [sheetOffset, setSheetOffset] = useState(0);
   const [isDraggingSheet, setIsDraggingSheet] = useState(false);
   const previewUrl = largeImageUrl(photo) || displayImageUrl(photo);
-  const largeUrl = largeImageUrl(photo);
   const details = [
     ["構圖", detailValues(data, "orientation", photo.orientation)],
     ["留白", detailValues(data, "has_negative_space", photo.has_negative_space)],
@@ -674,9 +946,9 @@ function PhotoPreviewDialog({
             >
               {selected ? "已加入候選" : "加入候選"}
             </button>
-            <a href={largeUrl || undefined} aria-disabled={!largeUrl}>
+            <button type="button" onClick={() => onDownloadLarge(photo)}>
               大圖
-            </a>
+            </button>
             <a href={originalUrl || undefined} aria-disabled={!originalUrl}>
               原圖
             </a>
@@ -715,25 +987,17 @@ function primaryFilterDefinitions(data: FinderData | null, taskModeId: string) {
   const defaultPrimaryFilters = Array.isArray(pages?.defaultPrimaryFilters)
     ? (pages.defaultPrimaryFilters as string[])
     : ["use", "scene", "orientation", "safeCrop", "negativeSpace", "mood"];
-  const primaryKeys = new Set(taskPrimaryFilters ?? defaultPrimaryFilters);
-  return definitions.filter((definition) => definition.key !== "album" && primaryKeys.has(definition.key)).slice(0, 6);
+  const primaryKeys = ["album", ...(taskPrimaryFilters ?? defaultPrimaryFilters)];
+  const primaryKeySet = new Set(primaryKeys);
+  return definitions
+    .filter((definition) => primaryKeySet.has(definition.key))
+    .sort((left, right) => primaryKeys.indexOf(left.key) - primaryKeys.indexOf(right.key))
+    .slice(0, 7);
 }
 
-function allReactOwnedPrimaryFilterDefinitions(data: FinderData | null) {
+function allReactOwnedFilterDefinitions(data: FinderData | null) {
   const definitions = registryFilterDefinitions(data);
-  if (definitions.length === 0) {
-    return [];
-  }
-  const pages = data?.interfaceRegistry?.pages;
-  const taskModes = Array.isArray(pages?.taskModes) ? (pages.taskModes as Array<TaskMode & { primaryFilters?: string[] }>) : [];
-  const defaultPrimaryFilters = Array.isArray(pages?.defaultPrimaryFilters)
-    ? (pages.defaultPrimaryFilters as string[])
-    : ["use", "scene", "orientation", "safeCrop", "negativeSpace", "mood"];
-  const ownedKeys = new Set([
-    ...defaultPrimaryFilters,
-    ...taskModes.flatMap((mode) => (Array.isArray(mode.primaryFilters) ? mode.primaryFilters : [])),
-  ]);
-  return definitions.filter((definition) => definition.key !== "album" && ownedKeys.has(definition.key));
+  return definitions;
 }
 
 function isSortModeValue(value: string): value is SortModeValue {
@@ -783,13 +1047,9 @@ function finderViewReducer(state: FinderViewState, action: FinderViewAction): Fi
     return { ...state, sortMode: isSortModeValue(action.value) ? action.value : "recommended" };
   }
   if (action.type === "setTaskMode") {
-    const nextFilterKeySet = new Set(action.nextFilterKeys);
     return {
       ...state,
       taskModeId: normalizeTaskModeId(action.value, action.validTaskModes),
-      filters: Object.fromEntries(
-        Object.entries(state.filters).filter(([key]) => nextFilterKeySet.has(key)),
-      ),
     };
   }
   if (action.type === "setFilterValues") {
@@ -823,6 +1083,10 @@ function finderViewReducer(state: FinderViewState, action: FinderViewAction): Fi
       return { ...state, selectedPhotoIds: state.selectedPhotoIds.filter((item) => item !== photoId) };
     }
     return { ...state, selectedPhotoIds: [...state.selectedPhotoIds, photoId] };
+  }
+  if (action.type === "removeCandidate") {
+    const photoId = action.photoId.trim();
+    return { ...state, selectedPhotoIds: state.selectedPhotoIds.filter((item) => item !== photoId) };
   }
   if (action.type === "clearCandidates") {
     return { ...state, selectedPhotoIds: [] };
@@ -970,12 +1234,17 @@ function FilterMultiSelect({
 }) {
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
   const selectedLabels = values
     .map((value) => options.find((option) => option.value === value)?.label ?? value)
     .filter(Boolean);
   const summary = selectedLabels.length > 0 ? selectedLabels.slice(0, 2).join("、") : "不限";
   const extraCount = selectedLabels.length > 2 ? ` +${selectedLabels.length - 2}` : "";
   const selectedKeys = new Set(values);
+  const normalizedQuery = query.trim().toLowerCase();
+  const visibleOptions = normalizedQuery
+    ? options.filter((option) => `${option.label} ${option.value}`.toLowerCase().includes(normalizedQuery))
+    : options;
 
   function setPopoverOpen(nextOpen: boolean) {
     setOpen(nextOpen);
@@ -1015,6 +1284,15 @@ function FilterMultiSelect({
           shouldFlip
           offset={6}
         >
+          <div className="filter-multiselect__search">
+            <input
+              type="search"
+              value={query}
+              placeholder={definition.emptyLabel ?? `搜尋${definition.label}`}
+              autoComplete="off"
+              onChange={(event) => setQuery(event.target.value)}
+            />
+          </div>
           <ListBox
             className="filter-multiselect__list"
             aria-label={definition.label}
@@ -1023,7 +1301,7 @@ function FilterMultiSelect({
             selectedKeys={selectedKeys}
             onSelectionChange={updateSelection}
           >
-            {options.map((option) => (
+            {visibleOptions.map((option) => (
               <ListBoxItem key={option.value} id={option.value} textValue={option.label} className="filter-multiselect__option">
                 {({ isSelected }) => (
                   <>
@@ -1035,6 +1313,11 @@ function FilterMultiSelect({
                 )}
               </ListBoxItem>
             ))}
+            {visibleOptions.length === 0 ? (
+              <ListBoxItem id="__empty" className="filter-multiselect__option" isDisabled>
+                沒有符合的選項
+              </ListBoxItem>
+            ) : null}
           </ListBox>
         </Popover>
       ) : null}
@@ -1140,16 +1423,20 @@ export function App() {
   const [urlStateReady, setUrlStateReady] = useState(false);
   const [copyTemplate, setCopyTemplate] = useState("im");
   const [copyStatus, setCopyStatus] = useState("");
+  const [aiCopyStatus, setAiCopyStatus] = useState("");
   const [visibleResultLimit, setVisibleResultLimit] = useState(resultPageSize);
   const [candidateSheetOpen, setCandidateSheetOpen] = useState(false);
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    loadFinderData({
-      dataSources: previewDataSources,
-      projectConfigUrl: "./config/project.json",
-    })
+    loadRuntimeConfig()
+      .then((runtimeConfig) =>
+        loadFinderData({
+          dataSources: runtimeConfig.dataSources,
+          projectConfigUrl: runtimeConfig.projectConfigUrl,
+        }),
+      )
       .then((loadedData) => {
         if (!cancelled) {
           applySearchRegistry(loadedData.interfaceRegistry);
@@ -1178,14 +1465,14 @@ export function App() {
   const { searchTerm, sortMode, taskModeId } = normalizedViewState;
   const selectedPhotoIdSet = useMemo(() => new Set(normalizedViewState.selectedPhotoIds), [normalizedViewState.selectedPhotoIds]);
   const activeFilterDefinitions = useMemo(() => primaryFilterDefinitions(data, taskModeId), [data, taskModeId]);
-  const ownedFilterDefinitions = useMemo(() => allReactOwnedPrimaryFilterDefinitions(data), [data]);
-  const activeFilterKeys = useMemo(
-    () => activeFilterDefinitions.map((definition) => definition.key),
-    [activeFilterDefinitions],
+  const ownedFilterDefinitions = useMemo(() => allReactOwnedFilterDefinitions(data), [data]);
+  const advancedFilterDefinitions = useMemo(
+    () => ownedFilterDefinitions.filter((definition) => !activeFilterDefinitions.some((activeDefinition) => activeDefinition.key === definition.key)),
+    [activeFilterDefinitions, ownedFilterDefinitions],
   );
   const activeFilterSignature = useMemo(
-    () => JSON.stringify(activeFilterKeys.map((key) => [key, normalizedViewState.filters[key] ?? []])),
-    [activeFilterKeys, normalizedViewState.filters],
+    () => JSON.stringify(ownedFilterDefinitions.map((definition) => [definition.key, normalizedViewState.filters[definition.key] ?? []])),
+    [ownedFilterDefinitions, normalizedViewState.filters],
   );
   const activeTask = useMemo(
     () => taskModes.find((mode) => mode.id === taskModeId) ?? taskModes[0] ?? fallbackTaskModes[0],
@@ -1199,7 +1486,7 @@ export function App() {
     }
     const urlState = decodeUrlState(new URLSearchParams(window.location.search));
     const nextTaskModeId = normalizeTaskModeId(urlState.taskMode || "all", validTaskModes);
-    const nextFilterKeys = primaryFilterDefinitions(data, nextTaskModeId).map((definition) => definition.key);
+    const nextFilterKeys = allReactOwnedFilterDefinitions(data).map((definition) => definition.key);
     dispatch({
       type: "hydrate",
       state: {
@@ -1223,7 +1510,7 @@ export function App() {
         searchTerm,
         sortMode,
         taskModeId,
-        filters: Object.fromEntries(activeFilterKeys.map((key) => [key, normalizedViewState.filters[key] ?? []])),
+        filters: Object.fromEntries(ownedFilterDefinitions.map((definition) => [definition.key, normalizedViewState.filters[definition.key] ?? []])),
         selectedPhotoIds: normalizedViewState.selectedPhotoIds,
       },
       ownedFilterDefinitions,
@@ -1232,7 +1519,6 @@ export function App() {
       window.history.replaceState(null, "", nextUrl);
     }
   }, [
-    activeFilterKeys,
     data,
     normalizedViewState.filters,
     normalizedViewState.selectedPhotoIds,
@@ -1250,7 +1536,7 @@ export function App() {
     const handlePopState = () => {
       const urlState = decodeUrlState(new URLSearchParams(window.location.search));
       const nextTaskModeId = normalizeTaskModeId(urlState.taskMode || "all", validTaskModes);
-      const nextFilterKeys = primaryFilterDefinitions(data, nextTaskModeId).map((definition) => definition.key);
+      const nextFilterKeys = allReactOwnedFilterDefinitions(data).map((definition) => definition.key);
       dispatch({
         type: "hydrate",
         state: {
@@ -1270,7 +1556,7 @@ export function App() {
   const filteredPhotos = useMemo(
     () =>
       filterAndSortPhotos(photos, {
-        filters: { search: searchTerm, ...filtersForSearch(activeFilterDefinitions, normalizedViewState.filters) },
+        filters: { search: searchTerm, ...filtersForSearch(ownedFilterDefinitions, normalizedViewState.filters) },
         sortMode,
         task: activeTask.id === "all" ? {} : activeTask,
         discoverHistorySize: settings.discoverHistorySize,
@@ -1278,10 +1564,10 @@ export function App() {
         selectedPhotoIds: normalizedViewState.selectedPhotoIds,
       }) as unknown as PhotoRecord[],
     [
-      activeFilterDefinitions,
       activeTask,
       normalizedViewState.filters,
       normalizedViewState.selectedPhotoIds,
+      ownedFilterDefinitions,
       photos,
       searchTerm,
       settings.discoverHistorySize,
@@ -1312,8 +1598,25 @@ export function App() {
     sortMode,
     taskMode: activeTask,
   });
-  const hasActiveFilters = activeFilterKeys.some((key) => (normalizedViewState.filters[key] ?? []).length > 0);
-  const activeFilterCount = activeFilterKeys.reduce((count, key) => count + (normalizedViewState.filters[key] ?? []).length, 0);
+  const hasActiveFilters = ownedFilterDefinitions.some((definition) => (normalizedViewState.filters[definition.key] ?? []).length > 0);
+  const activeFilterEntries = ownedFilterDefinitions.flatMap((definition) =>
+    (normalizedViewState.filters[definition.key] ?? []).map((value) => ({
+      key: definition.key,
+      value,
+      label: definition.label,
+      valueLabel: optionLabelFor(data, definition, value),
+    })),
+  );
+  const activeFilterCount = activeFilterEntries.length;
+  const sheetUrl = projectSheetUrl(data);
+  const flickrProfileUrl = String(data?.projectConfig?.flickr?.profileUrl ?? "").trim();
+  const repositoryUrl = String(data?.projectConfig?.repository?.url ?? "").trim();
+  const aiAssistantPrompt = buildAiAssistantPrompt({
+    sheetUrl,
+    taskLabel: activeTask.label,
+    searchValue: searchTerm,
+    filterEntries: activeFilterEntries.map((entry) => [entry.key, entry.label, entry.valueLabel]),
+  });
   async function copyCandidates() {
     const candidateListUrl = new URL(window.location.href);
     candidateListUrl.hash = "";
@@ -1337,15 +1640,38 @@ export function App() {
     window.setTimeout(() => setCopyStatus(""), 1600);
   }
 
+  async function copyAiAssistantPrompt() {
+    try {
+      const copied = await copyTextToClipboard(aiAssistantPrompt);
+      setAiCopyStatus(copied ? "已複製" : "複製失敗");
+    } catch {
+      setAiCopyStatus("複製失敗");
+    }
+    window.setTimeout(() => setAiCopyStatus(""), 1600);
+  }
+
+  function downloadLargePhoto(photo: PhotoRecord) {
+    const url = largeImageUrl(photo);
+    if (!url) {
+      return;
+    }
+    downloadImageUrl(url, imageDownloadFilename(photo, url)).catch(() => {
+      window.open(url, "_blank", "noopener,noreferrer");
+    });
+  }
+
   return (
     <main className="finder-shell">
       <header className="finder-header">
-        <p className="finder-kicker">React preview artifact</p>
+        <p className="finder-kicker">SITCON public photo finder</p>
         <h1>SITCON Flickr Photo Finder</h1>
         <p>
-          React shell is reading the same public contracts and fixture CSV through the migrated TypeScript core. The
-          formal Pages artifact remains the vanilla finder until cutover.
+          依任務、篩選與候選清單快速整理 SITCON 公開 Flickr 照片。
         </p>
+        <div className="finder-header__links">
+          <a href={flickrProfileUrl || "https://www.flickr.com/photos/sitcon/"}>Flickr</a>
+          <a href={repositoryUrl || "https://github.com/sitcon-tw/flickr-photo-finder"}>GitHub 專案</a>
+        </div>
       </header>
 
       <section className="finder-controls" aria-label="搜尋與排序">
@@ -1380,7 +1706,7 @@ export function App() {
           className="finder-reset"
           type="button"
           disabled={!searchTerm && sortMode === "recommended" && activeTask.id === "all" && !hasActiveFilters}
-          onClick={() => dispatch({ type: "reset", filterKeys: activeFilterKeys })}
+          onClick={() => dispatch({ type: "reset", filterKeys: ownedFilterDefinitions.map((definition) => definition.key) })}
         >
           清除
         </button>
@@ -1428,6 +1754,35 @@ export function App() {
             />
           ))}
         </div>
+        {activeFilterEntries.length > 0 ? (
+          <div className="active-filter-list" aria-label="已套用篩選">
+            {activeFilterEntries.map((entry) => (
+              <button
+                key={`${entry.key}:${entry.value}`}
+                type="button"
+                onClick={() => dispatch({ type: "clearFilterValue", key: entry.key, value: entry.value })}
+              >
+                {entry.label}: {entry.valueLabel} ×
+              </button>
+            ))}
+          </div>
+        ) : null}
+        {advancedFilterDefinitions.length > 0 ? (
+          <details className="advanced-filter-panel">
+            <summary>進階篩選</summary>
+            <div className="filter-grid">
+              {advancedFilterDefinitions.map((definition) => (
+                <FilterSelect
+                  key={definition.key}
+                  definition={definition}
+                  options={filterOptions(data, definition, photos)}
+                  values={normalizedViewState.filters[definition.key] ?? []}
+                  onChange={(values) => dispatch({ type: "setFilterValues", key: definition.key, values })}
+                />
+              ))}
+            </div>
+          </details>
+        ) : null}
       </section>
 
       <CandidatePanel
@@ -1437,7 +1792,17 @@ export function App() {
         onCopyTemplateChange={setCopyTemplate}
         onCopy={copyCandidates}
         onClear={() => dispatch({ type: "clearCandidates" })}
+        onRemove={(photoId) => dispatch({ type: "removeCandidate", photoId })}
       />
+
+      <AiAssistantPanel
+        sheetUrl={sheetUrl}
+        prompt={aiAssistantPrompt}
+        copyStatus={aiCopyStatus}
+        onCopy={copyAiAssistantPrompt}
+      />
+
+      <OverviewPanel photos={photos} data={data} />
 
       <div className="mobile-action-bar" aria-label="手機主要操作">
         <button type="button" className="mobile-filter-entry" onClick={() => setFilterSheetOpen(true)}>
@@ -1474,6 +1839,7 @@ export function App() {
               selected={selectedPhotoIdSet.has(photo.photo_id)}
               onToggleCandidate={(photoId) => dispatch({ type: "toggleCandidate", photoId })}
               onOpenPreview={(photoId) => dispatch({ type: "openPreview", photoId })}
+              onDownloadLarge={downloadLargePhoto}
             />
           ))
         ) : (
@@ -1499,6 +1865,7 @@ export function App() {
           selected={selectedPhotoIdSet.has(activePreviewPhoto.photo_id)}
           onClose={() => dispatch({ type: "closePreview" })}
           onToggleCandidate={(photoId) => dispatch({ type: "toggleCandidate", photoId })}
+          onDownloadLarge={downloadLargePhoto}
         />
       ) : null}
 
@@ -1510,19 +1877,20 @@ export function App() {
           onCopyTemplateChange={setCopyTemplate}
           onCopy={copyCandidates}
           onClear={() => dispatch({ type: "clearCandidates" })}
+          onRemove={(photoId) => dispatch({ type: "removeCandidate", photoId })}
           onClose={() => setCandidateSheetOpen(false)}
         />
       ) : null}
 
       {filterSheetOpen ? (
         <FilterSheetDialog
-          definitions={activeFilterDefinitions}
+          definitions={ownedFilterDefinitions}
           data={data}
           photos={photos}
           filters={normalizedViewState.filters}
           activeFilterCount={activeFilterCount}
           onChange={(key, values) => dispatch({ type: "setFilterValues", key, values })}
-          onClear={() => dispatch({ type: "clearFilters", filterKeys: activeFilterKeys })}
+          onClear={() => dispatch({ type: "clearFilters", filterKeys: ownedFilterDefinitions.map((definition) => definition.key) })}
           onClose={() => setFilterSheetOpen(false)}
         />
       ) : null}

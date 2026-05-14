@@ -173,6 +173,11 @@ async function runInteractionSmoke({ url }) {
           .some((select) => [...select.selectedOptions].some((option) => option.value === '社群貼文')),
         activeTaskLabel: document.querySelector('.task-mode.is-active strong')?.textContent,
         candidateHeading: document.querySelector('.candidate-panel h2')?.textContent,
+        candidateHasThumbnail: Boolean(document.querySelector('.candidate-list img')),
+        candidateHasRemove: [...document.querySelectorAll('.candidate-list button')].some((button) => button.textContent.includes('移除')),
+        aiAssistant: document.querySelector('.ai-assistant-panel h2')?.textContent,
+        overview: document.querySelector('.overview-panel h2')?.textContent,
+        albumFilterLabel: [...document.querySelectorAll('.filter-control > span')].some((item) => item.textContent.includes('活動/相簿')),
         location: window.location.search,
         resultCountText: document.querySelector('.finder-status strong')?.textContent
       }))()`,
@@ -192,6 +197,15 @@ async function runInteractionSmoke({ url }) {
     }
     if (hydratedValue.candidateHeading !== "候選 2") {
       throw new Error(`Expected URL selected to hydrate candidate panel, got ${hydratedValue.candidateHeading}`);
+    }
+    if (!hydratedValue.candidateHasThumbnail || !hydratedValue.candidateHasRemove) {
+      throw new Error("Expected candidate panel to include thumbnails and per-item remove controls");
+    }
+    if (hydratedValue.aiAssistant !== "用 AI 助手找照片" || hydratedValue.overview !== "索引概覽") {
+      throw new Error(`Expected AI assistant and overview panels, got ${hydratedValue.aiAssistant} / ${hydratedValue.overview}`);
+    }
+    if (!hydratedValue.albumFilterLabel) {
+      throw new Error("Expected activity/album filter to remain in primary filters");
     }
     if (!String(hydratedValue.resultCountText).includes("/ 30 張照片")) {
       throw new Error(`Expected hydrated result count text, got ${hydratedValue.resultCountText}`);
@@ -262,7 +276,9 @@ async function runInteractionSmoke({ url }) {
         activeTaskLabel: document.querySelector('.task-mode.is-active strong')?.textContent,
         firstPhotoIds: [...document.querySelectorAll('.photo-card')]
           .slice(0, 2)
-          .map((card) => card.dataset.photoId)
+          .map((card) => card.dataset.photoId),
+        firstCardAnchor: document.querySelector('.photo-card')?.id,
+        firstCardHasLargeAction: [...document.querySelectorAll('.photo-card__actions button')].some((button) => button.textContent.includes('大圖'))
       }))()`,
     );
     const updatedValue = updated.result.value;
@@ -282,14 +298,20 @@ async function runInteractionSmoke({ url }) {
     if (updatedParams.has("use")) {
       throw new Error(`Expected task switch/reset to clear hidden React-owned filter URL keys, got ${updatedValue.searchParams}`);
     }
-    if (updatedParams.get("curation") !== "reviewed") {
-      throw new Error(`Expected reset to preserve unimplemented filter URL keys, got ${updatedValue.searchParams}`);
+    if (updatedParams.has("curation")) {
+      throw new Error(`Expected reset to clear all React-owned filter URL keys, got ${updatedValue.searchParams}`);
     }
     if (updatedParams.get("selected") !== "54682769955,54681614067") {
       throw new Error(`Expected reset to preserve selected URL key, got ${updatedValue.searchParams}`);
     }
     if (updatedValue.activeTaskLabel !== "全部照片") {
       throw new Error(`Expected reset to restore all task mode, got ${updatedValue.activeTaskLabel}`);
+    }
+    if (!String(updatedValue.firstCardAnchor).startsWith("photo-")) {
+      throw new Error(`Expected photo cards to expose Finder anchors after reset, got ${updatedValue.firstCardAnchor}`);
+    }
+    if (!updatedValue.firstCardHasLargeAction) {
+      throw new Error("Expected photo cards to expose large image action after reset");
     }
     if (updatedValue.firstPhotoIds[0] !== "54682769955" || updatedValue.firstPhotoIds[1] !== "54681614067") {
       throw new Error(`Expected preserved URL selected order to promote result cards, got ${JSON.stringify(updatedValue.firstPhotoIds)}`);
