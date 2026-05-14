@@ -500,6 +500,63 @@ p {
   margin-left: 8px;
 }
 
+.mobile-candidate-entry {
+  display: none;
+}
+
+.candidate-sheet-layer {
+  position: fixed;
+  z-index: 45;
+  inset: 0;
+  display: grid;
+  align-items: end;
+  overflow: auto;
+  background: rgb(15 23 42 / 52%);
+  padding: 0;
+}
+
+.candidate-sheet-dialog {
+  width: 100%;
+  max-height: 88vh;
+  overflow: auto;
+  border: 1px solid #bcccdc;
+  border-radius: 14px 14px 0 0;
+  background: #ffffff;
+  box-shadow: 0 -18px 48px rgb(15 23 42 / 22%);
+  overscroll-behavior: contain;
+  padding: 14px 16px 18px;
+}
+
+.candidate-sheet-dialog__content {
+  display: grid;
+  gap: 12px;
+}
+
+.candidate-sheet-dialog__content:focus {
+  outline: none;
+}
+
+.candidate-sheet-handle {
+  justify-self: center;
+  width: 44px;
+  height: 5px;
+  border-radius: 999px;
+  background: #9aa5b1;
+}
+
+.candidate-sheet-close {
+  justify-self: end;
+  min-height: 44px;
+  border: 1px solid #bcccdc;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #1f2933;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  padding: 0 12px;
+}
+
 .photo-preview-layer {
   position: fixed;
   z-index: 50;
@@ -679,7 +736,7 @@ p {
 
 @media (max-width: 640px) {
   .finder-shell {
-    padding: 20px 12px 32px;
+    padding: 20px 12px 92px;
   }
 
   h1 {
@@ -723,6 +780,35 @@ p {
   .candidate-panel__actions {
     display: grid;
     justify-content: stretch;
+  }
+
+  .candidate-panel {
+    display: none;
+  }
+
+  .candidate-sheet-dialog .candidate-panel__heading,
+  .candidate-sheet-dialog .candidate-panel__actions {
+    display: grid;
+    justify-content: stretch;
+  }
+
+  .mobile-candidate-entry {
+    position: fixed;
+    z-index: 40;
+    right: 12px;
+    bottom: 12px;
+    left: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 50px;
+    border: 1px solid #1a5fb4;
+    border-radius: 8px;
+    background: #1a5fb4;
+    color: #ffffff;
+    box-shadow: 0 10px 28px rgb(15 23 42 / 24%);
+    font: inherit;
+    font-weight: 800;
   }
 
   .photo-preview-layer {

@@ -641,6 +641,93 @@ async function runInteractionSmoke({ url }) {
       );
     }
 
+    const mobileCandidateEntry = await evaluate(
+      ws,
+      69,
+      `(() => {
+        const button = document.querySelector('.mobile-candidate-entry');
+        const rect = button?.getBoundingClientRect();
+        const style = button ? getComputedStyle(button) : null;
+        return rect && style ? {
+          text: button.textContent,
+          position: style.position,
+          minHeight: Math.round(rect.height),
+          x: rect.left + rect.width / 2,
+          y: rect.top + rect.height / 2
+        } : null;
+      })()`,
+    );
+    if (!mobileCandidateEntry.result.value) {
+      throw new Error("Expected mobile candidate entry after preview sheet closes");
+    }
+    if (
+      mobileCandidateEntry.result.value.text !== "候選 2" ||
+      mobileCandidateEntry.result.value.position !== "fixed" ||
+      mobileCandidateEntry.result.value.minHeight < 44
+    ) {
+      throw new Error(`Expected fixed mobile candidate entry with 44px target, got ${JSON.stringify(mobileCandidateEntry.result.value)}`);
+    }
+    await send(ws, 70, "Input.dispatchMouseEvent", {
+      type: "mousePressed",
+      x: mobileCandidateEntry.result.value.x,
+      y: mobileCandidateEntry.result.value.y,
+      button: "left",
+      clickCount: 1,
+    });
+    await send(ws, 71, "Input.dispatchMouseEvent", {
+      type: "mouseReleased",
+      x: mobileCandidateEntry.result.value.x,
+      y: mobileCandidateEntry.result.value.y,
+      button: "left",
+      clickCount: 1,
+    });
+    await delay(400);
+    const mobileCandidateSheet = await evaluate(
+      ws,
+      72,
+      `(() => {
+        const sheet = document.querySelector('.candidate-sheet-dialog');
+        const rect = sheet?.getBoundingClientRect();
+        return rect ? {
+          title: sheet.querySelector('h2')?.textContent,
+          actionCount: sheet.querySelectorAll('.candidate-panel__actions > *').length,
+          bottomGap: Math.round(window.innerHeight - rect.bottom),
+          htmlOverflow: document.documentElement.style.overflow,
+          appInert: document.querySelector('#root')?.hasAttribute('inert')
+        } : null;
+      })()`,
+    );
+    if (!mobileCandidateSheet.result.value) {
+      throw new Error("Expected mobile candidate sheet to open");
+    }
+    if (
+      mobileCandidateSheet.result.value.title !== "候選 2" ||
+      mobileCandidateSheet.result.value.actionCount !== 3 ||
+      Math.abs(mobileCandidateSheet.result.value.bottomGap) > 2 ||
+      mobileCandidateSheet.result.value.htmlOverflow !== "hidden" ||
+      !mobileCandidateSheet.result.value.appInert
+    ) {
+      throw new Error(`Expected React Aria mobile candidate sheet with locked background, got ${JSON.stringify(mobileCandidateSheet.result.value)}`);
+    }
+    await evaluate(ws, 73, "document.querySelector('.candidate-sheet-close')?.click()");
+    await delay(400);
+    const mobileCandidateClosed = await evaluate(
+      ws,
+      74,
+      `(() => ({
+        hasSheet: Boolean(document.querySelector('.candidate-sheet-dialog')),
+        htmlOverflow: document.documentElement.style.overflow,
+        appInert: document.querySelector('#root')?.hasAttribute('inert')
+      }))()`,
+    );
+    if (
+      mobileCandidateClosed.result.value.hasSheet ||
+      mobileCandidateClosed.result.value.htmlOverflow === "hidden" ||
+      mobileCandidateClosed.result.value.appInert
+    ) {
+      throw new Error(`Expected candidate sheet close to restore background, got ${JSON.stringify(mobileCandidateClosed.result.value)}`);
+    }
+
     await evaluate(ws, 38, "[...document.querySelectorAll('.load-more-panel button')].find((button) => button.textContent.includes('載入更多'))?.click()");
     await delay(400);
     const loadMore = await evaluate(
@@ -722,21 +809,29 @@ async function runInteractionSmoke({ url }) {
       throw new Error("Expected filter-only reset to clear selected filter controls");
     }
 
-    await evaluate(ws, 9, "document.querySelector('.candidate-panel__actions button:last-child').click()");
+    await evaluate(ws, 9, "document.querySelector('.mobile-candidate-entry')?.click()");
+    await delay(400);
+    await evaluate(ws, 75, "document.querySelector('.candidate-sheet-dialog .candidate-panel__actions button:last-child')?.click()");
     await delay(400);
     const candidateClear = await evaluate(
       ws,
       10,
       `(() => ({
         searchParams: window.location.search,
-        candidateHeading: document.querySelector('.candidate-panel h2')?.textContent
+        candidateHeading: document.querySelector('.candidate-sheet-dialog h2')?.textContent,
+        entryText: document.querySelector('.mobile-candidate-entry')?.textContent,
+        clearDisabled: document.querySelector('.candidate-sheet-dialog .candidate-panel__actions button:last-child')?.disabled
       }))()`,
     );
     if (new URLSearchParams(candidateClear.result.value.searchParams).has("selected")) {
       throw new Error(`Expected clear candidates to remove selected query, got ${candidateClear.result.value.searchParams}`);
     }
-    if (candidateClear.result.value.candidateHeading !== "候選 0") {
-      throw new Error(`Expected clear candidates to update candidate count, got ${candidateClear.result.value.candidateHeading}`);
+    if (
+      candidateClear.result.value.candidateHeading !== "候選 0" ||
+      candidateClear.result.value.entryText !== "候選 0" ||
+      !candidateClear.result.value.clearDisabled
+    ) {
+      throw new Error(`Expected mobile candidate clear to update sheet and entry state, got ${JSON.stringify(candidateClear.result.value)}`);
     }
 
     ws.close();

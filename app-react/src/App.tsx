@@ -333,6 +333,35 @@ function CandidatePanel({
 }) {
   return (
     <section className="candidate-panel" aria-label="候選照片">
+      <CandidateContent
+        candidates={candidates}
+        copyTemplate={copyTemplate}
+        copyStatus={copyStatus}
+        onCopyTemplateChange={onCopyTemplateChange}
+        onCopy={onCopy}
+        onClear={onClear}
+      />
+    </section>
+  );
+}
+
+function CandidateContent({
+  candidates,
+  copyTemplate,
+  copyStatus,
+  onCopyTemplateChange,
+  onCopy,
+  onClear,
+}: {
+  candidates: PhotoRecord[];
+  copyTemplate: string;
+  copyStatus: string;
+  onCopyTemplateChange: (template: string) => void;
+  onCopy: () => void;
+  onClear: () => void;
+}) {
+  return (
+    <>
       <div className="candidate-panel__heading">
         <h2>候選 {candidates.length}</h2>
         <div className="candidate-panel__actions">
@@ -365,7 +394,55 @@ function CandidatePanel({
           ))}
         </ol>
       )}
-    </section>
+    </>
+  );
+}
+
+function CandidateSheetDialog({
+  candidates,
+  copyTemplate,
+  copyStatus,
+  onCopyTemplateChange,
+  onCopy,
+  onClear,
+  onClose,
+}: {
+  candidates: PhotoRecord[];
+  copyTemplate: string;
+  copyStatus: string;
+  onCopyTemplateChange: (template: string) => void;
+  onCopy: () => void;
+  onClear: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <ModalOverlay
+      isOpen
+      isDismissable
+      onOpenChange={(isOpen) => {
+        if (!isOpen) {
+          onClose();
+        }
+      }}
+      className="candidate-sheet-layer"
+    >
+      <Modal className="candidate-sheet-dialog">
+        <Dialog className="candidate-sheet-dialog__content" aria-label="候選照片">
+          <div className="candidate-sheet-handle" aria-hidden="true" />
+          <button type="button" className="candidate-sheet-close" onClick={onClose} aria-label="關閉候選照片">
+            關閉
+          </button>
+          <CandidateContent
+            candidates={candidates}
+            copyTemplate={copyTemplate}
+            copyStatus={copyStatus}
+            onCopyTemplateChange={onCopyTemplateChange}
+            onCopy={onCopy}
+            onClear={onClear}
+          />
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
   );
 }
 
@@ -905,6 +982,7 @@ export function App() {
   const [copyTemplate, setCopyTemplate] = useState("im");
   const [copyStatus, setCopyStatus] = useState("");
   const [visibleResultLimit, setVisibleResultLimit] = useState(resultPageSize);
+  const [candidateSheetOpen, setCandidateSheetOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -1200,6 +1278,10 @@ export function App() {
         onClear={() => dispatch({ type: "clearCandidates" })}
       />
 
+      <button type="button" className="mobile-candidate-entry" onClick={() => setCandidateSheetOpen(true)}>
+        候選 {candidatePhotos.length}
+      </button>
+
       <section className="finder-status" aria-live="polite">
         {error ? (
           <strong>資料載入失敗：{error}</strong>
@@ -1251,6 +1333,18 @@ export function App() {
           selected={selectedPhotoIdSet.has(activePreviewPhoto.photo_id)}
           onClose={() => dispatch({ type: "closePreview" })}
           onToggleCandidate={(photoId) => dispatch({ type: "toggleCandidate", photoId })}
+        />
+      ) : null}
+
+      {candidateSheetOpen ? (
+        <CandidateSheetDialog
+          candidates={candidatePhotos}
+          copyTemplate={copyTemplate}
+          copyStatus={copyStatus}
+          onCopyTemplateChange={setCopyTemplate}
+          onCopy={copyCandidates}
+          onClear={() => dispatch({ type: "clearCandidates" })}
+          onClose={() => setCandidateSheetOpen(false)}
         />
       ) : null}
     </main>
