@@ -172,7 +172,6 @@ async function main() {
   await assertIncludes(join(options.artifactDir, "overview-render.js"), "./search-sort.js", "search-sort.js");
   await assertIncludes(join(options.artifactDir, "main.js"), "./photo-render.js", "photo-render.js");
   await assertIncludes(join(options.artifactDir, "photo-render.js"), "./analytics.js", "analytics.js");
-  await assertIncludes(join(options.artifactDir, "photo-render.js"), "./search-sort.js", "search-sort.js");
   await assertIncludes(join(options.artifactDir, "main.js"), "./result-render.js", "result-render.js");
   await assertIncludes(join(options.artifactDir, "main.js"), "./search-sort.js", "search-sort.js");
   await assertIncludes(join(options.artifactDir, "main.js"), "./task-modes.js", "task-modes.js");

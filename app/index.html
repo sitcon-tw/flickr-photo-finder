@@ -256,27 +256,6 @@
           <img alt="" loading="lazy" decoding="async" />
           <span class="photo-link-hint">開啟 Flickr</span>
         </a>
-        <div class="photo-body">
-          <div class="photo-statuses"></div>
-          <div class="photo-meta">
-            <strong class="photo-title"></strong>
-            <span class="photo-year"></span>
-          </div>
-          <p class="photo-reference"></p>
-          <dl class="quick-details"></dl>
-          <details class="metadata-details">
-            <summary>完整欄位</summary>
-            <dl class="details"></dl>
-          </details>
-          <div class="photo-actions">
-            <button class="candidate-toggle-button" type="button">候選</button>
-            <button class="download-large-image-button" type="button">大圖</button>
-            <a class="photo-action original-image-link" target="_blank" rel="noreferrer">原圖</a>
-            <button class="copy-flickr-link-button" type="button">Flickr</button>
-            <button class="copy-finder-link-button" type="button">本頁</button>
-            <a class="photo-action sheet-row-link" target="_blank" rel="noreferrer">Sheets</a>
-          </div>
-        </div>
       </article>
     </template>
 
@@ -290,6 +269,8 @@
         </div>
         <button id="closePreviewButton" type="button">關閉</button>
       </div>
+      <div id="previewStatuses" class="photo-statuses preview-statuses"></div>
+      <p id="previewReference" class="photo-reference preview-reference"></p>
       <div class="preview-image-frame">
         <a id="previewImageLink" class="preview-image-link" target="_blank" rel="noreferrer">
           <img id="previewImage" alt="" />
@@ -302,6 +283,8 @@
         <button id="previewLargeButton" class="download-large-image-button" type="button">下載大圖</button>
         <a id="previewOriginalLink" class="photo-action original-image-link" target="_blank" rel="noreferrer">原圖</a>
         <a id="previewSheetLink" class="photo-action sheet-row-link" target="_blank" rel="noreferrer">Sheets</a>
+        <button id="previewCopyFlickrButton" class="copy-flickr-link-button" type="button">Flickr</button>
+        <button id="previewCopyFinderButton" class="copy-finder-link-button" type="button">本頁</button>
       </div>
     </section>
 

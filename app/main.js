@@ -37,7 +37,10 @@ import {
   originalSizePageUrl,
   photoAnchorId,
   photoTitle,
+  renderPhotoDetails,
   renderPhotoCard,
+  renderPhotoReference,
+  renderPhotoStatuses,
   setTemporaryButtonText,
   sheetRowLink as buildSheetRowLink,
 } from "./photo-render.js";
@@ -353,26 +356,6 @@ function labelFor(fieldName, value) {
   return optionLabels(fieldName).get(value) ?? value;
 }
 
-function appendPreviewDetail(label, values, { fieldName = "" } = {}) {
-  const normalized = (Array.isArray(values) ? values : [values]).filter(Boolean);
-  if (normalized.length === 0) {
-    return;
-  }
-  const row = document.createElement("div");
-  row.className = "detail-row";
-  const term = document.createElement("dt");
-  term.textContent = label;
-  const description = document.createElement("dd");
-  for (const value of normalized) {
-    const tag = document.createElement("span");
-    tag.className = "tag";
-    tag.textContent = fieldName ? labelFor(fieldName, value) : value;
-    description.append(tag);
-  }
-  row.append(term, description);
-  elements.previewDetails.append(row);
-}
-
 function activeTask() {
   return taskModes.find((task) => task.id === state.taskMode) ?? taskModes[0];
 }
@@ -424,23 +407,18 @@ function openPreview(photo) {
   elements.previewMeta.textContent = [photo.event_year, photo.album_title, `photo_id: ${photo.photo_id}`].filter(Boolean).join(" / ");
   elements.previewImage.src = previewUrl;
   elements.previewImage.alt = [photoTitle(photo), photo.event_year].filter(Boolean).join(" ");
-  elements.previewDetails.replaceChildren();
-  appendPreviewDetail("構圖", [photo.orientation], { fieldName: "orientation" });
-  appendPreviewDetail("留白", photo.has_negative_space, { fieldName: "has_negative_space" });
-  appendPreviewDetail("裁切", photo.safe_crop);
-  appendPreviewDetail("用途", photo.recommended_uses.slice(0, 4));
-  appendPreviewDetail("場景", photo.scene_tags.slice(0, 4));
-  appendPreviewDetail("贊助品項", photo.sponsorship_items.slice(0, 4));
-  appendPreviewDetail("贊助價值", photo.sponsorship_tags.slice(0, 4));
-  appendPreviewDetail("畫面描述", photo.visual_description);
-  appendPreviewDetail("整理狀態", photo.curation_status, { fieldName: "curation_status" });
-  appendPreviewDetail("使用提醒", photo.public_use_status, { fieldName: "public_use_status" });
+  renderPhotoStatuses(elements.previewStatuses, photo, labelFor);
+  renderPhotoReference(elements.previewReference, photo);
+  renderPhotoDetails(elements.previewDetails, photo, { labelFor });
   controls.previewLarge.disabled = !largeUrl;
   controls.previewLarge.dataset.largeImageUrl = largeUrl;
+  controls.previewCopyFlickr.disabled = !photo.photo_url;
   setExternalLink(elements.previewImageLink, photo.photo_url);
   elements.previewImageLink.title = photo.photo_url ? "開啟 Flickr 照片頁" : "";
   setExternalLink(elements.previewOriginalLink, originalUrl);
   setExternalLink(elements.previewSheetLink, sheetRowLink(photo));
+  controls.previewCopyFlickr.title = "複製 Flickr 原始照片頁連結";
+  controls.previewCopyFinder.title = "複製 Finder 中這張照片的 deep link";
   updatePreviewCandidateButton();
   elements.photoPreviewDialog.hidden = false;
   setModalOpen(true);
@@ -551,6 +529,36 @@ async function downloadPreviewLargeImage() {
       controls.previewLarge.disabled = false;
       controls.previewLarge.textContent = originalText;
     }, 1900);
+  }
+}
+
+async function copyPreviewFlickrLink() {
+  if (!activePreviewPhoto?.photo_url) {
+    return;
+  }
+  try {
+    const copied = await copyTextToClipboard(activePreviewPhoto.photo_url);
+    if (copied) {
+      setTemporaryButtonText(controls.previewCopyFlickr, "已複製");
+      trackEvent("copy_flickr_link", { photo_id: activePreviewPhoto.photo_id });
+    }
+  } catch {
+    setTemporaryButtonText(controls.previewCopyFlickr, "複製失敗");
+  }
+}
+
+async function copyPreviewFinderLink() {
+  if (!activePreviewPhoto) {
+    return;
+  }
+  try {
+    const copied = await copyTextToClipboard(finderLink(activePreviewPhoto));
+    if (copied) {
+      setTemporaryButtonText(controls.previewCopyFinder, "已複製");
+      trackEvent("copy_finder_link", { photo_id: activePreviewPhoto.photo_id });
+    }
+  } catch {
+    setTemporaryButtonText(controls.previewCopyFinder, "複製失敗");
   }
 }
 
@@ -818,6 +826,8 @@ function bindFilterControlEvents() {
       "closePreview",
       "previewCandidate",
       "previewLarge",
+      "previewCopyFlickr",
+      "previewCopyFinder",
     ].includes(key)) {
       continue;
     }
@@ -904,6 +914,8 @@ for (const sheet of [elements.searchPanel, elements.sidePanel, elements.photoPre
   sheet.addEventListener("touchcancel", onSheetTouchEnd);
 }
 controls.previewLarge.addEventListener("click", downloadPreviewLargeImage);
+controls.previewCopyFlickr.addEventListener("click", copyPreviewFlickrLink);
+controls.previewCopyFinder.addEventListener("click", copyPreviewFinderLink);
 controls.previewCandidate.addEventListener("click", () => {
   if (activePreviewPhoto) {
     toggleCandidate(activePreviewPhoto.photo_id);

@@ -58,6 +58,8 @@ export function queryControls() {
     closePreview: document.querySelector("#closePreviewButton"),
     previewCandidate: document.querySelector("#previewCandidateButton"),
     previewLarge: document.querySelector("#previewLargeButton"),
+    previewCopyFlickr: document.querySelector("#previewCopyFlickrButton"),
+    previewCopyFinder: document.querySelector("#previewCopyFinderButton"),
   };
 }
 
@@ -93,6 +95,8 @@ export function queryElements() {
     previewImageLink: document.querySelector("#previewImageLink"),
     previewTitle: document.querySelector("#previewTitle"),
     previewMeta: document.querySelector("#previewMeta"),
+    previewStatuses: document.querySelector("#previewStatuses"),
+    previewReference: document.querySelector("#previewReference"),
     previewImage: document.querySelector("#previewImage"),
     previewDetails: document.querySelector("#previewDetails"),
     previewLargeButton: document.querySelector("#previewLargeButton"),
