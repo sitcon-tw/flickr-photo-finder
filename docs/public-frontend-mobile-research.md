@@ -4,7 +4,7 @@
 
 這份文件是 GitHub Pages 前端手機版重設計的代理研究與 owner 評估紀錄。它不是真人使用者訪談，也不是已完成的 usability test。
 
-本文件用來支援 GitHub issue #5「手機體驗極差」的設計決策。實作前應先由 owner 檢查本文件的代理推測，標記採納、修正或否決，再把可採用的需求回填到 #5。
+本文件用來支援 GitHub issue #5「手機體驗極差」的設計決策。它記錄 React cutover 前的研究與 owner 評估脈絡；目前正式前端已改為 Vite + React + TypeScript + React Aria，後續應把本文件當成歷史需求與驗收 baseline，而不是 production 程式狀態清單。
 
 舊文件 `docs/public-frontend-agent-research.md` 是重構前的多角色代理研究快照；本文件只針對目前前端狀態與手機版工作流。
 
@@ -29,8 +29,8 @@
 
 - GitHub Pages 前端是公開、唯讀、無登入門檻的搜尋介面，讀取 Google Sheets `photos` 公開 CSV，不寫回 Sheets，也不保存 credential。
 - 公開前端的找圖情境包含社群宣傳、網站橫幅、設計素材、贊助提案、贊助成果、新聞稿、對外簡報、志工招募與活動回顧。
-- 目前前端已具備任務模式、搜尋、排序、篩選、候選清單、候選複製格式、AI 助手入口、索引概覽、照片卡片操作與 GA4 事件。
-- 目前手機 CSS 主要把桌機區塊堆成單欄；候選清單、AI 助手與索引概覽仍在照片結果前方，不是手機專用工作流。
+- 研究當時的前端已具備任務模式、搜尋、排序、篩選、候選清單、候選複製格式、AI 助手入口、索引概覽、照片卡片操作與 GA4 事件；React final cutover 後應重新用 `docs/public-frontend-architecture.md` 與實際 app 檢查功能狀態。
+- 研究當時的手機 CSS 主要把桌機區塊堆成單欄；React migration 已引入手機 sheet、固定「篩選 / 候選」入口與 preview/detail，後續 QA 應以目前 React artifact 為準。
 - 現有 filter、task mode、URL key 與 primary filters 由 `data/interface-registry.json` 管理。手機版應重用同一套 finder state 與 interface policy，不新增一套手機專用 filter 規則。
 - `curation_status` 與 `public_use_status` 是整理狀態與使用提醒，不是 Flickr 是否公開的判斷。這些欄位可作為排序、篩選或 detail 參考，但 owner 已判斷它們不是手機卡片與候選輸出的高權重資訊。
 - 候選清單只存在瀏覽器當下狀態與 URL query，不寫回 Google Sheets。現有複製格式包含 IM 討論版、協作檢查版與純 Flickr URL。

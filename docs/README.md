@@ -151,7 +151,8 @@
 
 - Apps Script source 已進 repo，1.0 維護選單已可部署使用；可在 Sheets 內提供校對 sidebar、欄位提示、單值下拉選單、`photos` 純文字格式防護、`taxonomy` 同步、`schema_meta`、`validation_report` 與基本驗證。sidebar 會先驗證再寫入，儲存錯誤顯示在按鈕附近；載入錯誤顯示在列控制區附近。`taxonomy.label_zh` 與 `schema_meta` 都不應是空白狀態。實際 `clasp` 綁定、push 與 deploy 仍需由有權限的維護者操作。
 - GitHub Pages workflow 已可產生並部署 artifact；repository Pages 來源已設定為 GitHub Actions。後續前端變更應用 `pnpm workflow -- --task pages-build` 與 GitHub Actions 部署紀錄驗證。
-- 前端已加入 GA4 基礎追蹤、任務模式、照片卡片操作、候選清單與 AI 助手找圖入口事件；主要模組邊界記錄在 `docs/public-frontend-architecture.md`。後續調整事件或分析流程前，先依 `docs/frontend-analytics-design.md` 重新確認程式碼現況與事件設計。
+- 正式 GitHub Pages artifact 已切到 Vite + React + TypeScript + React Aria；主要模組邊界記錄在 `docs/public-frontend-architecture.md`，遷移 phase 與剩餘 cleanup 記錄在 `docs/public-frontend-react-migration-plan.md`。
+- GA4 基礎追蹤曾在 legacy vanilla artifact 中實作；React final cutover 後尚未重新接上 GA4 dispatch。後續調整事件或分析流程前，先依 `docs/frontend-analytics-design.md` 重新確認程式碼現況與事件設計。
 - GA4 後台 service account 權限與 custom dimensions 操作應依 `docs/ga4-operations.md` 執行；property ID 已在 `config/project.json` 設為預設，custom dimensions 清單由 `config/ga4-custom-dimensions.json` 管理，可用 `pnpm analytics:dimensions:check` dry-run 檢查，BigQuery export 暫不自動化。
 - 多人 review 仍以 Google Sheets 為主要協作介面；後續若要改善操作效率，應優先延伸 Sheets 與 Apps Script 輔助。AI 候選值寫入不等於 `curation_status = reviewed`。
 
