@@ -80,6 +80,7 @@ type FinderViewAction =
   | { type: "setTaskMode"; value: string; validTaskModes: string[]; nextFilterKeys: string[] }
   | { type: "setFilterValues"; key: string; values: string[] }
   | { type: "clearFilterValue"; key: string; value: string }
+  | { type: "clearFilters"; filterKeys: string[] }
   | { type: "toggleCandidate"; photoId: string }
   | { type: "clearCandidates" }
   | { type: "openPreview"; photoId: string }
@@ -804,6 +805,15 @@ function finderViewReducer(state: FinderViewState, action: FinderViewAction): Fi
       },
     };
   }
+  if (action.type === "clearFilters") {
+    return {
+      ...state,
+      filters: {
+        ...state.filters,
+        ...Object.fromEntries(action.filterKeys.map((key) => [key, []])),
+      },
+    };
+  }
   if (action.type === "toggleCandidate") {
     const photoId = action.photoId.trim();
     if (!photoId) {
@@ -1037,14 +1047,18 @@ function FilterSheetDialog({
   data,
   photos,
   filters,
+  activeFilterCount,
   onChange,
+  onClear,
   onClose,
 }: {
   definitions: FilterDefinition[];
   data: FinderData | null;
   photos: PhotoRecord[];
   filters: FinderFilters;
+  activeFilterCount: number;
   onChange: (key: string, values: string[]) => void;
+  onClear: () => void;
   onClose: () => void;
 }) {
   return (
@@ -1077,6 +1091,14 @@ function FilterSheetDialog({
                 onChange={(values) => onChange(definition.key, values)}
               />
             ))}
+          </div>
+          <div className="filter-sheet-actions">
+            <button type="button" className="filter-sheet-clear" onClick={onClear} disabled={activeFilterCount === 0}>
+              清除篩選
+            </button>
+            <button type="button" className="filter-sheet-done" onClick={onClose}>
+              完成
+            </button>
           </div>
         </Dialog>
       </Modal>
@@ -1498,7 +1520,9 @@ export function App() {
           data={data}
           photos={photos}
           filters={normalizedViewState.filters}
+          activeFilterCount={activeFilterCount}
           onChange={(key, values) => dispatch({ type: "setFilterValues", key, values })}
+          onClear={() => dispatch({ type: "clearFilters", filterKeys: activeFilterKeys })}
           onClose={() => setFilterSheetOpen(false)}
         />
       ) : null}
