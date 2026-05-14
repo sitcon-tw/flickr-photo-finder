@@ -473,6 +473,174 @@ async function runInteractionSmoke({ url }) {
       throw new Error(`Expected outside click to close preview and restore background, got ${JSON.stringify(outsideClosed.result.value)}`);
     }
 
+    await send(ws, 50, "Emulation.setDeviceMetricsOverride", {
+      width: 390,
+      height: 844,
+      deviceScaleFactor: 2,
+      mobile: true,
+    });
+    await send(ws, 63, "Emulation.setTouchEmulationEnabled", {
+      enabled: true,
+      maxTouchPoints: 1,
+    });
+    await delay(300);
+    const mobilePreviewButtonBox = await evaluate(
+      ws,
+      51,
+      `(() => {
+        const button = document.querySelector('.photo-card__preview');
+        button?.scrollIntoView({ block: 'center', inline: 'center' });
+        const rect = button?.getBoundingClientRect();
+        return rect ? { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 } : null;
+      })()`,
+    );
+    if (!mobilePreviewButtonBox.result.value) {
+      throw new Error("Expected preview image button before mobile swipe dismiss smoke");
+    }
+    await send(ws, 52, "Input.dispatchMouseEvent", {
+      type: "mousePressed",
+      x: mobilePreviewButtonBox.result.value.x,
+      y: mobilePreviewButtonBox.result.value.y,
+      button: "left",
+      clickCount: 1,
+    });
+    await send(ws, 53, "Input.dispatchMouseEvent", {
+      type: "mouseReleased",
+      x: mobilePreviewButtonBox.result.value.x,
+      y: mobilePreviewButtonBox.result.value.y,
+      button: "left",
+      clickCount: 1,
+    });
+    await delay(400);
+    const mobileSheet = await evaluate(
+      ws,
+      54,
+      `(() => {
+        const dialog = document.querySelector('.photo-preview-dialog');
+        const rect = dialog?.getBoundingClientRect();
+        const handle = dialog?.querySelector('.preview-sheet-handle')?.getBoundingClientRect();
+        return rect && handle ? {
+          x: rect.left + rect.width / 2,
+          y: handle.top + handle.height / 2,
+          bottomGap: Math.round(window.innerHeight - rect.bottom),
+          handleHeight: Math.round(handle.height),
+          actionPosition: getComputedStyle(dialog.querySelector('.preview-actions')).position,
+          htmlOverflow: document.documentElement.style.overflow,
+          targetClass: document.elementFromPoint(rect.left + rect.width / 2, handle.top + handle.height / 2)?.className
+        } : null;
+      })()`,
+    );
+    if (!mobileSheet.result.value) {
+      throw new Error("Expected mobile preview sheet before swipe dismiss smoke");
+    }
+    if (Math.abs(mobileSheet.result.value.bottomGap) > 2 || mobileSheet.result.value.handleHeight < 4) {
+      throw new Error(`Expected bottom-aligned mobile sheet with drag handle, got ${JSON.stringify(mobileSheet.result.value)}`);
+    }
+    if (mobileSheet.result.value.actionPosition !== "sticky" || mobileSheet.result.value.htmlOverflow !== "hidden") {
+      throw new Error(`Expected mobile preview actions to remain sticky with background locked, got ${JSON.stringify(mobileSheet.result.value)}`);
+    }
+    await send(ws, 55, "Input.dispatchTouchEvent", {
+      type: "touchStart",
+      touchPoints: [{ x: mobileSheet.result.value.x, y: mobileSheet.result.value.y, radiusX: 4, radiusY: 4, id: 1 }],
+    });
+    await delay(80);
+    await send(ws, 56, "Input.dispatchTouchEvent", {
+      type: "touchMove",
+      touchPoints: [{ x: mobileSheet.result.value.x, y: mobileSheet.result.value.y + 52, radiusX: 4, radiusY: 4, id: 1 }],
+    });
+    await delay(80);
+    await send(ws, 57, "Input.dispatchTouchEvent", {
+      type: "touchEnd",
+      touchPoints: [],
+    });
+    await delay(400);
+    const mobileShortSwipe = await evaluate(
+      ws,
+      58,
+      `(() => ({
+        hasDialog: Boolean(document.querySelector('.photo-preview-dialog')),
+        htmlOverflow: document.documentElement.style.overflow,
+        transform: getComputedStyle(document.querySelector('.photo-preview-dialog')).transform
+      }))()`,
+    );
+    if (!mobileShortSwipe.result.value.hasDialog || mobileShortSwipe.result.value.htmlOverflow !== "hidden") {
+      throw new Error(`Expected short mobile swipe to keep preview open, got ${JSON.stringify(mobileShortSwipe.result.value)}`);
+    }
+    const imageDragPoint = await evaluate(
+      ws,
+      64,
+      `(() => {
+        const rect = document.querySelector('.preview-image-link')?.getBoundingClientRect();
+        return rect ? { x: rect.left + rect.width / 2, y: rect.top + Math.min(80, rect.height / 2) } : null;
+      })()`,
+    );
+    if (!imageDragPoint.result.value) {
+      throw new Error("Expected preview image before mobile image-drag smoke");
+    }
+    await send(ws, 65, "Input.dispatchTouchEvent", {
+      type: "touchStart",
+      touchPoints: [{ x: imageDragPoint.result.value.x, y: imageDragPoint.result.value.y, radiusX: 4, radiusY: 4, id: 1 }],
+    });
+    await delay(80);
+    await send(ws, 66, "Input.dispatchTouchEvent", {
+      type: "touchMove",
+      touchPoints: [{ x: imageDragPoint.result.value.x, y: imageDragPoint.result.value.y + 156, radiusX: 4, radiusY: 4, id: 1 }],
+    });
+    await delay(80);
+    await send(ws, 67, "Input.dispatchTouchEvent", {
+      type: "touchEnd",
+      touchPoints: [],
+    });
+    await delay(400);
+    const mobileImageDrag = await evaluate(
+      ws,
+      68,
+      `(() => ({
+        hasDialog: Boolean(document.querySelector('.photo-preview-dialog')),
+        htmlOverflow: document.documentElement.style.overflow
+      }))()`,
+    );
+    if (!mobileImageDrag.result.value.hasDialog || mobileImageDrag.result.value.htmlOverflow !== "hidden") {
+      throw new Error(`Expected image-area mobile drag to keep preview open, got ${JSON.stringify(mobileImageDrag.result.value)}`);
+    }
+    await send(ws, 59, "Input.dispatchTouchEvent", {
+      type: "touchStart",
+      touchPoints: [{ x: mobileSheet.result.value.x, y: mobileSheet.result.value.y, radiusX: 4, radiusY: 4, id: 1 }],
+    });
+    await delay(80);
+    await send(ws, 60, "Input.dispatchTouchEvent", {
+      type: "touchMove",
+      touchPoints: [{ x: mobileSheet.result.value.x, y: mobileSheet.result.value.y + 156, radiusX: 4, radiusY: 4, id: 1 }],
+    });
+    await delay(80);
+    await send(ws, 61, "Input.dispatchTouchEvent", {
+      type: "touchEnd",
+      touchPoints: [],
+    });
+    await delay(400);
+    const mobileSwipeClosed = await evaluate(
+      ws,
+      62,
+      `(() => ({
+        hasDialog: Boolean(document.querySelector('.photo-preview-dialog')),
+        htmlOverflow: document.documentElement.style.overflow,
+        appInert: document.querySelector('#root')?.hasAttribute('inert')
+      }))()`,
+    );
+    if (
+      mobileSwipeClosed.result.value.hasDialog ||
+      mobileSwipeClosed.result.value.htmlOverflow === "hidden" ||
+      mobileSwipeClosed.result.value.appInert
+    ) {
+      throw new Error(
+        `Expected mobile swipe to close preview and restore background, got ${JSON.stringify({
+          closed: mobileSwipeClosed.result.value,
+          sheet: mobileSheet.result.value,
+          shortSwipe: mobileShortSwipe.result.value,
+        })}`,
+      );
+    }
+
     await evaluate(ws, 38, "[...document.querySelectorAll('.load-more-panel button')].find((button) => button.textContent.includes('載入更多'))?.click()");
     await delay(400);
     const loadMore = await evaluate(

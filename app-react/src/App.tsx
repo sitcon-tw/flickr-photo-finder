@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useReducer, useState } from "react";
+import { useEffect, useMemo, useReducer, useRef, useState, type CSSProperties, type PointerEvent, type TouchEvent } from "react";
 import { Dialog, Modal, ModalOverlay } from "react-aria-components";
 import { candidateCopyText, selectedPhotos } from "../../app-core/candidate-copy";
 import { loadFinderData } from "../../app-core/data-loader";
@@ -400,6 +400,10 @@ function PhotoPreviewDialog({
   onClose: () => void;
   onToggleCandidate: (photoId: string) => void;
 }) {
+  const sheetRef = useRef<HTMLDivElement | null>(null);
+  const dragRef = useRef<{ pointerId: number | "touch"; startX: number; startY: number; offsetY: number } | null>(null);
+  const [sheetOffset, setSheetOffset] = useState(0);
+  const [isDraggingSheet, setIsDraggingSheet] = useState(false);
   const previewUrl = largeImageUrl(photo) || displayImageUrl(photo);
   const largeUrl = largeImageUrl(photo);
   const details = [
@@ -416,6 +420,120 @@ function PhotoPreviewDialog({
   ].filter(([, value]) => Boolean(value));
   const originalUrl = originalSizePageUrl(photo);
   const rowLink = sheetRowLink(photo, data);
+  const sheetStyle = { "--preview-sheet-offset": `${sheetOffset}px` } as CSSProperties;
+
+  function resetSheetDrag() {
+    dragRef.current = null;
+    setSheetOffset(0);
+    setIsDraggingSheet(false);
+  }
+
+  function canStartSheetDrag(target: EventTarget | null) {
+    return target instanceof Element && !target.closest(".preview-close") && Boolean(target.closest(".preview-drag-region"));
+  }
+
+  function updateSheetDrag(clientY: number) {
+    const drag = dragRef.current;
+    if (!drag) {
+      return;
+    }
+    const deltaY = clientY - drag.startY;
+    if (deltaY <= 0) {
+      drag.offsetY = 0;
+      setSheetOffset(0);
+      return;
+    }
+    const nextOffset = Math.min(deltaY, 240);
+    drag.offsetY = nextOffset;
+    setIsDraggingSheet(nextOffset > 6);
+    setSheetOffset(nextOffset);
+  }
+
+  function finishSheetDrag(clientX: number) {
+    const drag = dragRef.current;
+    if (!drag) {
+      return false;
+    }
+    const deltaX = Math.abs(clientX - drag.startX);
+    if (drag.offsetY >= 112 && deltaX < 96) {
+      onClose();
+      return true;
+    }
+    resetSheetDrag();
+    return false;
+  }
+
+  function handleSheetPointerDown(event: PointerEvent<HTMLDivElement>) {
+    if (event.pointerType === "touch") {
+      return;
+    }
+    if (!window.matchMedia("(max-width: 640px)").matches) {
+      return;
+    }
+    if (event.button !== 0) {
+      return;
+    }
+    if (!canStartSheetDrag(event.target)) {
+      return;
+    }
+    dragRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      offsetY: 0,
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function handleSheetPointerMove(event: PointerEvent<HTMLDivElement>) {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) {
+      return;
+    }
+    updateSheetDrag(event.clientY);
+  }
+
+  function handleSheetPointerUp(event: PointerEvent<HTMLDivElement>) {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) {
+      return;
+    }
+    event.currentTarget.releasePointerCapture(event.pointerId);
+    finishSheetDrag(event.clientX);
+  }
+
+  function handleSheetTouchStart(event: TouchEvent<HTMLDivElement>) {
+    if (!window.matchMedia("(max-width: 640px)").matches || event.touches.length !== 1 || !canStartSheetDrag(event.target)) {
+      return;
+    }
+    const touch = event.touches[0];
+    dragRef.current = {
+      pointerId: "touch",
+      startX: touch.clientX,
+      startY: touch.clientY,
+      offsetY: 0,
+    };
+  }
+
+  function handleSheetTouchMove(event: TouchEvent<HTMLDivElement>) {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== "touch" || event.touches.length !== 1) {
+      return;
+    }
+    updateSheetDrag(event.touches[0].clientY);
+    if (drag.offsetY > 0) {
+      event.preventDefault();
+    }
+  }
+
+  function handleSheetTouchEnd(event: TouchEvent<HTMLDivElement>) {
+    const drag = dragRef.current;
+    const touch = event.changedTouches[0];
+    if (!drag || drag.pointerId !== "touch" || !touch) {
+      return;
+    }
+    finishSheetDrag(touch.clientX);
+  }
 
   return (
     <ModalOverlay
@@ -428,9 +546,23 @@ function PhotoPreviewDialog({
       }}
       className="photo-preview-layer"
     >
-      <Modal className="photo-preview-dialog">
+      <Modal
+        ref={sheetRef}
+        className="photo-preview-dialog"
+        data-dragging={isDraggingSheet ? "true" : undefined}
+        style={sheetStyle}
+        onPointerDown={handleSheetPointerDown}
+        onPointerMove={handleSheetPointerMove}
+        onPointerUp={handleSheetPointerUp}
+        onPointerCancel={resetSheetDrag}
+        onTouchStart={handleSheetTouchStart}
+        onTouchMove={handleSheetTouchMove}
+        onTouchEnd={handleSheetTouchEnd}
+        onTouchCancel={resetSheetDrag}
+      >
         <Dialog className="photo-preview-dialog__content" aria-label="照片預覽">
-          <header className="preview-header">
+          <div className="preview-sheet-handle preview-drag-region" aria-hidden="true" />
+          <header className="preview-header preview-drag-region">
             <div>
               <h2>{photoTitle(photo)}</h2>
               <p>{[photo.event_year, photo.album_title].filter(Boolean).join(" / ")}</p>

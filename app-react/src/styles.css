@@ -520,7 +520,14 @@ p {
   border-radius: 8px;
   background: #ffffff;
   box-shadow: 0 24px 60px rgb(15 23 42 / 24%);
+  overscroll-behavior: contain;
   padding: 16px;
+  transform: translateY(var(--preview-sheet-offset, 0));
+  transition: transform 160ms ease;
+}
+
+.photo-preview-dialog[data-dragging="true"] {
+  transition: none;
 }
 
 .photo-preview-dialog__content {
@@ -530,6 +537,10 @@ p {
 
 .photo-preview-dialog__content:focus {
   outline: none;
+}
+
+.preview-sheet-handle {
+  display: none;
 }
 
 .preview-header {
@@ -724,6 +735,19 @@ p {
     max-height: 92vh;
     border-radius: 14px 14px 0 0;
     padding-bottom: 18px;
+  }
+
+  .preview-sheet-handle {
+    justify-self: center;
+    display: block;
+    width: 44px;
+    height: 5px;
+    border-radius: 999px;
+    background: #9aa5b1;
+  }
+
+  .preview-drag-region {
+    touch-action: none;
   }
 
   .preview-header {
