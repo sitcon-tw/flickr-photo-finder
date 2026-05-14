@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useReducer, useRef, useState, type CSSProperties, type PointerEvent, type TouchEvent } from "react";
-import { Dialog, Modal, ModalOverlay } from "react-aria-components";
+import { Button, Dialog, ListBox, ListBoxItem, Modal, ModalOverlay, Popover, type Selection } from "react-aria-components";
 import { candidateCopyText, selectedPhotos } from "../../app-core/candidate-copy";
 import { loadFinderData } from "../../app-core/data-loader";
 import { applySearchRegistry, filterAndSortPhotos } from "../../app-core/search-sort";
@@ -947,6 +947,91 @@ function FilterSelect({
   );
 }
 
+function FilterMultiSelect({
+  definition,
+  options,
+  values,
+  onChange,
+}: {
+  definition: FilterDefinition;
+  options: FilterOption[];
+  values: string[];
+  onChange: (values: string[]) => void;
+}) {
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const [open, setOpen] = useState(false);
+  const selectedLabels = values
+    .map((value) => options.find((option) => option.value === value)?.label ?? value)
+    .filter(Boolean);
+  const summary = selectedLabels.length > 0 ? selectedLabels.slice(0, 2).join("、") : "不限";
+  const extraCount = selectedLabels.length > 2 ? ` +${selectedLabels.length - 2}` : "";
+  const selectedKeys = new Set(values);
+
+  function setPopoverOpen(nextOpen: boolean) {
+    setOpen(nextOpen);
+    if (!nextOpen) {
+      window.requestAnimationFrame(() => triggerRef.current?.focus());
+    }
+  }
+
+  function updateSelection(selection: Selection) {
+    if (selection === "all") {
+      onChange(options.map((option) => option.value));
+      return;
+    }
+    onChange([...selection].map((key) => String(key)));
+  }
+
+  return (
+    <div className="filter-multiselect">
+      <span className="filter-multiselect__label">{definition.label}</span>
+      <Button
+        ref={triggerRef}
+        className="filter-multiselect__trigger"
+        aria-label={`${definition.label}：${selectedLabels.length > 0 ? selectedLabels.join("、") : "不限"}`}
+        aria-expanded={open}
+        onPress={() => setPopoverOpen(!open)}
+      >
+        <span>{summary}{extraCount}</span>
+        <span aria-hidden="true">▾</span>
+      </Button>
+      {open ? (
+        <Popover
+          className="filter-multiselect__popover"
+          triggerRef={triggerRef}
+          isOpen={open}
+          onOpenChange={setPopoverOpen}
+          placement="bottom start"
+          shouldFlip
+          offset={6}
+        >
+          <ListBox
+            className="filter-multiselect__list"
+            aria-label={definition.label}
+            selectionMode="multiple"
+            selectionBehavior="toggle"
+            selectedKeys={selectedKeys}
+            onSelectionChange={updateSelection}
+          >
+            {options.map((option) => (
+              <ListBoxItem key={option.value} id={option.value} textValue={option.label} className="filter-multiselect__option">
+                {({ isSelected }) => (
+                  <>
+                    <span className="filter-multiselect__mark" aria-hidden="true">
+                      {isSelected ? "✓" : ""}
+                    </span>
+                    <span>{option.label}</span>
+                  </>
+                )}
+              </ListBoxItem>
+            ))}
+          </ListBox>
+        </Popover>
+      ) : null}
+    </div>
+  );
+}
+
 function FilterSheetDialog({
   definitions,
   data,
@@ -984,7 +1069,7 @@ function FilterSheetDialog({
           </header>
           <div className="filter-grid">
             {definitions.map((definition) => (
-              <FilterSelect
+              <FilterMultiSelect
                 key={definition.key}
                 definition={definition}
                 options={filterOptions(data, definition, photos)}

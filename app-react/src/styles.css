@@ -160,6 +160,107 @@ p {
   padding: 6px 8px;
 }
 
+.filter-multiselect {
+  position: relative;
+  display: grid;
+  gap: 6px;
+  color: #52606d;
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.filter-multiselect__label {
+  line-height: 1.35;
+}
+
+.filter-multiselect__trigger {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  min-height: 44px;
+  border: 1px solid #bcccdc;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #1f2933;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  padding: 0 10px;
+  text-align: left;
+}
+
+.filter-multiselect__trigger span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.filter-multiselect__trigger[data-focus-visible] {
+  outline: 3px solid #9fc5f8;
+  outline-offset: 2px;
+}
+
+.filter-multiselect__popover {
+  z-index: 70;
+  width: min(320px, calc(100vw - 32px));
+  max-height: min(360px, calc(100vh - 120px));
+  overflow: auto;
+  border: 1px solid #bcccdc;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 18px 44px rgb(15 23 42 / 22%);
+  padding: 6px;
+}
+
+.filter-multiselect__list {
+  display: grid;
+  gap: 2px;
+  outline: none;
+}
+
+.filter-multiselect__option {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  min-height: 44px;
+  border-radius: 6px;
+  color: #1f2933;
+  cursor: pointer;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  padding: 0 8px;
+}
+
+.filter-multiselect__option[data-focused],
+.filter-multiselect__option[data-hovered] {
+  background: #edf1f5;
+}
+
+.filter-multiselect__option[data-selected] {
+  background: #e8f1fc;
+  color: #1a5fb4;
+}
+
+.filter-multiselect__mark {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border: 1px solid #9aa5b1;
+  border-radius: 5px;
+  font-size: 0.875rem;
+  line-height: 1;
+}
+
+.filter-multiselect__option[data-selected] .filter-multiselect__mark {
+  border-color: #1a5fb4;
+  background: #1a5fb4;
+  color: #ffffff;
+}
+
 .task-mode-panel {
   display: grid;
   gap: 10px;
