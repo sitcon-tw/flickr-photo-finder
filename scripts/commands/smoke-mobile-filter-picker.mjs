@@ -14,11 +14,25 @@ const chromeCandidates = [
   "chromium-browser",
   "chromium",
 ].filter(Boolean);
+const cdpTimeoutMs = 15000;
+const smokeTimeoutMs = 60000;
 
 function delay(ms) {
   return new Promise((resolve) => {
     setTimeout(resolve, ms);
   });
+}
+
+function logProgress(message) {
+  console.error(`[mobile-filter-smoke] ${message}`);
+}
+
+function withTimeout(promise, timeoutMs, label) {
+  let timeout;
+  const timeoutPromise = new Promise((_, reject) => {
+    timeout = setTimeout(() => reject(new Error(`Timed out during ${label}`)), timeoutMs);
+  });
+  return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timeout));
 }
 
 async function availablePort() {
@@ -68,6 +82,7 @@ async function findChromeCommand() {
 }
 
 async function prepareArtifact() {
+  logProgress("building local Pages artifact");
   await rm(artifactDir, { recursive: true, force: true });
   const result = await buildPagesArtifact({
     outputDir: artifactDir,
@@ -84,18 +99,32 @@ async function launchChrome(debugPort) {
   await rm(chromeProfileDir, { recursive: true, force: true });
   await mkdir(chromeProfileDir, { recursive: true });
   const chromeCommand = await findChromeCommand();
+  const version = spawnSync(chromeCommand, ["--version"], { encoding: "utf8" });
+  logProgress(`launching ${chromeCommand}${version.stdout ? ` (${version.stdout.trim()})` : ""}`);
   const chrome = spawn(chromeCommand, [
     "--headless=new",
+    "--disable-background-networking",
+    "--disable-extensions",
     "--disable-gpu",
+    "--disable-dev-shm-usage",
+    "--disable-setuid-sandbox",
+    "--no-default-browser-check",
+    "--no-first-run",
     "--no-sandbox",
+    "--remote-allow-origins=*",
+    "--remote-debugging-address=127.0.0.1",
     `--remote-debugging-port=${debugPort}`,
     `--user-data-dir=${chromeProfileDir}`,
     "about:blank",
   ], {
-    stdio: ["ignore", "ignore", "pipe"],
+    stdio: ["ignore", "pipe", "pipe"],
   });
 
+  let stdout = "";
   let stderr = "";
+  chrome.stdout.on("data", (chunk) => {
+    stdout += chunk.toString();
+  });
   chrome.stderr.on("data", (chunk) => {
     stderr += chunk.toString();
   });
@@ -106,9 +135,11 @@ async function launchChrome(debugPort) {
   });
 
   try {
-    await waitForHttp(`http://127.0.0.1:${debugPort}/json/version`);
+    await waitForHttp(`http://127.0.0.1:${debugPort}/json/version`, cdpTimeoutMs);
   } catch (error) {
-    throw new Error(`Timed out waiting for ${chromeCommand}. Set CHROME_BIN if Chrome is installed at a different path. ${error.message}`);
+    const chromeOutput = [stdout.trim(), stderr.trim()].filter(Boolean).join("\n").slice(-3000);
+    const outputHint = chromeOutput ? ` Chrome output:\n${chromeOutput}` : "";
+    throw new Error(`Timed out waiting for ${chromeCommand}. Set CHROME_BIN if Chrome is installed at a different path. ${error.message}.${outputHint}`);
   }
   return chrome;
 }
@@ -128,6 +159,7 @@ function connect(wsUrl) {
   const socket = new WebSocket(wsUrl);
   let nextId = 1;
   const pending = new Map();
+  let settled = false;
 
   socket.addEventListener("message", (event) => {
     const message = JSON.parse(event.data);
@@ -142,15 +174,36 @@ function connect(wsUrl) {
       resolve(message.result);
     }
   });
+  socket.addEventListener("close", () => {
+    for (const { reject } of pending.values()) {
+      reject(new Error("Chrome WebSocket connection closed"));
+    }
+    pending.clear();
+  });
 
   return new Promise((resolve, reject) => {
+    const openTimeout = setTimeout(() => {
+      if (!settled) {
+        settled = true;
+        socket.close();
+        reject(new Error("Timed out connecting to Chrome WebSocket"));
+      }
+    }, cdpTimeoutMs);
     socket.addEventListener("open", () => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      clearTimeout(openTimeout);
       resolve({
         call(method, params = {}) {
           const id = nextId++;
           socket.send(JSON.stringify({ id, method, params }));
-          return new Promise((methodResolve, methodReject) => {
+          const callPromise = new Promise((methodResolve, methodReject) => {
             pending.set(id, { resolve: methodResolve, reject: methodReject });
+          });
+          return withTimeout(callPromise, cdpTimeoutMs, `Chrome DevTools ${method}`).finally(() => {
+            pending.delete(id);
           });
         },
         close() {
@@ -158,7 +211,13 @@ function connect(wsUrl) {
         },
       });
     });
-    socket.addEventListener("error", () => reject(new Error("Chrome WebSocket connection failed")), { once: true });
+    socket.addEventListener("error", () => {
+      if (!settled) {
+        settled = true;
+        clearTimeout(openTimeout);
+        reject(new Error("Chrome WebSocket connection failed"));
+      }
+    }, { once: true });
   });
 }
 
@@ -207,6 +266,7 @@ async function waitForPageReady(client) {
 }
 
 async function runSmoke(client, pageUrl) {
+  logProgress("configuring mobile viewport");
   await client.call("Page.enable");
   await client.call("Runtime.enable");
   await client.call("Emulation.setDeviceMetricsOverride", {
@@ -215,9 +275,11 @@ async function runSmoke(client, pageUrl) {
     deviceScaleFactor: 2,
     mobile: true,
   });
+  logProgress(`navigating to ${pageUrl}`);
   await client.call("Page.navigate", { url: pageUrl });
   await waitForPageReady(client);
 
+  logProgress("opening mobile filter sheet");
   const filterEntryPoint = await evaluate(client, `(() => {
     const button = document.querySelector('#mobileFilterButton');
     const rect = button?.getBoundingClientRect();
@@ -229,6 +291,7 @@ async function runSmoke(client, pageUrl) {
   await click(client, filterEntryPoint);
   await delay(250);
 
+  logProgress("opening scene enhanced select");
   const triggerPoint = await evaluate(client, `(() => {
     const label = [...document.querySelectorAll('.search-panel.is-filter-open label')]
       .find((item) => item.querySelector('span')?.textContent?.includes('場景'));
@@ -243,6 +306,7 @@ async function runSmoke(client, pageUrl) {
   await click(client, triggerPoint);
   await delay(300);
 
+  logProgress("checking contextual select panel");
   const openState = await evaluate(client, `(() => {
     const trigger = document.querySelector('.search-panel.is-filter-open label[data-filter-key="scene"] .enhanced-select-trigger');
     const panel = document.querySelector('.search-panel.is-filter-open label[data-filter-key="scene"] .enhanced-select-panel');
@@ -291,6 +355,7 @@ async function runSmoke(client, pageUrl) {
   if (!optionPoint) {
     throw new Error("Scene option '攤位' was not found");
   }
+  logProgress("selecting scene option");
   await click(client, optionPoint);
   await delay(300);
 
@@ -312,20 +377,22 @@ let chrome;
 let client;
 
 try {
-  const outputDir = await prepareArtifact();
-  const appPort = await availablePort();
-  staticServer = startStaticServer({
-    rootDir: outputDir,
-    port: appPort,
-    title: "Mobile filter smoke",
-  });
-  await waitForHttp(`http://127.0.0.1:${appPort}/`);
+  await withTimeout((async () => {
+    const outputDir = await prepareArtifact();
+    const appPort = await availablePort();
+    staticServer = startStaticServer({
+      rootDir: outputDir,
+      port: appPort,
+      title: "Mobile filter smoke",
+    });
+    await waitForHttp(`http://127.0.0.1:${appPort}/`);
 
-  const debugPort = await availablePort();
-  chrome = await launchChrome(debugPort);
-  const wsUrl = await openPage(debugPort, `http://127.0.0.1:${appPort}/`);
-  client = await connect(wsUrl);
-  await runSmoke(client, `http://127.0.0.1:${appPort}/`);
+    const debugPort = await availablePort();
+    chrome = await launchChrome(debugPort);
+    const wsUrl = await openPage(debugPort, `http://127.0.0.1:${appPort}/`);
+    client = await connect(wsUrl);
+    await runSmoke(client, `http://127.0.0.1:${appPort}/`);
+  })(), smokeTimeoutMs, "mobile filter smoke");
   console.log("Mobile filter picker smoke passed.");
 } catch (error) {
   console.error(`Mobile filter picker smoke failed: ${error.message}`);
