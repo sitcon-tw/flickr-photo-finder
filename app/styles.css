@@ -821,6 +821,10 @@ select {
   border-bottom-left-radius: 0;
 }
 
+.candidate-copy-menu-label {
+  display: none;
+}
+
 .candidate-copy-menu-list {
   position: absolute;
   z-index: 5;
@@ -1790,7 +1794,56 @@ select {
     font-size: 12px;
   }
 
-  .candidate-actions,
+  .candidate-actions {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .candidate-copy-menu {
+    display: contents;
+  }
+
+  .candidate-copy-menu-button {
+    order: 1;
+    grid-column: 1;
+    min-width: 0;
+    border-color: var(--line);
+    border-radius: 6px;
+    background: var(--panel);
+    color: var(--text);
+  }
+
+  .candidate-copy-menu-button:not(:disabled):hover {
+    border-color: var(--accent);
+    background: var(--panel);
+    color: var(--accent-strong);
+  }
+
+  .candidate-copy-menu-icon {
+    display: none;
+  }
+
+  .candidate-copy-menu-label {
+    display: inline;
+  }
+
+  .candidate-copy-button {
+    order: 2;
+    grid-column: 2;
+    border-radius: 6px;
+  }
+
+  #clearCandidatesButton {
+    order: 3;
+    grid-column: 1 / -1;
+  }
+
+  .candidate-copy-menu-list {
+    position: static;
+    order: 0;
+    grid-column: 1 / -1;
+    min-width: 0;
+  }
+
   .ai-assistant-actions {
     grid-template-columns: 1fr;
   }
