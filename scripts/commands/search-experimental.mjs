@@ -37,6 +37,7 @@ const structuredFields = [
 const descriptionField = { name: "visual_description", weight: 3 };
 const defaultTop = 5;
 const defaultScoring = "current";
+const idfDescriptionRawScoreCap = 14;
 const defaultProposalFile = "metadata-proposals.json";
 const defaultRunPhotosFile = "photos.json";
 const searchAliasesPath = "data/search-aliases.json";
@@ -371,6 +372,10 @@ function scoreText(queryTokens, queryCompact, text, fieldName, scoringContext) {
   const textCompact = compactText(text);
   if (queryCompact && textCompact.includes(queryCompact)) {
     score += scoringContext.scoring === "idf" ? 1.5 : 3;
+  }
+
+  if (scoringContext.scoring === "idf" && fieldName === descriptionField.name) {
+    return Math.min(score, idfDescriptionRawScoreCap);
   }
 
   return score;

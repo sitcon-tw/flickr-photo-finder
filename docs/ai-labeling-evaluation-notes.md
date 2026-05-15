@@ -48,6 +48,7 @@ pnpm ai:report -- --runs tmp/ai-runs/<attempt-a> tmp/ai-runs/<attempt-b>
 
 ```bash
 pnpm eval:search -- --run-dir tmp/ai-runs/<run-id-or-attempt>
+pnpm eval:search -- --photos tmp/sheets-export/photos.csv --scoring idf --query "網站橫幅可放字的講者照片"
 ```
 
 接著抽查 `metadata-diff.md` 與圖片本身。若要確認正式 Sheets 將被更新哪些 cells，再執行 dry-run：
@@ -57,6 +58,26 @@ pnpm sheets:apply-ai-updates -- --run-dir tmp/ai-runs/<run-id>
 ```
 
 只有人類確認後，才加上 `--write`。正式 `reviewed` 仍應在 Google Sheets 中由志工協作完成。
+
+## 2026-05-16 Sheets 匯出欄位分布回顧
+
+本節來自當時本機 `tmp/sheets-export/photos.csv` 與 `tmp/sheets-export/albums.csv` 的快取，目的是記錄本輪 prompt 與工具調整的依據。這些數字只代表該次匯出，不應被視為永久資料狀態。
+
+確認事實：
+
+- `photos.csv` 有 12057 張照片；當時 `curation_status` 全部是 `ai_labeled`，沒有 `reviewed`。
+- `recommended_uses` 分布集中：`活動回顧` 2985、`講者宣傳` 1724、`社群貼文` 1087、`簡報` 1045、`社群介紹` 389、`志工招募` 131、`網站橫幅` 83、`贊助成果報告` 71、`新聞稿` 47；`投稿宣傳`、`報名宣傳`、`贊助提案` 當時為 0。
+- `safe_crop` 填寫偏少：12057 張中只有 773 張有值；其中 `16:9` 584、`1:1` 259、`9:16` 34。
+- `has_negative_space = true` 有 2984 張，數量遠高於已有 `safe_crop` 的照片，代表設計取用欄位之間存在明顯落差。
+- `visual_description` 當時都有值，但出現高頻泛詞與批次語言，例如「畫面」、「可見」、「呈現」、「人物」、「參與者」、「互動」、「交流」、「同批」、「鄰近照片」等。這些詞若沒有搭配具體物件、動作、文字或位置，對搜尋幫助有限。
+
+本輪調整方向：
+
+- `recommended_uses` 不再只用「是否適合」描述，而是要求模型依 12 種用途寫出用途期待與可見證據。缺少證據就省略，避免把 `活動回顧`、`社群貼文` 當成預設分類。
+- `safe_crop` 從消極的「能裁才標」改成設計任務式判斷：橫式、留白、牆面、背板、舞台、講台、投影幕或前景/背景線索都應主動檢查 `16:9`，但 reason 必須說明裁切後保留什麼。
+- `has_negative_space = true` 必須指出可放字位置，例如左側白牆、上方投影旁、右側背板空區或大片地面；只寫「有留白」不夠。
+- `visual_description` 加強品質警訊：批次比較語、「第 N 張」、過度泛稱人物、只有互動/交流而缺乏具體物件或位置，都應進入 warning 或人工抽查。
+- 搜尋評估先用 `pnpm eval:search -- --scoring idf` 降低高頻泛詞影響，再決定是否調整公開前端排序。這避免在沒有排序證據前直接改 UI。
 
 ## 目前測試觀察
 

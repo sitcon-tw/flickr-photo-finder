@@ -46,6 +46,14 @@ pnpm ai:prepare -- --album ALBUM_ID --limit all --status all --image-size large-
 pnpm ai:prepare -- --photo-ids PHOTO_ID --image-size original
 ```
 
+若要補強設計用途欄位，例如 `safe_crop`、`has_negative_space` 與網站橫幅候選，可用設計 metadata 焦點抽樣：
+
+```bash
+pnpm ai:prepare -- --focus design-metadata --limit 50 --image-size large-1024
+```
+
+這個 profile 會從 `tmp/sheets-export/photos.csv` 選出尚未有 `safe_crop`、且看起來可能有設計用途的照片；包含橫式照片、`has_negative_space = true`、既有用途或場景有網站/社群/講者/新聞/簡報線索，或 `visual_description` 有留白、牆面、背板、舞台、投影幕等版面詞彙的照片。若未指定 `--status`，此 profile 預設包含所有 `curation_status`，因為這類補強常發生在已 AI 初標但設計欄位不足的照片上。
+
 `--limit all` 代表不設上限；若不指定，預設最多準備 50 張。`ai:prepare` 會輸出 `tmp/ai-runs/<run-id>/`，並在同一個目錄寫入 `ai-labeling-prompt.md`。正式輸入與最終輸出應以這個 run 目錄為準；若照片量很大，分片中間檔可以依下方大型 run 流程放在 `/tmp`。
 
 若這次目的不是整理某一本相簿，而是回頭驗證欄位、taxonomy 或 prompt 是否能跨活動場景成立，請改用跨活動抽樣：
@@ -273,9 +281,10 @@ pnpm ai:report -- --runs tmp/ai-runs/<attempt-a> tmp/ai-runs/<attempt-b> tmp/ai-
 ```bash
 pnpm eval:search -- --run-dir tmp/ai-runs/<attempt-or-run>
 pnpm eval:search -- --run-dir tmp/ai-runs/<attempt-or-run> --query "有留白的橫式講者照片" --top 10
+pnpm eval:search -- --photos tmp/sheets-export/photos.csv --scoring idf --query "網站橫幅可放字的講者照片"
 ```
 
-這個 prototype 不呼叫 LLM、不抓圖片，也不寫入 Sheets；它只比較 taxonomy-only baseline 與 taxonomy + `visual_description` 的排序差異。
+這個 prototype 不呼叫 LLM、不抓圖片，也不寫入 Sheets；它只比較 taxonomy-only baseline 與 taxonomy + `visual_description` 的排序差異。`--scoring idf` 會用資料集中的詞頻降低高頻泛詞影響，並在 `visual_description` 中額外降權 `畫面`、`可見`、`呈現`、`有人`、`人物`、`參與者`、`互動`、`交流` 等低資訊詞。調整搜尋端前，建議先用這個模式確認哪些 query 的排序確實改善。
 
 ### 8. 進階：只執行單一步驟
 
@@ -333,6 +342,7 @@ pnpm sheets:apply-ai-updates -- --run-dir tmp/ai-runs/<run-id> --allow-current-m
 - `mood_tags` 的 reason 要寫可見依據，例如「多人舉手互動」、「志工在地上整理物資」、「講者站在正式背板前說明」；不要只寫「看起來專業」、「氣氛友善」。
 - `recommended_uses` 應選最有區辨度的 1 到 3 個用途；不要把 `活動回顧` 當成所有照片的預設答案。
 - `活動回顧` 不是「這是活動照片」的同義詞。只有照片能代表流程、重要場面、互動狀態、活動成果或現場特色時才使用。
+- 用途判斷應看「這張照片能服務哪個工作」而不是「這張照片有哪些 tag」。例如 `網站橫幅` 要有留白與版面可裁切性；`志工招募` 要看得到工作或協作狀態；`投稿宣傳` 要看得到發表、討論或工作坊脈絡；`報名宣傳` 要能代表參與者體驗；`講者宣傳` 要能看出講者或發表場景；`簡報` 要能當成清楚視覺佐證；贊助相關用途要有曝光、品項或贊助價值證據。
 - 若只能勉強推論，寧可少填，不要填滿。
 
 ### 畫面描述
@@ -340,6 +350,9 @@ pnpm sheets:apply-ai-updates -- --run-dir tmp/ai-runs/<run-id> --allow-current-m
 - `visual_description` 是自然語言搜尋與人工找圖輔助欄位，不是照片標題，也不是某個欄位的 reason。
 - 請寫 1 到 2 句中立描述，只描述照片中可見內容。
 - 優先描述 taxonomy 欄位難以涵蓋的長尾細節，例如物件、文字、姿勢、動作、表情、空間位置、構圖關係。
+- 優先使用能幫助搜尋的具體詞：桌面物、衣著或配件、看板文字、舞台/背板/投影幕、手勢、表情、前景/背景/左側/右側/中央、留白位置與遮擋關係。
+- `畫面`、`可見`、`呈現`、`有人`、`人物`、`參與者`、`互動`、`交流` 這類詞如果沒有搭配具體物件、動作、文字或位置，搜尋價值很低。
+- 不要接受「第 N 張」、「同批」、「鄰近照片」、「相近照片」或和其他照片比較的描述；應改成本張照片可見內容。
 - 不要重複機械欄位，例如「橫式照片」、「有 5 人」，除非這些資訊對理解畫面構圖有必要。
 - 不要自行補活動名稱、年份、身份、單位或贊助商推論；若照片中清楚可見文字，可寫成「畫面可見文字……」。
 - 避免空泛句，例如「畫面有人在交流」或「活動現場照片」。不同照片不可套用完全或近似相同的描述。
@@ -347,10 +360,13 @@ pnpm sheets:apply-ai-updates -- --run-dir tmp/ai-runs/<run-id> --allow-current-m
 ### 設計取用欄位
 
 - `has_negative_space` 是照片中是否有明顯留白可放標題、活動資訊或贊助訊息。只要圖片可讀，AI 通常應提出 `true` 或 `false` 候選值。
+- `has_negative_space = true` 的 reason 要說出位置與背景，例如左側白牆、上方投影旁、右側背板空區或大片地面；只寫「有留白」不足以人工採用。
 - `safe_crop` 是常見版型是否能安全裁切。判斷時要確認裁切後主體、臉部、重要文字與主要物件不會被切掉。
 - `safe_crop` 可用值以 `data/tag-taxonomy.json` 為準；目前常見用途是 `1:1`、`16:9`、`9:16`。
 - 若照片沒有安全裁切比例，省略 `safe_crop`，不要用空泛 reason 勉強提出。
 - 橫式照片不等於 `16:9` 安全。若上下裁切會切到人臉、投影片文字、背板 Logo、桌面物件或重要手勢，就不要輸出該比例。
+- 但若照片是橫式、已有留白，或描述中有牆面、背板、舞台、講台、投影幕、前景/背景等版面線索，應主動檢查 `16:9`，不要整批漏標。
+- `safe_crop` 的 reason 要說明裁切後保留什麼，例如人物臉部、講者與投影幕、桌上物件、背板文字或 Logo。只寫「橫式照片」或「構圖適合」應退回修正。
 - 這兩個欄位對社群宣傳、網站橫幅、簡報與設計素材很重要，不只是攝影描述。
 
 ### reason 寫法

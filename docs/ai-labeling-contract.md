@@ -55,6 +55,7 @@ AI 或 agent 應以 `photos.json` 作為主要機器可讀輸入；`input-photos
 - `download_enabled`: 若為 `false`，可能沒有本機圖片檔，只能使用 `image_download_url`。
 - `selected_photo_count`: 本次選入的照片數量。
 - `photos_source`: 這次 run 來源的 `photos.csv`。
+- `requested_focus`: 若操作者使用焦點抽樣，這裡會記錄 profile，例如 `design-metadata`。它只描述選樣目的，不代表照片一定要輸出該類欄位。
 - `prompt_template_path`、`prompt_template_sha256`: 產生本次 `ai-labeling-prompt.md` 的 prompt 範本與 SHA-256。比較多模型或多輪結果時，這兩個值可用來確認是否使用同一版 prompt。
 
 ### `photos.json`
@@ -242,10 +243,14 @@ AI 應遵守以下限制：
 - `scene_tags` 仍是人工 `reviewed` 的完成門檻。這代表人類在 Sheets 完成審核前要補齊或確認，不代表 AI proposal 缺漏時應被 validator hard fail。
 - `subject_type` 只描述照片第一眼主要視覺主體是 `people`、`object`、`food`、`text_signage`、`screen` 或 `space`，不描述活動場景、人數規模、用途或品質。若主體是人，不論一人、多人或群眾都使用 `people`；人數規模只用 `people_count` 表達。
 - `safe_crop` 應從版面可用性判斷。只有在裁切後主體、臉部、重要文字與主要物件仍可保留時才提出該比例。
+- `has_negative_space = true` 必須能說明可放字區域的位置，例如左側牆面、上方投影旁、右側背板空區或大片地面；只寫「有留白」不足以支撐人工 review。
+- `safe_crop` 的 reason 必須說明該比例裁切後保留哪些主體、臉部、文字、Logo、螢幕或物件；只寫「橫式照片」或「構圖適合」不足以支撐人工 review。
 - `visual_description` 應描述 taxonomy 欄位難以涵蓋的可見細節，例如物件、文字、姿勢、動作、表情、空間位置與構圖關係。它不是照片標題，也不是欄位 reason。
 - `visual_description` 不應重複機械欄位，例如「橫式照片」、「有 5 人」；除非人數或方向對理解畫面構圖有必要。
 - `visual_description` 不應寫活動名稱、年份、身份、單位或贊助商推論，除非文字清楚出現在照片中，且應以「畫面可見文字」描述。
+- `visual_description` 不應使用批次比較語，例如「第 N 張」、「同批」、「鄰近照片」、「相近照片」；也不應只靠 `畫面`、`可見`、`呈現`、`人物`、`參與者`、`互動`、`交流` 這類泛詞而缺少具體物件、動作、文字或位置。
 - `recommended_uses` 應避免全部落在通用用途；請優先提出能幫助取圖排序與情境判斷的用途。
+- `recommended_uses` 必須有用途期待與可見證據支撐。例如 `網站橫幅` 應能支撐留白與版面裁切，`志工招募` 應看得到工作或協作狀態，`講者宣傳` 應看得到講者或發表脈絡，贊助相關用途應有贊助品項或贊助價值證據。
 - `reason` 必須只依據圖片可見內容或 `photos.json` 既有 metadata，不應自行補上未確認的活動名稱、身份、單位或年份。
 - 讀圖欄位的 reason 和 `visual_description` 都不應跨照片重複套用模板。若多張照片建議值相同，也要描述每張照片各自的可見證據。
 - 若現有 taxonomy 無法準確描述照片，應省略不精準欄位，並在人工檢查時另外記錄 taxonomy gap，不要硬套錯誤標籤。
