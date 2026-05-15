@@ -123,7 +123,7 @@ https://docs.google.com/spreadsheets/d/<spreadsheetId>/gviz/tq?tqx=out:csv&sheet
 - `app/data-loader.js` 負責讀取 project config、schema、taxonomy、search aliases 與 `photos` CSV，並依 schema 正規化 list 欄位、sheet row number 與 `search_text`。
 - `app/controls.js` 負責查詢 DOM controls/elements、建立可搜尋 multi-select / token autocomplete、填入篩選選項、任務模式按鈕、任務感知篩選分層與 active filter entry。控制項狀態仍由 `main.js` 的 finder state 組合進 render loop。
 - `app/overview-render.js` 負責索引概覽統計與 DOM render；統計規則應從 `photoSchema`、`option_labels` 與照片資料推導。
-- `app/photo-render.js` 負責主照片卡、Flickr / Finder / Sheets 連結、圖片尺寸下載、狀態 badge、排序訊號與卡片內 action。它接受目前 task/search/sort state 與 callback，不自行讀全域控制項。
+- `app/photo-render.js` 負責主照片卡與照片預覽 dialog 的 render。主照片卡維持視覺優先，只呈現大圖、預覽入口與候選快速操作；photo id、整理狀態、Flickr / Finder / Sheets 連結、圖片尺寸下載與完整 metadata 應集中在預覽 dialog。它接受目前 task/search/sort state 與 callback，不自行讀全域控制項。
 - `app/result-render.js` 負責結果狀態文字、active filter chips、task mode active state、load-more panel 與 empty state。
 - `app/main.js` 保留 bootstrap、專案設定套用、state、URL state、資料載入順序、事件 wiring 與 render loop 組合。新增前端行為時，先判斷是否屬於上述模組；只有跨模組協調才留在 `main.js`。
 
@@ -137,21 +137,27 @@ https://docs.google.com/spreadsheets/d/<spreadsheetId>/gviz/tq?tqx=out:csv&sheet
 
 篩選狀態應以 finder state 為唯一來源，DOM 控制項只負責呈現與發出變更事件。所有篩選欄位都以陣列表示，即使資料欄位本身是單值，例如照片方向或整理狀態。篩選語意固定為同一欄位內 OR、不同欄位間 AND；active chips 應一值一顆，移除時只移除該值，不清掉整個欄位。
 
-篩選區應採「固定核心 + 任務重點 + 進階條件」分層，而不是把整份 schema 攤在第一層。固定核心包含任務模式、搜尋、活動/相簿、排序與清除。任務重點依目前任務提升相關條件，例如網站橫幅與設計素材提升方向、留白與裁切，贊助提案與贊助成果提升贊助價值與贊助品項。其他條件保留在進階區，讓使用者需要時再收斂。
+篩選區應採「固定核心 + 任務重點 + 進階條件」分層，而不是把整份 schema 攤在第一層。固定核心包含任務模式、搜尋、活動/相簿、排序與清除。主要找圖條件應先放使用者最常用來收斂照片的欄位，目前排序為用途、主體、氛圍、場景，再接續人數、照片方向、留白、安全裁切、贊助價值、贊助品項、使用提醒、推薦優先度、整理狀態與素材包。`subject_type` 已是主要收斂條件，應放在用途之後、氛圍之前。任務重點依目前任務提升相關條件，例如網站橫幅與設計素材提升方向、留白與裁切，贊助提案與贊助成果提升贊助價值與贊助品項。其他條件保留在進階區，讓使用者需要時再收斂。
+
+清除按鈕應協助使用者辨識自己目前是否位在已收斂的結果狀態。只要存在搜尋字串、非預設任務模式、非預設排序或任何篩選條件，清除按鈕就應以 active 樣式呈現；清除後回到預設狀態才移除 active 樣式。
 
 面對上千或上萬張照片時，公開前端應以「工作任務」作為初始心智模型，而不是只提供欄位表單。任務模式可以調整推薦排序權重，但不應隱藏資料；使用者仍可透過活動/相簿、構圖、留白、裁切、場景、用途、贊助品項與素材包等欄位自行收斂結果。結果狀態列應清楚說明任務模式是排序情境，不是硬篩選。
 
-`curation_status` 與 `public_use_status` 不應成為主要找圖入口。照片量級很大時，只有少量照片會是人工處理過的整理狀態；若把 `reviewed` 或 `approved` 放成第一層門檻，Finder 會過早排除大量仍可探索的公開 Flickr 照片。這兩個欄位應保留在進階篩選與卡片狀態中，作為使用前提醒與後續檢查依據，而不是預設探索範圍。
+`curation_status` 與 `public_use_status` 不應成為主要找圖入口。照片量級很大時，只有少量照片會是人工處理過的整理狀態；若把 `reviewed` 或 `approved` 放成第一層門檻，Finder 會過早排除大量仍可探索的公開 Flickr 照片。這兩個欄位應保留在進階篩選與預覽細節中，作為使用前提醒與後續檢查依據，而不是預設探索範圍。
 
 活動/相簿篩選應使用 `album_ids` 作為主要判斷，並以 `event_year`、`event_name` 與 `album_title` 組成可讀選項文字；若舊資料沒有 `album_ids`，才退回用 `album_title` 比對。這是硬篩選，服務已知道目標活動或相簿的使用者，不應取代任務模式或文字搜尋。
 
-照片卡片第一屏應顯示可複製的 `photo_id`，讓已經打開 Google Sheets 的資料維護者能快速貼到搜尋框找到同一列進行編輯。若有具體排序訊號，可以在 `photo_id` 後補上 `用途命中`、`橫式`、`16:9`、`有留白`、`高優先` 等短提示；整理狀態應留在上方狀態 badge，不應重複當作排序提示。若沒有具體訊號，不應顯示「符合目前排序條件」這類無法協助維護的 fallback 文字。
+照片卡片應優先服務日常找圖的視覺掃描，而不是把維護資訊外顯在結果牆上。主卡片只保留大圖、預覽入口與候選快速操作；`photo_id`、整理狀態、使用提醒、完整欄位與資料維護連結都應收進 `photoPreviewDialog`。這讓使用者先用影像判斷是否值得細看，避免在大量照片牆中被 metadata 噪音干擾。
+
+卡片上的主要動作是預覽照片。桌機或精準指標環境中，未加入候選的卡片可在 hover 或 keyboard focus 時顯示 `候選` 快速按鈕；已加入候選的卡片則無論 hover 與否都應持續顯示 `已加入`，同時允許使用者直接從卡片移除。手機版不要求未加入狀態的 `候選` 按鈕外顯，使用者可以進入預覽後再加入候選；已加入狀態仍可作為卡片上的持續提示。候選快速操作不得取代預覽入口，也不應讓使用者誤以為點擊照片會直接開 Flickr 原頁。
+
+預覽 dialog 是照片細節與維護操作的集中位置。它應顯示 photo id、整理狀態、使用提醒、用途、主體、氛圍、場景、構圖、贊助欄位、描述與備註，並提供候選切換、下載大圖、原圖頁、Google Sheets 列連結、Flickr URL 複製與 Finder URL 複製。資料維護者仍能在預覽中複製 `photo_id` 或前往 Sheets，但這不應重新成為卡片第一屏資訊。
 
 前端應提供 `推薦排序` 與 `探索更多` 兩種主要排序心智。`推薦排序` 保持找圖效率，優先呈現最符合任務、整理狀態較可靠、優先度較高的照片；`探索更多` 則在仍維持基本可用性的前提下，穩定分散年份、活動、相簿與素材包來源，避免所有人只看到同一小批高分照片。`探索更多` 不是正式使用頻率治理，也不應依賴隨機排序。
 
 公開前端也應提供「用 AI 助手找照片」的輔助入口，讓宣傳、設計、網站、公關、行銷等工作需求使用者，把正式 `photos` 工作表交給自己熟悉的 AI 助手，以自然語言探索還不能被固定篩選條件描述的需求。這個入口應放在候選清單附近，提供正式 Sheets 連結與可複製提示詞；提示詞應帶入目前任務模式、搜尋字串與已套用篩選，並提醒使用者若 AI 助手不能直接讀取 Google Sheets，就改提供 `photos` CSV。提示詞也應要求 AI 助手不要只找 `reviewed` 照片、不要自行推測缺失欄位。
 
-候選清單只存在瀏覽器當下狀態與 URL query，不寫回 Google Sheets。清單畫面應提供縮圖，避免只用 photo id 要求使用者記憶照片；複製出的清單應依用途分成不同格式。預設 IM 討論版應只保留編號與 Flickr URL，方便使用者在聊天工具中回覆「選第幾張」，必要時才附上簡短使用提醒。協作檢查版則應包含整批 Finder 清單連結、Google Sheets 列連結、Flickr URL、整理狀態與使用提醒，服務資料維護與跨角色檢查。純 Flickr URL 版應只輸出每張照片的 Flickr URL，方便工具或文件貼上。
+候選清單只存在瀏覽器當下狀態與 URL query，不寫回 Google Sheets。清單畫面應提供縮圖，避免只用 photo id 要求使用者記憶照片；照片卡片與預覽 dialog 都可以切換候選狀態，但同一張照片只能在候選清單中出現一次。複製出的清單應依用途分成不同格式。預設 IM 討論版應只保留編號與 Flickr URL，方便使用者在聊天工具中回覆「選第幾張」，必要時才附上簡短使用提醒。協作檢查版則應包含整批 Finder 清單連結、Google Sheets 列連結、Flickr URL、整理狀態與使用提醒，服務資料維護與跨角色檢查。純 Flickr URL 版應只輸出每張照片的 Flickr URL，方便工具或文件貼上。
 
 Google Sheets 列連結應貼近 Google Sheets UI 的「Get link to this cell」格式：`edit?gid=<sheetId>#gid=<sheetId>&range=A<row>`，例如正式 `photos` 工作表第 28 列是 `edit?gid=1663351240#gid=1663351240&range=A28`。`gid` 指定工作表，`range` 只放該工作表內的 cell，不要放 `photos!A28` 這種 sheet-qualified A1 notation。`photos` 的 sheet id 應記錄在 `config/project.json` 的 `googleSheets.photosSheetGid`。
 
@@ -192,6 +198,8 @@ HTML metadata 則需要 crawler 在執行 JavaScript 前就能讀到，因此 `p
 ## 搜尋規模
 
 GitHub Pages 前端目前仍一次讀取公開 CSV，但不可一次把所有照片卡片渲染到 DOM。前端應先替每筆照片建立可搜尋文字，再以 debounce 處理文字搜尋與篩選變更，並只渲染第一批結果。使用者需要看更多時再用 `載入更多` 增加顯示數量。
+
+production 資料已達萬張級，初始讀取公開 CSV 可能需要一秒以上。照片 grid 在資料載入前應呈現明確 loading state，例如 spinner 與 skeleton cards，並透過 `aria-busy` / status text 告知索引仍在讀取中；載入失敗才進入錯誤狀態。這個 loading feedback 是狀態辨識，不是裝飾動畫，因此即使使用者設定 `prefers-reduced-motion: reduce`，仍應保留足以辨識正在載入的視覺變化。
 
 目前推薦排序會優先考慮：
 
