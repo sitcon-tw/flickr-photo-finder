@@ -27,6 +27,7 @@
 rg -n "gtag|G-|google analytics|GA4|analytics|dataLayer|clipboard|copy_flickr_link|copy_finder_link|download_image_size|open_image_size|open_flickr|measurement" app docs data config scripts README.md package.json
 sed -n '1,220p' config/project.json
 sed -n '1,220p' app/index.html
+sed -n '1,260p' app/analytics.js
 sed -n '1,880p' app/main.js
 pnpm finder:build
 pnpm finder:check

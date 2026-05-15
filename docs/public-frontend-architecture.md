@@ -125,9 +125,49 @@ https://docs.google.com/spreadsheets/d/<spreadsheetId>/gviz/tq?tqx=out:csv&sheet
 - `app/overview-render.js` 負責索引概覽統計與 DOM render；統計規則應從 `photoSchema`、`option_labels` 與照片資料推導。
 - `app/photo-render.js` 負責主照片卡與照片預覽 dialog 的 render。主照片卡維持視覺優先，只呈現大圖、預覽入口與候選快速操作；photo id、整理狀態、Flickr / Finder / Sheets 連結、圖片尺寸下載與完整 metadata 應集中在預覽 dialog。它接受目前 task/search/sort state 與 callback，不自行讀全域控制項。
 - `app/result-render.js` 負責結果狀態文字、active filter chips、task mode active state、load-more panel 與 empty state。
-- `app/main.js` 保留 bootstrap、專案設定套用、state、URL state、資料載入順序、事件 wiring 與 render loop 組合。新增前端行為時，先判斷是否屬於上述模組；只有跨模組協調才留在 `main.js`。
+- `app/main.js` 保留 bootstrap、專案設定套用、state、URL state、資料載入順序、事件 wiring 與 render loop 組合。目前 preview action、候選清單 action menu、AI prompt copy 與 mobile sheet 手勢仍由 `main.js` 協調；新增或大幅修改這類 imperative interaction 時，應優先評估是否能抽成 controller module，不要把新的 domain logic 放回主檔。
 
-新增前端模組時，需同步 `scripts/commands/build-pages.mjs` 與 `scripts/commands/check-pages-artifact.mjs`，確保 GitHub Pages artifact 包含新檔案。可測試的純邏輯應加入 `pnpm finder:test`，並納入 `pnpm project:check`。
+新增由 `app/main.js` 可追蹤到的前端 ES module 時，`scripts/commands/build-pages.mjs` 與 `scripts/commands/check-pages-artifact.mjs` 會透過共用 import graph 自動複製與驗證；若新增的是非 JS 資源、資料檔或特殊產物，才需要同步 build/check 清單。可測試的純邏輯應加入 `pnpm finder:test`，並納入 `pnpm project:check`。
+
+## Pages 維護 checklist
+
+修改 Pages 前端前，先依影響範圍讀文件：
+
+- 一般 Pages 變更：`docs/README.md` 與本文件。
+- filter、task mode、URL key、狀態排序或跨介面 field set：再讀 `docs/shared-value-governance.md`，並從 `data/interface-registry.json` 修改 source of truth。
+- GA4 event、custom dimension 或分析流程：再讀 `docs/frontend-analytics-design.md` 與 `docs/ga4-operations.md`。
+- 歷史研究與驗收背景：只在需要理解設計脈絡時讀 `docs/public-frontend-agent-research.md`、`docs/public-frontend-mobile-research.md` 與 `docs/public-frontend-redesign-brief.md`；目前實作規格以本文件為準。
+
+常見改檔對照：
+
+- 搜尋、篩選、排序與 scoring：`app/search-sort.js`，測試放 `tests/pages-search-sort.test.mjs`。
+- URL state、deep link、候選清單 URL：`app/url-state.js`。
+- filter controls、enhanced select、task filter layout、active filter entry：`app/controls.js`；跨介面設定先改 `data/interface-registry.json`。
+- task mode defaults 與 page size 等 registry fallback：`app/task-modes.js`。
+- 照片卡片、preview dialog、照片 action：`app/photo-render.js` 與 `app/styles.css`。
+- 候選清單輸出格式：`app/candidates.js`。
+- AI 助手提示詞：`app/ai-assistant.js`。
+- GA4 事件 shaping：`app/analytics.js` 與呼叫事件的 UI 模組；custom dimensions source of truth 是 `config/ga4-custom-dimensions.json`。
+- 新增 `app/*.js` 模組：由 `app/main.js` 或其依賴模組 import；`finder:build` 與 `finder:check` 會共用 ES module import graph，避免 build/check 兩邊維護不同清單。
+
+驗證門檻：
+
+- 一般 Pages 邏輯變更：`pnpm finder:test`、`pnpm finder:build`、`pnpm finder:check`。
+- 發布前或跨模組變更：`pnpm project:check`。
+- mobile filter、bottom sheet、enhanced select 或小視窗互動：`pnpm finder:mobile-filter-smoke`。
+- registry / shared values：`pnpm shared-values:check`；若影響 Apps Script generated config，再跑 `pnpm apps-script:build-config -- --check`。
+- schema、taxonomy、fixture data 或 validation logic：`pnpm data:validate`。
+- GA4 custom dimensions：`pnpm analytics:dimensions:check`；真的要同步後台才依 `docs/ga4-operations.md` 使用 `--write`。
+
+常見陷阱：
+
+- Pages 前端是公開唯讀，不加 credential，不寫 Google Sheets，不呼叫 Apps Script Web App 取得寫入能力。
+- `fixtures/` 與 `tmp/sheets-export/` 不是 production data；真實資料來源仍是公開 Google Sheets。
+- GitHub Pages 發布 `tmp/pages` artifact，不發布 repo root。
+- 多選 filter URL 使用重複 query params，例如 `scene=攤位&scene=會眾`。
+- `public_use_status` 是使用提醒，不是 Flickr 是否公開；`curation_status = ai_labeled` 不等於人工 `reviewed`。
+- 卡片與 preview 的目前規格看本文件；redesign brief 是歷史 baseline，不是最新缺口清單。
+- GA4 不註冊 `photo_id`、`content_id`、`search_term`、`result_rank` 等高基數或可能敏感參數為 custom dimensions。
 
 公開前端右上角的外部連結由 `config/project.json` 控制。除了 Flickr 來源連結，也應提供 GitHub 專案連結，讓使用者能回到 repo 了解專案細節或回報問題。
 
@@ -171,7 +211,7 @@ GitHub Pages 應透過 GitHub Actions 發布乾淨的 Pages artifact，不應直
 
 - 公開搜尋前端所需的 HTML、CSS、JavaScript。
 - 經過資料流程產生或指定的公開資料來源設定。
-- `data/photo-schema.json`、`data/tag-taxonomy.json` 與 `data/search-aliases.json`，讓前端用同一份欄位、受控字彙、顯示文字與資料值搜尋同義詞來源理解資料。
+- `data/interface-registry.json`、`data/photo-schema.json`、`data/tag-taxonomy.json` 與 `data/search-aliases.json`，讓前端用同一份 filter/task policy、欄位、受控字彙、顯示文字與資料值搜尋同義詞來源理解資料。
 - 必要的靜態資源。
 
 artifact 不應包含：
@@ -187,11 +227,10 @@ HTML metadata 則需要 crawler 在執行 JavaScript 前就能讀到，因此 `p
 目前 repo 內的 `.github/workflows/pages.yml` 會在 pull request 執行 build/check，並在 `master` push 或手動觸發時部署：
 
 1. 安裝 pnpm dependencies。
-2. 執行 `pnpm data:validate`。
-3. 執行 `pnpm finder:build -- --output-dir tmp/pages`。
-4. 執行 `pnpm finder:check -- --dir tmp/pages`，確認 artifact 真的包含前端與資料設定。
-5. 非 pull request 時，上傳 `tmp/pages` 作為 GitHub Pages artifact。
-6. 非 pull request 時，使用 GitHub Pages deploy action 發布。
+2. 執行 `pnpm project:check`，涵蓋語言治理、shared values、syntax、Apps Script generated config、data validation、AI fixtures、finder tests、Pages build 與 artifact check。
+3. 執行 `pnpm finder:mobile-filter-smoke`，用 headless browser 檢查手機 filter picker 不退回不穩定的原生彈出層。
+4. 非 pull request 時，上傳 `tmp/pages` 作為 GitHub Pages artifact。
+5. 非 pull request 時，使用 GitHub Pages deploy action 發布。
 
 目前 repository Pages 來源已設定為 GitHub Actions。維護時若 Pages 無法部署，應先確認 repository Settings > Pages 仍使用 GitHub Actions 來源，再檢查 `.github/workflows/pages.yml` 的 build/check/deploy 結果。
 

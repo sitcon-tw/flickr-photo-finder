@@ -2,6 +2,7 @@ import { copyFile, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { googleSheetsSpreadsheetId, projectConfig } from "../lib/core/project-config.mjs";
+import { collectRelativeJavaScriptImportGraph } from "../lib/pages/js-import-graph.mjs";
 
 export const defaultOutputDir = "tmp/pages";
 
@@ -74,6 +75,16 @@ async function copyIntoArtifact(sourcePath, outputDir, targetPath = sourcePath) 
   const destination = join(outputDir, targetPath);
   await mkdir(dirname(destination), { recursive: true });
   await copyFile(sourcePath, destination);
+}
+
+async function copyPagesJavaScriptModules(outputDir) {
+  const files = await collectRelativeJavaScriptImportGraph({ rootDir: "app", entryFile: "main.js" });
+  for (const file of files) {
+    if (file === "config.js") {
+      continue;
+    }
+    await copyIntoArtifact(join("app", file), outputDir, file);
+  }
 }
 
 async function writePagesConfig(outputDir, { albumsCsvUrl, photosCsvUrl }) {
@@ -184,19 +195,7 @@ export async function buildPagesArtifact({
   await rm(outputDir, { recursive: true, force: true });
   await mkdir(outputDir, { recursive: true });
   await writeIndexHtml(outputDir);
-  await copyIntoArtifact("app/analytics.js", outputDir, "analytics.js");
-  await copyIntoArtifact("app/ai-assistant.js", outputDir, "ai-assistant.js");
-  await copyIntoArtifact("app/candidates.js", outputDir, "candidates.js");
-  await copyIntoArtifact("app/controls.js", outputDir, "controls.js");
-  await copyIntoArtifact("app/data-loader.js", outputDir, "data-loader.js");
-  await copyIntoArtifact("app/data-utils.js", outputDir, "data-utils.js");
-  await copyIntoArtifact("app/main.js", outputDir, "main.js");
-  await copyIntoArtifact("app/overview-render.js", outputDir, "overview-render.js");
-  await copyIntoArtifact("app/photo-render.js", outputDir, "photo-render.js");
-  await copyIntoArtifact("app/result-render.js", outputDir, "result-render.js");
-  await copyIntoArtifact("app/search-sort.js", outputDir, "search-sort.js");
-  await copyIntoArtifact("app/task-modes.js", outputDir, "task-modes.js");
-  await copyIntoArtifact("app/url-state.js", outputDir, "url-state.js");
+  await copyPagesJavaScriptModules(outputDir);
   await copyIntoArtifact("app/styles.css", outputDir, "styles.css");
   await copyIntoArtifact("app/assets/og-image.png", outputDir, "assets/og-image.png");
   await copyIntoArtifact("config/project.json", outputDir);

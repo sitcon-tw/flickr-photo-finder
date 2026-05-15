@@ -138,6 +138,8 @@
 
 ## 驗收
 
+以下為歷史驗收 baseline；目前卡片、預覽、候選清單與手機互動規格，以 `docs/public-frontend-architecture.md` 為準。
+
 - `pnpm data:validate` 通過。
 - `node --check app/main.js` 通過。
 - `pnpm finder:build` 與 `pnpm finder:check` 通過。

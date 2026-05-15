@@ -52,6 +52,28 @@ describe("shared value interface registry", () => {
     }
   });
 
+  it("keeps task primary filters inside registered non-low-level filters", async () => {
+    const registry = await readJson("data/interface-registry.json");
+    const filters = registry.pages.filters;
+    const filterKeys = new Set(filters.map((filter) => filter.key));
+    const lowLevelFilterKeys = new Set(filters.filter((filter) => filter.lowLevel).map((filter) => filter.key));
+    const primaryFilterSets = [
+      ["pages.defaultPrimaryFilters", registry.pages.defaultPrimaryFilters],
+      ...registry.pages.taskModes
+        .filter((task) => task.primaryFilters !== undefined)
+        .map((task) => [`pages.taskModes.${task.id}.primaryFilters`, task.primaryFilters]),
+    ];
+
+    for (const [path, values] of primaryFilterSets) {
+      assert.ok(values.length > 0, `${path} must not be empty`);
+      assert.equal(new Set(values).size, values.length, `${path} contains duplicate filter keys`);
+      for (const key of values) {
+        assert.ok(filterKeys.has(key), `${path} uses unknown filter key ${key}`);
+        assert.ok(!lowLevelFilterKeys.has(key), `${path} promotes low-level filter key ${key}`);
+      }
+    }
+  });
+
   it("keeps Apps Script review field sets inside the photo schema", async () => {
     const [schema, registry] = await Promise.all([
       readJson("data/photo-schema.json"),

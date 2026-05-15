@@ -39,6 +39,9 @@ jobs:
       - name: Run project checks
         run: pnpm project:check
 
+      - name: Run mobile filter smoke test
+        run: pnpm finder:mobile-filter-smoke
+
       - name: Setup Pages
         if: github.event_name != 'pull_request'
         uses: actions/configure-pages@v6

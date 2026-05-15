@@ -87,6 +87,39 @@ function validateFilterRegistry(errors, registry, fields, taxonomy) {
   }
 }
 
+function validatePrimaryFilters(errors, registry) {
+  const filters = registry.pages?.filters ?? [];
+  const filterKeys = new Set(filters.map((filter) => filter.key));
+  const lowLevelFilterKeys = new Set(filters.filter((filter) => filter.lowLevel).map((filter) => filter.key));
+
+  const primaryFilterSets = {
+    "pages.defaultPrimaryFilters": registry.pages?.defaultPrimaryFilters ?? [],
+    ...Object.fromEntries(
+      (registry.pages?.taskModes ?? [])
+        .filter((task) => task.primaryFilters !== undefined)
+        .map((task) => [
+          `pages.taskModes.${task.id || "(missing id)"}.primaryFilters`,
+          task.primaryFilters ?? [],
+        ]),
+    ),
+  };
+
+  for (const [path, values] of Object.entries(primaryFilterSets)) {
+    if (!Array.isArray(values) || values.length === 0) {
+      errors.push(`${path} must be a non-empty array`);
+      continue;
+    }
+    addDuplicateErrors(errors, path, values);
+    for (const key of values) {
+      if (!filterKeys.has(key)) {
+        errors.push(`${path} references unknown filter key "${key}"`);
+      } else if (lowLevelFilterKeys.has(key)) {
+        errors.push(`${path} must not promote low-level filter key "${key}"`);
+      }
+    }
+  }
+}
+
 function validateTaskModes(errors, registry, taxonomy) {
   const taskModes = registry.pages?.taskModes ?? [];
   addDuplicateErrors(errors, "pages.taskModes[].id", taskModes.map((task) => task.id));
@@ -199,6 +232,7 @@ async function main() {
   const fieldNames = new Set(photoFields.map((field) => field.name));
 
   validateFilterRegistry(errors, registry, fieldNames, taxonomy);
+  validatePrimaryFilters(errors, registry);
   validateTaskModes(errors, registry, taxonomy);
   validateFieldSets(errors, registry, fieldNames);
   validateStatusPolicy(errors, registry, taxonomy);

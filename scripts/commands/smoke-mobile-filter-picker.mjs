@@ -1,12 +1,19 @@
-import { copyFile, mkdir, rm } from "node:fs/promises";
+import { access, copyFile, mkdir, rm } from "node:fs/promises";
 import { createServer } from "node:net";
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { join } from "node:path";
 import { buildPagesArtifact } from "./build-pages.mjs";
 import { startStaticServer } from "../lib/finder/serve.mjs";
 
 const artifactDir = "tmp/pages-mobile-filter-smoke";
 const chromeProfileDir = "tmp/mobile-filter-smoke-chrome";
+const chromeCandidates = [
+  process.env.CHROME_BIN,
+  "google-chrome",
+  "google-chrome-stable",
+  "chromium-browser",
+  "chromium",
+].filter(Boolean);
 
 function delay(ms) {
   return new Promise((resolve) => {
@@ -42,6 +49,24 @@ async function waitForHttp(url, timeoutMs = 5000) {
   throw new Error(`Timed out waiting for ${url}`);
 }
 
+async function findChromeCommand() {
+  for (const command of chromeCandidates) {
+    if (command.includes("/")) {
+      try {
+        await access(command);
+        return command;
+      } catch {
+        continue;
+      }
+    }
+    const result = spawnSync("which", [command], { stdio: "ignore" });
+    if (result.status === 0) {
+      return command;
+    }
+  }
+  throw new Error(`Could not find a Chrome executable. Tried: ${chromeCandidates.join(", ")}. Set CHROME_BIN to the Chrome or Chromium path.`);
+}
+
 async function prepareArtifact() {
   await rm(artifactDir, { recursive: true, force: true });
   const result = await buildPagesArtifact({
@@ -58,7 +83,8 @@ async function prepareArtifact() {
 async function launchChrome(debugPort) {
   await rm(chromeProfileDir, { recursive: true, force: true });
   await mkdir(chromeProfileDir, { recursive: true });
-  const chrome = spawn("google-chrome", [
+  const chromeCommand = await findChromeCommand();
+  const chrome = spawn(chromeCommand, [
     "--headless=new",
     "--disable-gpu",
     "--no-sandbox",
@@ -79,7 +105,11 @@ async function launchChrome(debugPort) {
     }
   });
 
-  await waitForHttp(`http://127.0.0.1:${debugPort}/json/version`);
+  try {
+    await waitForHttp(`http://127.0.0.1:${debugPort}/json/version`);
+  } catch (error) {
+    throw new Error(`Timed out waiting for ${chromeCommand}. Set CHROME_BIN if Chrome is installed at a different path. ${error.message}`);
+  }
   return chrome;
 }
 
