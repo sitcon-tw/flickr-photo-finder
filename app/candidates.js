@@ -6,9 +6,15 @@ export function selectedPhotos(selectedPhotoIds, photos) {
     .filter(Boolean);
 }
 
+function photoReviewStatus(photo, labelFor) {
+  return {
+    publicStatus: photo.public_use_status ? labelFor("public_use_status", photo.public_use_status) : "未填",
+    curationStatus: photo.curation_status ? labelFor("curation_status", photo.curation_status) : "未填",
+  };
+}
+
 export function candidateMarkdown(photo, { photoTitle, finderLink, sheetRowLink, labelFor }) {
-  const publicStatus = photo.public_use_status ? labelFor("public_use_status", photo.public_use_status) : "未填";
-  const curationStatus = photo.curation_status ? labelFor("curation_status", photo.curation_status) : "未填";
+  const { publicStatus, curationStatus } = photoReviewStatus(photo, labelFor);
   const rowLink = sheetRowLink(photo) || "未設定";
 
   return `- ${photoTitle(photo)} (${photo.photo_id})
@@ -58,9 +64,12 @@ export function candidateCopyText(candidates, { photoTitle, finderLink, candidat
     const items = candidates
       .map((photo, index) => {
         const rowLink = sheetRowLink(photo) || "未設定";
+        const { publicStatus, curationStatus } = photoReviewStatus(photo, labelFor);
         return `${index + 1}. ${photo.photo_url || finderLink(photo)}
    Finder: ${finderLink(photo)}
-   Sheets: ${rowLink}`;
+   Sheets: ${rowLink}
+   整理: ${curationStatus}
+   使用提醒: ${publicStatus}`;
       })
       .join("\n\n");
     return `候選照片:\nFinder 清單: ${listLink}\n\n${items}`;

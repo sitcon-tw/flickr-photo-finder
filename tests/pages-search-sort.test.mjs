@@ -454,8 +454,10 @@ describe("Pages search/sort pure logic", () => {
     assert.match(collaborationText, /Finder 清單: https:\/\/finder\.test\/\?selected=100%2C200/);
     assert.match(collaborationText, /Finder: https:\/\/finder\.test\/#photo-100/);
     assert.match(collaborationText, /Sheets: https:\/\/sheet\.test\/A28/);
-    assert.doesNotMatch(collaborationText, /整理:/);
-    assert.doesNotMatch(collaborationText, /使用提醒:/);
+    assert.match(collaborationText, /整理: ai_labeled/);
+    assert.match(collaborationText, /使用提醒: needs_review/);
+    assert.match(collaborationText, /整理: reviewed/);
+    assert.match(collaborationText, /使用提醒: 未填/);
 
     const urlText = candidateCopyText(items, helpers, "flickr_urls");
     assert.equal(
