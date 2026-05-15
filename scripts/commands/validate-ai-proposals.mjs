@@ -26,8 +26,16 @@ const tentativeVisualLanguagePattern = /似乎|看起來像|疑似|大概|約略
 const nonVisiblePurposeLanguagePattern =
   /適合|可用於|可作為|象徵|展現(?:出)?|代表(?:了)?|呈現(?:出)?.*(?:精神|氛圍|成果|價值)|宣傳|推廣/;
 const sponsorshipVisualLanguagePattern = /贊助|スポンサー|sponsor|Sponsor|品牌露出|廠商|Logo\s*牆|標誌牆/;
+const batchComparisonVisualLanguagePattern = /第\s*\d+\s*張|第[一二三四五六七八九十百]+張|同批|鄰近照片|相近照片|相似場景|不同構圖線索|比鄰近|能和.*區分|和.*照片.*區分/;
+const genericFrameVisualLanguagePattern = /畫面呈現[^。]*?(?:情境|狀態|氛圍)|呈現[^。]*?(?:情境|狀態|氛圍)/;
+const genericHumanInteractionPattern = /(?:有人|人物|人們|多位人物|多名參與者|參與者|與會者|互動|交流|交談|討論)/g;
 const concreteVisualPattern =
   /桌|椅|旗|布條|背板|看板|投影|螢幕|講台|麥克風|相機|鏡頭|手機|筆電|餐點|茶點|炸雞|披薩|飲料|盤|碗|杯|袋|背包|證件|掛繩|手|臉|眼鏡|口罩|衣|帽|站|坐|拿|看|聽|交談|拍攝|排隊|合照|前景|背景|左側|右側|中央|桌上|牆面|白板|黑板|文字|標誌|logo|Logo|SITCON/;
+const specificVisualPattern =
+  /桌|椅|旗|布條|背板|看板|投影|螢幕|講台|麥克風|相機|鏡頭|手機|筆電|餐點|茶點|炸雞|披薩|飲料|盤|碗|杯|袋|背包|證件|掛繩|海報|立牌|紙張|紙盒|線材|白板|黑板|文字|標誌|logo|Logo|SITCON|左側|右側|前景|背景|中央|牆面|門口|入口|走廊|舞台|攤位/;
+const negativeSpaceLocationPattern =
+  /留白|放字|空白|空曠|大片|寬闊|左側|右側|上方|下方|前景|背景|牆面|白牆|地面|投影區|旁邊|邊緣/;
+const cropPreservationPattern = /裁切|保留|不會切|不切|避開|完整|主體|臉|頭|文字|Logo|logo|標誌|螢幕|投影|手勢|人物|物件|邊緣|置中|左右|上下|直式|橫幅|方形|比例/;
 const visualEvidenceFields = new Set([...allowedAiFields].filter((field) => field !== "curation_status"));
 const visualDescriptionSearchTokenGroups = [
   ["people", /人|人物|講者|學員|會眾|工作人員|志工|參與者|主持人|學生|小朋友|孩童|青年|男子|女子|攝影者/],
@@ -307,6 +315,87 @@ export function visualDescriptionQualityWarningsForItem(item) {
       photoId: item.photo_id,
     });
   }
+  if (batchComparisonVisualLanguagePattern.test(value)) {
+    warnings.push({
+      kind: "batch-comparison-language",
+      message: "description compares this photo to nearby or batch photos instead of naming visible details",
+      photoId: item.photo_id,
+    });
+  }
+  if (genericFrameVisualLanguagePattern.test(value)) {
+    warnings.push({
+      kind: "generic-frame-language",
+      message: "description uses generic framing language such as presenting a situation or atmosphere",
+      photoId: item.photo_id,
+    });
+  }
+  const genericHumanMatches = value.match(genericHumanInteractionPattern) ?? [];
+  if (genericHumanMatches.length >= 2 && !specificVisualPattern.test(value)) {
+    warnings.push({
+      kind: "generic-human-interaction",
+      message: "description relies on generic people or interaction words without concrete objects, text, or spatial details",
+      photoId: item.photo_id,
+    });
+  }
+  return warnings;
+}
+
+function valuesForProposalField(item, field) {
+  const value = item.fields?.[field]?.value;
+  if (Array.isArray(value)) {
+    return value.filter((itemValue) => typeof itemValue === "string" && itemValue.trim());
+  }
+  return typeof value === "string" && value.trim() ? [value] : [];
+}
+
+function textForProposal(item, field) {
+  const proposal = item.fields?.[field];
+  if (!isPlainObject(proposal)) {
+    return "";
+  }
+  return `${typeof proposal.value === "string" ? proposal.value : ""} ${typeof proposal.reason === "string" ? proposal.reason : ""}`.trim();
+}
+
+export function designMetadataQualityWarningsForItem(item) {
+  if (!isPlainObject(item) || typeof item.photo_id !== "string" || !isPlainObject(item.fields)) {
+    return [];
+  }
+
+  const warnings = [];
+  const recommendedUses = valuesForProposalField(item, "recommended_uses");
+  const safeCropValues = valuesForProposalField(item, "safe_crop");
+  const hasNegativeSpace = item.fields.has_negative_space?.value;
+  const visualText = textForProposal(item, "visual_description");
+  const negativeSpaceText = `${visualText} ${textForProposal(item, "has_negative_space")}`.trim();
+  const safeCropReason = String(item.fields.safe_crop?.reason ?? "");
+
+  if (
+    recommendedUses.includes("網站橫幅")
+    && (hasNegativeSpace !== true || !safeCropValues.includes("16:9"))
+  ) {
+    warnings.push({
+      kind: "website-banner-missing-layout-support",
+      message: "recommended_uses includes website banner without both has_negative_space=true and safe_crop including 16:9",
+      photoId: item.photo_id,
+    });
+  }
+
+  if (hasNegativeSpace === true && !negativeSpaceLocationPattern.test(negativeSpaceText)) {
+    warnings.push({
+      kind: "negative-space-missing-location",
+      message: "has_negative_space=true should identify where text can be placed",
+      photoId: item.photo_id,
+    });
+  }
+
+  if (safeCropValues.length > 0 && !cropPreservationPattern.test(safeCropReason)) {
+    warnings.push({
+      kind: "safe-crop-missing-preservation-evidence",
+      message: "safe_crop reason should explain what remains preserved after the crop",
+      photoId: item.photo_id,
+    });
+  }
+
   return warnings;
 }
 
@@ -366,12 +455,43 @@ function validateBatchVisualDescriptionQuality(proposals, warnings) {
     ["non-visible-purpose", "purpose or interpretation language"],
     ["weak-search-tokens", "limited searchable visual token variety"],
     ["unsupported-sponsorship", "sponsorship language without sponsorship fields"],
+    ["batch-comparison-language", "nearby-photo or batch comparison language"],
+    ["generic-frame-language", "generic framing or situation language"],
+    ["generic-human-interaction", "generic people or interaction language without concrete details"],
   ]);
   for (const [kind, photoIds] of byKind.entries()) {
     const sampleIds = photoIds.slice(0, 10).join(", ");
     const suffix = photoIds.length > 10 ? ", ..." : "";
     warnings.push(
       `visual_description: ${labels.get(kind) ?? kind} for ${photoIds.length} photos (${sampleIds}${suffix})`,
+    );
+  }
+}
+
+function validateBatchDesignMetadataQuality(proposals, warnings) {
+  if (!Array.isArray(proposals.items)) {
+    return;
+  }
+
+  const byKind = new Map();
+  for (const item of proposals.items) {
+    for (const warning of designMetadataQualityWarningsForItem(item)) {
+      const photoIds = byKind.get(warning.kind) ?? [];
+      photoIds.push(warning.photoId);
+      byKind.set(warning.kind, photoIds);
+    }
+  }
+
+  const labels = new Map([
+    ["website-banner-missing-layout-support", "website banner candidates missing negative-space or 16:9 crop support"],
+    ["negative-space-missing-location", "negative-space true without a text-placement location"],
+    ["safe-crop-missing-preservation-evidence", "safe_crop reasons without crop preservation evidence"],
+  ]);
+  for (const [kind, photoIds] of byKind.entries()) {
+    const sampleIds = photoIds.slice(0, 10).join(", ");
+    const suffix = photoIds.length > 10 ? ", ..." : "";
+    warnings.push(
+      `design metadata: ${labels.get(kind) ?? kind} for ${photoIds.length} photos (${sampleIds}${suffix})`,
     );
   }
 }
@@ -668,6 +788,7 @@ export async function validateAiProposals(options) {
     }
     validateBatchReasonQuality(proposals, warnings);
     validateBatchVisualDescriptionQuality(proposals, warnings);
+    validateBatchDesignMetadataQuality(proposals, warnings);
     validateBaselineCoverage(proposals, warnings);
   }
 

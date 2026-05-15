@@ -36,6 +36,7 @@ const structuredFields = [
 
 const descriptionField = { name: "visual_description", weight: 3 };
 const defaultTop = 5;
+const defaultScoring = "current";
 const defaultProposalFile = "metadata-proposals.json";
 const defaultRunPhotosFile = "photos.json";
 const searchAliasesPath = "data/search-aliases.json";
@@ -43,6 +44,26 @@ const sheetsExportPhotosPath = "tmp/sheets-export/photos.csv";
 const fixturePhotosPath = "fixtures/photos.csv";
 const validPhotoFields = new Set(photoHeaders);
 const listFieldSet = new Set(listFields);
+const scoringModes = new Set([defaultScoring, "idf"]);
+const lowInformationDescriptionTokens = new Set([
+  "畫面",
+  "可見",
+  "呈現",
+  "有人",
+  "有人物",
+  "人物",
+  "人們",
+  "參與",
+  "參與者",
+  "與者",
+  "互動",
+  "交流",
+  "交談",
+  "討論",
+  "情境",
+  "狀態",
+  "氛圍",
+]);
 let searchAliases = {};
 
 function printUsage() {
@@ -58,6 +79,7 @@ Options:
   --no-proposals        Do not overlay proposals when --run-dir is provided.
   --query <text>        Query to evaluate. Can be repeated. Defaults to built-in work-scenario queries.
   --queries <path>      Text file with one query per line. Blank lines and lines starting with # are ignored.
+  --scoring <mode>      Scoring mode. Options: ${[...scoringModes].join(", ")}. Default: ${defaultScoring}.
   --top <number>        Number of results per mode. Default: ${defaultTop}.
   --help, -h            Show this help.
 
@@ -75,6 +97,7 @@ function parseArgs(argv) {
     queries: [],
     queriesPath: "",
     runDir: "",
+    scoring: defaultScoring,
     top: defaultTop,
   };
 
@@ -107,6 +130,9 @@ function parseArgs(argv) {
     } else if (arg === "--queries") {
       options.queriesPath = nextValue(index, arg);
       index += 1;
+    } else if (arg === "--scoring") {
+      options.scoring = nextValue(index, arg);
+      index += 1;
     } else if (arg === "--top") {
       options.top = Number(nextValue(index, arg));
       index += 1;
@@ -124,6 +150,9 @@ function parseArgs(argv) {
     }
     if (options.queries.some((query) => !query.trim())) {
       throw new Error("--query requires non-empty text");
+    }
+    if (!scoringModes.has(options.scoring)) {
+      throw new Error(`--scoring must be one of: ${[...scoringModes].join(", ")}`);
     }
   }
 
@@ -290,24 +319,64 @@ function fieldText(record, field) {
   return displayValue(record, field);
 }
 
-function scoreText(queryTokens, queryCompact, text) {
+function corpusText(record) {
+  return [
+    ...structuredFields.map((field) => fieldText(record, field.name)),
+    String(record.visual_description ?? "").trim(),
+  ].filter(Boolean).join(" ");
+}
+
+function buildScoringContext(records, scoring) {
+  if (scoring !== "idf") {
+    return { idfByToken: new Map(), recordCount: records.length, scoring };
+  }
+
+  const documentFrequency = new Map();
+  for (const record of records) {
+    for (const token of tokenize(corpusText(record))) {
+      documentFrequency.set(token, (documentFrequency.get(token) ?? 0) + 1);
+    }
+  }
+
+  const idfByToken = new Map();
+  for (const [token, frequency] of documentFrequency.entries()) {
+    idfByToken.set(token, Math.log((records.length + 1) / (frequency + 1)) + 1);
+  }
+
+  return { idfByToken, recordCount: records.length, scoring };
+}
+
+function tokenWeight(token, fieldName, scoringContext) {
+  const base = token.length >= 3 ? 1.5 : 1;
+  if (scoringContext.scoring !== "idf") {
+    return base;
+  }
+
+  let idf = scoringContext.idfByToken.get(token) ?? 1;
+  if (fieldName === descriptionField.name && lowInformationDescriptionTokens.has(token)) {
+    idf = Math.min(idf, 0.25);
+  }
+  return base * idf;
+}
+
+function scoreText(queryTokens, queryCompact, text, fieldName, scoringContext) {
   const fieldTokens = tokenize(text);
   let score = 0;
   for (const token of queryTokens) {
     if (fieldTokens.has(token)) {
-      score += token.length >= 3 ? 1.5 : 1;
+      score += tokenWeight(token, fieldName, scoringContext);
     }
   }
 
   const textCompact = compactText(text);
   if (queryCompact && textCompact.includes(queryCompact)) {
-    score += 3;
+    score += scoringContext.scoring === "idf" ? 1.5 : 3;
   }
 
   return score;
 }
 
-function scoreRecord(record, query, includeDescription) {
+function scoreRecord(record, query, includeDescription, scoringContext) {
   const queryTokens = tokenize(query);
   const queryCompact = compactText(query);
   const contributions = [];
@@ -318,7 +387,7 @@ function scoreRecord(record, query, includeDescription) {
       continue;
     }
 
-    const rawScore = scoreText(queryTokens, queryCompact, text);
+    const rawScore = scoreText(queryTokens, queryCompact, text, field.name, scoringContext);
     if (rawScore > 0) {
       contributions.push({
         field: field.name,
@@ -330,7 +399,7 @@ function scoreRecord(record, query, includeDescription) {
 
   if (includeDescription) {
     const text = String(record.visual_description ?? "").trim();
-    const rawScore = scoreText(queryTokens, queryCompact, text);
+    const rawScore = scoreText(queryTokens, queryCompact, text, descriptionField.name, scoringContext);
     if (rawScore > 0) {
       contributions.push({
         field: descriptionField.name,
@@ -362,10 +431,10 @@ function formatMatchedFields(result) {
     .join(", ");
 }
 
-function topResults(records, query, includeDescription, top) {
+function topResults(records, query, includeDescription, top, scoringContext) {
   return records
     .map((record) => ({
-      ...scoreRecord(record, query, includeDescription),
+      ...scoreRecord(record, query, includeDescription, scoringContext),
       record,
     }))
     .filter((result) => result.score > 0)
@@ -464,6 +533,7 @@ async function main() {
   const visualDescriptionCount = records.filter((record) =>
     String(record.visual_description ?? "").trim(),
   ).length;
+  const scoringContext = buildScoringContext(records, options.scoring);
 
   console.log(`Photo source: ${sourceLabel}`);
   if (proposalsPath) {
@@ -473,6 +543,7 @@ async function main() {
   }
   console.log(`Photos: ${records.length}`);
   console.log(`visual_description filled: ${visualDescriptionCount}/${records.length}`);
+  console.log(`Scoring: ${options.scoring}`);
   console.log(`Queries: ${effectiveQueries.length}`);
 
   if (visualDescriptionCount === 0) {
@@ -481,8 +552,8 @@ async function main() {
 
   for (const query of effectiveQueries) {
     console.log(`\n## ${query}`);
-    const baselineResults = topResults(records, query, false, options.top);
-    const combinedResults = topResults(records, query, true, options.top);
+    const baselineResults = topResults(records, query, false, options.top, scoringContext);
+    const combinedResults = topResults(records, query, true, options.top, scoringContext);
 
     printResults("Structured taxonomy baseline", baselineResults);
     printResults("Structured taxonomy + visual_description", combinedResults);

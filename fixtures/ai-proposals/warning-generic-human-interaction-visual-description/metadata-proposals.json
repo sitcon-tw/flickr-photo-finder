@@ -1,0 +1,40 @@
+{
+  "proposal_version": 1,
+  "run_id": "fixture-warning-generic-human-interaction-visual-description",
+  "created_at": "2026-05-16T00:05:00.000Z",
+  "producer": {
+    "type": "ai",
+    "name": "fixture"
+  },
+  "items": [
+    {
+      "photo_id": "94000000012",
+      "fields": {
+        "people_count": {
+          "value": 4,
+          "reason": "畫面中可辨識 4 位站著交談的人物。"
+        },
+        "subject_type": {
+          "value": "people",
+          "reason": "主要主體是多位正在交談的人物。"
+        },
+        "orientation": {
+          "value": "landscape",
+          "reason": "畫面寬度大於高度。"
+        },
+        "has_negative_space": {
+          "value": false,
+          "reason": "多位人物佔據主要畫面，未見可放字的大面積空白。"
+        },
+        "visual_description": {
+          "value": "多名參與者站著交流互動，人物彼此交談並面向同一方向。",
+          "reason": "此描述刻意保留泛稱人物與互動語，供 warning fixture 覆蓋。"
+        },
+        "curation_status": {
+          "value": "ai_labeled",
+          "reason": "已根據照片可見內容提出 AI 初標候選。"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "proposal_version": 1,
+  "run_id": "fixture-warning-design-metadata-banner-support",
+  "created_at": "2026-05-16T00:10:00.000Z",
+  "producer": {
+    "type": "ai",
+    "name": "fixture"
+  },
+  "items": [
+    {
+      "photo_id": "94000000013",
+      "fields": {
+        "people_count": {
+          "value": 1,
+          "reason": "畫面中可辨識 1 位講者站在舞台右側。"
+        },
+        "subject_type": {
+          "value": "people",
+          "reason": "主要主體是舞台右側講者。"
+        },
+        "orientation": {
+          "value": "landscape",
+          "reason": "舞台與背板橫向展開。"
+        },
+        "has_negative_space": {
+          "value": true,
+          "reason": "左側牆面與背板留有較乾淨區域可放字。"
+        },
+        "recommended_uses": {
+          "value": [
+            "網站橫幅"
+          ],
+          "reason": "左側留白可支援橫幅文字配置，但此 fixture 刻意缺少 safe_crop。"
+        },
+        "visual_description": {
+          "value": "舞台右側講者手持麥克風，左側牆面與背板留有大片乾淨空間。",
+          "reason": "描述包含講者、麥克風、舞台位置與留白位置。"
+        },
+        "curation_status": {
+          "value": "ai_labeled",
+          "reason": "已根據照片可見內容提出 AI 初標候選。"
+        }
+      }
+    }
+  ]
+}

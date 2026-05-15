@@ -8,7 +8,11 @@ import { aiBaselineFields, aiOptionalFields, aiRecallFields } from "../lib/core/
 import { buildPlan } from "./plan-ai-updates.mjs";
 import { renderDiff } from "./render-ai-diff.mjs";
 import { fieldLabel, formatDisplayValue, formatStoredValue } from "../lib/core/metadata-display.mjs";
-import { validateAiProposals, visualDescriptionQualityWarningsForItem } from "./validate-ai-proposals.mjs";
+import {
+  designMetadataQualityWarningsForItem,
+  validateAiProposals,
+  visualDescriptionQualityWarningsForItem,
+} from "./validate-ai-proposals.mjs";
 
 const defaultProposalFile = "metadata-proposals.json";
 const defaultSummaryFile = "metadata-review-summary.md";
@@ -655,6 +659,12 @@ function visualDescriptionQualityItems(items, kind) {
   );
 }
 
+function designMetadataQualityItems(items, kind) {
+  return items.filter((item) =>
+    designMetadataQualityWarningsForItem(item).some((warning) => warning.kind === kind),
+  );
+}
+
 function pushFocusRows(rows, seen, issue, items, field, maxRows = 8) {
   for (const item of items.slice(0, maxRows)) {
     const key = `${issue}\0${item.photo_id}\0${field}`;
@@ -813,9 +823,21 @@ function buildReviewFocusRows(items) {
     ["non-visible-purpose", "visual_description 可能混入用途或詮釋"],
     ["unsupported-sponsorship", "visual_description 提到贊助但缺少贊助欄位支撐"],
     ["weak-search-tokens", "visual_description 可搜尋視覺詞偏少"],
+    ["batch-comparison-language", "visual_description 混入同批或鄰近照片比較語言"],
+    ["generic-frame-language", "visual_description 使用泛用情境包裝語"],
+    ["generic-human-interaction", "visual_description 只有泛稱人物或互動，缺具體可見線索"],
   ];
   for (const [kind, issue] of visualQualityFocus) {
     pushFocusRows(rows, seen, issue, visualDescriptionQualityItems(items, kind), "visual_description", 3);
+  }
+
+  const designQualityFocus = [
+    ["website-banner-missing-layout-support", "網站橫幅候選缺少留白或 16:9 裁切支援", "recommended_uses"],
+    ["negative-space-missing-location", "has_negative_space=true 但缺少可放字位置", "has_negative_space"],
+    ["safe-crop-missing-preservation-evidence", "safe_crop reason 缺少裁切保留證據", "safe_crop"],
+  ];
+  for (const [kind, issue, field] of designQualityFocus) {
+    pushFocusRows(rows, seen, issue, designMetadataQualityItems(items, kind), field, 3);
   }
 
   pushFocusRows(
@@ -963,9 +985,13 @@ function buildReviewNotes(items, { peopleCountQaRows = [], reasonReuseQaRows = [
   const zeroPeopleContradictions = items.filter(isZeroPeopleContradiction);
   const longEnglishTextItems = items.filter((item) => asciiWordPattern.test(allHumanText(item)));
   const visualDescriptionQualityCounts = new Map();
+  const designMetadataQualityCounts = new Map();
   for (const item of items) {
     for (const warning of visualDescriptionQualityWarningsForItem(item)) {
       visualDescriptionQualityCounts.set(warning.kind, (visualDescriptionQualityCounts.get(warning.kind) ?? 0) + 1);
+    }
+    for (const warning of designMetadataQualityWarningsForItem(item)) {
+      designMetadataQualityCounts.set(warning.kind, (designMetadataQualityCounts.get(warning.kind) ?? 0) + 1);
     }
   }
   const { confidenceCounts, perfectCount, total } = confidenceStats(items);
@@ -1132,11 +1158,26 @@ function buildReviewNotes(items, { peopleCountQaRows = [], reasonReuseQaRows = [
     ["non-visible-purpose", "`visual_description` 可能混入用途、詮釋或宣傳語言"],
     ["weak-search-tokens", "`visual_description` 的可搜尋視覺詞種類偏少"],
     ["unsupported-sponsorship", "`visual_description` 提到贊助或品牌脈絡，但缺少 `sponsorship_items` 或 `sponsorship_tags` 支撐"],
+    ["batch-comparison-language", "`visual_description` 混入同批、鄰近照片或相似照片比較語言"],
+    ["generic-frame-language", "`visual_description` 使用泛用情境、狀態或氛圍包裝語"],
+    ["generic-human-interaction", "`visual_description` 只有泛稱人物或互動，缺少具體物件、文字或位置線索"],
   ]);
   for (const [kind, label] of visualDescriptionQualityLabels.entries()) {
     const count = visualDescriptionQualityCounts.get(kind) ?? 0;
     if (count > 0) {
       notes.push(`有 ${count} 張照片的 ${label}；這是 review warning，不代表格式錯誤，請抽查 Review Focus 或完整 diff。`);
+    }
+  }
+
+  const designMetadataQualityLabels = new Map([
+    ["website-banner-missing-layout-support", "`recommended_uses = 網站橫幅` 但缺少 `has_negative_space=true` 或 `safe_crop = 16:9` 支撐"],
+    ["negative-space-missing-location", "`has_negative_space = true` 但 reason 或 `visual_description` 沒說明可放字位置"],
+    ["safe-crop-missing-preservation-evidence", "`safe_crop` reason 沒說明裁切後保留哪些臉、文字、Logo、主體或手勢"],
+  ]);
+  for (const [kind, label] of designMetadataQualityLabels.entries()) {
+    const count = designMetadataQualityCounts.get(kind) ?? 0;
+    if (count > 0) {
+      notes.push(`有 ${count} 張照片的 ${label}；請以設計用途抽查 safe_crop 與留白判斷。`);
     }
   }
 

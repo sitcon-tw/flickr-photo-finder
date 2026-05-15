@@ -8,6 +8,8 @@ import { aiRunsDir, sheetsExportPhotosPath } from "../lib/core/workflow-paths.mj
 const defaultLimit = 50;
 const defaultImageSize = "large-1024";
 const defaultStatus = "unreviewed";
+const defaultFocus = "none";
+const focusOptions = [defaultFocus, "design-metadata"];
 const imageSizeSuffixes = new Map([
   ["medium-640", "z"],
   ["medium-800", "c"],
@@ -23,8 +25,11 @@ Options:
   --photos <path>       Source photos CSV. Default: tmp/sheets-export/photos.csv.
   --status <values>     Comma-separated curation_status values. Default: unreviewed.
                         Use "all" to include every status.
+                        With --focus design-metadata, default is all.
   --album <album-id>    Only include photos whose album_ids contains this album ID.
   --photo-ids <ids>     Comma-separated photo IDs to include.
+  --focus <profile>     Focus selection profile. Options: ${focusOptions.join(", ")}.
+                        design-metadata selects likely design-use photos that lack safe_crop.
   --limit <number|all>  Maximum selected photos. Use "all" for no limit.
                         Default: 50.
   --image-size <size>   Image size for AI downloads. Default: large-1024.
@@ -44,6 +49,7 @@ function parseArgs(argv) {
   const options = {
     download: true,
     albumId: "",
+    focus: defaultFocus,
     help: false,
     imageSize: defaultImageSize,
     limit: defaultLimit,
@@ -51,7 +57,8 @@ function parseArgs(argv) {
     photoIds: [],
     photosPath: sheetsExportPhotosPath,
     runId: "",
-    statusValues: [defaultStatus],
+    statusProvided: false,
+    statusValues: [],
   };
 
   for (let index = 0; index < args.length; index += 1) {
@@ -63,12 +70,16 @@ function parseArgs(argv) {
       index += 1;
     } else if (arg === "--status") {
       options.statusValues = parseListOption(args[index + 1] ?? "");
+      options.statusProvided = true;
       index += 1;
     } else if (arg === "--album") {
       options.albumId = args[index + 1] ?? "";
       index += 1;
     } else if (arg === "--photo-ids") {
       options.photoIds = parseListOption(args[index + 1] ?? "");
+      index += 1;
+    } else if (arg === "--focus") {
+      options.focus = args[index + 1] ?? "";
       index += 1;
     } else if (arg === "--limit") {
       options.limit = parseLimitOption(args[index + 1] ?? "");
@@ -92,6 +103,12 @@ function parseArgs(argv) {
   if (!options.help) {
     if (!options.photosPath) {
       throw new Error("--photos requires a path");
+    }
+    if (!focusOptions.includes(options.focus)) {
+      throw new Error(`--focus must be one of: ${focusOptions.join(", ")}`);
+    }
+    if (!options.statusProvided) {
+      options.statusValues = options.focus === "design-metadata" ? ["all"] : [defaultStatus];
     }
     if (!options.outputDir) {
       throw new Error("--output-dir requires a path");
@@ -151,6 +168,43 @@ function toRecord(headers, row) {
   return Object.fromEntries(headers.map((header, index) => [header, row[index] ?? ""]));
 }
 
+function hasValue(value) {
+  return String(value ?? "").trim() !== "";
+}
+
+const designMetadataDescriptionPattern =
+  /留白|放字|牆面|白牆|空白|空曠|大片|寬闊|舞台|講台|背板|看板|投影幕|螢幕|地面|前景|背景|左側|右側|中央|邊緣|桌面|橫幅|構圖|空間/;
+
+const designMetadataRecommendedUses = new Set(["網站橫幅", "社群貼文", "講者宣傳", "新聞稿", "簡報"]);
+const designMetadataSceneTags = new Set(["舞台", "背板", "場地", "場佈", "講者", "合照", "螢幕"]);
+
+function matchesDesignMetadataFocus(photo) {
+  if (hasValue(photo.safe_crop)) {
+    return false;
+  }
+
+  const recommendedUses = parseSemicolonList(photo.recommended_uses ?? "");
+  const sceneTags = parseSemicolonList(photo.scene_tags ?? "");
+
+  return (
+    photo.orientation === "landscape"
+    || photo.has_negative_space === "true"
+    || recommendedUses.some((value) => designMetadataRecommendedUses.has(value))
+    || sceneTags.some((value) => designMetadataSceneTags.has(value))
+    || designMetadataDescriptionPattern.test(photo.visual_description ?? "")
+  );
+}
+
+function matchesFocusProfile(photo, focus) {
+  if (focus === defaultFocus) {
+    return true;
+  }
+  if (focus === "design-metadata") {
+    return matchesDesignMetadataFocus(photo);
+  }
+  return false;
+}
+
 async function readPhotosCsv(path) {
   const text = await readFile(path, "utf8");
   const [headers, ...rows] = parseCsv(text);
@@ -170,7 +224,8 @@ function selectPhotos(photos, options) {
     .filter((photo) => photo.photo_id)
     .filter((photo) => !options.albumId || parseSemicolonList(photo.album_ids ?? "").includes(options.albumId))
     .filter((photo) => photoIdFilter.size === 0 || photoIdFilter.has(photo.photo_id))
-    .filter((photo) => includeAllStatuses || statusFilter.has(photo.curation_status || ""));
+    .filter((photo) => includeAllStatuses || statusFilter.has(photo.curation_status || ""))
+    .filter((photo) => matchesFocusProfile(photo, options.focus));
 
   return options.limit === "all" ? selected : selected.slice(0, options.limit);
 }
@@ -388,6 +443,7 @@ async function prepareRun(options) {
     photos_source: options.photosPath,
     ...promptMetadata,
     requested_album_id: options.albumId,
+    requested_focus: options.focus,
     requested_limit: options.limit,
     requested_photo_ids: options.photoIds,
     requested_status: options.statusValues,
