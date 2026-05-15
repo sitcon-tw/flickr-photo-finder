@@ -227,6 +227,15 @@ function isMobileSheet() {
   return window.matchMedia("(max-width: 760px)").matches;
 }
 
+function scrollCandidateListToBottom() {
+  if (isMobileSheet()) {
+    return;
+  }
+  window.requestAnimationFrame(() => {
+    elements.candidateList.scrollTop = elements.candidateList.scrollHeight;
+  });
+}
+
 function resetSheetDragState() {
   if (sheetDragState?.sheet) {
     sheetDragState.sheet.style.transform = "";
@@ -478,7 +487,8 @@ function renderPhoto(photo, resultRank, resultCount) {
 }
 
 function toggleCandidate(photoId) {
-  if (state.selectedPhotoIds.has(photoId)) {
+  const isAdding = !state.selectedPhotoIds.has(photoId);
+  if (!isAdding) {
     state.selectedPhotoIds.delete(photoId);
     state.promotedPhotoIds.delete(photoId);
     trackEvent("remove_candidate", { photo_id: photoId, task_mode: state.taskMode, sort_mode: controls.sort.value });
@@ -488,6 +498,9 @@ function toggleCandidate(photoId) {
   }
   updatePreviewCandidateButton();
   render({ preservePage: true, preserveScroll: true, source: "candidate" });
+  if (isAdding) {
+    scrollCandidateListToBottom();
+  }
 }
 
 async function copyCandidateLink() {
