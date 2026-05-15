@@ -292,14 +292,17 @@ export function renderPhotoDetails(details, photo, { labelFor } = {}) {
 }
 
 export function renderPhotoCard(photo, resultRank, resultCount, context) {
-  const { template, openPreview } = context;
+  const { template, selectedPhotoIds, toggleCandidate, openPreview } = context;
   const fragment = template.content.cloneNode(true);
   const card = fragment.querySelector(".photo-card");
   const link = fragment.querySelector(".photo-link");
   const linkHint = fragment.querySelector(".photo-link-hint");
+  const candidateButton = fragment.querySelector(".photo-candidate-button");
   const image = fragment.querySelector("img");
+  const selected = selectedPhotoIds.has(photo.photo_id);
 
   card.id = photoAnchorId(photo.photo_id);
+  card.classList.toggle("is-candidate-selected", selected);
   const openFlickrLabel = `預覽照片：${photoTitle(photo)}`;
   setActionLink(link, photo.photo_url);
   link.setAttribute("aria-label", openFlickrLabel);
@@ -321,6 +324,17 @@ export function renderPhotoCard(photo, resultRank, resultCount, context) {
 
   image.src = displayImageUrl(photo);
   image.alt = [photoTitle(photo), photo.event_year].filter(Boolean).join(" ");
+
+  candidateButton.textContent = selected ? "已加入" : "候選";
+  candidateButton.title = selected ? "從候選清單移出這張照片" : "加入候選清單";
+  candidateButton.setAttribute("aria-label", selected ? "從候選清單移出這張照片" : "加入候選清單");
+  candidateButton.setAttribute("aria-pressed", selected ? "true" : "false");
+  candidateButton.classList.toggle("is-selected", selected);
+  candidateButton.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    toggleCandidate(photo.photo_id);
+  });
 
   return card;
 }

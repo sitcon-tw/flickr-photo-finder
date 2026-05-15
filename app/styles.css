@@ -897,6 +897,7 @@ select {
 }
 
 .photo-card {
+  position: relative;
   min-width: 0;
   overflow: hidden;
   border: 1px solid var(--line);
@@ -947,7 +948,7 @@ select {
   pointer-events: none;
 }
 
-.photo-link-hint {
+.photo-card-actions {
   position: absolute;
   z-index: 1;
   right: 10px;
@@ -955,8 +956,15 @@ select {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  min-height: 28px;
   max-width: calc(100% - 20px);
+}
+
+.photo-link-hint,
+.photo-candidate-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 28px;
   padding: 0 9px;
   border: 1px solid rgb(255 255 255 / 68%);
   border-radius: 6px;
@@ -966,33 +974,70 @@ select {
   font-weight: 800;
   line-height: 1.1;
   overflow-wrap: anywhere;
+}
+
+.photo-link-hint {
   pointer-events: none;
 }
 
-.photo-link-hint::before {
+.photo-candidate-button {
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+}
+
+.photo-candidate-button.is-selected {
+  opacity: 1;
+  pointer-events: auto;
+  visibility: visible;
+}
+
+.photo-link-hint::before,
+.photo-candidate-button::before {
   width: 14px;
   height: 14px;
   flex: 0 0 auto;
   background: currentColor;
   content: "";
+}
+
+.photo-link-hint::before {
   -webkit-mask: var(--icon-external) center / contain no-repeat;
   mask: var(--icon-external) center / contain no-repeat;
 }
 
-.photo-link.is-preview-link .photo-link-hint::before {
-  -webkit-mask: var(--icon-external) center / contain no-repeat;
-  mask: var(--icon-external) center / contain no-repeat;
+.photo-candidate-button::before {
+  -webkit-mask: var(--action-icon) center / contain no-repeat;
+  mask: var(--action-icon) center / contain no-repeat;
+}
+
+.photo-card .photo-candidate-button.is-selected {
+  border-color: rgb(255 255 255 / 78%);
+  background: var(--accent);
+  color: #fff;
 }
 
 .photo-link:hover img,
-.photo-link:focus-visible img {
+.photo-link:focus-visible img,
+.photo-card:hover .photo-link img,
+.photo-card:focus-within .photo-link img {
   transform: scale(1.025);
 }
 
-.photo-link:hover .photo-link-hint,
-.photo-link:focus-visible .photo-link-hint {
+.photo-card:hover .photo-link-hint,
+.photo-card:focus-within .photo-link-hint,
+.photo-candidate-button:not(:disabled):hover {
   background: var(--accent-strong);
   border-color: #fff;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .photo-card:hover .photo-candidate-button,
+  .photo-card:focus-within .photo-candidate-button {
+    opacity: 1;
+    pointer-events: auto;
+    visibility: visible;
+  }
 }
 
 .photo-statuses {
@@ -1718,10 +1763,6 @@ select {
   .candidate-actions,
   .ai-assistant-actions {
     grid-template-columns: 1fr;
-  }
-
-  .photo-link-hint {
-    min-height: 44px;
   }
 
   .photo-id-button {
