@@ -15,7 +15,7 @@ import {
   sortPhotos,
   uniqueSearchTokens,
 } from "../app/search-sort.js";
-import { decodeUrlState, encodeUrlState } from "../app/url-state.js";
+import { decodeUrlState, encodeUrlState, finderStateUrl } from "../app/url-state.js";
 
 const socialTask = {
   id: "social",
@@ -295,6 +295,24 @@ describe("Pages search/sort pure logic", () => {
       },
       selectedPhotoIds: ["100", "200"],
     });
+  });
+
+  it("builds a canonical finder state URL for candidate sharing", () => {
+    const url = finderStateUrl("https://sitcon.org/flickr-photo-finder/?task=old#photo-100", {
+      taskMode: "social",
+      search: " 可放字 ",
+      sort: "explore",
+      filters: {
+        album: ["id:72177720333438501"],
+        subjectType: ["person"],
+      },
+      selectedPhotoIds: new Set(["55244854377", "55246179508"]),
+    });
+
+    assert.equal(
+      url,
+      "https://sitcon.org/flickr-photo-finder/?task=social&q=%E5%8F%AF%E6%94%BE%E5%AD%97&sort=explore&album=id%3A72177720333438501&subject=person&selected=55244854377%2C55246179508",
+    );
   });
 
   it("builds candidate markdown from selected photos", () => {

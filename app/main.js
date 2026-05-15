@@ -52,7 +52,7 @@ import {
   updateTaskButtons,
 } from "./result-render.js";
 import { applySearchRegistry, filterAndSortPhotos } from "./search-sort.js";
-import { applyUrlStateRegistry, decodeUrlState, encodeUrlState } from "./url-state.js";
+import { applyUrlStateRegistry, decodeUrlState, encodeUrlState, finderStateUrl } from "./url-state.js";
 import {
   applyTaskModeRegistry,
   discoverHistorySize,
@@ -435,10 +435,18 @@ function updatePreviewCandidateButton() {
   controls.previewCandidate.classList.toggle("is-selected", selected);
 }
 
+function currentUrlState() {
+  return {
+    taskMode: state.taskMode,
+    search: controls.search.value,
+    sort: controls.sort.value,
+    filters: state.filters,
+    selectedPhotoIds: state.selectedPhotoIds,
+  };
+}
+
 function candidateListLink() {
-  const url = new URL(window.location.href);
-  url.hash = "";
-  return url.toString();
+  return finderStateUrl(window.location.href, currentUrlState());
 }
 
 function activeFilterCount() {
@@ -482,12 +490,45 @@ function toggleCandidate(photoId) {
   render({ preservePage: true, preserveScroll: true, source: "candidate" });
 }
 
-async function copyCandidateList() {
+async function copyCandidateLink() {
+  try {
+    const copied = await copyTextToClipboard(candidateListLink());
+    if (copied) {
+      setTemporaryButtonText(controls.copyCandidates, "已複製");
+      trackEvent("copy_candidate_list", {
+        candidate_count: state.selectedPhotoIds.size,
+        template_id: "finder_url",
+        task_mode: state.taskMode,
+        sort_mode: controls.sort.value,
+      });
+    }
+  } catch {
+    setTemporaryButtonText(controls.copyCandidates, "複製失敗");
+  }
+}
+
+function setCandidateCopyMenuOpen(open) {
+  controls.candidateCopyMenu.hidden = !open;
+  controls.candidateCopyMenuButton.setAttribute("aria-expanded", open ? "true" : "false");
+}
+
+function closeCandidateCopyMenu() {
+  setCandidateCopyMenuOpen(false);
+}
+
+function toggleCandidateCopyMenu() {
+  if (controls.candidateCopyMenuButton.disabled) {
+    return;
+  }
+  setCandidateCopyMenuOpen(controls.candidateCopyMenu.hidden);
+}
+
+async function copyCandidateTemplate(templateId) {
   const candidates = selectedPhotos(state.selectedPhotoIds, photos);
   const text = candidateCopyText(
     candidates,
     { photoTitle, finderLink, candidateListLink, sheetRowLink, labelFor },
-    controls.candidateCopyTemplate.value,
+    templateId,
   );
   if (!text) {
     return;
@@ -498,6 +539,7 @@ async function copyCandidateList() {
       setTemporaryButtonText(controls.copyCandidates, "已複製");
       trackEvent("copy_candidate_list", {
         candidate_count: state.selectedPhotoIds.size,
+        template_id: templateId,
         task_mode: state.taskMode,
         sort_mode: controls.sort.value,
       });
@@ -712,13 +754,7 @@ function resetFilters() {
 
 function syncUrlState() {
   const url = new URL(window.location.href);
-  url.search = encodeUrlState({
-    taskMode: state.taskMode,
-    search: controls.search.value,
-    sort: controls.sort.value,
-    filters: state.filters,
-    selectedPhotoIds: state.selectedPhotoIds,
-  }).toString();
+  url.search = encodeUrlState(currentUrlState()).toString();
   window.history.replaceState(null, "", url);
 }
 
@@ -818,7 +854,9 @@ function bindFilterControlEvents() {
       "loadMore",
       "copyCandidates",
       "clearCandidates",
-      "candidateCopyTemplate",
+      "candidateCopyMenuButton",
+      "candidateCopyMenu",
+      "candidateCopyMenuItems",
       "copyAiAssistantPrompt",
       "mobileFilter",
       "mobileCandidate",
@@ -874,7 +912,17 @@ controls.loadMore.addEventListener("click", () => {
     sort_mode: controls.sort.value,
   });
 });
-controls.copyCandidates.addEventListener("click", copyCandidateList);
+controls.copyCandidates.addEventListener("click", copyCandidateLink);
+controls.candidateCopyMenuButton.addEventListener("click", toggleCandidateCopyMenu);
+controls.candidateCopyMenu.addEventListener("click", (event) => {
+  const target = event.target instanceof Element ? event.target : null;
+  const button = target?.closest("[data-candidate-copy-template]");
+  if (!button) {
+    return;
+  }
+  closeCandidateCopyMenu();
+  copyCandidateTemplate(button.dataset.candidateCopyTemplate);
+});
 controls.clearCandidates.addEventListener("click", clearCandidates);
 controls.copyAiAssistantPrompt.addEventListener("click", copyAiAssistantPrompt);
 controls.mobileFilter.addEventListener("click", openFilterSheet);
@@ -917,6 +965,18 @@ for (const sheet of [elements.searchPanel, elements.sidePanel, elements.photoPre
 controls.previewLarge.addEventListener("click", downloadPreviewLargeImage);
 controls.previewCopyFlickr.addEventListener("click", copyPreviewFlickrLink);
 controls.previewCopyFinder.addEventListener("click", copyPreviewFinderLink);
+document.addEventListener("click", (event) => {
+  const target = event.target instanceof Element ? event.target : null;
+  if (controls.candidateCopyMenu.hidden || target?.closest(".candidate-copy-menu")) {
+    return;
+  }
+  closeCandidateCopyMenu();
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    closeCandidateCopyMenu();
+  }
+});
 controls.previewCandidate.addEventListener("click", () => {
   if (activePreviewPhoto) {
     toggleCandidate(activePreviewPhoto.photo_id);

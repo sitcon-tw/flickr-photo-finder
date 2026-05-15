@@ -71,6 +71,13 @@ export function encodeUrlState(state) {
   return params;
 }
 
+export function finderStateUrl(href, state) {
+  const url = new URL(href);
+  url.hash = "";
+  url.search = encodeUrlState(state).toString();
+  return url.toString();
+}
+
 export function decodeUrlState(params) {
   const filters = {};
   for (const [filterKey, urlKey] of Object.entries(filterUrlKeys)) {

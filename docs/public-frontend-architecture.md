@@ -157,7 +157,7 @@ https://docs.google.com/spreadsheets/d/<spreadsheetId>/gviz/tq?tqx=out:csv&sheet
 
 公開前端也應提供「用 AI 助手找照片」的輔助入口，讓宣傳、設計、網站、公關、行銷等工作需求使用者，把正式 `photos` 工作表交給自己熟悉的 AI 助手，以自然語言探索還不能被固定篩選條件描述的需求。這個入口應放在候選清單附近，提供正式 Sheets 連結與可複製提示詞；提示詞應帶入目前任務模式、搜尋字串與已套用篩選，並提醒使用者若 AI 助手不能直接讀取 Google Sheets，就改提供 `photos` CSV。提示詞也應要求 AI 助手不要只找 `reviewed` 照片、不要自行推測缺失欄位。
 
-候選清單只存在瀏覽器當下狀態與 URL query，不寫回 Google Sheets。清單畫面應提供縮圖，避免只用 photo id 要求使用者記憶照片；照片卡片與預覽 dialog 都可以切換候選狀態，但同一張照片只能在候選清單中出現一次。複製出的清單應依用途分成不同格式。預設 IM 討論版應只保留編號與 Flickr URL，方便使用者在聊天工具中回覆「選第幾張」，必要時才附上簡短使用提醒。協作檢查版則應包含整批 Finder 清單連結、Google Sheets 列連結、Flickr URL、整理狀態與使用提醒，服務資料維護與跨角色檢查。純 Flickr URL 版應只輸出每張照片的 Flickr URL，方便工具或文件貼上。
+候選清單只存在瀏覽器當下狀態與 URL query，不寫回 Google Sheets。清單畫面應提供縮圖，避免只用 photo id 要求使用者記憶照片；照片卡片與預覽 dialog 都可以切換候選狀態，但同一張照片只能在候選清單中出現一次。預設複製動作應複製可重現目前 Finder 狀態的 canonical URL，包含任務、搜尋、篩選、排序與 `selected` 候選照片，讓接收者打開後直接看到同一批候選。其他文字輸出格式應放在複製按鈕旁的 action menu，點選後直接複製，不保留持久選取狀態。預設 IM 討論版應只保留編號與 Flickr URL，方便使用者在聊天工具中回覆「選第幾張」，必要時才附上簡短使用提醒。協作檢查版則應包含整批 Finder 清單連結、Google Sheets 列連結、Flickr URL、整理狀態與使用提醒，服務資料維護與跨角色檢查。純 Flickr URL 版應只輸出每張照片的 Flickr URL，方便工具或文件貼上。
 
 Google Sheets 列連結應貼近 Google Sheets UI 的「Get link to this cell」格式：`edit?gid=<sheetId>#gid=<sheetId>&range=A<row>`，例如正式 `photos` 工作表第 28 列是 `edit?gid=1663351240#gid=1663351240&range=A28`。`gid` 指定工作表，`range` 只放該工作表內的 cell，不要放 `photos!A28` 這種 sheet-qualified A1 notation。`photos` 的 sheet id 應記錄在 `config/project.json` 的 `googleSheets.photosSheetGid`。
 

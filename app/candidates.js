@@ -92,7 +92,12 @@ export function renderCandidates({
   elements.candidateSummary.textContent = `${candidates.length} 張候選`;
   controls.copyCandidates.disabled = candidates.length === 0;
   controls.clearCandidates.disabled = candidates.length === 0;
-  controls.candidateCopyTemplate.disabled = candidates.length === 0;
+  controls.candidateCopyMenuButton.disabled = candidates.length === 0;
+  controls.candidateCopyMenu.hidden = true;
+  controls.candidateCopyMenuButton.setAttribute("aria-expanded", "false");
+  for (const item of controls.candidateCopyMenuItems) {
+    item.disabled = candidates.length === 0;
+  }
   elements.candidateList.replaceChildren();
 
   if (candidates.length === 0) {

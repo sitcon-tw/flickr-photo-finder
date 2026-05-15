@@ -198,18 +198,25 @@
               <button id="closeCandidateSheetButton" class="mobile-sheet-close-button" type="button">完成</button>
             </div>
             <div id="candidateList" class="candidate-list"></div>
-            <label class="candidate-copy-template">
-              <span>複製用途</span>
-              <select id="candidateCopyTemplateSelect">
-                <option value="im">IM 討論版</option>
-                <option value="sponsor">贊助佐證版</option>
-                <option value="collaboration">協作檢查版</option>
-                <option value="flickr_urls">純 Flickr URL</option>
-              </select>
-            </label>
             <div class="candidate-actions">
-              <button id="copyCandidatesButton" class="candidate-copy-button" type="button">複製</button>
-              <button id="clearCandidatesButton" type="button">清空</button>
+              <button id="clearCandidatesButton" type="button">清空候選</button>
+              <div class="candidate-copy-menu">
+                <button id="copyCandidatesButton" class="candidate-copy-button" type="button">複製連結</button>
+                <button
+                  id="candidateCopyMenuButton"
+                  class="candidate-copy-menu-button"
+                  type="button"
+                  aria-label="選擇其他複製格式"
+                  aria-haspopup="menu"
+                  aria-expanded="false"
+                >▾</button>
+                <div id="candidateCopyMenu" class="candidate-copy-menu-list" role="menu" hidden>
+                  <button type="button" role="menuitem" data-candidate-copy-template="im">IM 討論版</button>
+                  <button type="button" role="menuitem" data-candidate-copy-template="sponsor">贊助佐證版</button>
+                  <button type="button" role="menuitem" data-candidate-copy-template="collaboration">協作檢查版</button>
+                  <button type="button" role="menuitem" data-candidate-copy-template="flickr_urls">純 Flickr URL</button>
+                </div>
+              </div>
             </div>
           </section>
 
