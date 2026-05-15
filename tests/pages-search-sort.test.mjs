@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { buildAiAssistantPrompt } from "../app/ai-assistant.js";
 import { candidateCopyText, candidateMarkdown, selectedPhotos } from "../app/candidates.js";
-import { activeFilterEntries, albumFilterOptions } from "../app/controls.js";
+import { activeFilterEntries, albumFilterOptions, filterDefinitions, updateFilterLayout } from "../app/controls.js";
 import { buildOptionLabelMaps, createSearchTokenBuilder, normalizePhotoRows } from "../app/data-loader.js";
 import { photoTitle, sheetRowLink } from "../app/photo-render.js";
 import { resultContextText } from "../app/result-render.js";
@@ -26,6 +26,75 @@ const socialTask = {
   safeCrops: ["1:1"],
   prefersNegativeSpace: true,
 };
+
+class FakeFilterLabel {
+  constructor(key) {
+    this.dataset = {};
+    this.key = key;
+    this.parentElement = null;
+    this.style = {};
+  }
+}
+
+class FakeFilterControl {
+  constructor(label) {
+    this.label = label;
+  }
+
+  closest(selector) {
+    return selector === "label" ? this.label : null;
+  }
+}
+
+class FakeFilterGrid {
+  constructor(id) {
+    this.appendedKeys = [];
+    this.children = [];
+    this.id = id;
+  }
+
+  append(label) {
+    this.appendedKeys.push(label.dataset.filterKey ?? label.key);
+    if (label.parentElement && label.parentElement !== this) {
+      label.parentElement.children = label.parentElement.children.filter((child) => child !== label);
+    }
+    if (!this.children.includes(label)) {
+      this.children.push(label);
+    }
+    label.parentElement = this;
+  }
+
+  clearLog() {
+    this.appendedKeys = [];
+  }
+}
+
+function fakeFilterLayout() {
+  const labels = new Map();
+  const controls = {};
+  for (const definition of filterDefinitions) {
+    const label = new FakeFilterLabel(definition.key);
+    labels.set(definition.key, label);
+    controls[definition.control] = new FakeFilterControl(label);
+  }
+
+  const elements = {
+    advancedFilterGrid: new FakeFilterGrid("advancedFilterGrid"),
+    advancedFilters: { hidden: false },
+    taskFilterGrid: new FakeFilterGrid("taskFilterGrid"),
+  };
+
+  return { controls, elements, labels };
+}
+
+function clearAppendLog(elements) {
+  elements.taskFilterGrid.clearLog();
+  elements.advancedFilterGrid.clearLog();
+}
+
+function appendLog(elements) {
+  return [...elements.taskFilterGrid.appendedKeys, ...elements.advancedFilterGrid.appendedKeys];
+}
 
 function photo(overrides = {}) {
   return {
@@ -464,6 +533,39 @@ describe("Pages search/sort pure logic", () => {
     );
     assert.match(options[0].label, /非常非常長/);
     assert.equal(options[2].label, "SITCON 2026 負一籌＋BoF");
+  });
+
+  it("does not re-append stable filter controls during repeated layout renders", () => {
+    const { controls, elements, labels } = fakeFilterLayout();
+
+    updateFilterLayout({ controls, elements, taskMode: "all" });
+    assert.ok(appendLog(elements).length > 0);
+
+    clearAppendLog(elements);
+    updateFilterLayout({ controls, elements, taskMode: "all" });
+    assert.deepEqual(appendLog(elements), []);
+
+    const parentBeforeTaskChange = new Map(
+      [...labels.entries()].map(([key, label]) => [key, label.parentElement?.id ?? "none"]),
+    );
+
+    clearAppendLog(elements);
+    updateFilterLayout({ controls, elements, taskMode: "sponsor-pitch" });
+
+    const movedKeys = new Set(appendLog(elements));
+    assert.ok(movedKeys.size > 0);
+    for (const [key, label] of labels) {
+      if (key === "album") {
+        assert.equal(label.parentElement, null);
+        continue;
+      }
+      const parentAfterTaskChange = label.parentElement?.id ?? "none";
+      if (movedKeys.has(key)) {
+        assert.notEqual(parentAfterTaskChange, parentBeforeTaskChange.get(key));
+      } else {
+        assert.equal(parentAfterTaskChange, parentBeforeTaskChange.get(key));
+      }
+    }
   });
 
   it("shapes active filter entries for AI prompts and filter chips", () => {

@@ -582,10 +582,9 @@ export function updateFilterLayout({ controls, elements, taskMode }) {
 
     const primary = primaryKeys.has(definition.key) && !lowLevelFilters.has(definition.key);
     label.style.order = String(primary ? primaryOrder++ : advancedOrder++);
-    if (primary) {
-      elements.taskFilterGrid.append(label);
-    } else {
-      elements.advancedFilterGrid.append(label);
+    const targetGrid = primary ? elements.taskFilterGrid : elements.advancedFilterGrid;
+    if (label.parentElement !== targetGrid) {
+      targetGrid.append(label);
     }
   }
 
