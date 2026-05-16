@@ -32,7 +32,6 @@ const distributionFields = [
 const peopleSceneValues = new Set(["講者", "會眾", "工作人員", "合照", "交流", "攝影"]);
 const peopleReasonPattern = /人|會眾|講者|合照|志工|參與者|工作人員/;
 const noPeopleReasonPattern = /沒有人|無人|沒有任何人|未見.*(?:人物|人影|真人|人臉|人體)|未看到.*(?:人物|人影|真人|人臉|人體)|沒有(?:出現)?(?:可辨識)?(?:的)?(?:人物|人影|真人|人臉|人體)|沒有.*(?:人物|人影|真人|人臉|人體)|無(?:可辨識)?(?:的)?(?:人物|人影|真人|人臉|人體)|不可辨識.*(?:人物|人影|真人)|未計入真人|非真人|(?:人形|人物|角色).*(?:插圖|圖案|標誌|海報|看板|螢幕|包裝|文宣)|(?:插圖|圖案|標誌|海報|看板|螢幕|包裝|文宣).*(?:人形|人物|角色)/;
-const publicUseRiskPattern = /兒童|小朋友|孩童|清晰.*(?:臉|面部)|清楚.*(?:臉|面部)|名牌|姓名|全名|聯絡資訊|email|e-mail|電話|QR\s*code|QR碼|QRCode|識別證|證件|工作證|胸牌/i;
 const concentrationThreshold = 0.9;
 const smallRunMinimumItems = 20;
 const smallRunMaximumItems = 60;
@@ -74,6 +73,33 @@ const reasonReuseQaWarningMinimum = 5;
 const reviewFocusMaxRows = 25;
 const balancedSampleMaxRows = 40;
 const asciiWordPattern = /[A-Za-z][A-Za-z0-9'_-]{2,}(?:\s+[A-Za-z][A-Za-z0-9'_-]{2,}){4,}/;
+const sceneReviewPackageDefinitions = [
+  {
+    description: "講者、簡報與螢幕用途抽查",
+    label: "螢幕 + 講者",
+    match: (values) => values.includes("螢幕") && values.includes("講者"),
+  },
+  {
+    description: "攤位互動與贊助一致性抽查",
+    label: "攤位 + 交流",
+    match: (values) => values.includes("攤位") && values.includes("交流"),
+  },
+  {
+    description: "代表照、人數與背板構圖抽查",
+    label: "合照 + 背板",
+    match: (values) => values.includes("合照") && values.includes("背板"),
+  },
+  {
+    description: "工作坊互動與 mood / recommended_uses 抽查",
+    label: "工作坊 + 交流",
+    match: (values) => values.includes("工作坊") && values.includes("交流"),
+  },
+  {
+    description: "空間、入口與導引資訊抽查",
+    label: "場地 / 指標",
+    match: (values) => values.includes("場地") || values.includes("指標"),
+  },
+];
 
 function printUsage() {
   console.log(`Usage:
@@ -215,6 +241,10 @@ function table(headers, rows) {
     ...rows.map((row) => `| ${row.map(markdownCell).join(" | ")} |`),
   ];
   return lines.join("\n");
+}
+
+function codexSessionSuffix(codexSession) {
+  return ` --codex-session ${codexSession || "<parent-session-id>"}`;
 }
 
 function countValues(values) {
@@ -643,16 +673,6 @@ function firstExistingField(item, fields) {
   return fields.find((field) => item.fields[field]) ?? Object.keys(item.fields)[0] ?? "";
 }
 
-function publicUseRiskItems(items) {
-  return items.filter((item) => {
-    if (["needs_review", "avoid"].includes(item.fields.public_use_status?.value)) {
-      return false;
-    }
-    const hasChildScene = valuesForField(item, "scene_tags").includes("兒童");
-    return hasChildScene || publicUseRiskPattern.test(allHumanText(item));
-  });
-}
-
 function visualDescriptionQualityItems(items, kind) {
   return items.filter((item) =>
     visualDescriptionQualityWarningsForItem(item).some((warning) => warning.kind === kind),
@@ -663,6 +683,24 @@ function designMetadataQualityItems(items, kind) {
   return items.filter((item) =>
     designMetadataQualityWarningsForItem(item).some((warning) => warning.kind === kind),
   );
+}
+
+function sceneReviewPackageItems(items) {
+  return sceneReviewPackageDefinitions
+    .map((definition) => ({
+      ...definition,
+      items: items.filter((item) => definition.match(valuesForField(item, "scene_tags"))),
+    }))
+    .filter((entry) => entry.items.length > 0);
+}
+
+export function sceneReviewPackageRows(items) {
+  return sceneReviewPackageItems(items).map((entry) => [
+    entry.label,
+    entry.items.length,
+    stableSample(entry.items, 8, `scene-package-${entry.label}`).map((item) => item.photo_id).join(", "),
+    entry.description,
+  ]);
 }
 
 function pushFocusRows(rows, seen, issue, items, field, maxRows = 8) {
@@ -840,13 +878,16 @@ function buildReviewFocusRows(items) {
     pushFocusRows(rows, seen, issue, designMetadataQualityItems(items, kind), field, 3);
   }
 
-  pushFocusRows(
-    rows,
-    seen,
-    "可能需要 public_use_status 抽查",
-    publicUseRiskItems(items),
-    "public_use_status",
-  );
+  for (const scenePackage of sceneReviewPackageItems(items).slice(0, 5)) {
+    pushFocusRows(
+      rows,
+      seen,
+      `場景組合抽查：${scenePackage.label}`,
+      stableSample(scenePackage.items, 3, `scene-package-focus-${scenePackage.label}`),
+      "scene_tags",
+      3,
+    );
+  }
 
   const longEnglishTextItems = items.filter((item) => asciiWordPattern.test(allHumanText(item)));
   for (const item of longEnglishTextItems.slice(0, 8)) {
@@ -942,13 +983,12 @@ function buildBalancedSampleRows(items, { focusRows = [], shardMap = new Map() }
     item.fields.public_use_status
     || item.fields.safe_crop
     || valuesForField(item, "sponsorship_items").length > 0
-    || valuesForField(item, "sponsorship_tags").length > 0
-    || publicUseRiskItems([item]).length > 0,
+    || valuesForField(item, "sponsorship_tags").length > 0,
   );
   pushSampleRows(
     rows,
     seen,
-    "high-risk optional field",
+    "optional field sample",
     stableSample(riskItems, 10, "balanced-risk-fields"),
     ["public_use_status", "safe_crop", "sponsorship_items", "sponsorship_tags", "recommended_uses"],
   );
@@ -964,7 +1004,7 @@ function buildBalancedSampleRows(items, { focusRows = [], shardMap = new Map() }
   return rows.slice(0, balancedSampleMaxRows);
 }
 
-function buildReviewNotes(items, { peopleCountQaRows = [], reasonReuseQaRows = [], sceneQaRows = [] } = {}) {
+export function buildReviewNotes(items, { peopleCountQaRows = [], reasonReuseQaRows = [], sceneQaRows = [] } = {}) {
   const notes = [];
   const itemCount = items.length;
   const priorityCount = items.filter((item) => item.fields.priority_level).length;
@@ -998,7 +1038,6 @@ function buildReviewNotes(items, { peopleCountQaRows = [], reasonReuseQaRows = [
   const confidenceRows = confidenceByFieldRows(items);
   const confidenceCoveredFields = confidenceRows.filter((row) => Number(row[2]) > 0).length;
   const confidenceTotalFields = confidenceRows.length;
-  const publicRiskItems = publicUseRiskItems(items);
   const sceneCount = items.filter((item) => valuesForField(item, "scene_tags").length > 0).length;
 
   for (const row of peopleCountQaRows.slice(0, 8)) {
@@ -1104,15 +1143,10 @@ function buildReviewNotes(items, { peopleCountQaRows = [], reasonReuseQaRows = [
   }
 
   if (publicUseStatusCount === 0) {
-    notes.push("沒有 `public_use_status` 候選值；若本批沒有明顯 avoid 照片，這可以接受。");
+    notes.push("沒有 `public_use_status` 候選值；若本批沒有明顯不建議推薦或需整理提醒的照片，這可以接受。");
   } else if (itemCount > 0 && needsReviewCount / itemCount >= concentrationThreshold) {
     notes.push(
-      `\`public_use_status = needs_review\` 出現在 ${needsReviewCount}/${itemCount} 張照片（${formatPercent(needsReviewCount / itemCount)}），可能被當成預設填空；請確認每張是否有具體公開使用疑慮。`,
-    );
-  }
-  if (publicRiskItems.length > 0) {
-    notes.push(
-      `有 ${publicRiskItems.length} 張照片出現兒童、名牌、姓名、QR code、識別證或清晰臉部等公開使用風險線索，但沒有 \`public_use_status = needs_review\` 或 \`avoid\`：${photoIdList(publicRiskItems)}。請人工抽查。`,
+      `\`public_use_status = needs_review\` 出現在 ${needsReviewCount}/${itemCount} 張照片（${formatPercent(needsReviewCount / itemCount)}），可能被當成預設填空；請確認每張是否有具體使用品質或整理提醒。`,
     );
   }
   if (total === 0) {
@@ -1197,7 +1231,7 @@ function buildPromptVersionNotes(manifest) {
   return [];
 }
 
-function renderSummary({ artifactRows, diffPath, layerRows, manifest, notes, outputDir, peopleCountQaRows, plan, proposals, reasonReuseQaRows, runDir, sample, sceneQaRows, shardMap, shardRows, summaryPath }) {
+function renderSummary({ artifactRows, codexSession, diffPath, layerRows, manifest, notes, outputDir, peopleCountQaRows, plan, proposals, reasonReuseQaRows, runDir, sample, scenePackageRows: scenePackageTableRows, sceneQaRows, shardMap, shardRows, summaryPath }) {
   const items = proposals.items;
   const fieldCountRows = fieldCounts(items).map(({ field, count }) => [
     fieldLabel(field, { includeRaw: true }),
@@ -1291,6 +1325,12 @@ function renderSummary({ artifactRows, diffPath, layerRows, manifest, notes, out
       ? table(["scope", "name", "items", "with scene_tags", "coverage", "tag density", "top tag", "issue"], sceneQaRows)
       : "No scene QA rows were generated.",
     "",
+    "## Scene Review Packages",
+    "",
+    scenePackageTableRows.length > 0
+      ? table(["package", "matching items", "sample photo_ids", "review focus"], scenePackageTableRows)
+      : "No scene review package rows were generated.",
+    "",
     "## People Count QA",
     "",
     table(["metric", "value"], peopleSummaryRows),
@@ -1355,12 +1395,18 @@ function renderSummary({ artifactRows, diffPath, layerRows, manifest, notes, out
           `pnpm sheets:apply-ai-updates -- --run-dir ${runDir} --write`,
           "```",
           "",
+          "Record or refresh review runtime metrics:",
+          "",
+          "```bash",
+          `pnpm ai:review -- --run-dir ${runDir}${codexSessionSuffix(codexSession)}`,
+          "```",
+          "",
         ]
       : [
           "這是暫存 review。proposal 被採用並寫回 run 目錄後，請重新執行：",
           "",
           "```bash",
-          `pnpm ai:review -- --run-dir ${runDir}`,
+          `pnpm ai:review -- --run-dir ${runDir}${codexSessionSuffix(codexSession)}`,
           "```",
           "",
         ]),
@@ -1404,6 +1450,7 @@ async function reviewAiRun(options) {
   const shardMap = await buildShardMap(options.runDir, manifest.run_id);
   const shardInspection = await inspectShardArtifacts(options.runDir, manifest.run_id);
   const sceneQaRows = buildSceneQaRows(proposals.items, photos, shardMap);
+  const packageRows = sceneReviewPackageRows(proposals.items);
   const peopleCountQaRows = peopleCountSpikeRows(proposals.items, photos, shardMap);
   const reasonReuseQaRows = reasonReuseRows(proposals.items);
   const layerRows = layerCoverageRows(proposals.items);
@@ -1425,6 +1472,7 @@ async function reviewAiRun(options) {
   ];
   const summary = renderSummary({
     artifactRows,
+    codexSession: options.codexSession,
     diffPath: diff.outputPath,
     layerRows,
     manifest,
@@ -1436,6 +1484,7 @@ async function reviewAiRun(options) {
     reasonReuseQaRows,
     runDir: options.runDir,
     sample: options.sample,
+    scenePackageRows: packageRows,
     sceneQaRows,
     shardMap,
     shardRows: shardInspection.rows,
@@ -1525,9 +1574,12 @@ async function main() {
     console.log(`- Open single-run report: pnpm ai:report -- --run ${options.runDir}`);
     console.log(`- Compare attempts: pnpm ai:report -- --runs ${options.runDir} tmp/ai-runs/<other-run-or-attempt>`);
     console.log(`- Dry-run Sheets cells: pnpm sheets:apply-ai-updates -- --run-dir ${options.runDir}`);
+    if (!options.codexSession) {
+      console.log(`- Record review runtime metrics: pnpm ai:review -- --run-dir ${options.runDir}${codexSessionSuffix("")}`);
+    }
   } else {
     console.log(`- Temporary review artifacts are in ${options.outputDir}`);
-    console.log(`- After accepting the proposal, write it to the run directory and rerun: pnpm ai:review -- --run-dir ${options.runDir}`);
+    console.log(`- After accepting the proposal, write it to the run directory and rerun: pnpm ai:review -- --run-dir ${options.runDir}${codexSessionSuffix(options.codexSession)}`);
   }
 }
 

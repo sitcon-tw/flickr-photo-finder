@@ -112,6 +112,13 @@ function renderWorkerPrompt({ inputPath, outputPath, runDir, shardCount, shardIn
 - 仍必須逐張打開圖片。若 \`absolute_image_path\` 有值，優先使用它；否則依 run prompt 使用 \`local_image_path\` 或 \`image_download_url\`。
 - 分片輸出請寫成 JSON array，每個元素是正式 \`metadata-proposals.json\` 內的單一 \`items[]\` 物件，例如 \`[{ "photo_id": "...", "fields": { ... } }]\`。
 - 不要在本分片輸出中包 root object；root object 會由 merge 工具統一產生。
+
+若你是 Codex worker，開始與完成時請更新 shard execution log，並填入實際 session、model 與 reasoning effort：
+
+\`\`\`bash
+pnpm ai:shard:log -- --run-dir ${runDir} --shard ${formatShardId(shardIndex)} --agent-name <worker-name> --model-name <model-name> --reasoning-effort <medium|xhigh|unknown> --codex-session <worker-session-id> --mark-started
+pnpm ai:shard:log -- --run-dir ${runDir} --shard ${formatShardId(shardIndex)} --reasoning-effort <medium|xhigh|unknown> --codex-session <worker-session-id> --mark-completed --validate-status passed
+\`\`\`
 `;
 }
 
@@ -223,6 +230,7 @@ async function prepareAiShards(options) {
       output_path: shard.output_path,
       output_sha256: "",
       photo_count: shard.count,
+      reasoning_effort: "",
       repair_count: 0,
       retry_count: 0,
       shard: shard.shard,

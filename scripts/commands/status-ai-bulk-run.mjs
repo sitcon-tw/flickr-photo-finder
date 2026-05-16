@@ -1,5 +1,6 @@
 import { access, readFile, readdir, stat } from "node:fs/promises";
 import { basename, join, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import { addTokenUsage } from "../lib/ai/codex-session-usage.mjs";
 import {
   codexMetricsFile,
@@ -110,21 +111,38 @@ function countValues(values) {
   return Object.fromEntries([...counts.entries()].sort((left, right) => String(left[0]).localeCompare(String(right[0]))));
 }
 
-function summarizeExecutionLog(log) {
+export function summarizeExecutionLog(log) {
   const shards = Array.isArray(log?.shards) ? log.shards : [];
   const codexUsageDeltas = shards.map((shard) => shard.codex_usage_delta).filter(Boolean);
+  const durationShards = shards.filter((shard) => Number.isInteger(shard.duration_ms) && shard.duration_ms >= 0);
+  const codexSessionShards = shards.filter((shard) => String(shard.codex_session || "").trim());
   return {
     codex_completed_shards: codexUsageDeltas.length,
+    codex_session_shards: codexSessionShards.length,
     codex_usage_delta: addTokenUsage(codexUsageDeltas),
     completed_shards: shards.filter((shard) => shard.status === "completed").length,
+    duration_logged_shards: durationShards.length,
+    duration_ms_total: durationShards.reduce((sum, shard) => sum + Number(shard.duration_ms || 0), 0),
     logged_shards: shards.length,
     merged_output_path: log?.merged_output_path ?? "",
     merged_output_sha256: log?.merged_output_sha256 ?? "",
+    model_name_counts: countValues(shards.map((shard) => shard.model_name)),
     repair_count: shards.reduce((sum, shard) => sum + Number(shard.repair_count || 0), 0),
+    reasoning_effort_counts: countValues(shards.map((shard) => shard.reasoning_effort)),
     retry_count: shards.reduce((sum, shard) => sum + Number(shard.retry_count || 0), 0),
     status_counts: countValues(shards.map((shard) => shard.status)),
     validate_status_counts: countValues(shards.map((shard) => shard.validate_status)),
   };
+}
+
+function formatDurationMs(value) {
+  if (!Number.isFinite(value) || value <= 0) {
+    return "0m";
+  }
+  const totalMinutes = Math.round(value / 60000);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
 }
 
 async function inspectBulkStatus(options) {
@@ -204,6 +222,10 @@ function printStatus(status) {
   if (status.shard_execution_log_exists) {
     console.log(`- shard execution status: ${JSON.stringify(status.shard_execution_log_summary.status_counts)}`);
     console.log(`- shard retries/repairs: ${status.shard_execution_log_summary.retry_count}/${status.shard_execution_log_summary.repair_count}`);
+    console.log(`- shard models: ${JSON.stringify(status.shard_execution_log_summary.model_name_counts)}`);
+    console.log(`- shard reasoning effort: ${JSON.stringify(status.shard_execution_log_summary.reasoning_effort_counts)}`);
+    console.log(`- shard duration coverage: ${status.shard_execution_log_summary.duration_logged_shards}/${status.shard_execution_log_summary.logged_shards} (${formatDurationMs(status.shard_execution_log_summary.duration_ms_total)} logged total)`);
+    console.log(`- shard Codex session coverage: ${status.shard_execution_log_summary.codex_session_shards}/${status.shard_execution_log_summary.logged_shards}`);
     if (status.shard_execution_log_summary.codex_completed_shards > 0) {
       console.log(`- shard Codex token delta: ${formatCodexUsage(status.shard_execution_log_summary.codex_usage_delta)} (${status.shard_execution_log_summary.codex_completed_shards} shard(s))`);
     }
@@ -226,11 +248,12 @@ function printStatus(status) {
   console.log("");
   console.log("Next:");
   if (status.root_proposal_exists && (!status.review_summary_exists || status.review_summary_stale)) {
-    console.log(`- Rebuild review artifacts: pnpm ai:review -- --run-dir ${status.run_dir}`);
+    console.log(`- Rebuild review artifacts: pnpm ai:review -- --run-dir ${status.run_dir} --codex-session <parent-session-id>`);
   } else if (status.root_proposal_exists) {
     console.log("- Review artifacts are current. Continue with HTML report or Sheets dry-run.");
     if (!status.codex_metrics_exists) {
       console.log(`- Optional metering: pnpm ai:codex:meter -- --run-dir ${status.run_dir} --session <codex-session> --mark-start/--mark-end`);
+      console.log(`- Refresh review runtime: pnpm ai:review -- --run-dir ${status.run_dir} --codex-session <parent-session-id>`);
     }
   } else if (status.input_shards === 0) {
     console.log(`- Prepare shard workspace: pnpm ai:shard:prepare -- --run-dir ${status.run_dir}`);
@@ -239,7 +262,7 @@ function printStatus(status) {
   } else if (!status.shard_merged_proposal_exists) {
     console.log(`- Merge shards: pnpm ai:shard:merge -- --run-dir ${status.run_dir}`);
   } else if (!status.root_proposal_exists) {
-    console.log(`- Temporarily review merged proposal: pnpm ai:review -- --run-dir ${status.run_dir} --proposals ${status.shard_merged_proposal_path} --output-dir /tmp/ai-review-runs/${status.run_id}`);
+    console.log(`- Temporarily review merged proposal: pnpm ai:review -- --run-dir ${status.run_dir} --proposals ${status.shard_merged_proposal_path} --output-dir /tmp/ai-review-runs/${status.run_id} --codex-session <parent-session-id>`);
     console.log(`- Write accepted proposal: pnpm ai:shard:merge -- --run-dir ${status.run_dir} --write-run`);
   } else {
     console.log("- Inspect the run manually; no obvious next step was detected.");
@@ -260,9 +283,11 @@ async function main() {
   printStatus(status);
 }
 
-try {
-  await main();
-} catch (error) {
-  console.error(`Could not inspect AI bulk status: ${error.message}`);
-  process.exitCode = 1;
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+  try {
+    await main();
+  } catch (error) {
+    console.error(`Could not inspect AI bulk status: ${error.message}`);
+    process.exitCode = 1;
+  }
 }
