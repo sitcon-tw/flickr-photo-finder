@@ -59,6 +59,14 @@ pnpm ai:prepare -- --album ALBUM_ID --limit all --image-size large-1024
 pnpm ai:prepare -- --album ALBUM_ID --limit all --status all --image-size large-1024
 ```
 
+若要建立橫跨多本相簿的大型工作包：
+
+```bash
+pnpm ai:prepare -- --albums ALBUM_ID_1,ALBUM_ID_2 --limit all --status all --image-size large-1024 --download-concurrency 8
+```
+
+`--album` 可重複使用，`--albums` 則接受逗號分隔清單；兩者可以混用。下載圖片通常是大型工作包的主要瓶頸，`ai:prepare` 預設以 8 路平行下載或解析圖片 URL。若 Flickr 或所在網路出現限速、逾時或大量失敗，先降低 `--download-concurrency`，不要改成手動分批複製圖片。
+
 若照片需要細節判讀，可少量使用：
 
 ```bash

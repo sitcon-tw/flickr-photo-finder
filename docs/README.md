@@ -189,7 +189,7 @@ flowchart TD
 - `pnpm intake:run -- --album <album-id>`，從選定相簿產生一次可審核的 intake run artifact，包含候選 `photos`、更新後 `albums`、`import_batches` 與 `summary.json`，並輸出 `Intake run directory:` 供 workflow 或人工接續使用。預設讀 `tmp/sheets-export/albums.csv` 與 `tmp/sheets-export/photos.csv`。
 - `pnpm intake:validate -- --run-dir <dir>`，套用到 Google Sheets 前檢查 intake run artifact 是否完整一致。
 - `pnpm sheets:apply-intake -- --run-dir <dir>`，透過官方 Google Sheets API SDK dry-run 已審核 intake run artifact；加上 `--write` 才會追加照片、更新該相簿 `last_processed_at` 並追加批次紀錄。
-- `pnpm ai:prepare`，從正式 Sheets 匯出的 `photos.csv` 選出待初標照片，建立本機 `tmp/ai-runs/` 工作目錄與可供 AI 讀圖的輸入檔；預設下載 1024px 圖片，也可指定 `preview`、640、800 或 `original`。若要補強設計取用欄位，可用 `--focus design-metadata` 選出缺少 `safe_crop` 且有橫式、留白、背板、舞台、網站或社群線索的照片。
+- `pnpm ai:prepare`，從正式 Sheets 匯出的 `photos.csv` 選出待初標照片，建立本機 `tmp/ai-runs/` 工作目錄與可供 AI 讀圖的輸入檔；預設下載 1024px 圖片，也可指定 `preview`、640、800 或 `original`。可用 `--album` / `--albums` 篩選單本或多本相簿；大型下載預設以 8 路平行處理，可用 `--download-concurrency` 調整。若要補強設計取用欄位，可用 `--focus design-metadata` 選出缺少 `safe_crop` 且有橫式、留白、背板、舞台、網站或社群線索的照片。
 - `pnpm eval:sample`，依 `data/ai-cross-activity-sample-plan.json` 從多本 Flickr 相簿等距抽樣，建立跨活動 AI 測試工作包；這是欄位與 prompt 評估用本機資料集，不寫入 Google Sheets。
 - `pnpm eval:attempt -- --from <dir> --model <name> --round <number>`，從既有 AI run 建立可重複使用同一輸入的模型/輪次 attempt，圖片預設以 symlink 或 hardlink 共用。
 - `pnpm ai:review -- --run-dir <dir>`，檢查 AI 候選 `metadata-proposals.json`，並一次產生 `metadata-review-summary.md`、`metadata-diff.md`、`metadata-update-plan.json` 與 CSV；大型 run summary 會附 artifact provenance、AI layer coverage 與 scene QA。

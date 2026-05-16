@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { copyFile, link, mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
 import { basename, extname, join, relative } from "node:path";
 import { getAiLabelingPromptMetadata, writeAiLabelingPrompt } from "../lib/ai/ai-labeling-prompt.mjs";
 import { parseCsv, parseSemicolonList, toCsvLine } from "../lib/core/csv-utils.mjs";
@@ -9,6 +9,7 @@ const defaultLimit = 50;
 const defaultImageSize = "large-1024";
 const defaultStatus = "unreviewed";
 const defaultFocus = "none";
+const defaultDownloadConcurrency = 8;
 const focusOptions = [defaultFocus, "design-metadata"];
 const imageSizeSuffixes = new Map([
   ["medium-640", "z"],
@@ -27,6 +28,8 @@ Options:
                         Use "all" to include every status.
                         With --focus design-metadata, default is all.
   --album <album-id>    Only include photos whose album_ids contains this album ID.
+                        May be repeated. Kept for single-album workflows.
+  --albums <ids>        Comma-separated album IDs to include.
   --photo-ids <ids>     Comma-separated photo IDs to include.
   --focus <profile>     Focus selection profile. Options: ${focusOptions.join(", ")}.
                         design-metadata selects likely design-use photos that lack safe_crop.
@@ -34,6 +37,11 @@ Options:
                         Default: 50.
   --image-size <size>   Image size for AI downloads. Default: large-1024.
                         Options: ${imageSizeOptions.join(", ")}.
+  --download-concurrency <n>
+                        Parallel image downloads or URL resolutions. Default: ${defaultDownloadConcurrency}.
+  --image-cache-dir <path>
+                        Reuse existing images by photo_id before downloading. Accepts an
+                        images directory or an AI run directory containing images/. May repeat.
   --output-dir <path>   Directory for AI run folders. Default: tmp/ai-runs.
   --run-id <id>         Run folder name. Default: ai-prepare-<timestamp>.
   --no-download         Create metadata files without downloading image files.
@@ -47,10 +55,12 @@ enabled. It does not write Google Sheets.`);
 function parseArgs(argv) {
   const args = argv.slice(2).filter((arg) => arg !== "--");
   const options = {
+    albumIds: [],
     download: true,
-    albumId: "",
+    downloadConcurrency: defaultDownloadConcurrency,
     focus: defaultFocus,
     help: false,
+    imageCacheDirs: [],
     imageSize: defaultImageSize,
     limit: defaultLimit,
     outputDir: aiRunsDir,
@@ -73,7 +83,10 @@ function parseArgs(argv) {
       options.statusProvided = true;
       index += 1;
     } else if (arg === "--album") {
-      options.albumId = args[index + 1] ?? "";
+      options.albumIds.push(args[index + 1] ?? "");
+      index += 1;
+    } else if (arg === "--albums") {
+      options.albumIds.push(...parseListOption(args[index + 1] ?? ""));
       index += 1;
     } else if (arg === "--photo-ids") {
       options.photoIds = parseListOption(args[index + 1] ?? "");
@@ -86,6 +99,12 @@ function parseArgs(argv) {
       index += 1;
     } else if (arg === "--image-size") {
       options.imageSize = args[index + 1] ?? "";
+      index += 1;
+    } else if (arg === "--download-concurrency") {
+      options.downloadConcurrency = Number(args[index + 1] ?? "");
+      index += 1;
+    } else if (arg === "--image-cache-dir") {
+      options.imageCacheDirs.push(args[index + 1] ?? "");
       index += 1;
     } else if (arg === "--output-dir") {
       options.outputDir = args[index + 1] ?? "";
@@ -100,6 +119,9 @@ function parseArgs(argv) {
     }
   }
 
+  options.albumIds = [...new Set(options.albumIds.map((albumId) => albumId.trim()).filter(Boolean))];
+  options.imageCacheDirs = [...new Set(options.imageCacheDirs.map((dir) => dir.trim()).filter(Boolean))];
+
   if (!options.help) {
     if (!options.photosPath) {
       throw new Error("--photos requires a path");
@@ -113,11 +135,11 @@ function parseArgs(argv) {
     if (!options.outputDir) {
       throw new Error("--output-dir requires a path");
     }
-    if (options.albumId && typeof options.albumId !== "string") {
-      throw new Error("--album requires an album ID");
-    }
     if (options.limit !== "all" && (!Number.isInteger(options.limit) || options.limit <= 0)) {
       throw new Error('--limit must be a positive integer or "all"');
+    }
+    if (!Number.isInteger(options.downloadConcurrency) || options.downloadConcurrency <= 0) {
+      throw new Error("--download-concurrency must be a positive integer");
     }
     if (options.statusValues.length === 0) {
       throw new Error("--status requires at least one value");
@@ -219,15 +241,36 @@ function selectPhotos(photos, options) {
   const statusFilter = new Set(options.statusValues);
   const includeAllStatuses = statusFilter.has("all");
   const photoIdFilter = new Set(options.photoIds);
+  const albumIdFilter = new Set(options.albumIds);
 
   const selected = photos
     .filter((photo) => photo.photo_id)
-    .filter((photo) => !options.albumId || parseSemicolonList(photo.album_ids ?? "").includes(options.albumId))
+    .filter((photo) =>
+      albumIdFilter.size === 0
+      || parseSemicolonList(photo.album_ids ?? "").some((albumId) => albumIdFilter.has(albumId)),
+    )
     .filter((photo) => photoIdFilter.size === 0 || photoIdFilter.has(photo.photo_id))
     .filter((photo) => includeAllStatuses || statusFilter.has(photo.curation_status || ""))
     .filter((photo) => matchesFocusProfile(photo, options.focus));
 
   return options.limit === "all" ? selected : selected.slice(0, options.limit);
+}
+
+async function mapWithConcurrency(items, concurrency, worker) {
+  const results = new Array(items.length);
+  let nextIndex = 0;
+
+  async function runWorker() {
+    while (nextIndex < items.length) {
+      const index = nextIndex;
+      nextIndex += 1;
+      results[index] = await worker(items[index], index);
+    }
+  }
+
+  const workerCount = Math.min(concurrency, items.length);
+  await Promise.all(Array.from({ length: workerCount }, () => runWorker()));
+  return results;
 }
 
 function csvFromPhotos(photos) {
@@ -326,8 +369,99 @@ function extensionFromContentType(contentType) {
   return "";
 }
 
+function contentTypeFromExtension(extension) {
+  if (extension === ".jpg" || extension === ".jpeg") return "image/jpeg";
+  if (extension === ".png") return "image/png";
+  if (extension === ".webp") return "image/webp";
+  if (extension === ".gif") return "image/gif";
+  return "";
+}
+
 function safeFileStem(value) {
   return value.replaceAll(/[^A-Za-z0-9._-]/g, "-").replaceAll(/^-+|-+$/g, "");
+}
+
+async function readImageCacheDir(path, cache) {
+  let entries;
+  try {
+    const stats = await stat(path);
+    if (!stats.isDirectory()) {
+      return;
+    }
+    entries = await readdir(path, { withFileTypes: true });
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      console.error(`Progress: image cache directory not found, skipping ${path}.`);
+      return;
+    }
+    throw error;
+  }
+
+  for (const entry of entries) {
+    if (!entry.isFile()) {
+      continue;
+    }
+    const extension = extname(entry.name).toLowerCase();
+    if (![".jpg", ".jpeg", ".png", ".webp", ".gif"].includes(extension)) {
+      continue;
+    }
+    const photoId = basename(entry.name, extension);
+    if (!photoId || cache.has(photoId)) {
+      continue;
+    }
+    cache.set(photoId, join(path, entry.name));
+  }
+}
+
+async function readImageCache(paths) {
+  const cache = new Map();
+  for (const path of paths) {
+    await readImageCacheDir(path, cache);
+    await readImageCacheDir(join(path, "images"), cache);
+  }
+  return cache;
+}
+
+async function reuseCachedImage(photo, imagesDir, imageSize, imageCache) {
+  const sourcePath = imageCache.get(photo.photo_id);
+  if (!sourcePath) {
+    return null;
+  }
+
+  const extension = extname(sourcePath).toLowerCase() || ".jpg";
+  const fileStem = safeFileStem(photo.photo_id);
+  if (!fileStem) {
+    throw new Error(`${photo.photo_id} cannot be used as an image filename`);
+  }
+
+  const filePath = join(imagesDir, `${fileStem}${extension === ".jpeg" ? ".jpg" : extension}`);
+  try {
+    await link(sourcePath, filePath);
+  } catch (error) {
+    if (error.code === "EEXIST") {
+      // A previous interrupted run may have already linked this cache entry.
+    } else if (error.code === "EXDEV" || error.code === "EPERM" || error.code === "EOPNOTSUPP") {
+      await copyFile(sourcePath, filePath);
+    } else {
+      throw error;
+    }
+  }
+
+  let downloadUrl = "";
+  try {
+    downloadUrl = await resolveImageDownloadUrl(photo, imageSize);
+  } catch {
+    downloadUrl = photo.image_preview_url ?? "";
+  }
+
+  const stats = await stat(filePath);
+  return {
+    bytes: stats.size,
+    content_type: contentTypeFromExtension(extension),
+    download_url: downloadUrl,
+    path: filePath,
+    source_path: sourcePath,
+  };
 }
 
 async function downloadImage(photo, imagesDir, imageSize) {
@@ -380,14 +514,22 @@ async function prepareRun(options) {
     await mkdir(imagesDir, { recursive: true });
   }
 
+  const imageCache = options.download && options.imageCacheDirs.length > 0
+    ? await readImageCache(options.imageCacheDirs)
+    : new Map();
+  if (imageCache.size > 0) {
+    console.error(`Progress: loaded ${imageCache.size} cached image candidate(s).`);
+  }
+
   console.error("Progress: writing input-photos.csv.");
   await writeFile(join(runDir, "input-photos.csv"), csvFromPhotos(selectedPhotos));
 
-  const preparedPhotos = [];
   let downloadedCount = 0;
+  let cacheReusedCount = 0;
   const errors = [];
 
-  for (const [index, photo] of selectedPhotos.entries()) {
+  console.error(`Progress: preparing image inputs with concurrency ${options.downloadConcurrency}.`);
+  const preparedPhotos = await mapWithConcurrency(selectedPhotos, options.downloadConcurrency, async (photo, index) => {
     console.error(`Progress: preparing photo ${index + 1}/${selectedPhotos.length} (${photo.photo_id}).`);
     const item = {
       ...photo,
@@ -398,13 +540,22 @@ async function prepareRun(options) {
 
     if (options.download) {
       try {
-        console.error(`Progress: downloading image ${index + 1}/${selectedPhotos.length} (${photo.photo_id}).`);
-        const image = await downloadImage(photo, imagesDir, options.imageSize);
-        downloadedCount += 1;
+        let image = await reuseCachedImage(photo, imagesDir, options.imageSize, imageCache);
+        if (image) {
+          cacheReusedCount += 1;
+          console.error(`Progress: reused cached image ${index + 1}/${selectedPhotos.length} (${photo.photo_id}).`);
+        } else {
+          console.error(`Progress: downloading image ${index + 1}/${selectedPhotos.length} (${photo.photo_id}).`);
+          image = await downloadImage(photo, imagesDir, options.imageSize);
+          downloadedCount += 1;
+        }
         item.image_download_url = image.download_url;
         item.local_image_path = relative(runDir, image.path);
         item.local_image_bytes = image.bytes;
         item.local_image_content_type = image.content_type;
+        if (image.source_path) {
+          item.local_image_source_path = image.source_path;
+        }
       } catch (error) {
         errors.push({
           message: error.message,
@@ -423,8 +574,8 @@ async function prepareRun(options) {
       }
     }
 
-    preparedPhotos.push(item);
-  }
+    return item;
+  });
 
   if (errors.length > 0) {
     throw new Error(`Failed to download ${errors.length} image(s): ${errors.map((error) => `${error.photo_id}: ${error.message}`).join("; ")}`);
@@ -436,13 +587,17 @@ async function prepareRun(options) {
     created_at: createdAt,
     download_enabled: options.download,
     downloaded_photo_count: downloadedCount,
+    cache_reused_photo_count: cacheReusedCount,
     image_size: options.imageSize,
     input_photos_csv: "input-photos.csv",
     manifest_version: 1,
     photos_json: "photos.json",
     photos_source: options.photosPath,
     ...promptMetadata,
-    requested_album_id: options.albumId,
+    download_concurrency: options.downloadConcurrency,
+    image_cache_dirs: options.imageCacheDirs,
+    requested_album_id: options.albumIds.length === 1 ? options.albumIds[0] : "",
+    requested_album_ids: options.albumIds,
     requested_focus: options.focus,
     requested_limit: options.limit,
     requested_photo_ids: options.photoIds,

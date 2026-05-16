@@ -446,6 +446,14 @@ pnpm ai:prepare -- --limit 50
 pnpm ai:prepare -- --album ALBUM_ID --limit all
 ```
 
+若要準備橫跨多本相簿的大型工作包，可以先用 `albums:list` 或 `albums:select` 確認 album id，再傳入逗號分隔清單。這適合補標已處理相簿或重跑一批相同狀態的照片：
+
+```bash
+pnpm ai:prepare -- --albums ALBUM_ID_1,ALBUM_ID_2 --limit all --status all --download-concurrency 8
+```
+
+圖片下載通常是大型 AI run 的主要瓶頸。`ai:prepare` 預設平行下載 8 張圖片；若網路或 Flickr 回應不穩，請先降低 `--download-concurrency`，並保留 run artifact 供重試與檢查。
+
 日常操作可直接使用 `pnpm workflow` 的「準備 AI 初標工作包」。它會先從正式 Sheets 匯出的 `albums` 清單選相簿，再把選到的 album id 傳給 `ai:prepare`。工作包建立完成後，`ai:prepare` 會寫入該 run 目錄的 `ai-labeling-prompt.md`；workflow 也會印出同一份可直接複製給模型或 agent 的 prompt。這份 prompt 是模型任務入口；不要另外把 operator guide、評估筆記或 Sheets 回寫文件整份交給模型。
 
 數百張以上的大型批次可使用 `pnpm workflow -- --task ai-bulk`。這個入口會沿用正式 Sheets 匯出的相簿清單，讓操作者挑選要處理的相簿，建立整批 AI run，接著引導分片準備、分片狀態檢查、合併、review、report 與 Sheets dry-run。若只想查看目前進度：
@@ -470,6 +478,12 @@ attempt 目錄仍是一般 AI run 形狀。請把 attempt 目錄中的 `ai-label
 
 ```bash
 pnpm ai:prepare -- --album ALBUM_ID --limit all --status all
+```
+
+多相簿版本同樣可以使用 `--status all`：
+
+```bash
+pnpm ai:prepare -- --albums ALBUM_ID_1,ALBUM_ID_2 --limit all --status all
 ```
 
 `ai:prepare` 預設使用 `--image-size large-1024`，因為 AI 初標需要比前端縮圖更清楚的內容判讀素材。`image_preview_url` 仍是 Google Sheets 正式欄位中給前端預覽的小縮圖；AI 工作包會在 `photos.json` 另外記錄本次使用的 `image_download_url` 與 `image_size`，不需要把 AI 下載尺寸寫回 Sheets。
