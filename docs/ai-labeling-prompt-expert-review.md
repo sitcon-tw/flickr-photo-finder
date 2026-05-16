@@ -4,6 +4,8 @@
 
 這份文件記錄 AI 初標 prompt 的多專家代理審查、owner 決策與後續實作方向。它不是實際真人訪談結果，也不是模型品質保證；用途是把 prompt 調整從一次性討論轉成可追溯、可重跑、可交接的決策流程。
 
+第一次接手專案時，請先讀 `docs/README.md` 的「先建立共同語言」與「整體資料生命週期」。本文只處理 AI run（`tmp/ai-runs/<run-id>/` 的 AI 初標工作包）已經產生 review/report/search evidence 之後的 prompt review 決策，不處理 Flickr 匯入或 Sheets 寫入。
+
 若需要執行實際模型評估，請搭配 `pnpm eval`、`pnpm eval:sample`、`pnpm ai:review`、`pnpm ai:report` 與 `pnpm eval:search`。若只是要讓模型標註照片，仍以 run 目錄中的 `ai-labeling-prompt.md` 為主要任務入口。
 
 ## 決策流程總覽

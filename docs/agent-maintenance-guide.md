@@ -2,6 +2,8 @@
 
 這份文件給未來協助維護 SITCON Flickr Photo Finder 的 AI agent 與技術志工使用。
 
+第一次接手專案時，請先讀 `docs/README.md` 的「先建立共同語言」與「整體資料生命週期」。本文件假設你已知道正式 Sheets、本機工作快取、intake run、AI run、attempt 與 prompt review 決策包在端到端流程中的位置。
+
 ## 先理解資料權威來源
 
 正式資料與 repo fixture 的權威關係請先看 `docs/README.md` 的真理來源表。
@@ -157,8 +159,8 @@ pnpm finder:check
 新 agent 接手時，最少必讀：
 
 1. `README.md`
-2. `AGENTS.md`
-3. `docs/README.md`
+2. `docs/README.md`
+3. `AGENTS.md`
 4. `docs/project-architecture.md`
 
 再依任務擴展閱讀：
@@ -172,3 +174,12 @@ pnpm finder:check
 - 產品背景與 MVP 取捨：`docs/photo-finder-mvp.md`、`docs/mvp-implementation-plan.md`
 
 如果文件互相矛盾，以 Google Sheets-first 架構為準，並優先修正文件矛盾。
+
+## 文件入口品質
+
+新增或調整文件時，先確認第一次接手專案的人能看懂入口段落：
+
+- 若文件第一次使用正式 Sheets、本機工作快取、intake run、AI run、attempt、prompt review 決策包、dry-run/write 等專案術語，必須在同段或前段定義，或明確導回 `docs/README.md` 的共同語言。
+- 流程圖不能先於術語與生命週期脈絡出現。若圖只描述子流程，標題與前文要說明它是整體資料生命週期中的哪一段。
+- 文件開頭應說明讀者、範圍、上游輸入與下游輸出；不要讓讀者靠低階指令名稱猜測目前位於 Flickr、Sheets、AI run、eval 還是 Pages 流程。
+- 高變動的指令清單與目前狀態回到 `docs/README.md`；穩定架構與責任邊界才留在各設計文件。

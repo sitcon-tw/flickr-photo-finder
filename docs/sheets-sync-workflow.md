@@ -6,6 +6,8 @@
 
 1.0 的重點不是讓 repo 成為另一份正式資料來源，而是讓 repo 能穩定協助 Google Sheets 做匯入、驗證、公開讀取與 AI 輔助。
 
+第一次接手專案時，請先讀 `docs/README.md` 的「先建立共同語言」與「整體資料生命週期」。本文件是低階同步 runbook，會展開正式 Sheets、本機工作快取、intake run、AI run、dry-run/write 與 Apps Script 的細節。
+
 日常操作建議先使用互動入口。它會先說明完整資料流，再依階段引導常見工作：
 
 ```bash
@@ -233,6 +235,8 @@ pnpm sheets:report -- --source sheets
 
 ## 相簿工作流程
 
+本節的 `intake run` 指 `tmp/intake-runs/<run-id>/` 內的一次相簿匯入 artifact。它是寫入正式 Sheets 前的人機協作介面，不是第二份正式資料庫；人類確認後才進入 `sheets:apply-intake` dry-run/write。
+
 建議流程：
 
 1. 技術志工或 agent 使用 repo 工具盤點 SITCON Flickr 相簿清單。
@@ -411,6 +415,8 @@ pnpm data:validate -- --import-batches /tmp/import-batch.csv
 ## AI 輔助流程
 
 AI 可以協助初標，但不能取代人工確認。
+
+本節的 `AI run` 指 `tmp/ai-runs/<run-id>/` 內的一次 AI 初標工作包；`attempt` 是從既有 AI run 派生的模型或輪次比較工作包。兩者都只產生候選 metadata 與 review artifact，不能直接代表人工 `reviewed`。
 
 建議流程：
 

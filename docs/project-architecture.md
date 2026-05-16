@@ -8,6 +8,8 @@ SITCON Flickr Photo Finder 是 Flickr 之上的照片索引層，不是相簿替
 
 因此照片索引的核心任務是替 Flickr 照片加上可搜尋、可排序、可被 AI 理解的 metadata，讓人類和 AI 都能更快挑出合適照片。
 
+第一次接手專案時，請先讀 `docs/README.md` 的「先建立共同語言」與「整體資料生命週期」。本文件說明穩定架構與責任邊界；目前可用指令、工具入口與文件分流仍以 `docs/README.md` 為準。
+
 ## 使用者與需求
 
 | 使用者 | 主要需求 | 主要入口 |
@@ -17,7 +19,7 @@ SITCON Flickr Photo Finder 是 Flickr 之上的照片索引層，不是相簿替
 | 宣傳、設計、網站、公關、行銷組 | 找適合當下工作情境的照片。 | GitHub Pages、Google Sheets、AI |
 | 行銷組 | 找特定贊助品項與贊助價值佐證照片。 | `sponsorship_items`、`sponsorship_tags` |
 | 技術志工 | 掃描相簿、匯入資料、跑驗證、部署工具。 | 專案 CLI、GitHub Actions、clasp |
-| AI / agent | 讀 schema、taxonomy 與照片索引，協助找圖或產生候選 metadata。 | 專案文件、AI run artifacts、公開 CSV/JSON、Google Sheets |
+| AI / agent | 讀 schema、taxonomy 與照片索引，協助找圖或產生候選 metadata。 | 專案文件、AI run artifact、公開 CSV/JSON、Google Sheets |
 
 ## 架構總覽
 

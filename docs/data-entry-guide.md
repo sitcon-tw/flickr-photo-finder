@@ -28,7 +28,7 @@
 
 實際整理時，應以 SITCON Flickr 相簿為單位處理。正式流程應由工具先盤點 SITCON Flickr 目前有哪些相簿，更新 Google Sheets `albums` 清單，再讓使用者選擇本次要處理哪一本。
 
-日常正式流程建議從互動入口開始，讓工具引導相簿選擇、工作檔產生、驗證與 Sheets dry-run：
+日常正式流程建議從互動入口開始，讓工具引導相簿選擇、工作檔產生、驗證與 Sheets dry-run。這裡的 dry-run 是先預覽會寫入 Google Sheets 的變更；人類確認後才加上 `--write` 寫入：
 
 ```bash
 pnpm workflow

@@ -2,9 +2,11 @@
 
 這份文件記錄 AI 初標結果的評估方式與目前幾次測試觀察。它的目的不是替模型排名，而是讓未來調整 prompt、schema、taxonomy 或工具警訊時，有可追溯的判斷基準。
 
-本文件中的單次 run 觀察只代表當時的 prompt、資料、圖片尺寸、操作方式與模型 session。未來不應把這些結論當成某個模型的永久能力評價；若 prompt、taxonomy、圖片尺寸或模型版本改變，應重新評估。最新操作流程請以 `docs/ai-labeling-operator-guide.md` 與 `docs/ai-labeling-contract.md` 為準，本文件只作為歷史品質觀察與調校線索。
+第一次接手專案時，請先讀 `docs/README.md` 的「先建立共同語言」與「整體資料生命週期」。本文中的 AI run 指 `tmp/ai-runs/<run-id>/` 內的一次 AI 初標工作包；attempt 指從既有 AI run 派生的模型或輪次比較工作包。
 
-新的 AI run/attempt 會在 `manifest.json` 記錄 `prompt_template_sha256`。比較多模型或多輪結果時，應先確認 prompt hash 一致；若缺少紀錄或與目前 repo prompt 不同，該結果只能作為歷史觀察或調校線索，不應直接當作公平模型比較。
+本文件中的單次 AI run 觀察只代表當時的 prompt、資料、圖片尺寸、操作方式與模型 session。未來不應把這些結論當成某個模型的永久能力評價；若 prompt、taxonomy、圖片尺寸或模型版本改變，應重新評估。操作流程請以 `docs/ai-labeling-operator-guide.md` 與 `docs/ai-labeling-contract.md` 為準，本文件只作為歷史品質觀察與調校線索。
+
+後續建立的 AI run/attempt 會在 `manifest.json` 記錄 `prompt_template_sha256`。比較多模型或多輪結果時，應先確認 prompt hash 一致；若缺少紀錄或與目前 repo prompt 不同，該結果只能作為歷史觀察或調校線索，不應直接當作公平模型比較。
 
 ## 評估目標
 
