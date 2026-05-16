@@ -105,6 +105,8 @@ function renderWorkerPrompt({ inputPath, outputPath, runDir, shardCount, shardIn
 
 重要限制：
 
+- 你不是獨自操作整個 run；其他 worker 可能同時處理不同 shard。請把本 worker 的寫入範圍限制在本分片輸出，不要修改其他 shard output、root \`metadata-proposals.json\`、\`photos.json\` 或 run 目錄中的 review artifacts。
+- 本 worker 只擁有 \`${outputPath}\`。若看到其他 worker 已產生或正在產生的檔案，不要覆蓋、修補或移除；需要協調時回報 parent agent。
 - 不可以使用既有的 \`metadata-proposals.json\`、其他 run 的 proposal 或其他分片輸出作為本次標記依據。
 - 只處理本分片輸入中的 \`items\`，不要替其他照片產生 proposal。
 - 仍必須逐張打開圖片。若 \`absolute_image_path\` 有值，優先使用它；否則依 run prompt 使用 \`local_image_path\` 或 \`image_download_url\`。

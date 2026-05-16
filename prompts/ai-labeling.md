@@ -21,6 +21,10 @@
 
 若本次照片數量很大，操作者或 repo agent 可能會把 `photos.json` 切成多個 shard 交給多個 agent 同時處理。即使分工，你仍必須遵守同一份讀圖規則：
 
+- 若你是具備 repo 指令能力、且執行環境支援建立 sub-agents / worker agents / parallel agent work 的 parent agent，這份任務明確要求你在大型 run 使用多 agent 分工。先完成少量 smoke test；一旦確認圖片可讀、proposal 可驗證、review artifacts 會寫到暫存目錄，就應建立多個 worker agents 並行處理不同 shard，而不是由 parent agent 單線逐 shard 標記。
+- parent agent 應保留 orchestration 責任：準備 shard workspace、分配互不重疊的 shard、監看 `/tmp/ai-labeling-shards/<run-id>/outputs/`、合併、validate、review 與必要修補。worker agent 只負責被分配的 shard input 與 shard output。
+- 若平台有 agent/thread 上限，請用小批次 worker queue，例如先啟動 4 到 6 個 worker，完成一個再補下一個 pending shard；不要因為無法一次啟動所有 shard 就退回單一 parent agent 全部手做。
+- 只有在執行環境不支援建立 worker agents、使用者明確要求單線處理，或 smoke test 顯示輸入/驗證流程尚未可靠時，才應停留在單一 agent。這種情況請先回報限制，不要默默改成長時間單線標記。
 - 不可以使用既有的 `metadata-proposals.json`、其他 run 的 proposal、其他 shard 的輸出或上一輪結果作為本次標記依據；除非任務明確說明是修補某份既有 proposal。
 - 若本次任務提供 shard input，請只處理該 input 內列出的照片，不要替其他照片產生 item。
 - shard output 若被要求寫成 JSON array，請只輸出正式 `items[]` 物件；最終 root object 會由 merge 工具產生。

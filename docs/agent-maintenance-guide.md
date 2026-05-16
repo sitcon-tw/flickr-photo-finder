@@ -99,7 +99,7 @@ AI 只能作為資料匯入與整理輔助。
 
 1. 先用 `pnpm ai:prepare` 建立 run；同一批輸入要交給多模型或多輪時，用 `pnpm eval:attempt` 建立 attempt，不要手動複製資料夾。
 2. Agent 或模型讀取 `ai-labeling-prompt.md`、`photos.json`、`images/`、schema、taxonomy 與 sponsorship items。
-3. Agent 或模型只輸出 `metadata-proposals.json`，不要改 `photos.json`、Sheets export 或正式 Google Sheets。大型 run 可先用 `pnpm ai:shard:prepare` 把分片中間檔放在 `/tmp/ai-labeling-shards/<run-id>/`，再用 `pnpm ai:shard:merge` 合併；不要手動沿用先前 proposal。
+3. Agent 或模型只輸出 `metadata-proposals.json`，不要改 `photos.json`、Sheets export 或正式 Google Sheets。大型 run 可先用 `pnpm ai:shard:prepare` 把分片中間檔放在 `/tmp/ai-labeling-shards/<run-id>/`，再用 `pnpm ai:shard:merge` 合併；不要手動沿用先前 proposal。若 parent agent 具備建立 sub-agents 或 worker agents 的能力，smoke test 通過後應分派多個 worker 平行處理不同 shard，parent agent 只負責 orchestration、合併、validate、review 與修補。
 4. 用 `pnpm ai:review -- --run-dir <dir>` 驗證並產生 `metadata-review-summary.md`、`metadata-diff.md` 與 update plan。若要先檢查暫存 proposal，可用 `--proposals <path> --output-dir <tmp-dir>` 避免 review artifacts 寫進正式 run 目錄。
 5. 用 `pnpm ai:report -- --run <dir>` 閱讀單次結果；比較多模型或多輪時，用 `pnpm ai:report -- --runs <dir> <dir>`。
 6. 若本次重點是 `visual_description` 或自然語言找圖，先用 `pnpm eval:search -- --run-dir <dir>` 比較 taxonomy-only baseline 與 description 搜尋結果。

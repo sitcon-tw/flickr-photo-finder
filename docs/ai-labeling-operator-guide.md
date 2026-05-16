@@ -215,6 +215,10 @@ pnpm ai:bulk:status -- --run-dir tmp/ai-runs/<run-id>
 
 分工前先挑 2 張照片走 smoke test：產生小 proposal、用 `pnpm ai:validate -- --run-dir <run-dir> --proposals <path>` 驗證、再用 `pnpm ai:review -- --run-dir <run-dir> --proposals <path> --output-dir <tmp-dir>` 確認 review artifacts 不會寫入正式 run 目錄。確認後再平行處理全部 shard。
 
+若操作者交給的是可建立 sub-agents、worker agents 或 parallel agent work 的 repo agent，smoke test 通過後應明確要求 parent agent 建立 worker batch，而不是讓 parent agent 繼續單線逐 shard 標記。建議第一批啟動 4 到 6 個 worker，依平台 thread/agent 上限調整；完成一個 worker 就補下一個 pending shard。不要一次啟動所有 shard，避免遇到 agent thread limit 後讓後續 shard 沒有被分派。
+
+每個 worker 的任務邊界應直接使用 `worker-prompts/shard-XX.md`：只讀自己的 `inputs/shard-XX-input.json`，只寫自己的 `outputs/shard-XX-proposals.json`，不修改 root `metadata-proposals.json`、其他 shard output、`photos.json` 或 review artifacts。parent agent 保留分配、狀態檢查、合併、validate、review 與修補責任。若 agent 平台不支援建立 worker，parent agent 應回報這個限制，再由人類決定是否改成較小批次或單線處理。
+
 全部 shard 完成後合併：
 
 ```bash
