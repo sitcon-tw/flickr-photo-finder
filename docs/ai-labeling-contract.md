@@ -180,7 +180,7 @@ AI proposal 允許欄位由 `data/photo-schema.json` 的 `tables.photos.ai_field
 
 - `ai_baseline_fields`: 圖片可讀時 AI 通常應提出的基礎讀圖候選，例如人數、主體、方向、留白、畫面描述與 `curation_status = ai_labeled`。
 - `ai_recall_fields`: 高召回欄位。`scene_tags` 屬於這層，只要有合理可見依據就應提出，避免照片在大量資料中失去被場景篩選找到的機會；缺漏是 review warning，不是格式錯誤。
-- `ai_optional_fields`: 有明確依據才提出的用途、裁切、公開使用提醒、推薦優先度與贊助欄位。
+- `ai_optional_fields`: 有明確依據才提出的用途、裁切、使用提醒、推薦優先度與贊助欄位。
 - `human_only_fields`: Flickr 匯入欄位、相簿/活動脈絡、攝影師、授權與人工備註等，不可由 AI proposal 修改。
 
 目前允許以下 AI 欄位：
@@ -198,7 +198,7 @@ AI proposal 允許欄位由 `data/photo-schema.json` 的 `tables.photos.ai_field
 | `has_negative_space` | 布林值 | 是否有明顯留白可放字。 |
 | `safe_crop` | 字串陣列 | 適合裁切比例。值必須存在於 `data/tag-taxonomy.json`。 |
 | `visual_description` | 字串 | 1 到 2 句中立畫面描述，用於自然語言搜尋與人工找圖輔助，只能描述照片中可見內容。 |
-| `public_use_status` | 字串 | AI 只能建議 `needs_review` 或 `avoid`，不能建議 `approved`。 |
+| `public_use_status` | 字串 | 使用品質或整理提醒。AI 只能建議 `needs_review` 或 `avoid`，不能建議 `approved`；不應用來標示同意、授權或公開 / 非公開狀態。 |
 | `priority_level` | 字串 | 推薦優先度。值必須存在於 `data/tag-taxonomy.json`。 |
 | `collections` | 字串陣列 | 可建議素材包名稱；仍須由人類判斷是否採用。 |
 | `curation_status` | 字串 | AI 只能建議 `ai_labeled`。 |
@@ -244,6 +244,7 @@ AI 應遵守以下限制：
 - `scene_tags` 是高召回欄位。只要照片中有合理可見場景、活動流程或重要元素，就應提出候選值；不要因為它不是 row-level 必填而整批省略。
 - `scene_tags` 仍是人工 `reviewed` 的完成門檻。這代表人類在 Sheets 完成審核前要補齊或確認，不代表 AI proposal 缺漏時應被 validator hard fail。
 - `subject_type` 只描述照片第一眼主要視覺主體是 `people`、`object`、`food`、`text_signage`、`screen` 或 `space`，不描述活動場景、人數規模、用途或品質。若主體是人，不論一人、多人或群眾都使用 `people`；人數規模只用 `people_count` 表達。
+- `public_use_status` 只在照片本身有明確不建議推薦或需人工整理判斷的畫面狀態時提出，例如嚴重模糊、閉眼失焦、表情不佳、主體被遮擋或可能造成誤解。SITCON Flickr 照片本身已是經同意釋出的公開來源，AI 不應只因人物類型或可識別細節而提出 `needs_review`。
 - `safe_crop` 應從版面可用性判斷。只有在裁切後主體、臉部、重要文字與主要物件仍可保留時才提出該比例。
 - `has_negative_space = true` 必須能說明可放字區域的位置，例如左側牆面、上方投影旁、右側背板空區或大片地面；只寫「有留白」不足以支撐人工 review。
 - `safe_crop` 的 reason 必須說明該比例裁切後保留哪些主體、臉部、文字、Logo、螢幕或物件；只寫「橫式照片」或「構圖適合」不足以支撐人工 review。
@@ -261,7 +262,7 @@ AI 應遵守以下限制：
 
 產生 `metadata-proposals.json` 後，後續工具會驗證 proposal，並產生 `metadata-review-summary.md`、`metadata-diff.md`、`metadata-update-plan.json` 與 `metadata-update-plan.csv`。具體操作指令由操作者依 `docs/ai-labeling-operator-guide.md` 執行。
 
-驗證 warning 代表 proposal 格式和 AI 責任邊界可接受，但仍有批次品質疑慮需要人工判斷；warning 不等於一定要退回模型重跑。`ai:review` 可能產生 Review Focus、Balanced Review Sample、confidence-by-field 摘要與公開使用風險抽查提示。唯讀 HTML 報表、跨 attempt 分歧比較、`visual_description` 搜尋增益比較與 Sheets dry-run 都是操作者後續流程，不是模型初標任務的一部分。
+驗證 warning 代表 proposal 格式和 AI 責任邊界可接受，但仍有批次品質疑慮需要人工判斷；warning 不等於一定要退回模型重跑。`ai:review` 可能產生 Review Focus、Balanced Review Sample、confidence-by-field 摘要、設計 metadata 與場景組合抽查提示。唯讀 HTML 報表、跨 attempt 分歧比較、`visual_description` 搜尋增益比較與 Sheets dry-run 都是操作者後續流程，不是模型初標任務的一部分。
 
 正式 review 不在 AI run 目錄中完成。AI run 最多把資料推進到 `ai_labeled`；`reviewed` 應回到 Google Sheets，由具有編輯權限的志工們協作檢查、修正並補齊必要欄位後再更新。
 

@@ -42,7 +42,7 @@ flowchart TD
 | 評估與 workflow | 串接 `eval:sample`、`ai:review`、`ai:report`、`eval:search`，讓調整可被驗證。 |
 | 人工審核成本 | 判斷哪些欄位能降低整理與找圖成本，哪些欄位會增加抽查負擔。 |
 
-這四個角色是 prompt review 的預設核心組，不是永久唯一角色。若後續主題集中在贊助履約、公開使用風險、前端排序或特定活動類型，可在決策包中加入臨時專家角色。
+這四個角色是 prompt review 的預設核心組，不是永久唯一角色。若後續主題集中在贊助履約、使用提醒、前端排序或特定活動類型，可在決策包中加入臨時專家角色。
 
 ## 確認事實
 
@@ -187,7 +187,7 @@ pnpm eval:search -- --run-dir <new-attempt> --scoring idf
 ## 不應自動化的邊界
 
 - 不自動把 AI proposal 設為 `reviewed`。
-- 不自動把公開使用狀態設為 `approved`。
+- 不自動把使用提醒狀態設為 `approved`。
 - 不自動推論人物姓名、身份、單位、攝影師、授權或活動外脈絡。
 - 不自動將 SITCON 自有識別推成外部贊助成果。
 - 不自動把決策包建議套用到 prompt、schema 或 Sheets。

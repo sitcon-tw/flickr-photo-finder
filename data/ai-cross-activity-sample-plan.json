@@ -27,7 +27,7 @@
       "sample_count": 4,
       "category": "hour-of-code",
       "previously_evaluated": true,
-      "rationale_zh": "Hour of Code 桃園場已做 122 張多模型測試，包含兒童、助教、手作物件與工作坊桌面，是 public_use_status、people_count 與 visual_description 的壓力測試。",
+      "rationale_zh": "Hour of Code 桃園場已做 122 張多模型測試，包含兒童、助教、手作物件與工作坊桌面，是 scene_tags、people_count 與 visual_description 的壓力測試。",
       "focus_zh": ["兒童", "助教", "手作物件", "工作坊"]
     },
     {

@@ -218,12 +218,12 @@ var SITCON_PHOTO_FINDER_CONFIG = {
     },
     {
       "name": "public_use_status",
-      "labelZh": "公開使用狀態",
+      "labelZh": "使用提醒",
       "type": "taxonomy",
       "required": false,
       "multiValue": false,
       "taxonomyKey": "public_use_status",
-      "descriptionZh": "approved、needs_review、avoid。不確定用 needs_review。"
+      "descriptionZh": "approved、needs_review、avoid。SITCON Flickr 照片本身已是經同意釋出的公開來源；此欄是使用品質或整理提醒，不是同意、授權或公開 / 非公開判斷。沒有明確不建議或需整理判斷時可留空。"
     },
     {
       "name": "priority_level",

@@ -224,7 +224,7 @@ pnpm sheets:report -- --source sheets
 建議使用時機：
 
 - 每次大量 `intake` 或 AI 初標回寫 dry-run / write 後，先看報表再安排人工整理。
-- 例行檢查正式表是否累積太多 `ai_labeled`、未處理相簿或公開使用風險。
+- 例行檢查正式表是否累積太多 `ai_labeled`、未處理相簿或使用提醒。
 - 準備公開素材、贊助提案、網站視覺或新聞稿前，先用 `WARNING` 項目決定要補哪些欄位。
 
 後續處理方式：

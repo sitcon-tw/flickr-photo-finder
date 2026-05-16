@@ -125,11 +125,11 @@ AI 可以在資料匯入階段協助初標，但不應取代人工判斷。
 3. AI 產生結果寫入正式欄位前，必須讓人類看到差異並確認是否取代。
 4. AI 輔助後的資料狀態應是 `ai_labeled`。
 
-AI 初標流程不負責把資料推進到 `reviewed`。`curation_status = reviewed` 應在 Google Sheets 中發生，由具有 Sheets 編輯權限的志工檢核、修正並補齊必要欄位後更新。若公開使用判斷合適，再把 `public_use_status` 設為 `approved`。
+AI 初標流程不負責把資料推進到 `reviewed`。`curation_status = reviewed` 應在 Google Sheets 中發生，由具有 Sheets 編輯權限的志工檢核、修正並補齊必要欄位後更新。若整理者確認沒有使用提醒，也可把 `public_use_status` 設為 `approved`。
 
 不另外拆分 AI 欄位是為了降低資料表複雜度；因此 `curation_status` 的語意必須清楚。`ai_labeled` 代表資料曾經由 AI 協助，但尚未完成人工確認。
 
-`ai_labeled` 可以是長期存在的中間狀態。照片量大時，不預期所有 AI 初標照片都會被人工 review 完畢；人工整理應優先處理高互動、高價值、需要公開使用判斷、或工具警訊指出風險較高的照片。若未來統計 AI proposal 的接受、修改或拒絕比例，該比例只能代表已被人工處理的 subset，不能外推為整批 AI 初標品質。
+`ai_labeled` 可以是長期存在的中間狀態。照片量大時，不預期所有 AI 初標照片都會被人工 review 完畢；人工整理應優先處理高互動、高價值、需要使用提醒判斷、或工具警訊指出欄位品質疑慮的照片。若未來統計 AI proposal 的接受、修改或拒絕比例，該比例只能代表已被人工處理的 subset，不能外推為整批 AI 初標品質。
 
 `curation_status` 只描述資料是否經過人工確認，不描述推薦優先度。優先推薦由 `priority_level`、`collections` 或素材包判斷；不建議推薦使用由 `public_use_status = avoid` 判斷。
 
@@ -145,7 +145,7 @@ AI 初標流程不負責把資料推進到 `reviewed`。`curation_status = revie
 - 活動、年份、相簿等公開脈絡。
 - 攝影師署名與授權資訊。
 - 場景、氛圍、用途、贊助品項、素材包等搜尋索引。
-- 公開使用狀態與整理狀態。
+- 使用提醒與整理狀態。
 - 可公開閱讀的整理備註。
 
 應避免放進公開資料的內容包含：
