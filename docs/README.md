@@ -2,6 +2,43 @@
 
 這份文件整理 `docs/` 內文件的閱讀入口、目前狀態與真理來源。若其他文件和本文件的狀態描述不同，應優先回到這裡更新並修正矛盾。
 
+## 先建立共同語言
+
+第一次接手專案時，先看本節和下一節的資料生命週期，再依任務導向入口選 runbook。這個專案的核心不是取代 Flickr，而是在 Flickr 與 Google Sheets 之間建立可驗證、可回寫、可搜尋、可由 AI 輔助但仍由人類審核的照片索引層。
+
+| 名詞 | 在本專案的意思 |
+| --- | --- |
+| 正式 Sheets | Google Sheets 中的正式照片索引，是 `photos`、`albums`、`import_batches`、`taxonomy` 與 `sponsorship_items` 的權威資料來源。 |
+| 本機工作快取 | `tmp/sheets-export/*.csv`，由 `pnpm sheets:export` 從正式 Sheets 匯出，供本機 validation、intake 與 AI 工具使用；可重建，不 commit。 |
+| intake run | `tmp/intake-runs/<run-id>/`，一次 Flickr 相簿匯入的可審核 artifact，包含候選照片、相簿更新、匯入批次與摘要；人類確認後才用 `sheets:apply-intake` dry-run/write。 |
+| AI run | `tmp/ai-runs/<run-id>/`，一次 AI 初標工作包，通常由 `ai:prepare` 或 `eval:sample` 建立，包含 `manifest.json`、`photos.json`、`images/`、`ai-labeling-prompt.md`，模型完成後才加入 `metadata-proposals.json`。AI run 不是人工 review 狀態。 |
+| attempt | 從既有 AI run 派生的模型/輪次比較工作包，仍符合 AI run 目錄合約，用來比較不同模型、prompt 或 rounds。 |
+| prompt review 決策包 | `tmp/prompt-reviews/<review-id>/`，由 `eval:prompt-review` 產生，只彙整 evidence、專家 review 與 owner 決策，不自動呼叫外部 LLM、不改 prompt/schema、不寫 Sheets。 |
+
+## 整體資料生命週期
+
+端到端主線是：從 Flickr 盤點相簿與照片，產生可審核的 intake artifact，經 dry-run/write 寫入正式 Sheets；公開前端讀正式 Sheets 公開資料；AI 初標與 eval 只在正式 Sheets 匯出的工作快取或 sample 上產生候選與決策 artifact，最後仍要回到 Sheets dry-run/write 與人工 review 邊界。
+
+```mermaid
+flowchart TD
+  F["SITCON Flickr 相簿 / 照片"] --> A["albums:discover / albums:list 盤點相簿"]
+  A --> B["pnpm workflow 或 albums:select 選相簿"]
+  B --> C["intake:run 建立 intake run"]
+  C --> D["intake:validate 檢查匯入 artifact"]
+  D --> E["sheets:apply-intake dry-run / --write"]
+  E --> S["正式 Google Sheets photo index"]
+  S --> X["sheets:export 建立本機工作快取"]
+  S --> P["GitHub Pages Finder 讀公開 Sheets CSV"]
+  X --> Q["ai:prepare / eval:sample 建立 AI run"]
+  Q --> M["LLM 讀 prompt、photos、images"]
+  M --> R["metadata-proposals.json 候選 metadata"]
+  R --> V["ai:review / ai:report / eval:search"]
+  V --> U["sheets:apply-ai-updates dry-run / --write"]
+  U --> S
+  V --> PR["eval:prompt-review 決策包"]
+  PR --> CH["prompt / schema / search / docs 變更切片"]
+```
+
 ## 任務導向入口
 
 如果你是以「我要完成什麼」進入專案，先用下表選一個最合適入口；需要確認資料權威、共用字串或文件分工時，再看後面的真理來源表與文件分工。這裡是第一層分流，不是完整 runbook、命令清單或 artifact inventory。
@@ -32,9 +69,9 @@
 | 我要管理 GA4 事件與 custom dimensions | `docs/frontend-analytics-design.md` | 後台權限與 Admin API 操作看 `docs/ga4-operations.md`。 |
 | 我要理解架構決策背景與維護邊界 | `docs/adr/README.md` | ADR 只記錄決策脈絡、取捨與維護邊界；目前架構總覽仍看 `docs/project-architecture.md`。 |
 
-## AI 工具鏈總覽
+## AI 評估與決策子流程
 
-AI 相關工作分成三條路線：一般照片整理走 `pnpm workflow`，模型、prompt、搜尋增益評估走 `pnpm eval`，需要 owner 決策前再用 `pnpm eval:prompt-review` 收斂 evidence 與專家意見。`prompt-review` 只產生 review artifact，不自動呼叫外部 LLM、不修改 prompt/schema、不寫 Google Sheets。
+上方生命週期中的 AI run 可以再展開成候選 metadata、評估與決策路線。一般照片整理仍走 `pnpm workflow`，模型、prompt、搜尋增益評估走 `pnpm eval`，需要 owner 決策前再用 `pnpm eval:prompt-review` 收斂 evidence 與專家意見。`prompt-review` 只產生 review artifact，不自動呼叫外部 LLM、不修改 prompt/schema、不寫 Google Sheets。
 
 ```mermaid
 flowchart TD
