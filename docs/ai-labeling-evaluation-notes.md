@@ -1229,6 +1229,296 @@ shown total = input_tokens - cached_input_tokens + output_tokens
 - `ai:review` 已新增 `Reason Reuse QA`，讓 `people_count`、`visual_description`、`scene_tags`、`mood_tags`、`recommended_uses`、`has_negative_space` 的 reason 重複群不只停留在 validator warning 文字裡，而是成為可掃描表格與抽查入口；`visual_description` 近似重複仍由既有 validator warning 守備。
 - `ai:report --runs` 已把 invalid run 標示為 contract failed，把 stale review summary 從一般 valid 狀態降級，並在比較摘要中顯示 `people_count` 配對差距與達門檻的 run-level 人數尖峰，避免無效或過期 summary 仍看似可比較。
 
+## 2026-05-16/17 selected redownload 13,007 張全量分片初標
+
+本輪 run 是多批 selected / redownload 照片的全量初標：
+
+```text
+tmp/ai-runs/ai-selected-1-57-71-75-85-88-89-redownload-2026-05-16-attempt-gpt-r1
+```
+
+本節記錄初標輸出的成效與風險。它不是公平模型比較，因為 run 內記錄的 prompt hash 為：
+
+```text
+bb35e36f03903785a38b1b52c3f5617d13bd16152e7f338d6aa007875260483c
+```
+
+而 review 時的目前 repo prompt hash 為 `28b4a544e2e1`。因此這份結果可作為歷史品質觀察、回寫前抽查清單與工具調校線索；若要評估目前 repo prompt 的模型能力，應以目前 prompt 重新建立 run 或 attempt。
+
+### 執行基底
+
+| item | value |
+| --- | --- |
+| run id | `ai-selected-1-57-71-75-85-88-89-redownload-2026-05-16-attempt-gpt-r1` |
+| proposal producer | `ai / codex-shard-validation` |
+| 操作者紀錄模型 | Main session 為 GPT-5.5 xhigh；worker 分片有 medium 與 xhigh。現有 shard log 未逐 shard 記錄 reasoning effort，因此這點無法從 artifact 逐片驗證。 |
+| image size | `large-1024` |
+| proposal items | 13,007 |
+| planned updates | 20,584 |
+| review warnings | 53 |
+| final proposal sha256 | `94a5f11372598171026089c84114529cd4b4fc8dcc030307164d1221a9371939` |
+| shard execution | 97/97 completed |
+| shard retries / repairs | 0 / 9 |
+| photos source | `tmp/bulk-ai-inputs/ai-selected-1-57-71-75-85-88-89-2026-05-16/photos.csv` |
+| shard execution log | `/tmp/ai-labeling-shards/ai-selected-1-57-71-75-85-88-89-redownload-2026-05-16-attempt-gpt-r1/shard-execution-log.json` |
+
+正式 `metadata-proposals.json` 已通過 `pnpm ai:validate` 與 `pnpm ai:review`。
+
+### Codex runtime 與 token 紀錄
+
+本輪有使用 `--codex-session` 補記 runtime metrics，但紀錄粒度不完整。`codex-execution-metrics.json` 可以讀到 validate / review 的 start 與 end snapshots；`shard-execution-log.json` 則只有整體 log / merge 時間，每個 shard 的 `started_at`、`completed_at`、`duration_ms` 與 Codex snapshot 都是空值或 null。因此下表只能分成「可計算 phase 耗時」和「粗略 run wall-clock window」，不能解讀成每個 worker 的實際讀圖時間。
+
+| scope | start | end | elapsed | 判讀 |
+| --- | --- | --- | ---: | --- |
+| shard log created -> merged proposal | 2026-05-16 10:02:34.119Z | 2026-05-16 16:35:04.403Z | 6h 32m 30.284s | 從 shard log 建立到 merge 完成的粗略窗口；包含準備、分片、人工/parent orchestration、修補與 merge，不是純模型讀圖時間。 |
+| manifest created -> merged proposal | 2026-05-16 10:23:36.948Z | 2026-05-16 16:35:04.403Z | 6h 11m 27.455s | 從正式 run manifest 建立到 proposal merge 的粗略窗口。 |
+| `validate` phase | 2026-05-16 16:44:44.220Z | 2026-05-16 16:52:07.097Z | 7m 22.877s | 由 token snapshots 推算。 |
+| `review` phase | 2026-05-16 16:52:34.949Z | 2026-05-16 17:16:37.562Z | 24m 2.613s | 由 token snapshots 推算。 |
+| validate + review wall-clock span | 2026-05-16 16:44:44.220Z | 2026-05-16 17:16:37.562Z | 31m 53.342s | 包含 validate 結束到 review 開始之間約 27.852 秒空檔；兩個 phase 純相加約 31m 25.490s。 |
+
+`codex-execution-metrics.json` 內 6 個 phase 皆為 `completed`。其中 `validate`、`review`、`sheets-apply`、`sheets-intake-missing`、`sheets-ai-metadata-write` 有 start / end token snapshot 與 usage delta，`parent` phase 只有 end snapshot。`sheets-*` phase 的 token delta 為 0，因此下表只列出有實際 token delta 的 validate / review。這份 metrics 不代表 shard worker 實際讀圖成本。
+
+Codex CLI 顯示的 `shown_total_tokens` 口徑是：
+
+```text
+shown total = input_tokens - cached_input_tokens + output_tokens
+```
+
+| scope | shown total | uncached input | cached input | output | reasoning output | raw total |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| `validate` | 52,114 | 50,483 | 6,662,272 | 1,631 | 44 | 6,714,386 |
+| `review` | 127,664 | 123,406 | 17,543,936 | 4,258 | 175 | 17,671,600 |
+| validate + review | 179,778 | 173,889 | 24,206,208 | 5,889 | 219 | 24,385,986 |
+
+本輪最缺的是 shard worker 層級的 runtime / token / reasoning effort。`shard-execution-log.json` 已記錄 97 個 shard 的 output path、item count、repair count 與 hash，但沒有 worker session、start/end snapshot、duration 或逐 shard reasoning effort。若未來要比較大型 run 成本，應在 worker 開始與完成時寫入 per-shard `started_at`、`completed_at`、`duration_ms`、Codex session id、reasoning effort 與 token delta；否則只能保留上述粗略 wall-clock window。
+
+### 欄位覆蓋與 planned updates
+
+所有基礎欄位都有完整 proposal；optional 欄位則比早期小 run 更保守。
+
+| layer | field | proposal count | coverage |
+| --- | --- | ---: | ---: |
+| baseline | `people_count` | 13,007 | 100% |
+| baseline | `subject_type` | 13,007 | 100% |
+| baseline | `orientation` | 13,007 | 100% |
+| baseline | `has_negative_space` | 13,007 | 100% |
+| baseline | `visual_description` | 13,007 | 100% |
+| baseline | `curation_status` | 13,007 | 100% |
+| recall | `scene_tags` | 12,920 | 99% |
+| recall | `mood_tags` | 10,674 | 82% |
+| optional | `recommended_uses` | 5,991 | 46% |
+| optional | `public_use_status` | 758 | 6% |
+| optional | `safe_crop` | 405 | 3% |
+| optional | `sponsorship_items` | 129 | 1% |
+| optional | `sponsorship_tags` | 129 | 1% |
+| optional | `priority_level` | 0 | 0% |
+| optional | `collections` | 0 | 0% |
+
+`metadata-update-plan.json` 產生 20,584 筆 planned updates，主要集中在既有 Sheets 缺值或與 proposal 不同的欄位：
+
+| field | planned updates |
+| --- | ---: |
+| `visual_description` | 5,200 |
+| `scene_tags` | 2,938 |
+| `people_count` | 2,710 |
+| `mood_tags` | 2,552 |
+| `has_negative_space` | 1,736 |
+| `recommended_uses` | 1,398 |
+| `subject_type` | 1,357 |
+| `orientation` | 1,095 |
+| `curation_status` | 1,044 |
+| `public_use_status` | 329 |
+| `sponsorship_tags` | 96 |
+| `sponsorship_items` | 92 |
+| `safe_crop` | 37 |
+
+這表示本輪不是從空白表格開始，而是在既有 AI 標記基底上提出增補與修正。planned updates 最多的是 `visual_description`，符合本輪大批量重新讀圖後補強搜尋語料的主要價值。
+
+### 值分布觀察
+
+`people_count` 沒有重現 2026-05-14 第一輪的中段人數尖峰。review summary 未產生 people_count concentration warning。
+
+| metric | value |
+| --- | ---: |
+| count | 13,007 |
+| mean | 7.90 |
+| median | 3 |
+| p25 / p75 | 1 / 7 |
+| p90 / p95 | 18 / 35 |
+| max | 260 |
+
+最常見人數值為 `1` 3,156 張、`2` 1,614 張、`3` 1,258 張、`4` 1,177 張、`5` 1,011 張、`0` 825 張。這比上一輪失敗的 `people_count = 5` 高集中健康，但 p95 以上與 max 仍代表大型會眾或合照估數需要抽查。
+
+`subject_type` 以人物為主，但也涵蓋螢幕、物件、餐食、文字標示與空間：
+
+| value | count |
+| --- | ---: |
+| `people` | 10,653 |
+| `screen` | 1,185 |
+| `object` | 404 |
+| `food` | 308 |
+| `text_signage` | 259 |
+| `space` | 198 |
+
+`orientation` 為 landscape 12,346、portrait 645、square 16。`has_negative_space = true` 有 3,086 張，`false` 有 9,921 張；這個比例比「幾乎全部有留白」的早期錯誤輸出合理。
+
+高頻 `scene_tags` 為 `螢幕` 3,331、`講者` 3,323、`工作坊` 3,322、`交流` 3,233、`會眾` 2,282、`背板` 1,511、`合照` 1,072、`攤位` 1,047、`舞台` 877、`兒童` 742。這代表場景召回率足夠高，但 Hour of Code、Camp Online、工人合照、導遊團等相簿仍出現 top tag 或 tag density warning，採用前應看相簿層級抽樣。
+
+`mood_tags` 覆蓋 10,674 張，主要為 `專注` 3,641、`專業` 2,456、`交流感` 1,819、`友善` 1,098、`青春感` 613。這輪沒有把 mood 填到 100%，但 `專注` 與 `專業` 仍是高頻值；它們適合作為宣傳找圖提示，不適合作為高信任精準篩選。
+
+`recommended_uses` 覆蓋 5,991 張，主要為 `活動回顧` 2,839、`講者宣傳` 1,665、`社群貼文` 1,043、`簡報` 992、`社群介紹` 370、`志工招募` 162、`贊助成果報告` 118。`活動回顧` 仍是最高頻用途，但只出現在 46% 有用途候選的照片中，未退化成每張預設值；`贊助成果報告` 則必須與 sponsorship 欄位一起抽查。
+
+`safe_crop` 只出現在 405 張照片，value occurrence 為 `16:9` 279、`1:1` 159、`9:16` 16。這比早期「safe_crop 幾乎每張都有」保守很多，但也可能過度少標；review notes 已指出 45 張 website banner candidates 缺少 negative-space 或 `16:9` crop support。
+
+`public_use_status` 出現在 758 張，其中 `needs_review` 756、`avoid` 2。review notes 同時指出 1,195 張有兒童、名牌、姓名、QR code、識別證或清晰臉部等公開使用風險線索但沒有 status；因此這欄應解讀為「有標就優先注意」，不能解讀為「未標就安全」。
+
+`sponsorship_items` 與 `sponsorship_tags` 各出現在 129 張。常見品項包含 `會場攤位` 65、`R0 影片輪播` 20、`議程廳講者背板` 17、`年會意象背板` 12；常見 tags 為 `品牌露出` 124、`攤位曝光` 56、`贊助成果佐證` 55。這輪至少沒有完全缺席贊助欄位，但 review focus 仍列出 `recommended_uses = 贊助成果報告` 卻缺 sponsorship 欄位的照片，回寫前必須逐張確認外部品牌與品項依據。
+
+本輪所有候選欄位都沒有 `confidence`。這避免了不一致 confidence 造成的排序誤導，但也表示人工 review 不能用 confidence 排序，只能靠 review warning、欄位差異、相簿抽樣與 failure-focused sample。
+
+### 交叉分析與研究發現
+
+本輪資料量已經足以看欄位之間的關係，而不只是看單欄分布。以下分析使用 `photos.json` 與 `metadata-proposals.json` 依 `photo_id` 對齊後計算。
+
+#### 設計取圖欄位不一致
+
+`has_negative_space` 與 `safe_crop` 之間有明顯落差。3,086 張標為 `has_negative_space = true`，但只有 230 張同時有 `safe_crop`；也就是 2,856 張有留白但沒有任何安全裁切候選。這可能代表模型對 `safe_crop` 變得過度保守，也可能代表留白位置不等於可安全裁切，需要抽樣才能分辨。
+
+| subset | count | note |
+| --- | ---: | --- |
+| all proposals | 13,007 |  |
+| `has_negative_space = true` | 3,086 | 可作為設計取圖候選池。 |
+| `has_negative_space = true` 且有 `safe_crop` | 230 | 只有 7.5% 的留白照片同時有裁切比例。 |
+| `has_negative_space = true` 但無 `safe_crop` | 2,856 | 應抽樣確認是正確保守，還是 safe crop under-labeling。 |
+| `recommended_uses` 含 `網站橫幅` | 53 | 明確橫幅用途候選很少。 |
+| `網站橫幅` 且 `has_negative_space = true` | 41 | 多數橫幅候選有留白支撐。 |
+| `網站橫幅` 且有 `16:9` | 10 | 橫幅用途和橫式裁切支撐嚴重脫節。 |
+| `網站橫幅` 且同時有留白與 `16:9` | 8 | 最適合優先人工確認的高價值候選池。 |
+
+依 orientation 看也有同樣訊號：12,346 張 landscape 中只有 387 張有任一 `safe_crop`，其中 `16:9` 279 張；645 張 portrait 中只有 18 張有任一 `safe_crop`，其中 `9:16` 16 張；16 張 square 完全沒有 `safe_crop`。這比早期過度樂觀安全，但目前可能已經偏向低召回，對網站橫幅、社群圖卡與設計素材找圖不夠有用。
+
+相簿層級也可看到 safe crop under-labeling 的候選。以下相簿都有至少 10 張 `has_negative_space = true`，但 `safe_crop = 0`：
+
+| album | photos | negative-space true | safe_crop | note |
+| --- | ---: | ---: | ---: | --- |
+| `SITCON Camp 2025 Day 1` | 555 | 145 | 0 | 工作坊照片多，可能是模型避免裁到人臉或桌面物件，也可能漏標。 |
+| `SITCON Camp 2025 Day 4` | 519 | 134 | 0 | 互動與活動照片多，適合抽查是否真的不適合裁切。 |
+| `SITCON Camp 2025 Day 3` | 359 | 91 | 0 | 工作坊 top tag 高，需確認裁切是否受桌面/螢幕限制。 |
+| `SITCON 2026 工人相見歡` | 344 | 68 | 0 | 講者與活動回顧候選多，若有留白卻無 crop 可能影響社群取圖。 |
+| `SITCON Camp 2025 工人相見歡` | 209 | 61 | 0 | 同上，適合做 safe crop 抽樣。 |
+| `SITCON 學生戰鬥機 Podcast` | 168 | 42 | 0 | 錄音場景可能有桌面或人物固定構圖，需確認是否適合 1:1 或 16:9。 |
+
+#### 公開使用風險不是單純缺標
+
+`scene_tags = 兒童` 的照片共有 742 張，其中 708 張已標 `public_use_status = needs_review`，34 張沒有 status。這表示模型對「兒童」這個明確 scene tag 的風險覆蓋率約 95.4%，不是完全失效；但 review notes 的 1,195 張風險線索包含名牌、姓名、QR code、識別證或清晰臉部等更廣義訊號，這些沒有被 `scene_tags = 兒童` 完整代表。
+
+| subset | count | interpretation |
+| --- | ---: | --- |
+| `public_use_status` 有值 | 758 | 756 needs_review、2 avoid。 |
+| `scene_tags` 含 `兒童` | 742 | 兒童照片是最明確的公開使用風險群。 |
+| `兒童` 且 `needs_review` | 708 | 兒童風險大多有被標出。 |
+| `兒童` 但缺 `public_use_status` | 34 | 應列為高優先補審。 |
+| 非 `兒童` 但有 public-use status | 50 | 可能來自姓名、名牌、識別證、表情或品質疑慮。 |
+
+相簿層級的漏標集中度比全域數字更有行動價值。`2022 SITCON Hour of Code 新竹場` 有 26 張 `兒童`，其中 24 張缺 `public_use_status`；這應比隨機抽查 1,195 張風險警訊更優先。`2020 SITCON Hour of Code 花蓮場` 則有 38 張 `兒童`、5 張缺 status。這類相簿應進入 public-use review queue 的最前面。
+
+#### 贊助欄位一致性比早期好，但仍有邊界問題
+
+贊助相關欄位不是單純亂填。118 張 `recommended_uses` 含 `贊助成果報告` 的照片中，有 111 張同時具備 `sponsorship_items` 與 `sponsorship_tags`，只有 7 張缺少 sponsorship 欄位支撐。整批 129 張有 `sponsorship_items` 的照片也全部同時有 `sponsorship_tags`，沒有 items-only 或 tags-only 的斷裂。
+
+| check | count | interpretation |
+| --- | ---: | --- |
+| `recommended_uses` 含 `贊助成果報告` | 118 | 贊助用途候選。 |
+| 贊助用途且同時有 items + tags | 111 | 多數有欄位支撐，與 prompt 邊界一致。 |
+| 贊助用途但缺 items / tags | 7 | 高優先人工確認，可能是用途過度推論。 |
+| 有 `sponsorship_items` | 129 | 皆同時有 sponsorship tags。 |
+| 有 sponsorship 欄位但沒有 `贊助成果報告` | 18 | 可能是品牌露出可記錄，但不一定適合成果報告用途。 |
+
+這個結果表示本輪 sponsorship 邊界已比早期「看到 SITCON 自有旗幟就標 sponsorship」健康。剩下的研究問題不是「要不要完全關掉贊助欄位」，而是要建立人工審核規則：何時品牌露出只應保留 sponsorship 欄位，何時才足以推薦 `贊助成果報告`。
+
+#### 場景 co-occurrence 可以形成 review / collection 策略
+
+高頻 scene tag pair 顯示本批照片不是單一活動型態，而是至少有幾個可分開審核的視覺群：
+
+| pair | count | 可能代表的照片群 |
+| --- | ---: | --- |
+| `螢幕 + 講者` | 1,556 | 講者、簡報、議程記錄。 |
+| `交流 + 工作坊` | 1,440 | 工作坊、實作、小組互動。 |
+| `會眾 + 螢幕` | 850 | 大場講座、聽眾面向投影。 |
+| `背板 + 講者` | 817 | 講者宣傳、正式背板、品牌露出檢查。 |
+| `工作坊 + 螢幕` | 748 | 課堂或實作與投影內容同時存在。 |
+| `兒童 + 工作坊` | 657 | Hour of Code 類兒童工作坊，public-use review 優先。 |
+| `交流 + 攤位` | 487 | 攤位互動、贊助或合作攤位成果候選。 |
+| `合照 + 背板` | 470 | 合照、儀式感、代表照候選。 |
+| `舞台 + 講者` | 430 | 舞台與講者宣傳候選。 |
+| `舞台 + 螢幕` | 418 | 主舞台、簡報與會眾情境。 |
+
+這代表後續抽樣不應只做全域 random sample。更有效的設計是依照片群建立 review packages，例如 `兒童 + 工作坊` 先處理公開使用風險，`交流 + 攤位` 先處理 sponsorship consistency，`螢幕 + 講者` 先處理講者宣傳與簡報用途，`合照 + 背板` 先處理代表照與人數估計。
+
+#### `visual_description` 的問題是「值唯一但 reason 模板化」
+
+13,007 筆 `visual_description` value 沒有 exact duplicate，平均長度約 35.3 個非空白字元，p10 為 29、median 為 35、p90 為 43。這表示每張照片至少有一段可搜尋描述，且沒有直接整句複製的失敗。
+
+但 reason prefix 呈現強烈 shard-level 模板。多個前綴剛好出現 134 或 135 次，接近單一 shard 大小，例如：
+
+| repeated reason prefix | count |
+| --- | ---: |
+| `描述只整理本張照片中可見的人物、物件、動作、文字或構圖細節。` | 135 |
+| `依本張照片可見的物件、人物姿勢、畫面文字與空間關係整理` | 135 |
+| `描述直接來自本張照片可見的人物、物件、空間位置或螢幕內容。` | 135 |
+| `描述保留照片中可見的具體物件、動作與位置關係` | 135 |
+| `描述納入本張照片可見的物件、動作、文字、位置或空間關係` | 135 |
+| `描述聚焦本張照片中可見的人物、物件、文字或空間關係` | 135 |
+
+這個發現比「reason 最大重複群 135」更精確：問題主要不是 `visual_description.value` 重複，而是 worker 在每個 shard 使用固定 reason 開頭。若人工 review 主要看 value，影響有限；若後續用 reason 判斷模型是否逐張讀圖，現有 reason uniqueness 指標會低估模板化程度。下一步應讓 `ai:review` 對 reason prefix 或 normalized reason template 做單獨 QA。
+
+#### 相簿層級 outlier 能轉成實際工作隊列
+
+相簿層級比全域統計更能產生可執行的審核策略：
+
+- `SITCON Camp Online 2021` 的 top scene tag 是 `螢幕`，113/113 張全中。這可能是相簿真實型態，也可能是過度套用；應抽查少量確認，不必全域處理。
+- `SITCON 2025 紀念品&衣服` 的 top scene tag 是 `場佈`，26/26 張全中，但 subject / visual description 可能更偏 object；應確認 taxonomy 是否缺少更適合紀念品或衣服特寫的 scene 值。
+- Hour of Code 相簿普遍 scene density 高，且 `兒童` / `工作坊` 高度集中。這些相簿應和一般議程照片分開看，否則全域 scene tag density warning 會混合真實題材集中與模型過度標記。
+- `SITCON 2025 議程` 平均 `people_count` 17.86、`SITCON 2025 工人合照` 平均 14.68，代表大型講場或合照估數是人數 QA 的主要風險，不應只抽查小群互動照。
+
+整體研究判斷：本輪最值得後續投入的不是再列更多 top values，而是建立「欄位交叉規則 + 相簿分群 + failure-focused sample」。大量初標已經讓我們能把 review 從 13,007 張照片縮成幾個具體隊列：public-use high risk、design metadata gap、sponsorship consistency、visual_description template、high people_count albums 與 scene-density outlier albums。
+
+### 成效判斷
+
+這輪最大的正面訊號是大型 sharded workflow 已能穩定產出合約完整的正式 proposal。97 個 shard 全部完成，最終 13,007 張都有基礎欄位，`ai:validate` 與 `ai:review` 都可處理 28 MB 等級的 proposal，且 reason reuse 明顯低於前一輪失敗案例。Reason Reuse QA 顯示 `people_count` 有 12,996 個 unique reason、最大重複群 4；`scene_tags` 有 12,918 個 unique reason、最大重複群 2；`mood_tags` 有 10,670 個 unique reason、最大重複群 3。這表示本輪更像逐張讀圖，而不是先建立 archetype 後批量套用。
+
+`visual_description` 是本輪最有價值也最需要修補的欄位。它完整覆蓋 13,007 張，planned updates 也最多，代表能補上既有索引的自然語言搜尋語料。但 review notes 仍列出 18 組 near-duplicate description cluster、118 張 limited searchable visual token variety、22 張 short-but-valid descriptions、18 張 generic people / interaction language、22 張 nearby-photo or batch comparison language，且 `visual_description` reason 最大重複群仍有 135/13,007。這比前一輪第一版大幅改善，但還沒達到可放心全量採用的描述品質。
+
+`recommended_uses` 的策略比早期更健康。它沒有把 `活動回顧` 或 `社群貼文` 套到所有照片，且有 `講者宣傳`、`簡報`、`社群介紹`、`志工招募` 等比較具體用途。不過 `贊助成果報告` 與 sponsorship 欄位的一致性仍是高風險點，應列為回寫前的固定檢查。
+
+`safe_crop` 從過度樂觀轉為偏保守。這降低了裁切錯誤的直接風險，但也讓設計取圖訊號不足，特別是網站橫幅與留白相關照片。未來 prompt 或 review 應區分「模型真的看圖後判斷沒有安全比例」和「模型因為害怕出錯而整體少標」。
+
+`public_use_status` 仍是本輪最不能反向解讀的欄位。758 張有 status 很有用，但 1,195 張風險線索未標 status 代表模型或 warning 規則之間仍有落差；這欄只能做人工優先排序，不能做公開使用核准。
+
+### 本輪採用建議
+
+這份 proposal 可以作為 13,007 張照片的人工 review 起點，但不應整包無條件寫回。若要分批採用，建議先從低風險、資訊增益高的欄位開始，例如 `visual_description`、`subject_type`、`orientation`、部分 `scene_tags`，並用 `metadata-diff.md` 或 review report 逐批抽查。
+
+回寫前應優先處理以下 review queue：
+
+- 1,195 張公開使用風險線索但未標 `public_use_status` 的照片。
+- `recommended_uses = 贊助成果報告` 但缺少 `sponsorship_items` 或 `sponsorship_tags` 的照片。
+- 18 組 `visual_description` near-duplicate cluster，以及 limited token variety / generic / batch comparison language 清單。
+- `people_count` 高分位與 max 260 的照片，尤其大型合照、會眾與遠景估數。
+- Hour of Code、Camp Online、工人合照、導遊團等 scene tag density 或單一 top tag 警訊相簿。
+- website banner candidates 缺少 negative-space 或 `16:9` crop support 的 45 張照片。
+- `people_count = 0` 但 reason 或場景線索提到人物的 Review Focus 清單；部分可能是 validator 對「不是可辨識真人」的文字誤判，但仍應抽樣確認。
+
+本輪不適合當作目前 repo prompt 的 benchmark，因為 prompt hash 已不同。若要比較模型或 prompt 成效，應重新建立同資料、同圖片尺寸、同 prompt hash 的 attempt，並保留 `--codex-session` metrics。
+
+### 可工具化的 follow-up
+
+- `ai:review` 可把「公開使用風險線索但未標 status」從超長 photo_id 列表改成彙總表與抽樣入口，避免 review summary 被 1,000 多個 id 淹沒。
+- `ai:review` 可把 `recommended_uses = 贊助成果報告` 但缺 sponsorship 欄位的警訊改成有總數、相簿分布與 Review Focus sample，讓人工更快分辨是 sponsorship 漏標還是用途過度推論。
+- `ai:review` 可新增 safe-crop under-labeling 提醒：若 `has_negative_space = true` 很多，但 `safe_crop` 極少，或 website banner candidates 缺少 `16:9`，應進入 design metadata QA。
+- `visual_description` QA 可除了 near-duplicate 外，再統計 generic reason prefix、batch comparison language 與 limited searchable token variety 的欄位分布，方便追蹤 prompt 改動是否真的改善搜尋語料。
+- runtime metrics 文件可補一句：大 run 的 validate/review/review-like 指令都應加 `--codex-session <parent-session-id>`；若後續補 `parent` mark-end，它可能只有 end snapshot，不能取代 phase-level start / end delta。
+
 ## 目前已知容易失準的欄位
 
 ### `safe_crop`
