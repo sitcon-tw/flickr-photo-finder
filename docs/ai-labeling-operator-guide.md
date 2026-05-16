@@ -286,6 +286,26 @@ pnpm eval:search -- --photos tmp/sheets-export/photos.csv --scoring idf --query 
 
 這個 prototype 不呼叫 LLM、不抓圖片，也不寫入 Sheets；它只比較 taxonomy-only baseline 與 taxonomy + `visual_description` 的排序差異。`--scoring idf` 會用資料集中的詞頻降低高頻泛詞影響，並在 `visual_description` 中額外降權 `畫面`、`可見`、`呈現`、`有人`、`人物`、`參與者`、`互動`、`交流` 等低資訊詞。調整搜尋端前，建議先用這個模式確認哪些 query 的排序確實改善。
 
+若這次目標是統整 prompt、schema、workflow 與人工審核成本的多專家意見，不要直接改 `prompts/ai-labeling.md`。先建立 prompt review 決策包：
+
+```bash
+pnpm eval:prompt-review -- --mode prepare --runs tmp/ai-runs/<attempt-a> tmp/ai-runs/<attempt-b> --output tmp/prompt-reviews/<review-id>
+```
+
+若已準備工作情境查詢檔，也可在 prepare 階段一起保存搜尋評估輸出：
+
+```bash
+pnpm eval:prompt-review -- --mode prepare --runs tmp/ai-runs/<attempt-or-run> --queries <queries-file> --scoring idf
+```
+
+`prepare` 會產生 `input-manifest.json`、`expert-prompts/`、空的 `expert-reviews/`、`report-links.json`，以及可選的 `search-results/`。把 `expert-prompts/` 交給專家或代理，收到回覆後放回 `expert-reviews/`，再彙整：
+
+```bash
+pnpm eval:prompt-review -- --mode compile --review-dir tmp/prompt-reviews/<review-id>
+```
+
+`compile` 只讀取本機 review artifact，輸出 `decision-package.md` 與 `decision-package.json`。這個流程不呼叫外部 LLM、不修改 prompt、不修改 schema，也不寫入 Google Sheets；owner 接受決策包後，才進入 prompt 或 schema 變更切片。互動式入口可用 `pnpm eval -- --task prompt-review`。
+
 ### 8. 進階：只執行單一步驟
 
 ```bash
