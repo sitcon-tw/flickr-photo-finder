@@ -82,7 +82,7 @@ AI 只能作為資料匯入與整理輔助。
 
 若任務只是替 `tmp/ai-runs/<run-id>/` 或 attempt 目錄裡的照片產生初標 metadata，模型或 agent 的主要入口應是該 run 目錄的 `ai-labeling-prompt.md`，再讀 `docs/ai-labeling-contract.md`、schema、taxonomy、sponsorship items、`photos.json` 與圖片；不需要整份讀完 operator guide。
 
-若任務是評估模型輸出品質、調整 prompt 或判斷 `visual_description` 是否有搜尋增益，請再讀 `docs/ai-labeling-evaluation-notes.md`。
+若任務是評估模型輸出品質、調整 prompt 或判斷 `visual_description` 是否有搜尋增益，請再讀 `docs/ai-labeling-evaluation-notes.md`。若要統整多專家 prompt 建議或 owner 決策，請讀 `docs/ai-labeling-prompt-expert-review.md`，並用 `pnpm eval:prompt-review` 只產生 review artifact。
 
 建議流程：
 
@@ -92,8 +92,9 @@ AI 只能作為資料匯入與整理輔助。
 4. 用 `pnpm ai:review -- --run-dir <dir>` 驗證並產生 `metadata-review-summary.md`、`metadata-diff.md` 與 update plan。若要先檢查暫存 proposal，可用 `--proposals <path> --output-dir <tmp-dir>` 避免 review artifacts 寫進正式 run 目錄。
 5. 用 `pnpm ai:report -- --run <dir>` 閱讀單次結果；比較多模型或多輪時，用 `pnpm ai:report -- --runs <dir> <dir>`。
 6. 若本次重點是 `visual_description` 或自然語言找圖，先用 `pnpm eval:search -- --run-dir <dir>` 比較 taxonomy-only baseline 與 description 搜尋結果。
-7. 人類檢查後才用 `pnpm sheets:apply-ai-updates -- --run-dir <dir>` dry-run；確認後才可加上 `--write`。
-8. AI 協助過但尚未人工確認的資料應標成 `ai_labeled`。
+7. 若本次重點是 prompt、schema、workflow 或人工審核成本決策，先用 `pnpm eval:prompt-review -- --mode prepare --runs <dir> [dir...]` 建立決策包，收到專家 review 後再用 `--mode compile` 彙整。
+8. 人類檢查後才用 `pnpm sheets:apply-ai-updates -- --run-dir <dir>` dry-run；確認後才可加上 `--write`。
+9. AI 協助過但尚未人工確認的資料應標成 `ai_labeled`。
 
 照片量大時，不預期所有 `ai_labeled` 照片都會被人工 review 完畢。Agent 不應把「清空 AI 待審佇列」當成預設目標；應優先協助建立抽查樣本、找出批次風險、整理高互動或高價值照片，並把任何接受率、修改率或拒絕率限定在實際被人類處理過的 subset。
 
