@@ -6,6 +6,23 @@
 
 合約文件回答「模型輸入輸出格式是什麼」；本文件回答「操作者接手後應該怎麼準備工作包、檢查結果、看報表、處理錯誤與安排回寫前 dry-run」。
 
+## 流程總覽
+
+AI 初標流程先建立工作包，再由模型產生候選 metadata；後續檢查、報表、搜尋評估與 Sheets dry-run 都是人類採用前的輔助。若本次目標是 prompt 或 schema 決策，請在 review/report/search 後進入 `eval:prompt-review`，不要直接修改 prompt 或回寫 Sheets。
+
+```mermaid
+flowchart TD
+  A["sheets:export 更新工作快取"] --> B["ai:prepare 或 eval:sample 建立 run"]
+  B --> C["模型只輸出 metadata-proposals.json"]
+  C --> D["ai:review 驗證並產生 summary / diff / plan"]
+  D --> E["ai:report 逐張檢視或比較 attempts"]
+  D --> F["eval:search 檢查 visual_description 找圖增益"]
+  E --> G["人工判斷採用範圍"]
+  F --> G
+  G --> H["sheets:apply-ai-updates dry-run / write"]
+  G --> I["eval:prompt-review 決策包"]
+```
+
 ## 操作流程
 
 ### 1. 取得正式 Sheets 工作快取

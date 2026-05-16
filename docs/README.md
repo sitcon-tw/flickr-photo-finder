@@ -32,6 +32,32 @@
 | 我要管理 GA4 事件與 custom dimensions | `docs/frontend-analytics-design.md` | 後台權限與 Admin API 操作看 `docs/ga4-operations.md`。 |
 | 我要理解架構決策背景與維護邊界 | `docs/adr/README.md` | ADR 只記錄決策脈絡、取捨與維護邊界；目前架構總覽仍看 `docs/project-architecture.md`。 |
 
+## AI 工具鏈總覽
+
+AI 相關工作分成三條路線：一般照片整理走 `pnpm workflow`，模型、prompt、搜尋增益評估走 `pnpm eval`，需要 owner 決策前再用 `pnpm eval:prompt-review` 收斂 evidence 與專家意見。`prompt-review` 只產生 review artifact，不自動呼叫外部 LLM、不修改 prompt/schema、不寫 Google Sheets。
+
+```mermaid
+flowchart TD
+  A["正式 Sheets 匯出"] --> B["AI run 或 sample"]
+  B --> C["模型輸出 metadata-proposals.json"]
+  C --> D["ai:review 檢查候選值"]
+  D --> E["ai:report 閱讀照片與差異"]
+  D --> F["eval:search 驗證找圖增益"]
+  E --> G["eval:prompt-review prepare"]
+  F --> G
+  G --> H["專家 review 與 owner 決策包"]
+  H --> I["prompt / validator / search / docs 變更"]
+  H --> J["必要時另開 schema 切片"]
+  D --> K["Sheets dry-run / write"]
+```
+
+| 讀者 | 主要閱讀入口 | 不應混用的脈絡 |
+| --- | --- | --- |
+| 人類操作者 | `docs/ai-labeling-operator-guide.md`、`docs/ai-labeling-contract.md` | AI 候選值不等於人工 `reviewed` 或公開 `approved`。 |
+| 只負責初標的 LLM / agent | run 目錄的 `ai-labeling-prompt.md`、`docs/ai-labeling-contract.md`、schema、taxonomy、sponsorship items、`photos.json` 與圖片 | 不要把 operator guide、Sheets 回寫文件或先前 proposal 當成照片內容依據。 |
+| repo 維護 agent | `AGENTS.md`、`docs/agent-maintenance-guide.md`、本文件 | 操作流程前先確認 source-of-truth 文件與 run artifact。 |
+| prompt review 專家 agent | `tmp/prompt-reviews/<review-id>/input-manifest.json`、`expert-prompts/`、run 的 `metadata-review-summary.md`、`docs/ai-labeling-prompt-expert-review.md` | 專家 review 只做唯讀分析；決策包不會自動套用建議。 |
+
 ## 真理來源
 
 | 資訊 | 真理來源 | 備註 |
