@@ -65,6 +65,16 @@ const tasks = [
     title: "執行 visual_description 搜尋評估",
   },
   {
+    description: "準備 AI prompt 多專家審查證據包，讓專家意見與 owner 決策可追溯。",
+    handler: buildPromptReviewPackage,
+    id: "prompt-review",
+    inputs: ["AI run / attempt", "可選的搜尋查詢檔"],
+    next: ["把 expert-prompts/ 交給專家或代理；收到 expert-reviews/ 後執行 pnpm eval:prompt-review -- --mode compile。"],
+    outputs: ["tmp/prompt-reviews/<review-id>/"],
+    phase: "決策包",
+    title: "建立 prompt review 決策包",
+  },
+  {
     description: "檢查 AI proposal valid / invalid fixtures 是否仍符合 validator 邊界。",
     handler: validateFixtures,
     id: "fixtures",
@@ -383,6 +393,36 @@ async function runSearchEvaluation() {
   }
 
   runPnpm("eval:search", pnpmArgsFromOptions(options));
+}
+
+async function buildPromptReviewPackage() {
+  if (!input.isTTY) {
+    throw new Error("stdin is not interactive. Use pnpm eval:prompt-review -- --mode prepare --runs <run-dir> [run-dir...] in non-interactive environments.");
+  }
+
+  const compare = await askYesNo("要選多個 run / attempt 作為審查證據？", true);
+  closeReadline();
+  const runDirs = compare
+    ? await selectMultipleAiRuns()
+    : [await selectSingleAiRun({
+      message: "選擇要審查的 AI run / attempt",
+      nonInteractiveHint: "Use pnpm eval:prompt-review -- --mode prepare --runs <run-dir> in non-interactive environments.",
+    })];
+  if (runDirs.some((runDir) => !runDir)) {
+    throw new Error("run directory is required");
+  }
+
+  const outputDir = await ask("輸出目錄；留空自動產生");
+  const queriesPath = await ask("可選搜尋查詢檔；留空不執行 eval:search");
+  const options = ["--mode", "prepare", "--runs", ...runDirs];
+  if (outputDir) {
+    options.push("--output", outputDir);
+  }
+  if (queriesPath) {
+    options.push("--queries", queriesPath);
+  }
+
+  runPnpm("eval:prompt-review", pnpmArgsFromOptions(options));
 }
 
 async function validateFixtures() {
