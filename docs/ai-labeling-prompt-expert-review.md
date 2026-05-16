@@ -4,7 +4,30 @@
 
 這份文件記錄 AI 初標 prompt 的多專家代理審查、owner 決策與後續實作方向。它不是實際真人訪談結果，也不是模型品質保證；用途是把 prompt 調整從一次性討論轉成可追溯、可重跑、可交接的決策流程。
 
+第一次接手專案時，請先讀 `docs/README.md` 的「先建立共同語言」與「整體資料生命週期」。本文只處理 AI run（`tmp/ai-runs/<run-id>/` 的 AI 初標工作包）已經產生 review/report/search evidence 之後的 prompt review 決策，不處理 Flickr 匯入或 Sheets 寫入。
+
 若需要執行實際模型評估，請搭配 `pnpm eval`、`pnpm eval:sample`、`pnpm ai:review`、`pnpm ai:report` 與 `pnpm eval:search`。若只是要讓模型標註照片，仍以 run 目錄中的 `ai-labeling-prompt.md` 為主要任務入口。
+
+## 決策流程總覽
+
+`pnpm eval:prompt-review` 是 prompt、schema、search 與 docs 變更前的決策 gate。它彙整既有 run evidence 與專家 review；owner 接受決策包後，才另開實作切片。
+
+```mermaid
+flowchart TD
+  A["ai:review / ai:report / eval:search evidence"] --> B["eval:prompt-review prepare"]
+  B --> C["input-manifest.json 記錄 prompt / schema / run hash"]
+  B --> D["expert-prompts 指派專家角色"]
+  D --> E["expert-reviews 收集唯讀建議"]
+  C --> F["eval:prompt-review compile"]
+  E --> F
+  F --> G["decision-package.md / json"]
+  G --> H["owner decision"]
+  H --> I["prompt 變更切片"]
+  H --> J["validator / search / docs 變更切片"]
+  H --> K["必要時 schema / taxonomy 切片"]
+```
+
+若 run 目錄的 prompt hash 與 repo source 不一致，該 run 仍可作為歷史 evidence，但不能直接拿來比較成同一版 prompt 的公平模型結果。
 
 ## 審查方法
 

@@ -2,9 +2,28 @@
 
 這份文件給執行 `prepare -> review -> report -> dry-run` 流程的人類操作者、技術志工與 repo 維護 agent 使用。它補足 `docs/ai-labeling-contract.md` 沒有寫的操作層細節。
 
+第一次接手專案時，請先讀 `docs/README.md` 的「先建立共同語言」與「整體資料生命週期」。本文件只展開其中的 AI 初標操作段落；Flickr 相簿匯入、正式 Sheets 初始化與 Apps Script 維護請回到 `docs/README.md` 選入口。
+
 不要把本文件整份交給只負責照片初標的模型。模型真正需要的任務入口是 run 目錄中的 `ai-labeling-prompt.md`，再搭配 `docs/ai-labeling-contract.md`、schema、taxonomy、sponsorship items、`photos.json` 與圖片。
 
 合約文件回答「模型輸入輸出格式是什麼」；本文件回答「操作者接手後應該怎麼準備工作包、檢查結果、看報表、處理錯誤與安排回寫前 dry-run」。
+
+## 流程總覽
+
+AI 初標流程先建立工作包，再由模型產生候選 metadata；後續檢查、報表、搜尋評估與 Sheets dry-run 都是人類採用前的輔助。若本次目標是 prompt 或 schema 決策，請在 review/report/search 後進入 `eval:prompt-review`，不要直接修改 prompt 或回寫 Sheets。
+
+```mermaid
+flowchart TD
+  A["sheets:export 更新工作快取"] --> B["ai:prepare 或 eval:sample 建立 run"]
+  B --> C["模型只輸出 metadata-proposals.json"]
+  C --> D["ai:review 驗證並產生 summary / diff / plan"]
+  D --> E["ai:report 逐張檢視或比較 attempts"]
+  D --> F["eval:search 檢查 visual_description 找圖增益"]
+  E --> G["人工判斷採用範圍"]
+  F --> G
+  G --> H["sheets:apply-ai-updates dry-run / write"]
+  G --> I["eval:prompt-review 決策包"]
+```
 
 ## 操作流程
 
