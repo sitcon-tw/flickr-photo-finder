@@ -48,6 +48,8 @@ Agent 不應自行假設：
 
 SITCON 組織已有既有文件存放與交接制度。這個專案不保存 credential，也不重新定義 Google Drive 權限交接。
 
+接手維運時，先用 `docs/operations-handoff-checklist.md` 確認本專案需要哪些資產、權限能力與 dry-run 驗證；遇到具體故障症狀時，再用 `docs/troubleshooting.md` 分流到對應 runbook。
+
 遇到權限問題時，agent 應該：
 
 1. 先確認需要哪一類資產或權限，例如 Google Sheets 編輯權限、Google Sheets API service account credential、Apps Script/clasp、第三方工具或 AI API。

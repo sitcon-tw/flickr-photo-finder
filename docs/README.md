@@ -68,6 +68,7 @@ flowchart TD
 | 我要維護 Sheets 同步或練習表 | `docs/sheets-sync-workflow.md` | 先確認正式表、練習表、service account 與 dry-run/write 邊界。 |
 | 我要檢查正式 Sheets 資料健康度 | `pnpm sheets:report` | 先用 `pnpm sheets:export` 更新 `tmp/sheets-export/`；風險分級與後續處理看 `docs/sheets-sync-workflow.md`。 |
 | 我要管理 GA4 事件與 custom dimensions | `docs/frontend-analytics-design.md` | 後台權限與 Admin API 操作看 `docs/ga4-operations.md`。 |
+| 我要交接維運權限與資產 | `docs/operations-handoff-checklist.md` | 不保存 credential；列出正式 Sheets、service account、Apps Script、GitHub Pages、GA4 與 dry-run 驗證方式。 |
 | 我要定位常見維運事故 | `docs/troubleshooting.md` | 從症狀分流到 Pages artifact、Sheets public CSV、Apps Script、AI run、clasp 或 GA4 的檢查命令與 runbook。 |
 | 我要理解架構決策背景與維護邊界 | `docs/adr/README.md` | ADR 只記錄決策脈絡、取捨與維護邊界；目前架構總覽仍看 `docs/project-architecture.md`。 |
 
@@ -247,6 +248,7 @@ flowchart TD
 - `public-frontend-redesign-brief.md`: GitHub Pages 前端重構的歷史需求基準與驗收標準；後續回歸或 P2 規劃可用來比對。
 - `frontend-analytics-design.md`: 前端使用行為分析目的、GA4 事件設計、實作前檢查與後續分析流程。
 - `ga4-operations.md`: GA4 後台操作、service account 權限、custom dimensions 與 BigQuery 延後策略。
+- `operations-handoff-checklist.md`: 不含 credential 的維運交接清單，列出正式 Sheets、service account、Apps Script、GitHub Pages、GA4 與 dry-run 驗證方式。
 - `troubleshooting.md`: Pages、Sheets、Apps Script、AI run、clasp 與 GA4 常見事故的症狀分流、檢查命令與修復入口。
 - `shared-value-governance.md`: 欄位、taxonomy、filter、task mode、URL key 與跨介面 field set 的共用值治理分層。
 - `ai-readable-dataset.md`: AI 如何讀取照片索引資料。
