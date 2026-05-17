@@ -164,6 +164,7 @@ async function main() {
   const result = await buildPagesArtifact({
     outputDir,
     albumsCsvUrl: dataSource.albumsCsvUrl,
+    dataMode: "runtime-csv",
     photosCsvUrl: dataSource.photosCsvUrl,
   });
 
