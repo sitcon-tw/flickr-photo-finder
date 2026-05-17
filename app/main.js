@@ -849,7 +849,7 @@ function applyUrlState() {
   syncControlsFromState();
 }
 
-function revealPhotoFromHash() {
+async function revealPhotoFromHash() {
   const match = window.location.hash.match(/^#photo-(\d+)$/);
   if (!match) {
     return;
@@ -857,17 +857,22 @@ function revealPhotoFromHash() {
 
   const targetId = match[1];
   const resultIndex = currentResults.findIndex((photo) => photo.photo_id === targetId);
+  const targetPhoto = resultIndex >= 0 ? currentResults[resultIndex] : photos.find((photo) => photo.photo_id === targetId);
+  if (!targetPhoto) {
+    return;
+  }
+
   if (resultIndex >= visibleCount) {
     visibleCount = Math.ceil((resultIndex + 1) / pageSize) * pageSize;
     render({ preservePage: true });
   }
 
   const card = document.getElementById(photoAnchorId(targetId));
-  if (!card) {
-    return;
+  if (card) {
+    card.scrollIntoView({ block: "center" });
   }
 
-  card.scrollIntoView({ block: "center" });
+  await openPreview(targetPhoto);
 }
 
 async function loadData() {
