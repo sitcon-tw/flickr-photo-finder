@@ -82,7 +82,7 @@ pnpm finder:dev
 pnpm data:validate
 ```
 
-完整命令清單、Sheets 流程、AI 初標流程、Apps Script 維護與 GitHub Pages 部署說明，請從 [`docs/README.md`](docs/README.md) 進入。
+主要命令入口、Sheets 流程、AI 初標流程、Apps Script 維護與 GitHub Pages 部署說明，請從 [`docs/README.md`](docs/README.md) 進入。
 
 ## 授權與協作
 

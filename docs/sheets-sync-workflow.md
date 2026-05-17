@@ -8,6 +8,8 @@
 
 第一次接手專案時，請先讀 `docs/README.md` 的「先建立共同語言」與「整體資料生命週期」。本文件是低階同步 runbook，會展開正式 Sheets、本機工作快取、intake run、AI run、dry-run/write 與 Apps Script 的細節。
 
+如果任務是交接前確認權限與資產，先看 `docs/operations-handoff-checklist.md`；如果已經遇到具體故障症狀，先看 `docs/troubleshooting.md`。本文件只保留 Sheets 與 repo 工具同步的操作細節，不作為完整維運資產清單。
+
 日常操作建議先使用互動入口。它會先說明完整資料流，再依階段引導常見工作：
 
 ```bash

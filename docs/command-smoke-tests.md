@@ -20,6 +20,7 @@ node <entrypoint> --help
 
 | 檢查 | 用途 |
 | --- | --- |
+| `pnpm docs:check` | 本機 Markdown link、docs index 覆蓋與文件中的 package script reference 檢查。 |
 | `pnpm language:check` | 文件與程式輸出用語治理。 |
 | `pnpm shared-values:check` | `data/interface-registry.json` 與 schema/taxonomy 對齊。 |
 | `pnpm data:validate` | fixture/schema/taxonomy 基本資料驗證。 |

@@ -18,6 +18,12 @@ const checks = [
     next: "Replace vague relative version wording with concrete dates, hashes, schema versions, or current repo source references, then rerun pnpm language:check.",
   },
   {
+    name: "Documentation governance",
+    command: "pnpm",
+    args: ["docs:check"],
+    next: "Fix broken local Markdown links, docs index coverage, or documented pnpm script references, then rerun pnpm docs:check.",
+  },
+  {
     name: "Shared value governance",
     command: "pnpm",
     args: ["shared-values:check"],

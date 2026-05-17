@@ -181,6 +181,7 @@ pnpm finder:check
 - Apps Script：`docs/apps-script-maintenance-design.md`
 - 共用值治理：`docs/shared-value-governance.md`
 - 人工填寫欄位：`docs/data-entry-guide.md`、`docs/photo-fields-reference.md`
+- 維運交接與事故分流：`docs/operations-handoff-checklist.md`、`docs/troubleshooting.md`
 - 產品背景與 MVP 取捨：`docs/photo-finder-mvp.md`、`docs/mvp-implementation-plan.md`
 
 如果文件互相矛盾，以 Google Sheets-first 架構為準，並優先修正文件矛盾。
@@ -193,3 +194,12 @@ pnpm finder:check
 - 流程圖不能先於術語與生命週期脈絡出現。若圖只描述子流程，標題與前文要說明它是整體資料生命週期中的哪一段。
 - 文件開頭應說明讀者、範圍、上游輸入與下游輸出；不要讓讀者靠低階指令名稱猜測目前位於 Flickr、Sheets、AI run、eval 還是 Pages 流程。
 - 高變動的指令清單與目前狀態回到 `docs/README.md`；穩定架構與責任邊界才留在各設計文件。
+
+文件變更後至少執行：
+
+```bash
+pnpm docs:check
+pnpm language:check
+```
+
+`pnpm docs:check` 會檢查本機 Markdown link、`docs/README.md` / ADR index 覆蓋，以及文件中的 package script reference 是否仍指向存在的 package script。`pnpm language:check` 則檢查含糊版本或狀態詞。

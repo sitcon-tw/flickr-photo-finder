@@ -11,6 +11,7 @@
     "eval": "node scripts/workflows/eval-workflow.mjs",
     "project:check": "node scripts/commands/project-check.mjs",
     "command:smoke": "node scripts/commands/smoke-commands.mjs",
+    "docs:check": "node scripts/commands/check-docs-governance.mjs",
     "language:check": "node scripts/commands/check-language-governance.mjs",
     "shared-values:check": "node scripts/commands/check-shared-value-governance.mjs",
     "data:validate": "node scripts/commands/validate-data.mjs",

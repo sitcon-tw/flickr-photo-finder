@@ -157,63 +157,19 @@ flowchart TD
 
 ## 目前狀態
 
-### 目前可用
+### 主要操作入口
 
-- `pnpm workflow`，先說明完整資料流，再依階段引導常見工作流程，包含相簿匯入、AI prepare/review/report、大型 AI 分片流程、Sheets 維護與公開搜尋前端 artifact build/check，作為新接觸者與日常操作的主要入口。相簿匯入會在產生 intake run 後記住 run 目錄，並可直接接續 validation 與 Sheets dry-run；AI report 入口會從 `tmp/ai-runs/` 互動式選擇 run 或 attempt。
-- `pnpm eval`，引導模型品質、prompt、taxonomy、跨活動樣本與 `visual_description` 搜尋增益評估；這是評估入口，不是一般照片整理主線。產生評估報表時可從既有 AI runs 互動式單選或多選，不需要手動貼 run 目錄。
-- 本機 static search UI：`pnpm finder:dev` 預設讀正式 Google Sheets 公開 CSV；`pnpm finder:dev:fixture` 讀 `fixtures/photos.csv`；`pnpm finder:dev:export` 讀 `tmp/sheets-export/photos.csv`。部署版 `pnpm finder:build` 預設產生 static-sharded finder data。
-- `pnpm data:validate`，檢查 sample/export data、schema 與 taxonomy。
-- `pnpm data:validate` 也會對公開文字欄位輸出敏感內容 warning；warning 不會讓指令失敗，但應由整理者確認是否要移除或改寫。
-- `pnpm language:check`，檢查文件與程式輸出是否使用含糊的相對版本詞。
-- `pnpm shared-values:check`，檢查 `data/interface-registry.json` 是否只引用合法 schema field、taxonomy value、URL key 與 Apps Script field set，並確認 `apps-script/GeneratedConfig.js` 已同步。
-- `pnpm sheets:init`，產生建立正式 Google Sheets 起點所需的初始 CSV。
-- `pnpm sheets:check`，只讀檢查公開 Google Sheets 固定 tabs 的 header 與初始化覆蓋風險。
-- `pnpm sheets:onboarding:check`，使用 Google Sheets API 只讀檢查正式表 `使用說明`、固定練習表連結、練習表回連正式表，以及 practice/formal spreadsheet ID 是否混用。
-- `pnpm sheets:apply-init`，透過官方 Google Sheets API SDK dry-run 初始化套用計畫；加上 `--write` 才會建立缺少 tabs 並寫入初始化資料。
-- `pnpm sheets:migrate-headers`，透過官方 Google Sheets API SDK dry-run 安全 header 遷移；加上 `--write` 才會插入 repo schema 新增的缺少欄位。
-- `pnpm sheets:migrate-field-value -- --sheet photos --field recommended_uses --from <old-value> --to <new-value>`，透過官方 Google Sheets API SDK dry-run 精確遷移固定表格欄位值；加上 `--write` 才會更新 cells，並在寫入後讀回驗證。
-- `pnpm sheets:practice:build`，從 `tmp/sheets-export/` 的正式匯出資料切出練習用試算表資料包，預設輸出到 `tmp/sheets-practice/`；練習資料的 `photos.curation_notes` 會改寫成教學提示。
-- `pnpm sheets:practice:sync`，以官方 Google Sheets API SDK dry-run 重置固定練習用試算表；加上 `--write` 才會寫入，且會拒絕寫到正式照片索引。
-- `pnpm sheets:sync-guide`，透過官方 Google Sheets API SDK dry-run 同步 `使用說明` 分頁；加上 `--write` 才會建立或更新這張人類入口分頁。
-- `pnpm sheets:sync-taxonomy`，透過官方 Google Sheets API SDK dry-run 同步 `taxonomy` 輔助表；加上 `--write` 才會以 repo taxonomy 重寫 tab，並驗證 `label_zh` 不為空白。
-- `pnpm sheets:export`，透過官方 Google Sheets API SDK 匯出正式 Sheets 固定 tabs，供 validation 與 intake 流程使用。
-- `pnpm sheets:report`，唯讀產生正式 Sheets 資料品質報表；預設讀 `tmp/sheets-export/photos.csv` 與 `tmp/sheets-export/albums.csv`，也可用 `--source sheets` 直接從正式表讀取。報表會列出照片數、整理狀態與使用提醒分布、缺欄位風險、AI 待 review、相簿處理狀態與贊助覆蓋率。
-- `pnpm albums:list`，從正式 Sheets 匯出的 `albums.csv` 或 `--source sheets` 直接讀取正式 `albums` 工作表列出與篩選相簿，並可輸出 album id、JSON 或可直接執行的 intake 指令。
-- `pnpm albums:select`，從正式 Sheets 匯出的 `albums.csv` 或 `--source sheets` 直接讀取正式 `albums` 工作表互動式選擇單本相簿，並輸出 album id、JSON 或可直接執行的 intake 指令。
-- `pnpm project:check`，執行不需要 credential 的本機/CI 健康檢查，涵蓋 data validation、AI fixture validation、finder tests、Pages build/check、Apps Script generated config 同步檢查與主要 JavaScript syntax check。
-- `pnpm command:smoke`，在無 credential 環境執行主要 command/workflow 的 `--help` smoke test；integration 分類見 `docs/command-smoke-tests.md`。
-- `pnpm finder:build` / `pnpm finder:check`，產生並檢查 GitHub Pages artifact 到 `tmp/pages/`。部署版預設在 build 階段讀公開 Google Sheets CSV，並輸出 `data/finder-data/` static-sharded index/detail shards；可用 `--data-mode runtime-csv` 緊急退回瀏覽器端 CSV 載入。
-- `pnpm finder:perf`，用 `tmp/sheets-export/` 的正式匯出快照量測目前 row count、26k、40k 等規模的 CSV parse、正規化、排序、搜尋與 static artifact 體積，輸出到 `tmp/finder-perf/`。
-- `pnpm finder:test`，執行 GitHub Pages 前端可測試邏輯；目前涵蓋搜尋/排序、URL state、data-loader 正規化、controls filter entries、候選清單、照片卡連結、結果狀態文字與 AI 助手提示詞。
-- `pnpm finder:mobile-filter-smoke`，用 headless browser 檢查手機版 filter picker 不會在小視窗退回不穩定的原生彈出層，適合調整手機篩選 UI 後跑 regression smoke test。
-- `pnpm apps-script:build-config`，從 repo schema、taxonomy 與 sponsorship items snapshot metadata 產生 Apps Script 使用的 `apps-script/GeneratedConfig.js`；`pnpm apps-script:build-config -- --check` 只檢查已提交檔案是否同步。
-- `pnpm apps-script:bind`、`pnpm apps-script:status`、`pnpm apps-script:push`、`pnpm apps-script:deployments`，包裝常用 clasp 綁定、推送與 deployment 查詢流程。正式表是預設 target，可直接用 `pnpm apps-script:push`；固定練習表需明確使用 `pnpm apps-script:push -- --target practice`。Web App deployment type 應從 Apps Script UI 建立或更新；第一次部署順序見 `docs/apps-script-maintenance-design.md`。
-- `pnpm albums:discover`，盤點 SITCON Flickr 公開相簿清單並輸出 CSV 預覽。
-- `pnpm albums:discover -- --write`，更新本機 `fixtures/albums.csv` fixture，供 demo、除錯或 fixture validation 使用。
-- `pnpm albums:sync -- --sheets-export <csv> --output <csv>`，合併 Sheets 匯出與盤點結果，產生可回寫 Google Sheets `albums` 的 CSV。
-- `pnpm intake:run -- --album <album-id>`，從選定相簿產生一次可審核的 intake run artifact，包含候選 `photos`、更新後 `albums`、`import_batches` 與 `summary.json`，並輸出 `Intake run directory:` 供 workflow 或人工接續使用。預設讀 `tmp/sheets-export/albums.csv` 與 `tmp/sheets-export/photos.csv`。
-- `pnpm intake:validate -- --run-dir <dir>`，套用到 Google Sheets 前檢查 intake run artifact 是否完整一致。
-- `pnpm sheets:apply-intake -- --run-dir <dir>`，透過官方 Google Sheets API SDK dry-run 已審核 intake run artifact；加上 `--write` 才會追加照片、更新該相簿 `last_processed_at` 並追加批次紀錄。
-- `pnpm ai:prepare`，從正式 Sheets 匯出的 `photos.csv` 選出待初標照片，建立本機 `tmp/ai-runs/` 工作目錄與可供 AI 讀圖的輸入檔；預設下載 1024px 圖片，也可指定 `preview`、640、800 或 `original`。可用 `--album` / `--albums` 篩選單本或多本相簿；大型下載預設以 8 路平行處理，可用 `--download-concurrency` 調整。若要補強設計取用欄位，可用 `--focus design-metadata` 選出缺少 `safe_crop` 且有橫式、留白、背板、舞台、網站或社群線索的照片。
-- `pnpm eval:sample`，依 `data/ai-cross-activity-sample-plan.json` 從多本 Flickr 相簿等距抽樣，建立跨活動 AI 測試工作包；這是欄位與 prompt 評估用本機資料集，不寫入 Google Sheets。
-- `pnpm eval:attempt -- --from <dir> --model <name> --round <number>`，從既有 AI run 建立可重複使用同一輸入的模型/輪次 attempt，圖片預設以 symlink 或 hardlink 共用。
-- `pnpm ai:review -- --run-dir <dir>`，檢查 AI 候選 `metadata-proposals.json`，並一次產生 `metadata-review-summary.md`、`metadata-diff.md`、`metadata-update-plan.json` 與 CSV；大型 run summary 會附 artifact provenance、AI layer coverage 與 scene QA。
-- `pnpm ai:validate -- --run-dir <dir>`，只檢查 AI 候選 `metadata-proposals.json` 是否符合 schema、taxonomy 與人工 review 邊界。
-- `pnpm ai:shard:prepare -- --run-dir <dir>` / `pnpm ai:shard:log -- --run-dir <dir> --shard <id>` / `pnpm ai:shard:merge -- --run-dir <dir>`，大型 AI run 的分片準備、執行紀錄與暫存合併工具。預設使用 `/tmp/ai-labeling-shards/<run-id>/`，避免多 agent 在正式 run 目錄反覆寫中間檔，並保留 shard 狀態、模型、耗時、retry/repair 與 output hash。
-- `pnpm ai:codex:meter -- --run-dir <dir> --session <codex-session> --mark-start/--mark-end`，記錄 Codex 操作者或 parent orchestration 的 token snapshot；大型 worker 可搭配 `ai:shard:log --codex-session <id>`，`ai:validate` / `ai:review` 也可加 `--codex-session <id>` 記錄流程 phase，讓 `ai:bulk:status` 彙總 shown tokens、cached input、output、reasoning 與 runtime 狀態。
-- `pnpm ai:bulk:status -- --run-dir <dir>`，檢查大型 AI run 的 root proposal、shard workspace、暫存合併結果與 review summary 狀態，不修改檔案。
-- `pnpm eval:validate-fixtures`，檢查 AI proposal valid/invalid 範例是否仍符合目前 validator 邊界。
-- `pnpm ai:diff -- --run-dir <dir>`，只將已驗證的 AI 候選 metadata 轉成 `metadata-diff.md`，供人類審核，不寫入 Sheets。
-- `pnpm ai:plan -- --run-dir <dir>`，只將已驗證的 AI 候選 metadata 轉成 `metadata-update-plan.json` 與 CSV，作為後續 dry-run 更新工具輸入，不寫入 Sheets；可用 `--layers baseline,recall,optional` 分階段產生計畫。
-- `pnpm ai:report -- --run <dir>` 或 `pnpm ai:report -- --runs <dir> <dir>`，產生單次檢視或多模型/多輪比較用的 AI 初標唯讀靜態 HTML 報表；多 run 模式會標出高分歧、outlier、使用提醒單獨標示與疑似圖像對齊問題。
-- `pnpm eval:search -- --run-dir <dir>`，在 proposal 寫回前離線比較 taxonomy-only baseline 與 taxonomy + `visual_description` 的搜尋排序差異，用來驗證描述欄位是否有實際找圖增益；可加 `--scoring idf` 降低高頻泛詞對排序的影響。
-- `pnpm eval:prompt-review -- --mode prepare --runs <dir> [dir...]`，產生 `tmp/prompt-reviews/<review-id>/` 決策包工作目錄，包含 `input-manifest.json`、`expert-prompts/`、`expert-reviews/`、`report-links.json` 與可選的 `search-results/`；收到專家 review 後用 `--mode compile --review-dir <dir>` 產生 `decision-package.md` 與 `decision-package.json`。此工具只產生 review artifact，不呼叫外部 LLM、不改 prompt、不改 schema、不寫 Sheets。
-- `pnpm sheets:apply-ai-updates -- --run-dir <dir>`，對 AI metadata 更新計畫執行 Sheets dry-run；加上 `--write` 才會更新 cells，且會檢查 current value 避免覆蓋人工變更。若人類明確接受覆蓋既有 AI metadata，可在 dry-run 和 write 都加上 `--allow-current-mismatch`，大型批次可加 `--summary-only` 減少輸出。
-- AI 初標候選 metadata 已可經由 `ai:prepare`、`ai:review`、`ai:report`、人工檢查與 `sheets:apply-ai-updates` dry-run/write 寫回 `photos` 主表；這只是候選 metadata 回寫，不代表照片已人工 review。多模型、跨活動、搜尋增益或 prompt 決策包評估另由 `eval:attempt`、`eval:sample`、`eval:search` 與 `eval:prompt-review` 處理。
-- `pnpm photos:import -- --album <album-id> --output <csv>`，低階工具；從選定相簿產生可追加到 Google Sheets `photos` 的候選照片 CSV，並可同步產生 `albums` 更新與 `import_batches` 批次紀錄。
-- `pnpm fixtures:photo:add -- <flickr-photo-url>`，從單張 Flickr 照片產生候選列。
-- `pnpm fixtures:album:add -- <album-id-or-flickr-album-url>`，檢查或匯入單本相簿到本機 sample。
-- schema、taxonomy、sponsorship items 與欄位文件。
+本節只列日常入口與能力分組，不維護逐項 command inventory。可執行 script 名稱以 `package.json` 的 `scripts` 為準；CLI 使用方式以各 command 的 `--help` 為準。新增、改名或移除 command 時，請執行 `pnpm docs:check` 與 `pnpm command:smoke`，避免文件中的指令名稱和實際 package script 漂移。
+
+- 日常操作主線：`pnpm workflow` 會先說明完整資料流，再引導相簿匯入、AI prepare/review/report、大型 AI 分片流程、Sheets 維護與公開搜尋前端 artifact build/check。`pnpm eval` 是模型品質、prompt、taxonomy、跨活動樣本與 `visual_description` 搜尋增益評估入口，不是一般照片整理主線。
+- 無 credential 健康檢查：`pnpm project:check` 是本機與 CI 的主要 gate，涵蓋 language/docs/shared-value governance、JavaScript syntax、command smoke、Apps Script generated config、data validation、AI fixture validation、finder tests、Pages build/check。手機篩選 UI 變更另跑 `pnpm finder:mobile-filter-smoke`。
+- 文件與治理檢查：`pnpm docs:check` 檢查本機 Markdown link、docs index 覆蓋與文件中的 package script reference 是否存在；`pnpm language:check` 檢查含糊版本或狀態詞；`pnpm shared-values:check` 檢查跨介面 registry；`pnpm command:smoke` 檢查無 credential 的 `--help` path。
+- 公開前端：本機預覽用 `pnpm finder:dev`、fixture 模式用 `pnpm finder:dev:fixture`、正式匯出快取模式用 `pnpm finder:dev:export`；部署 artifact 用 `pnpm finder:build` 與 `pnpm finder:check`；前端純邏輯回歸用 `pnpm finder:test`。
+- Sheets 與資料品質：公開讀取檢查用 `pnpm sheets:check`；正式工作快取用 `pnpm sheets:export`；正式資料健康度用 `pnpm sheets:report`；初始化、header 遷移、欄位值遷移、taxonomy、使用說明、練習表與 intake/AI 回寫流程都從 `docs/sheets-sync-workflow.md` 選正確 dry-run/write 路徑。
+- Flickr 相簿與 intake：相簿盤點、清單、選擇與同步由 `albums:*` 工具處理；正式匯入工作包由 `pnpm intake:run` 建立，`pnpm intake:validate` 檢查，再由 `pnpm sheets:apply-intake` dry-run/write 套用。
+- AI 初標與評估：AI run 準備、驗證、review、report、diff、plan、bulk/shard 狀態與 Sheets dry-run/write 由 `ai:*` 工具處理；模型/輪次 attempt、跨活動 sample、搜尋增益與 prompt review 決策包由 `eval:*` 工具處理。操作順序以 `docs/ai-labeling-operator-guide.md` 和 `docs/ai-labeling-contract.md` 為準。
+- Apps Script：GeneratedConfig 由 `pnpm apps-script:build-config` 產生；clasp target、status、push、deployments 由 `apps-script:*` wrapper 依 `config/project.json` 解析，正式表是預設 target，練習表必須明確指定 `--target practice`。
+- GA4：事件設計先看 `docs/frontend-analytics-design.md`；custom dimensions 與後台權限操作看 `docs/ga4-operations.md`，repo 端檢查與同步由 `analytics:dimensions:*` / `ga4:dimensions:*` scripts 包裝。
 
 ### 可用狀態與維運提醒
 
