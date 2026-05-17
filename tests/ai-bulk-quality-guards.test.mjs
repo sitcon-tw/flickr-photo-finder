@@ -1,10 +1,22 @@
 import assert from "node:assert/strict";
+import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, it } from "node:test";
 import {
+  buildReviewNotes,
   peopleCountSpikeRows,
   peopleCountStats,
   reasonReuseRows,
+  sceneReviewPackageRows,
 } from "../scripts/commands/review-ai-run.mjs";
+import { updateShardLog } from "../scripts/commands/log-ai-shard.mjs";
+import { summarizeExecutionLog } from "../scripts/commands/status-ai-bulk-run.mjs";
+import {
+  designMetadataQualityWarningsForItem,
+  visualDescriptionQualityWarningsForItem,
+} from "../scripts/commands/validate-ai-proposals.mjs";
+import { renderAiLabelingPrompt } from "../scripts/lib/ai/ai-labeling-prompt.mjs";
 import {
   buildPeopleCountPairSummary,
   peopleCountDistribution,
@@ -61,6 +73,163 @@ describe("AI bulk quality guards", () => {
     assert.equal(peopleRow[1], 8);
     assert.equal(peopleRow[2], 1);
     assert.equal(peopleRow[3], 8);
+  });
+
+  it("does not emit obsolete public status notes for child or identifiable-detail text", () => {
+    const notes = buildReviewNotes([
+      item("child-scene", {
+        scene_tags: {
+          reason: "畫面中可見小朋友在桌邊操作紙張。",
+          value: ["兒童", "工作坊"],
+        },
+        visual_description: {
+          reason: "描述本張照片中的桌面操作。",
+          value: "小朋友坐在桌邊看紙張，旁邊有大人低頭協助。",
+        },
+      }),
+    ]);
+    const text = notes.join("\n");
+
+    assert.doesNotMatch(text, /公開使用|public-use|可識別細節/);
+  });
+
+  it("builds scene review packages from scene tag co-occurrence", () => {
+    const rows = sceneReviewPackageRows([
+      item("speaker-screen", {
+        scene_tags: {
+          reason: "畫面中可見講者站在投影螢幕旁。",
+          value: ["螢幕", "講者"],
+        },
+      }),
+    ]);
+
+    assert.deepEqual(rows[0].slice(0, 3), ["螢幕 + 講者", 1, "speaker-screen"]);
+  });
+
+  it("keeps design metadata warnings focused on layout support", () => {
+    const warnings = designMetadataQualityWarningsForItem(item("banner", {
+      has_negative_space: {
+        reason: "畫面左側有大片牆面。",
+        value: true,
+      },
+      recommended_uses: {
+        reason: "畫面適合網站橫幅。",
+        value: ["網站橫幅"],
+      },
+      visual_description: {
+        reason: "描述畫面構圖。",
+        value: "講者站在右側投影幕旁，左側牆面留有大片空白。",
+      },
+    }));
+
+    assert.ok(warnings.some((warning) => warning.kind === "website-banner-missing-layout-support"));
+  });
+
+  it("flags generic visual descriptions for review", () => {
+    const warnings = visualDescriptionQualityWarningsForItem(item("generic-description", {
+      visual_description: {
+        reason: "描述畫面。",
+        value: "多名參與者在活動現場互動交流，畫面呈現交流情境。",
+      },
+    }));
+
+    assert.ok(warnings.some((warning) => warning.kind === "generic-human-interaction"));
+    assert.ok(warnings.some((warning) => warning.kind === "generic-frame-language"));
+  });
+
+  it("summarizes shard model, effort, duration, and Codex session coverage", () => {
+    const summary = summarizeExecutionLog({
+      shards: [
+        {
+          codex_session: "worker-session",
+          duration_ms: 120000,
+          model_name: "gpt-5.5",
+          reasoning_effort: "xhigh",
+          status: "completed",
+          validate_status: "passed",
+        },
+        {
+          duration_ms: null,
+          model_name: "gpt-5.5",
+          reasoning_effort: "medium",
+          status: "running",
+          validate_status: "unknown",
+        },
+      ],
+    });
+
+    assert.equal(summary.codex_session_shards, 1);
+    assert.equal(summary.duration_logged_shards, 1);
+    assert.equal(summary.duration_ms_total, 120000);
+    assert.deepEqual(summary.model_name_counts, { "gpt-5.5": 2 });
+    assert.deepEqual(summary.reasoning_effort_counts, { medium: 1, xhigh: 1 });
+  });
+
+  it("writes shard reasoning effort into the execution log", async () => {
+    const root = await mkdtemp(join(tmpdir(), "ai-shard-log-"));
+    const runDir = join(root, "run");
+    const shardDir = join(root, "shards");
+    await mkdir(runDir, { recursive: true });
+    await mkdir(shardDir, { recursive: true });
+    await writeFile(join(runDir, "manifest.json"), `${JSON.stringify({ run_id: "test-run" })}\n`);
+    await writeFile(join(shardDir, "shard-execution-log.json"), `${JSON.stringify({
+      run_id: "test-run",
+      shards: [
+        {
+          agent_name: "",
+          completed_at: "",
+          codex_end_snapshot: null,
+          codex_home: "",
+          codex_session: "",
+          codex_start_snapshot: null,
+          codex_usage_delta: null,
+          duration_ms: null,
+          input_path: "",
+          model_name: "",
+          notes: "",
+          reasoning_effort: "",
+          repair_count: 0,
+          retry_count: 0,
+          shard: 0,
+          started_at: "",
+          status: "pending",
+          validate_status: "unknown",
+        },
+      ],
+    }, null, 2)}\n`);
+
+    await updateShardLog({
+      addRepair: false,
+      addRetry: false,
+      agentName: "worker-0",
+      codexHome: "",
+      codexSession: "",
+      completedAt: "",
+      durationMs: null,
+      markCompleted: false,
+      markStarted: true,
+      modelName: "gpt-5.5",
+      notes: null,
+      reasoningEffort: "medium",
+      repairCount: null,
+      retryCount: null,
+      runDir,
+      shard: "00",
+      shardDir,
+      startedAt: "",
+      status: "",
+      validateStatus: "",
+    });
+
+    const log = JSON.parse(await readFile(join(shardDir, "shard-execution-log.json"), "utf8"));
+    assert.equal(log.shards[0].reasoning_effort, "medium");
+    assert.equal(log.shards[0].status, "running");
+  });
+
+  it("includes the parent Codex session placeholder in generated review commands", () => {
+    const prompt = renderAiLabelingPrompt("tmp/ai-runs/example");
+
+    assert.match(prompt, /pnpm ai:review -- --run-dir tmp\/ai-runs\/example --codex-session <parent-session-id>/);
   });
 
   it("flags people_count spike distribution for reports", () => {

@@ -60,7 +60,7 @@ SITCON Flickr 上的照片擁有者是 SITCON，但攝影師 credit 會放在 Fl
 | `mood_tags` | 照片帶來的感受，例如熱鬧、專注、友善、青春感、幕後感。 |
 | `recommended_uses` | 適合的工作用途，例如社群貼文、網站橫幅、志工招募、贊助提案。 |
 | `visual_description` | 1 到 2 句中立描述照片可見內容，例如人物動作、物件位置、畫面文字與空間關係。這不是 reviewed 必填，但能補足自然語言找圖。 |
-| `public_use_status` | 不確定就用 `needs_review`。不要為了讓資料漂亮而標成 `approved`。 |
+| `public_use_status` | 使用提醒。沒有明確不建議或需整理判斷時可留空，不要為了讓資料漂亮而標成 `approved`。 |
 | `priority_level` | 推薦使用優先度，不是客觀照片品質。 |
 | `collections` | 素材包，例如志工招募、贊助提案、網站橫幅、活動回顧。 |
 | `curation_notes` | 可公開閱讀的整理脈絡、注意事項或使用建議。不要寫敏感內部資訊。 |
@@ -113,15 +113,15 @@ Google Sheets、CSV、AI proposal 與 repo 工具儲存的是 taxonomy raw value
 
 `sponsorship_items` 必須對齊 `data/sponsorship-items.json` 的 2026 CFS 固定版本資料。未來年度若有不同 CFS 品項，應建立對應年度版本資料或明確更新標籤字典。
 
-## 公開使用判斷
+## 使用提醒判斷
 
-`public_use_status` 不只看照片好不好看。
+SITCON Flickr 照片本身已經是經同意釋出的公開來源；`public_use_status` 不是同意、授權或公開 / 非公開判斷。這個欄位只用來提醒整理者某張照片是否適合被推薦使用。
 
-- `approved`: 可合理用於公開素材，授權與脈絡足夠清楚。
-- `needs_review`: 看起來可能可用，但授權、人物露出、脈絡或畫面狀態需要確認。
-- `avoid`: 不建議用於公開素材，例如畫面尷尬、人物狀態不適合、授權不明且風險高。
+- `approved`: 整理者確認可正常推薦。
+- `needs_review`: 可以列為候選，但畫面狀態、脈絡或用途仍需要人類整理判斷。
+- `avoid`: 不建議推薦，例如畫面尷尬、人物狀態不適合、主體遮擋、嚴重失焦或容易造成誤解。
 
-如果不確定，請用 `needs_review`。
+如果只是沒有特別提醒，請留空；不要把 `needs_review` 當成保守預設。
 
 不要為了提升搜尋方便，把可識別個人的人名、負面描述、敏感身份或未確認角色寫進 `curation_notes`、`visual_description` 或其他公開欄位。若某張照片確實需要進入公開人物、講者或工作人員素材包，應由人類確認公開脈絡、用途與同意範圍後，再用明確的 `collections` 或其他經過設計的欄位處理；不要用 AI 看臉或外貌推論補上人物身份。
 
@@ -133,7 +133,7 @@ Google Sheets、CSV、AI proposal 與 repo 工具儲存的是 taxonomy raw value
 - `ai_labeled`: 經過 AI 初標，但尚未人工確認。
 - `reviewed`: 已由人確認到可以被搜尋與初步使用判斷。
 
-`reviewed` 不代表公開使用風險已完全確認，也不代表已經排好推薦優先度。若公開使用仍不確定，可先讓 `public_use_status` 留空或標成 `needs_review`；若沒有明確推薦排序判斷，`priority_level` 可以留空。
+`reviewed` 不代表已經排好推薦優先度，也不代表每個使用提醒都已補齊。若沒有明確使用提醒，可先讓 `public_use_status` 留空；若沒有明確推薦排序判斷，`priority_level` 可以留空。
 
 優先推薦不要用整理狀態表示，請用 `priority_level`、`collections` 或素材包來表達。不建議推薦使用的照片請用 `public_use_status = avoid`，不要另外建立封存狀態。
 
@@ -151,4 +151,4 @@ Google Sheets、CSV、AI proposal 與 repo 工具儲存的是 taxonomy raw value
 pnpm data:validate
 ```
 
-驗證通過只代表資料格式與受控字彙合理，不代表照片一定適合公開使用。公開使用仍需要人判斷。
+驗證通過只代表資料格式與受控字彙合理，不代表照片一定適合推薦使用。實際選圖仍需要人判斷。

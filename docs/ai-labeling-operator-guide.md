@@ -154,8 +154,8 @@ pnpm ai:shard:prepare -- --run-dir tmp/ai-runs/<run-id>
 若要比較平行化成效，worker 開始或完成時可更新 execution log：
 
 ```bash
-pnpm ai:shard:log -- --run-dir tmp/ai-runs/<run-id> --shard 03 --agent-name codex-worker-03 --model-name gpt-5.5 --mark-started
-pnpm ai:shard:log -- --run-dir tmp/ai-runs/<run-id> --shard 03 --mark-completed --validate-status passed --add-repair
+pnpm ai:shard:log -- --run-dir tmp/ai-runs/<run-id> --shard 03 --agent-name codex-worker-03 --model-name gpt-5.5 --reasoning-effort <medium|xhigh|unknown> --mark-started
+pnpm ai:shard:log -- --run-dir tmp/ai-runs/<run-id> --shard 03 --reasoning-effort <medium|xhigh|unknown> --mark-completed --validate-status passed --add-repair
 ```
 
 這個紀錄只描述操作歷程，不會驗證 proposal 或修改正式 run。`ai:shard:merge` 會再把每個 output 的 item count、sha256 與 merged proposal hash 補回 execution log。
@@ -173,8 +173,8 @@ pnpm ai:shard:log -- --run-dir tmp/ai-runs/<run-id> --shard 03 --mark-completed 
 
 執行中：
 
-- 每個 Codex worker 開始 shard 時，用 `ai:shard:log --codex-session ... --mark-started`。
-- worker 完成 shard output 後，用 `ai:shard:log --codex-session ... --mark-completed`。
+- 每個 Codex worker 開始 shard 時，用 `ai:shard:log --codex-session ... --reasoning-effort ... --mark-started`。
+- worker 完成 shard output 後，用 `ai:shard:log --codex-session ... --reasoning-effort ... --mark-completed`。
 - parent session 負責分片、合併、validate、review、修補時，視需要用不同 `--phase` 標出 `orchestration`、`validate`、`review` 或 `repair`。
 
 完成時：
@@ -187,8 +187,8 @@ pnpm ai:shard:log -- --run-dir tmp/ai-runs/<run-id> --shard 03 --mark-completed 
 
 ```bash
 pnpm ai:codex:meter -- --run-dir tmp/ai-runs/<run-id> --session <parent-session-id> --phase orchestration --label "parent orchestration" --mark-start
-pnpm ai:shard:log -- --run-dir tmp/ai-runs/<run-id> --shard 03 --codex-session <worker-session-id> --mark-started
-pnpm ai:shard:log -- --run-dir tmp/ai-runs/<run-id> --shard 03 --codex-session <worker-session-id> --mark-completed --validate-status passed
+pnpm ai:shard:log -- --run-dir tmp/ai-runs/<run-id> --shard 03 --codex-session <worker-session-id> --reasoning-effort <medium|xhigh|unknown> --mark-started
+pnpm ai:shard:log -- --run-dir tmp/ai-runs/<run-id> --shard 03 --codex-session <worker-session-id> --reasoning-effort <medium|xhigh|unknown> --mark-completed --validate-status passed
 pnpm ai:validate -- --run-dir tmp/ai-runs/<run-id> --codex-session <parent-session-id>
 pnpm ai:review -- --run-dir tmp/ai-runs/<run-id> --codex-session <parent-session-id>
 pnpm ai:codex:meter -- --run-dir tmp/ai-runs/<run-id> --session <parent-session-id> --phase orchestration --mark-end
@@ -229,14 +229,14 @@ pnpm ai:shard:merge -- --run-dir tmp/ai-runs/<run-id>
 
 ```bash
 pnpm ai:validate -- --run-dir tmp/ai-runs/<run-id> --proposals /tmp/ai-labeling-shards/<run-id>/metadata-proposals.json
-pnpm ai:review -- --run-dir tmp/ai-runs/<run-id> --proposals /tmp/ai-labeling-shards/<run-id>/metadata-proposals.json --output-dir /tmp/ai-review-runs/<run-id>
+pnpm ai:review -- --run-dir tmp/ai-runs/<run-id> --proposals /tmp/ai-labeling-shards/<run-id>/metadata-proposals.json --output-dir /tmp/ai-review-runs/<run-id> --codex-session <parent-session-id>
 ```
 
 人類確認可採用後，再集中一次寫回正式 run：
 
 ```bash
 pnpm ai:shard:merge -- --run-dir tmp/ai-runs/<run-id> --write-run
-pnpm ai:review -- --run-dir tmp/ai-runs/<run-id>
+pnpm ai:review -- --run-dir tmp/ai-runs/<run-id> --codex-session <parent-session-id>
 ```
 
 ### 6. 檢查模型輸出
@@ -252,7 +252,7 @@ pnpm ai:review -- --run-dir tmp/ai-runs/<run-id>
 - 產生 `metadata-update-plan.json` 與 `metadata-update-plan.csv`，列出後續可能回寫的欄位值。
 - 產生 `metadata-review-summary.md`，整理欄位覆蓋率、常見值分布、批次層級警訊、優先抽查照片與下一步指令。
 
-大型或分片 run 的 summary 會額外顯示 `Artifact Provenance`、`Layer Coverage`、`Scene QA`、`Balanced Review Sample` 與 `Confidence By Field`。`Artifact Provenance` 用來確認 final proposals 來源、hash、圖片連結模式、shard artifacts 與 execution log 摘要；`Layer Coverage` 用 schema 分層看 baseline、recall、optional 覆蓋率；`Scene QA` 用整體、相簿與分片層級檢查 `scene_tags` 是否低召回、過度集中或平均過密；`Balanced Review Sample` 會混合 review focus、shard 抽樣、主體邊界、高風險 optional 欄位與 deterministic random，避免只看工具已知警訊；`Confidence By Field` 用來檢查信心分數是否只集中在少數欄位。
+大型或分片 run 的 summary 會額外顯示 `Artifact Provenance`、`Layer Coverage`、`Scene QA`、`Scene Review Packages`、`Balanced Review Sample` 與 `Confidence By Field`。`Artifact Provenance` 用來確認 final proposals 來源、hash、圖片連結模式、shard artifacts 與 execution log 摘要；`Layer Coverage` 用 schema 分層看 baseline、recall、optional 覆蓋率；`Scene QA` 用整體、相簿與分片層級檢查 `scene_tags` 是否低召回、過度集中或平均過密；`Scene Review Packages` 會把常見共現組合整理成抽查入口；`Balanced Review Sample` 會混合 review focus、shard 抽樣、主體邊界、主觀 optional 欄位與 deterministic random，避免只看工具已知警訊；`Confidence By Field` 用來檢查信心分數是否只集中在少數欄位。
 
 每次 `ai:review` 都會顯示 `People Count QA` 與 `Reason Reuse QA`，不只限於大型 run。`People Count QA` 的分布摘要會列出 `people_count` 的平均、中位數、分位數與 top values；警訊列則只在達到門檻時產生：整批至少 200 張且 `3..10` 任一中段人數值佔比達 15%，或相簿 / shard 至少 20 張且最常見的 `3..10` 中段人數值佔比達 50%。只有這些警訊列會進入 Review Notes 與 Review Focus。這類警訊不代表該人數一定錯，而是提示模型可能把常見小組人數當成 fallback，應從 Review Focus 抽查。`Reason Reuse QA` 會列出各欄位 unique reason 數、最大 reason 重複群與最大 value+reason 重複群；若最大群偏大，代表可能有模板化或 archetype 套用，需要確認 reason 是否真的描述每張照片的可見證據。
 
@@ -436,12 +436,12 @@ pnpm sheets:apply-ai-updates -- --run-dir tmp/ai-runs/<run-id> --allow-current-m
 - `sponsorship_tags` 是贊助價值或佐證用途，例如 `品牌露出`、`贊助成果佐證`。
 - 不確定時先省略贊助欄位，讓行銷組在 Google Sheets 補充。
 
-### 狀態與公開使用
+### 狀態與使用提醒
 
 - AI 最多把 `curation_status` 建議為 `ai_labeled`。
 - AI 不得建議 `reviewed`。
 - AI 不得建議 `public_use_status = approved`。
-- 不確定公開使用狀態時，優先用 `needs_review` 或省略。
+- 沒有明確不建議推薦或需整理判斷時，省略 `public_use_status`。
 - 明顯不適合一般推薦時可建議 `avoid`，但理由要寫清楚。
 
 ### 信心分數

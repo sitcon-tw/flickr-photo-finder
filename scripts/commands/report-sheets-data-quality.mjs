@@ -450,7 +450,7 @@ async function main() {
     photos.length,
   );
   printDistribution(
-    "公開使用狀態分布",
+    "使用提醒分布",
     countBy(photos, "public_use_status", publicUseStatuses),
     "public_use_status",
     photos.length,

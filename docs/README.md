@@ -174,7 +174,7 @@ flowchart TD
 - `pnpm sheets:sync-guide`，透過官方 Google Sheets API SDK dry-run 同步 `使用說明` 分頁；加上 `--write` 才會建立或更新這張人類入口分頁。
 - `pnpm sheets:sync-taxonomy`，透過官方 Google Sheets API SDK dry-run 同步 `taxonomy` 輔助表；加上 `--write` 才會以 repo taxonomy 重寫 tab，並驗證 `label_zh` 不為空白。
 - `pnpm sheets:export`，透過官方 Google Sheets API SDK 匯出正式 Sheets 固定 tabs，供 validation 與 intake 流程使用。
-- `pnpm sheets:report`，唯讀產生正式 Sheets 資料品質報表；預設讀 `tmp/sheets-export/photos.csv` 與 `tmp/sheets-export/albums.csv`，也可用 `--source sheets` 直接從正式表讀取。報表會列出照片數、整理/公開使用狀態分布、缺欄位風險、AI 待 review、相簿處理狀態與贊助覆蓋率。
+- `pnpm sheets:report`，唯讀產生正式 Sheets 資料品質報表；預設讀 `tmp/sheets-export/photos.csv` 與 `tmp/sheets-export/albums.csv`，也可用 `--source sheets` 直接從正式表讀取。報表會列出照片數、整理狀態與使用提醒分布、缺欄位風險、AI 待 review、相簿處理狀態與贊助覆蓋率。
 - `pnpm albums:list`，從正式 Sheets 匯出的 `albums.csv` 或 `--source sheets` 直接讀取正式 `albums` 工作表列出與篩選相簿，並可輸出 album id、JSON 或可直接執行的 intake 指令。
 - `pnpm albums:select`，從正式 Sheets 匯出的 `albums.csv` 或 `--source sheets` 直接讀取正式 `albums` 工作表互動式選擇單本相簿，並輸出 album id、JSON 或可直接執行的 intake 指令。
 - `pnpm project:check`，執行不需要 credential 的本機/CI 健康檢查，涵蓋 data validation、AI fixture validation、finder tests、Pages build/check、Apps Script generated config 同步檢查與主要 JavaScript syntax check。
@@ -200,7 +200,7 @@ flowchart TD
 - `pnpm eval:validate-fixtures`，檢查 AI proposal valid/invalid 範例是否仍符合目前 validator 邊界。
 - `pnpm ai:diff -- --run-dir <dir>`，只將已驗證的 AI 候選 metadata 轉成 `metadata-diff.md`，供人類審核，不寫入 Sheets。
 - `pnpm ai:plan -- --run-dir <dir>`，只將已驗證的 AI 候選 metadata 轉成 `metadata-update-plan.json` 與 CSV，作為後續 dry-run 更新工具輸入，不寫入 Sheets；可用 `--layers baseline,recall,optional` 分階段產生計畫。
-- `pnpm ai:report -- --run <dir>` 或 `pnpm ai:report -- --runs <dir> <dir>`，產生單次檢視或多模型/多輪比較用的 AI 初標唯讀靜態 HTML 報表；多 run 模式會標出高分歧、outlier、public-use 單獨標示與疑似圖像對齊問題。
+- `pnpm ai:report -- --run <dir>` 或 `pnpm ai:report -- --runs <dir> <dir>`，產生單次檢視或多模型/多輪比較用的 AI 初標唯讀靜態 HTML 報表；多 run 模式會標出高分歧、outlier、使用提醒單獨標示與疑似圖像對齊問題。
 - `pnpm eval:search -- --run-dir <dir>`，在 proposal 寫回前離線比較 taxonomy-only baseline 與 taxonomy + `visual_description` 的搜尋排序差異，用來驗證描述欄位是否有實際找圖增益；可加 `--scoring idf` 降低高頻泛詞對排序的影響。
 - `pnpm eval:prompt-review -- --mode prepare --runs <dir> [dir...]`，產生 `tmp/prompt-reviews/<review-id>/` 決策包工作目錄，包含 `input-manifest.json`、`expert-prompts/`、`expert-reviews/`、`report-links.json` 與可選的 `search-results/`；收到專家 review 後用 `--mode compile --review-dir <dir>` 產生 `decision-package.md` 與 `decision-package.json`。此工具只產生 review artifact，不呼叫外部 LLM、不改 prompt、不改 schema、不寫 Sheets。
 - `pnpm sheets:apply-ai-updates -- --run-dir <dir>`，對 AI metadata 更新計畫執行 Sheets dry-run；加上 `--write` 才會更新 cells，且會檢查 current value 避免覆蓋人工變更。若人類明確接受覆蓋既有 AI metadata，可在 dry-run 和 write 都加上 `--allow-current-mismatch`，大型批次可加 `--summary-only` 減少輸出。

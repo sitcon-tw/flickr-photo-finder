@@ -311,6 +311,14 @@ function pnpmArgsFromOptions(options) {
   return options.length > 0 ? ["--", ...options] : [];
 }
 
+function codexSessionOptions(codexSession) {
+  return codexSession ? ["--codex-session", codexSession] : [];
+}
+
+function codexSessionCommandSuffix(codexSession) {
+  return codexSession ? ` --codex-session ${codexSession}` : " --codex-session <parent-session-id>";
+}
+
 function parseIntakeRunDir(stdout) {
   const directMatch = stdout.match(/Intake run directory:\s*(.+)/);
   if (directMatch?.[1]) {
@@ -552,6 +560,7 @@ async function runBulkAiLabeling() {
   const shardDir = `/tmp/ai-labeling-shards/${runId}`;
   const reviewDir = `/tmp/ai-review-runs/${runId}`;
   const mergedProposal = `${shardDir}/metadata-proposals.json`;
+  const codexSession = await ask("parent Codex session id，用於 review/validate runtime metrics；可留空");
 
   runPnpm("ai:bulk:status", pnpmArgsFromOptions(["--run-dir", runDir]));
 
@@ -574,21 +583,21 @@ async function runBulkAiLabeling() {
     console.log("稍後可用以下指令接續：");
     console.log(`pnpm ai:bulk:status -- --run-dir ${runDir}`);
     console.log(`pnpm ai:shard:merge -- --run-dir ${runDir}`);
-    console.log(`pnpm ai:review -- --run-dir ${runDir} --proposals ${mergedProposal} --output-dir ${reviewDir}`);
+    console.log(`pnpm ai:review -- --run-dir ${runDir} --proposals ${mergedProposal} --output-dir ${reviewDir}${codexSessionCommandSuffix(codexSession)}`);
     return;
   }
 
   runPnpm("ai:shard:merge", pnpmArgsFromOptions(["--run-dir", runDir]));
-  runPnpm("ai:review", pnpmArgsFromOptions(["--run-dir", runDir, "--proposals", mergedProposal, "--output-dir", reviewDir]));
+  runPnpm("ai:review", pnpmArgsFromOptions(["--run-dir", runDir, "--proposals", mergedProposal, "--output-dir", reviewDir, ...codexSessionOptions(codexSession)]));
 
   if (await askYesNo("暫存 review 已確認可採用，要寫回正式 run 並重建正式 review artifacts？", false)) {
     runPnpm("ai:shard:merge", pnpmArgsFromOptions(["--run-dir", runDir, "--write-run"]));
-    runPnpm("ai:review", pnpmArgsFromOptions(["--run-dir", runDir]));
+    runPnpm("ai:review", pnpmArgsFromOptions(["--run-dir", runDir, ...codexSessionOptions(codexSession)]));
   } else {
     console.log("");
     console.log("尚未寫回正式 run。確認後可執行：");
     console.log(`pnpm ai:shard:merge -- --run-dir ${runDir} --write-run`);
-    console.log(`pnpm ai:review -- --run-dir ${runDir}`);
+    console.log(`pnpm ai:review -- --run-dir ${runDir}${codexSessionCommandSuffix(codexSession)}`);
   }
 }
 
@@ -613,8 +622,9 @@ async function reviewAiRun() {
   if (!runDir) {
     throw new Error("run directory is required");
   }
+  const codexSession = await ask("parent Codex session id，用於 review runtime metrics；可留空");
 
-  runPnpm("ai:review", pnpmArgsFromOptions(["--run-dir", runDir]));
+  runPnpm("ai:review", pnpmArgsFromOptions(["--run-dir", runDir, ...codexSessionOptions(codexSession)]));
 
   if (await askYesNo("要 dry-run 檢查 AI 更新會寫入哪些 Sheets cells 嗎？", false)) {
     runPnpm("sheets:apply-ai-updates", pnpmArgsFromOptions(["--run-dir", runDir]));

@@ -21,6 +21,7 @@ Options:
   --status <status>            pending, running, completed, failed, or repaired.
   --agent-name <name>          Agent or worker name.
   --model-name <name>          Model name.
+  --reasoning-effort <value>   low, medium, high, xhigh, or unknown.
   --codex-session <id>         Codex session id for token metering.
   --codex-home <dir>           Codex home. Default: CODEX_HOME or ~/.codex.
   --mark-started               Set started_at to now and status to running unless --status is supplied.
@@ -55,6 +56,7 @@ function parseArgs(argv) {
     markStarted: false,
     modelName: "",
     notes: null,
+    reasoningEffort: "",
     repairCount: null,
     retryCount: null,
     runDir: "",
@@ -94,6 +96,9 @@ function parseArgs(argv) {
       index += 1;
     } else if (arg === "--model-name") {
       options.modelName = nextValue(index, arg);
+      index += 1;
+    } else if (arg === "--reasoning-effort") {
+      options.reasoningEffort = nextValue(index, arg);
       index += 1;
     } else if (arg === "--codex-session") {
       options.codexSession = nextValue(index, arg);
@@ -147,6 +152,9 @@ function parseArgs(argv) {
     }
     if (options.validateStatus && !["unknown", "not-run", "passed", "failed"].includes(options.validateStatus)) {
       throw new Error("--validate-status must be one of: unknown, not-run, passed, failed");
+    }
+    if (options.reasoningEffort && !["low", "medium", "high", "xhigh", "unknown"].includes(options.reasoningEffort)) {
+      throw new Error("--reasoning-effort must be one of: low, medium, high, xhigh, unknown");
     }
     for (const [name, value] of [["--duration-ms", options.durationMs], ["--retry-count", options.retryCount], ["--repair-count", options.repairCount]]) {
       if (value !== null && (!Number.isInteger(value) || value < 0)) {
@@ -216,7 +224,7 @@ async function codexSnapshot(options, at) {
   });
 }
 
-async function updateShardLog(options) {
+export async function updateShardLog(options) {
   const runDir = resolve(options.runDir);
   const manifest = await readJson(join(runDir, "manifest.json"));
   const runId = manifest.run_id || basename(runDir);
@@ -236,6 +244,7 @@ async function updateShardLog(options) {
   const now = new Date().toISOString();
   if (options.agentName) entry.agent_name = options.agentName;
   if (options.modelName) entry.model_name = options.modelName;
+  if (options.reasoningEffort) entry.reasoning_effort = options.reasoningEffort;
   if (options.codexSession) entry.codex_session = options.codexSession;
   if (options.codexHome) entry.codex_home = resolve(options.codexHome);
   if (options.markStarted) {
@@ -288,6 +297,7 @@ async function main() {
   console.log(`- shard: ${String(result.shardIndex).padStart(2, "0")}`);
   console.log(`- status: ${result.entry.status}`);
   console.log(`- validate: ${result.entry.validate_status}`);
+  console.log(`- reasoning_effort: ${result.entry.reasoning_effort ?? ""}`);
   console.log(`- duration_ms: ${result.entry.duration_ms ?? ""}`);
 }
 
