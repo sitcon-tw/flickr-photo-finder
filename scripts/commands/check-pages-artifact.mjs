@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { readFile, stat } from "node:fs/promises";
+import { readdir, readFile, stat } from "node:fs/promises";
 import { collectRelativeJavaScriptImportGraph } from "../lib/pages/js-import-graph.mjs";
 import { defaultFinderDataDir } from "../lib/pages/static-finder-data.mjs";
 
@@ -97,6 +97,38 @@ async function assertPngDimensions(path, expectedWidth, expectedHeight) {
   }
 }
 
+async function listArtifactFiles(rootDir, relativeDir = "") {
+  const entries = await readdir(join(rootDir, relativeDir), { withFileTypes: true });
+  const files = [];
+  for (const entry of entries) {
+    const relativePath = join(relativeDir, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...await listArtifactFiles(rootDir, relativePath));
+    } else if (entry.isFile()) {
+      files.push(relativePath);
+    }
+  }
+  return files;
+}
+
+async function assertNoCredentialArtifacts(artifactDir) {
+  const files = await listArtifactFiles(artifactDir);
+  const blockedNamePattern = /(?:credential|credentials|token|secret|client_secret|service[-_]?account|oauth|^\.env$)/i;
+  const blockedContentPattern = /(?:-----BEGIN PRIVATE KEY-----|private_key|client_secret|refresh_token|GOOGLE_APPLICATION_CREDENTIALS)/i;
+  for (const file of files) {
+    if (blockedNamePattern.test(file)) {
+      throw new Error(`Pages artifact must not include credential-like file: ${file}`);
+    }
+    if (!/\.(?:css|html|js|json|txt)$/i.test(file)) {
+      continue;
+    }
+    const content = await readFile(join(artifactDir, file), "utf8");
+    if (blockedContentPattern.test(content)) {
+      throw new Error(`Pages artifact contains credential-like content: ${file}`);
+    }
+  }
+}
+
 async function assertJavaScriptImportGraph(artifactDir, entryFile) {
   await collectRelativeJavaScriptImportGraph({ rootDir: artifactDir, entryFile });
 }
@@ -182,6 +214,7 @@ async function main() {
   for (const file of requiredFiles) {
     await assertFile(join(options.artifactDir, file));
   }
+  await assertNoCredentialArtifacts(options.artifactDir);
 
   const indexHtml = await assertIncludes(join(options.artifactDir, "index.html"), "./styles.css", "styles.css");
   if (!indexHtml.includes("./main.js")) {
