@@ -4,12 +4,15 @@ import { join, relative } from "node:path";
 const root = process.cwd();
 const scanRoots = [
   "README.md",
+  "AGENTS.md",
+  "CONTRIBUTING.md",
   "docs",
   "app",
   "apps-script",
   "scripts",
   "data",
   "prompts",
+  "fixtures/ai-proposals/README.md",
   ".github",
 ];
 const textExtensions = new Set([
@@ -25,6 +28,8 @@ const textExtensions = new Set([
 ]);
 const ignoredPaths = new Set([
   "scripts/commands/check-language-governance.mjs",
+  // Fixed CFS snapshot text may preserve upstream wording; do not treat it as repo-authored docs.
+  "data/sponsorship-items.json",
 ]);
 
 const relativeWordingRules = [
@@ -40,6 +45,57 @@ const relativeWordingRules = [
     guidance: "Use a dated version, exact tool/runtime version, commit, tag, schema version, or named target instead.",
   },
 ];
+
+const taiwanTraditionalRules = [
+  ["接口", "Use 介面."],
+  ["界面", "Use 介面."],
+  ["字段", "Use 欄位."],
+  ["用户", "Use 使用者."],
+  ["用戶", "Use 使用者."],
+  ["质量", "Use 品質 when describing quality."],
+  ["質量", "Use 品質 when describing quality."],
+  ["默认", "Use 預設."],
+  ["默認", "Use 預設."],
+  ["软件", "Use 軟體."],
+  ["軟件", "Use 軟體."],
+  ["链接", "Use 連結."],
+  ["鏈接", "Use 連結."],
+  ["运行", "Use 執行 or 跑 depending on context."],
+  ["運行", "Use 執行 or 跑 depending on context."],
+  ["视频", "Use 影片."],
+  ["視頻", "Use 影片."],
+  ["屏幕", "Use 螢幕."],
+  ["信息", "Use 資訊."],
+  ["文件夹", "Use 資料夾."],
+  ["文件夾", "Use 資料夾."],
+  ["缺省", "Use 預設."],
+  ["设置", "Use 設定."],
+  ["导入", "Use 匯入 for data import, or 導入 only when describing adoption of a capability."],
+  ["导出", "Use 匯出."],
+  ["導出", "Use 匯出."],
+].map(([term, guidance]) => exactRule(`taiwan-wording-${term}`, term, guidance));
+
+const languageRules = [
+  ...relativeWordingRules,
+  ...taiwanTraditionalRules,
+  {
+    id: "taiwan-wording-只讀",
+    pattern: /只讀(?!取)/u,
+    guidance: "Use 唯讀 for read-only, or 只讀取 when the sentence means only reads.",
+  },
+];
+
+function escapeRegExp(text) {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function exactRule(id, term, guidance) {
+  return {
+    id,
+    pattern: new RegExp(escapeRegExp(term), "u"),
+    guidance,
+  };
+}
 
 function extensionOf(path) {
   const match = path.match(/\.[^.]+$/);
@@ -82,7 +138,7 @@ async function main() {
     const text = await readFile(fullPath, "utf8");
     const lines = text.split(/\r?\n/);
     lines.forEach((line, index) => {
-      for (const rule of relativeWordingRules) {
+      for (const rule of languageRules) {
         if (rule.pattern.test(line) && !(rule.allow ?? []).some((allowedPattern) => allowedPattern.test(line))) {
           findings.push({
             repoPath,
@@ -101,7 +157,7 @@ async function main() {
     return;
   }
 
-  console.error("Language governance check failed: avoid ambiguous relative version or state wording.");
+  console.error("Language governance check failed: revise ambiguous wording or non-Taiwan Traditional Chinese terms.");
   for (const finding of findings) {
     console.error(`${finding.repoPath}:${finding.lineNumber}: ${finding.rule}: ${finding.line}`);
     console.error(`  ${finding.guidance}`);

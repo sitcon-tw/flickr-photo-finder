@@ -7,7 +7,7 @@ function onOpen() {
     .addItem("更新欄位選項", "refreshSchemaAndTaxonomy")
     .addItem("檢查全部照片", "validatePhotosSheet")
     .addItem("檢查公開資料格式", "validatePublicReadFormat")
-    .addItem("查看資料表版本", "showSchemaStatus")
+    .addItem("檢視資料表版本", "showSchemaStatus")
     .addToUi();
 }
 

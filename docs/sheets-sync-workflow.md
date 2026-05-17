@@ -86,7 +86,7 @@ pnpm sheets:check
 
 `sheets:check` 只讀取固定 tabs 的公開 CSV export，檢查 header 是否符合預期，以及 tab 是否已經有資料。若任何 tab 已有資料、header 不符合預期，或無法讀取，工具會回報初始化覆蓋風險。
 
-若要檢查整理者 onboarding 鏈是否完整，使用 Google Sheets API 的只讀檢查：
+若要檢查整理者 onboarding 鏈是否完整，使用 Google Sheets API 的唯讀檢查：
 
 ```bash
 pnpm sheets:onboarding:check
@@ -327,7 +327,7 @@ import-batch.csv
 summary.json
 ```
 
-這是目前建議的人機協作接口。`photos-to-append.csv` 是缺少照片的候選列，並會帶入本次來源相簿的 `album_ids`；`albums-updated.csv` 是更新 `last_processed_at` 與本次可確認 `photo_count` 後的完整 albums CSV，`import-batch.csv` 是本次操作紀錄，`summary.json` 則讓人類、agent 或未來 Apps Script 先確認本次 run 的範圍與統計。
+這是目前建議的人機協作介面。`photos-to-append.csv` 是缺少照片的候選列，並會帶入本次來源相簿的 `album_ids`；`albums-updated.csv` 是更新 `last_processed_at` 與本次可確認 `photo_count` 後的完整 albums CSV，`import-batch.csv` 是本次操作紀錄，`summary.json` 則讓人類、agent 或未來 Apps Script 先確認本次 run 的範圍與統計。
 
 相簿照片清單會優先透過 Flickr API 取得完整 `photosets.getPhotos` 結果，初始 HTML 解析只作為 fallback。若 `albums` 匯出檔中已有 `photo_count`，但本次實際取得的照片數不同，工具會拒絕產生 intake artifact，避免把只含 Flickr 初始頁面部分照片的不完整 run 寫入正式索引。
 

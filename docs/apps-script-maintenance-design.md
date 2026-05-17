@@ -25,7 +25,7 @@ Apps Script 提供 Sheet-bound sidebar，讓整理者可以用較易讀的畫面
 - sidebar 第一屏以資料編修工作為主，只呈現主要可編修 metadata；`photo_id`、Flickr URL、縮圖 URL、相簿脈絡等不可編修或低頻欄位留在照片摘要與連結，不塞進主要表單。
 - 單值 taxonomy 與 boolean 欄位使用選單。
 - 多值 taxonomy 欄位使用可搜尋的多選選單；已選項目會顯示為可移除的標籤，降低手打分號與重複值錯誤；自由多值與文字欄位使用可編輯文字區。
-- `photo_id`、`photo_url` 與 `image_preview_url` 在 sidebar 中只讀，避免校對時誤改識別與來源欄位。
+- `photo_id`、`photo_url` 與 `image_preview_url` 在 sidebar 中設為唯讀，避免校對時誤改識別與來源欄位。
 - 可用列號載入指定 `photos` 列、上一張 / 下一張切換，也可重新讀取 Sheet 目前選取列。開啟 sidebar 與載入列後都應預先讀取前後數列並在 sidebar 內暫存，讓連續切換照片時優先使用本機 buffer，不必每次都等待 Apps Script 單列回應。
 - 欄位內容有錯時應在輸入當下於欄位附近與儲存區顯示回饋，避免整理者等到儲存才知道資料不合法。
 - 儲存仍會在後端再次驗證目前列；驗證失敗時不寫入 Sheet，錯誤會顯示在儲存區附近，並更新 `validation_report`。
@@ -275,7 +275,7 @@ pnpm apps-script:smoke-test -- --delete --target practice --write
 3. 在 sidebar 修改一個非識別欄位並儲存，確認合法資料會寫回同一列，且 `validation_report` 更新。
 4. 執行 `更新欄位選項`，確認 `photos` header 有 note、資料區是純文字格式、單值 taxonomy 欄位與 boolean 欄位有下拉選單，且 `taxonomy` 與 `schema_meta` 已建立或更新。
 5. 檢查 `taxonomy` header 是 `taxonomy_key,value,label_zh,order`，且 `label_zh` 沒有空白列；再檢查 `schema_meta` 至少有 header row 與一列同步資訊。`schema_version`、`taxonomy_version`、`sponsorship_items_version`、`last_synced_at` 與 `synced_by` 不應空白；`notes` 可依 sponsorship snapshot 狀態填寫或留空。
-6. 執行 `查看資料表版本`，確認看得到 repo generated config 與 `schema_meta` 內容。若 `schema_meta` 空白或缺少必要欄位，應重新執行 `更新欄位選項`，不能把空白 sheet 當成成功狀態。
+6. 執行 `檢視資料表版本`，確認看得到 repo generated config 與 `schema_meta` 內容。若 `schema_meta` 空白或缺少必要欄位，應重新執行 `更新欄位選項`，不能把空白 sheet 當成成功狀態。
 7. 在 `photos` 選一列資料執行 `檢查這張照片`。正常資料列應通過；可暫時把該列的 URL 欄位改成 `abc`，或把多值欄位改成 `合照;會眾;會眾`，確認會出現中文錯誤，再復原該儲存格。
 8. 在 sidebar 測試非法儲存，例如把 `recommended_uses` 改成 `講者宣傳;社群貼文;社群貼文`，確認錯誤顯示在 `儲存並驗證` 按鈕附近，且資料不會寫入 Sheet。
 9. 檢查 `safe_crop` 類似 `9:16` 的值在 sidebar 讀取與儲存後仍是文字，不應變成 Date 字串。
@@ -309,7 +309,7 @@ pnpm apps-script:smoke-test -- --delete --target practice --write
 1. 用有 Sheet 編輯權限的 Google 帳號開啟 Web App URL，完成 Google 授權。
 2. 確認照片列表能顯示縮圖、`photo_id`、相簿脈絡與狀態摘要。
 3. 使用搜尋與 `curation_status`、`public_use_status`、`recommended_uses`、`scene_tags`、`sponsorship_items` 篩選，確認結果合理。
-4. 點選照片後確認完整欄位表單載入，`photo_id`、`photo_url` 與 `image_preview_url` 為只讀。
+4. 點選照片後確認完整欄位表單載入，`photo_id`、`photo_url` 與 `image_preview_url` 為唯讀。
 5. 在多值 taxonomy 欄位搜尋並新增項目，再用 `×` 移除既有項目。
 6. 儲存合法欄位變更，確認資料寫回同一個 `photo_id` 的 Sheet row。
 7. 嘗試儲存重複多值，例如 `講者宣傳;社群貼文;社群貼文`，確認錯誤顯示在按鈕附近，且資料不寫入 Sheet。
@@ -335,7 +335,7 @@ Google Sheets 中可提供以下選單：
 - `SITCON Photo Finder / 更新欄位選項`
 - `SITCON Photo Finder / 檢查全部照片`
 - `SITCON Photo Finder / 檢查公開資料格式`
-- `SITCON Photo Finder / 查看資料表版本`
+- `SITCON Photo Finder / 檢視資料表版本`
 
 選單文字可以在實作時調整，但功能責任應維持清楚。
 

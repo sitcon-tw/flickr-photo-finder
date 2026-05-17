@@ -163,7 +163,7 @@ flowchart TD
 
 - 日常操作主線：`pnpm workflow` 會先說明完整資料流，再引導相簿匯入、AI prepare/review/report、大型 AI 分片流程、Sheets 維護與公開搜尋前端 artifact build/check。`pnpm eval` 是模型品質、prompt、taxonomy、跨活動樣本與 `visual_description` 搜尋增益評估入口，不是一般照片整理主線。
 - 無 credential 健康檢查：`pnpm project:check` 是本機與 CI 的主要 gate，涵蓋 language/docs/shared-value governance、JavaScript syntax、command smoke、Apps Script generated config、data validation、AI fixture validation、finder tests、Pages build/check。手機篩選 UI 變更另跑 `pnpm finder:mobile-filter-smoke`。
-- 文件與治理檢查：`pnpm docs:check` 檢查本機 Markdown link、docs index 覆蓋與文件中的 package script reference 是否存在；`pnpm language:check` 檢查含糊版本或狀態詞；`pnpm shared-values:check` 檢查跨介面 registry；`pnpm command:smoke` 檢查無 credential 的 `--help` path。
+- 文件與治理檢查：`pnpm docs:check` 檢查本機 Markdown link、docs index 覆蓋與文件中的 package script reference 是否存在；`pnpm language:check` 檢查含糊版本或狀態詞與台灣繁中技術詞彙；`pnpm shared-values:check` 檢查跨介面 registry；`pnpm command:smoke` 檢查無 credential 的 `--help` path。
 - 公開前端：本機預覽用 `pnpm finder:dev`、fixture 模式用 `pnpm finder:dev:fixture`、正式匯出快取模式用 `pnpm finder:dev:export`；部署 artifact 用 `pnpm finder:build` 與 `pnpm finder:check`；前端純邏輯回歸用 `pnpm finder:test`。
 - Sheets 與資料品質：公開讀取檢查用 `pnpm sheets:check`；正式工作快取用 `pnpm sheets:export`；正式資料健康度用 `pnpm sheets:report`；初始化、header 遷移、欄位值遷移、taxonomy、使用說明、練習表與 intake/AI 回寫流程都從 `docs/sheets-sync-workflow.md` 選正確 dry-run/write 路徑。
 - Flickr 相簿與 intake：相簿盤點、清單、選擇與同步由 `albums:*` 工具處理；正式匯入工作包由 `pnpm intake:run` 建立，`pnpm intake:validate` 檢查，再由 `pnpm sheets:apply-intake` dry-run/write 套用。

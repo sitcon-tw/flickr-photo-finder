@@ -41,7 +41,7 @@ AI prompt 和資料整理指南常需要直接列出 raw field / value 來約束
 
 | 指令 | 責任 |
 | --- | --- |
-| `pnpm language:check` | 阻擋含糊的相對版本詞。 |
+| `pnpm language:check` | 阻擋含糊的相對版本詞與明確不符合台灣繁中技術文件習慣的詞彙。 |
 | `pnpm shared-values:check` | 驗證 interface registry、Apps Script generated config 與 shared values。 |
 | `pnpm data:validate` | 驗證 schema、taxonomy、search aliases、fixtures 與 validation messages。 |
 | `pnpm project:check` | 執行目前專案層級的 contract checks。 |
