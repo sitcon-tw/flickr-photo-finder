@@ -48,6 +48,7 @@ import {
   renderActiveFilters,
   renderEmpty,
   resultContextText,
+  shouldAutoLoadMore,
   updateLoadMore,
   updateTaskButtons,
 } from "./result-render.js";
@@ -75,6 +76,7 @@ let photoSchema;
 let currentResults = [];
 let visibleCount = pageSize;
 let renderTimer = 0;
+let autoLoadMoreFrame = 0;
 let projectConfig = {};
 let optionLabelMaps = new Map();
 let searchTokensForField = () => [];
@@ -506,6 +508,42 @@ function renderPhoto(photo, resultRank, resultCount) {
   });
 }
 
+function loadMoreResults(source = "load_more") {
+  if (visibleCount >= currentResults.length) {
+    return false;
+  }
+  visibleCount = Math.min(visibleCount + pageSize, currentResults.length);
+  render({ preservePage: true, source });
+  trackEvent("load_more_results", {
+    result_count: currentResults.length,
+    visible_count: Math.min(visibleCount, currentResults.length),
+    result_count_bucket: resultCountBucket(currentResults.length),
+    task_mode: state.taskMode,
+    sort_mode: controls.sort.value,
+  });
+  return true;
+}
+
+function isLoadMoreNearViewport() {
+  return shouldAutoLoadMore({
+    panel: elements.loadMorePanel,
+    visibleCount,
+    filtered: currentResults,
+  });
+}
+
+function queueAutoLoadMore() {
+  if (autoLoadMoreFrame || !isLoadMoreNearViewport()) {
+    return;
+  }
+  autoLoadMoreFrame = window.requestAnimationFrame(() => {
+    autoLoadMoreFrame = 0;
+    if (isLoadMoreNearViewport()) {
+      loadMoreResults("auto_load_more");
+    }
+  });
+}
+
 function toggleCandidate(photoId) {
   const isAdding = !state.selectedPhotoIds.has(photoId);
   if (!isAdding) {
@@ -759,6 +797,7 @@ function render({ resetPage = false, preservePage = false, preserveScroll = fals
   }
 
   restoreScroll();
+  queueAutoLoadMore();
 }
 
 function maybeTrackZeroResults() {
@@ -936,15 +975,7 @@ elements.activeFilters.addEventListener("click", (event) => {
 
 controls.reset.addEventListener("click", resetFilters);
 controls.loadMore.addEventListener("click", () => {
-  visibleCount += pageSize;
-  render({ preservePage: true, source: "load_more" });
-  trackEvent("load_more_results", {
-    result_count: currentResults.length,
-    visible_count: Math.min(visibleCount, currentResults.length),
-    result_count_bucket: resultCountBucket(currentResults.length),
-    task_mode: state.taskMode,
-    sort_mode: controls.sort.value,
-  });
+  loadMoreResults("load_more");
 });
 controls.copyCandidates.addEventListener("click", copyCandidateLink);
 controls.candidateCopyMenuButton.addEventListener("click", toggleCandidateCopyMenu);
@@ -1021,6 +1052,8 @@ elements.aiAssistantSheetLink.addEventListener("click", () => {
   trackEvent("open_sheets_for_ai_assistant", currentAiAssistantEventParams());
 });
 window.addEventListener("hashchange", revealPhotoFromHash);
+window.addEventListener("scroll", queueAutoLoadMore, { passive: true });
+window.addEventListener("resize", queueAutoLoadMore);
 window.addEventListener("keydown", (event) => {
   if (event.key === "Escape") {
     closeMobileOverlays();

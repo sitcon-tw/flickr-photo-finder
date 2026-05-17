@@ -5,7 +5,7 @@ import { candidateCopyText, candidateMarkdown, selectedPhotos } from "../app/can
 import { activeFilterEntries, albumFilterOptions, filterDefinitions, updateFilterLayout } from "../app/controls.js";
 import { buildOptionLabelMaps, createSearchTokenBuilder, normalizePhotoRows } from "../app/data-loader.js";
 import { photoTitle, sheetRowLink } from "../app/photo-render.js";
-import { resultContextText } from "../app/result-render.js";
+import { resultContextText, shouldAutoLoadMore } from "../app/result-render.js";
 import {
   buildSearchText,
   filterAndSortPhotos,
@@ -663,5 +663,59 @@ describe("Pages search/sort pure logic", () => {
 
     assert.match(text, /探索更多排序/);
     assert.match(text, /已套用：場景 交流/);
+  });
+
+  it("detects when the load-more panel is close enough to auto load", () => {
+    const panel = {
+      hidden: false,
+      getBoundingClientRect: () => ({ top: 1040 }),
+    };
+
+    assert.equal(
+      shouldAutoLoadMore({
+        panel,
+        visibleCount: 48,
+        filtered: Array.from({ length: 96 }, (_, index) => photo({ photo_id: String(index) })),
+        viewportHeight: 480,
+        distancePx: 640,
+      }),
+      true,
+    );
+  });
+
+  it("does not auto load when there are no remaining results", () => {
+    const panel = {
+      hidden: false,
+      getBoundingClientRect: () => ({ top: 200 }),
+    };
+
+    assert.equal(
+      shouldAutoLoadMore({
+        panel,
+        visibleCount: 96,
+        filtered: Array.from({ length: 96 }, (_, index) => photo({ photo_id: String(index) })),
+        viewportHeight: 480,
+        distancePx: 640,
+      }),
+      false,
+    );
+  });
+
+  it("does not auto load while the load-more panel is hidden", () => {
+    const panel = {
+      hidden: true,
+      getBoundingClientRect: () => ({ top: 200 }),
+    };
+
+    assert.equal(
+      shouldAutoLoadMore({
+        panel,
+        visibleCount: 48,
+        filtered: Array.from({ length: 96 }, (_, index) => photo({ photo_id: String(index) })),
+        viewportHeight: 480,
+        distancePx: 640,
+      }),
+      false,
+    );
   });
 });

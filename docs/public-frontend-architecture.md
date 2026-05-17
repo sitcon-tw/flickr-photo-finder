@@ -268,7 +268,7 @@ HTML metadata 則需要 crawler 在執行 JavaScript 前就能讀到，因此 `p
 
 ## 搜尋規模
 
-GitHub Pages 部署版不應在瀏覽器端一次下載完整 `photos` CSV。build 階段會先產生搜尋 index 與 detail shards，前端初始只讀 index，並且不可一次把所有照片卡片渲染到 DOM。使用者需要看更多時再用 `載入更多` 增加顯示數量。
+GitHub Pages 部署版不應在瀏覽器端一次下載完整 `photos` CSV。build 階段會先產生搜尋 index 與 detail shards，前端初始只讀 index，並且不可一次把所有照片卡片渲染到 DOM。使用者捲到接近結果底部時，前端會自動增加顯示數量；`載入更多` 按鈕仍保留為明確操作與 fallback。
 
 production 資料已達萬張級，且 26k 到 40k 是可預見規模。照片 grid 在資料載入前應呈現明確 loading state，例如 spinner 與 skeleton cards，並透過 `aria-busy` / status text 告知索引仍在讀取中；載入失敗才進入錯誤狀態。這個 loading feedback 是狀態辨識，不是裝飾動畫，因此即使使用者設定 `prefers-reduced-motion: reduce`，仍應保留足以辨識正在載入的視覺變化。
 

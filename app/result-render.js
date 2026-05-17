@@ -50,6 +50,30 @@ export function resultContextText({ photos, filtered, controls, activeTask, acti
   return `${sortText}，仍顯示符合篩選的照片。${filterText ? `已套用：${filterText}` : "未套用額外篩選。"}`;
 }
 
+export const autoLoadMoreDistancePx = 640;
+
+export function shouldAutoLoadMore({
+  panel,
+  visibleCount,
+  filtered,
+  viewportHeight,
+  distancePx = autoLoadMoreDistancePx,
+} = {}) {
+  if (!panel || !Array.isArray(filtered)) {
+    return false;
+  }
+  const renderedCount = Math.min(Number(visibleCount) || 0, filtered.length);
+  const remaining = filtered.length - renderedCount;
+  if (panel.hidden || remaining <= 0 || filtered.length === 0) {
+    return false;
+  }
+  let height = viewportHeight;
+  if (!Number.isFinite(height)) {
+    height = typeof window === "undefined" ? 0 : window.innerHeight;
+  }
+  return panel.getBoundingClientRect().top <= height + distancePx;
+}
+
 export function updateTaskButtons({ elements, taskMode }) {
   for (const button of elements.taskModes.querySelectorAll(".task-mode")) {
     button.classList.toggle("is-active", button.dataset.taskMode === taskMode);
