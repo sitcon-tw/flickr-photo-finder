@@ -295,9 +295,25 @@ export function sortForDiscovery(items, { task = {}, discoverHistorySize = 12, d
   return selected;
 }
 
-export function sortPhotos(items, { sortMode = "recommended", task = {}, discoverHistorySize = 12, discoverWindowSize = 24 } = {}) {
+function normalizeDiscoverCandidateLimit(value, itemCount) {
+  const limit = Number(value);
+  if (!Number.isInteger(limit) || limit < 1) {
+    return itemCount;
+  }
+  return Math.min(limit, itemCount);
+}
+
+export function sortPhotos(
+  items,
+  { sortMode = "recommended", task = {}, discoverHistorySize = 12, discoverWindowSize = 24, discoverCandidateLimit = 2000 } = {},
+) {
   if (sortMode === "discover") {
-    return sortForDiscovery(items, { task, discoverHistorySize, discoverWindowSize });
+    const recommended = [...items].sort((left, right) => compareRecommended(left, right, task));
+    const limit = normalizeDiscoverCandidateLimit(discoverCandidateLimit, recommended.length);
+    return [
+      ...sortForDiscovery(recommended.slice(0, limit), { task, discoverHistorySize, discoverWindowSize }),
+      ...recommended.slice(limit),
+    ];
   }
 
   return [...items].sort((left, right) => {
@@ -340,13 +356,22 @@ export function prioritizeSelectedPhotos(items, selectedPhotoIds = []) {
 
 export function filterAndSortPhotos(
   photos,
-  { filters = {}, sortMode = "recommended", task = {}, discoverHistorySize = 12, discoverWindowSize = 24, selectedPhotoIds = [] } = {},
+  {
+    filters = {},
+    sortMode = "recommended",
+    task = {},
+    discoverHistorySize = 12,
+    discoverWindowSize = 24,
+    discoverCandidateLimit = 2000,
+    selectedPhotoIds = [],
+  } = {},
 ) {
   const sorted = sortPhotos(photos.filter((photo) => matchesFilters(photo, filters)), {
     sortMode,
     task,
     discoverHistorySize,
     discoverWindowSize,
+    discoverCandidateLimit,
   });
   return prioritizeSelectedPhotos(sorted, selectedPhotoIds);
 }

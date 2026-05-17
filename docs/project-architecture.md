@@ -46,7 +46,7 @@ flowchart LR
   Interfaces -->|GitHub Actions artifact| Pages
   Rules --> AppsScript
   AppsScript -->|提示與校對| Sheets
-  Sheets -->|公開 photos CSV / Sheet| Pages
+  Sheets -->|build-time 公開 CSV / static artifact| Pages
   Sheets -->|公開 photos CSV / Sheet| AI
   AIGuide -->|輸入規則與報表| AI
   AI -->|找圖建議或候選標註| Users

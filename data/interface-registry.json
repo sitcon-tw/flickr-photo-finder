@@ -6,7 +6,8 @@
       "searchDebounceMs": 180,
       "resultTrackingDelayMs": 600,
       "discoverWindowSize": 24,
-      "discoverHistorySize": 12
+      "discoverHistorySize": 12,
+      "discoverCandidateLimit": 2000
     },
     "filters": [
       { "key": "album", "label": "活動/相簿", "group": "core", "control": "album", "urlKey": "album", "source": { "type": "album" }, "emptyLabel": "全部活動/相簿", "searchPlaceholder": "搜尋活動或相簿" },

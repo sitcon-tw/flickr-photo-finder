@@ -3,6 +3,7 @@ export let searchDebounceMs = 180;
 export let resultTrackingDelayMs = 600;
 export let discoverWindowSize = 24;
 export let discoverHistorySize = 12;
+export let discoverCandidateLimit = 2000;
 
 export let peopleCountFilters = [
   { label: "全部人數", value: "" },
@@ -103,6 +104,7 @@ export function applyTaskModeRegistry(interfaceRegistry) {
   resultTrackingDelayMs = Number(settings.resultTrackingDelayMs || resultTrackingDelayMs);
   discoverWindowSize = Number(settings.discoverWindowSize || discoverWindowSize);
   discoverHistorySize = Number(settings.discoverHistorySize || discoverHistorySize);
+  discoverCandidateLimit = Number(settings.discoverCandidateLimit || discoverCandidateLimit);
   peopleCountFilters = interfaceRegistry?.pages?.peopleCountBuckets ?? peopleCountFilters;
   taskModes = interfaceRegistry?.pages?.taskModes ?? taskModes;
 }

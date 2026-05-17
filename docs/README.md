@@ -63,7 +63,7 @@ flowchart TD
 | 我要修改 Apps Script | `docs/apps-script-maintenance-design.md` | 先確認 clasp 綁定、target、GeneratedConfig、Sheets-side validation 與練習表/正式表邊界。 |
 | 我要修改 taxonomy 或欄位 schema | `真理來源` 與 `共用字串歸屬` | 實際 source 是 `data/tag-taxonomy.json` 與 `data/photo-schema.json`；改完需依影響範圍同步 Apps Script、前端或 validation，並執行 `pnpm data:validate`。 |
 | 我要修改 filter、task mode、URL key 或跨介面 field set | `docs/shared-value-governance.md` | Interface policy 來源是 `data/interface-registry.json`；改完需重新產生 Apps Script config 並執行 `pnpm shared-values:check`。 |
-| 我要部署或檢查 Pages artifact | `pnpm workflow -- --task pages-build` | workflow 是日常入口；低階檢查可用 `pnpm finder:build` 後接 `pnpm finder:check`。 |
+| 我要部署或檢查 Pages artifact | `pnpm workflow -- --task pages-build` | workflow 是日常入口；低階檢查可用 `pnpm finder:build` 後接 `pnpm finder:check`。部署版預設產生 static-sharded finder data；runtime CSV 只作為 fallback。 |
 | 我要維護 Sheets 同步或練習表 | `docs/sheets-sync-workflow.md` | 先確認正式表、練習表、service account 與 dry-run/write 邊界。 |
 | 我要檢查正式 Sheets 資料健康度 | `pnpm sheets:report` | 先用 `pnpm sheets:export` 更新 `tmp/sheets-export/`；風險分級與後續處理看 `docs/sheets-sync-workflow.md`。 |
 | 我要管理 GA4 事件與 custom dimensions | `docs/frontend-analytics-design.md` | 後台權限與 Admin API 操作看 `docs/ga4-operations.md`。 |
@@ -158,7 +158,7 @@ flowchart TD
 
 - `pnpm workflow`，先說明完整資料流，再依階段引導常見工作流程，包含相簿匯入、AI prepare/review/report、大型 AI 分片流程、Sheets 維護與公開搜尋前端 artifact build/check，作為新接觸者與日常操作的主要入口。相簿匯入會在產生 intake run 後記住 run 目錄，並可直接接續 validation 與 Sheets dry-run；AI report 入口會從 `tmp/ai-runs/` 互動式選擇 run 或 attempt。
 - `pnpm eval`，引導模型品質、prompt、taxonomy、跨活動樣本與 `visual_description` 搜尋增益評估；這是評估入口，不是一般照片整理主線。產生評估報表時可從既有 AI runs 互動式單選或多選，不需要手動貼 run 目錄。
-- 本機 static search UI：`pnpm finder:dev` 預設讀正式 Google Sheets 公開 CSV；`pnpm finder:dev:fixture` 讀 `fixtures/photos.csv`；`pnpm finder:dev:export` 讀 `tmp/sheets-export/photos.csv`。
+- 本機 static search UI：`pnpm finder:dev` 預設讀正式 Google Sheets 公開 CSV；`pnpm finder:dev:fixture` 讀 `fixtures/photos.csv`；`pnpm finder:dev:export` 讀 `tmp/sheets-export/photos.csv`。部署版 `pnpm finder:build` 預設產生 static-sharded finder data。
 - `pnpm data:validate`，檢查 sample/export data、schema 與 taxonomy。
 - `pnpm data:validate` 也會對公開文字欄位輸出敏感內容 warning；warning 不會讓指令失敗，但應由整理者確認是否要移除或改寫。
 - `pnpm language:check`，檢查文件與程式輸出是否使用含糊的相對版本詞。
@@ -178,7 +178,8 @@ flowchart TD
 - `pnpm albums:list`，從正式 Sheets 匯出的 `albums.csv` 或 `--source sheets` 直接讀取正式 `albums` 工作表列出與篩選相簿，並可輸出 album id、JSON 或可直接執行的 intake 指令。
 - `pnpm albums:select`，從正式 Sheets 匯出的 `albums.csv` 或 `--source sheets` 直接讀取正式 `albums` 工作表互動式選擇單本相簿，並輸出 album id、JSON 或可直接執行的 intake 指令。
 - `pnpm project:check`，執行不需要 credential 的本機/CI 健康檢查，涵蓋 data validation、AI fixture validation、finder tests、Pages build/check、Apps Script generated config 同步檢查與主要 JavaScript syntax check。
-- `pnpm finder:build` / `pnpm finder:check`，產生並檢查 GitHub Pages artifact 到 `tmp/pages/`，部署版資料來源會讀公開 Google Sheets `photos` CSV。
+- `pnpm finder:build` / `pnpm finder:check`，產生並檢查 GitHub Pages artifact 到 `tmp/pages/`。部署版預設在 build 階段讀公開 Google Sheets CSV，並輸出 `data/finder-data/` static-sharded index/detail shards；可用 `--data-mode runtime-csv` 緊急退回瀏覽器端 CSV 載入。
+- `pnpm finder:perf`，用 `tmp/sheets-export/` 的正式匯出快照量測目前 row count、26k、40k 等規模的 CSV parse、正規化、排序、搜尋與 static artifact 體積，輸出到 `tmp/finder-perf/`。
 - `pnpm finder:test`，執行 GitHub Pages 前端可測試邏輯；目前涵蓋搜尋/排序、URL state、data-loader 正規化、controls filter entries、候選清單、照片卡連結、結果狀態文字與 AI 助手提示詞。
 - `pnpm finder:mobile-filter-smoke`，用 headless browser 檢查手機版 filter picker 不會在小視窗退回不穩定的原生彈出層，適合調整手機篩選 UI 後跑 regression smoke test。
 - `pnpm apps-script:build-config`，從 repo schema、taxonomy 與 sponsorship items snapshot metadata 產生 Apps Script 使用的 `apps-script/GeneratedConfig.js`；`pnpm apps-script:build-config -- --check` 只檢查已提交檔案是否同步。

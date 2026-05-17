@@ -1313,7 +1313,8 @@ var SITCON_PHOTO_FINDER_CONFIG = {
         "searchDebounceMs": 180,
         "resultTrackingDelayMs": 600,
         "discoverWindowSize": 24,
-        "discoverHistorySize": 12
+        "discoverHistorySize": 12,
+        "discoverCandidateLimit": 2000
       },
       "filters": [
         {

@@ -226,6 +226,25 @@ describe("Pages search/sort pure logic", () => {
     );
   });
 
+  it("bounds discovery diversification to the configured candidate window", () => {
+    const sameSourceA = withSearchText(photo({ photo_id: "a", event_name: "SITCON", collections: ["stage"] }));
+    const sameSourceB = withSearchText(photo({ photo_id: "b", event_name: "SITCON", collections: ["stage"] }));
+    const differentSource = withSearchText(photo({ photo_id: "c", event_name: "COSCUP", collections: ["booth"] }));
+
+    const results = sortPhotos([sameSourceA, sameSourceB, differentSource], {
+      sortMode: "discover",
+      task: socialTask,
+      discoverCandidateLimit: 2,
+      discoverHistorySize: 2,
+      discoverWindowSize: 3,
+    });
+
+    assert.deepEqual(
+      results.map((item) => item.photo_id),
+      ["a", "b", "c"],
+    );
+  });
+
   it("builds search text with field labels and aliases", () => {
     const item = withSearchText(photo({ photo_id: "space", has_negative_space: "true" }));
 
