@@ -151,7 +151,7 @@ flowchart TD
 | raw value 的搜尋同義詞 | `data/search-aliases.json` | 只放會跨搜尋介面共用的別名；任務模式與 query 提示仍屬於各自產品介面。 |
 | Apps Script 即時驗證文案 | `data/validation-messages.json` | 後端驗證與 sidebar 即時提示共用；不要在 HTML 內另寫同一組錯誤訊息。 |
 | 人類審核輸出格式 | `scripts/lib/core/metadata-display.mjs` | CLI diff、report、CSV 等人類輸出應共用這個 helper，機器 JSON plan 維持 raw value。 |
-| 版本與狀態描述 | 具體日期、hash、schema version、header shape 或目前 repo source | 避免用「新 / 舊 / 最新」搭配版本的相對詞。若是 prompt 差異，寫出 prompt hash 或「目前 repo prompt」；若是 Sheets 格式差異，寫出實際 header。 |
+| 版本與狀態描述 | 具體日期、hash、schema version、header shape 或目前 repo source | 避免用含糊相對詞描述版本或狀態。若是 prompt 差異，寫出 prompt hash 或「目前 repo prompt」；若是 Sheets 格式差異，寫出實際 header。 |
 | 跨介面 UI policy | `data/interface-registry.json` | Pages、Apps Script 或 CLI 需要共用 filter、field set、URL key 或狀態排序時，先登錄 registry，再由使用端讀取或檢查。 |
 | 單一畫面的操作文案 | 該畫面程式或文件 | 例如按鈕、空狀態與提示文字可留在當地；若跨兩個以上介面重複，應提升成共用來源。 |
 

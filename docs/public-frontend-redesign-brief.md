@@ -2,7 +2,7 @@
 
 ## 狀態
 
-這份 brief 依據 `docs/public-frontend-agent-research.md` 的代理使用者研究建立。它不是最終 UI 設計稿；目前應視為 GitHub Pages 前端重構的歷史需求基準與驗收 baseline，不是最新缺口清單。
+這份 brief 依據 `docs/public-frontend-agent-research.md` 的代理使用者研究建立。它不是最終 UI 設計稿；目前應視為 GitHub Pages 前端重構的歷史需求基準與驗收 baseline，不是目前缺口清單。
 
 2026-05-15 後續 UX 調整已把照片卡片改為視覺優先：卡片只保留大圖、預覽入口與候選快速操作，photo id、整理狀態、命中理由、使用提醒與維護連結集中在預覽 dialog。因此本 brief 中「卡片外顯任務匹配、整理狀態與必要使用提醒」應視為歷史驗收方向；目前實作規格以 `docs/public-frontend-architecture.md` 的照片卡片與預覽規則為準。
 

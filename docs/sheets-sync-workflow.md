@@ -110,7 +110,7 @@ pnpm sheets:apply-init -- --write
 
 工具會建立缺少的固定 tabs，將初始化 CSV 寫入對應 tab，並在寫入後讀回驗證 header 與列數。若任何既有 tab 已有資料或 header 不符合預期，工具會拒絕寫入。
 
-如果要用最新 Flickr 相簿清單初始化 `albums`，請先執行：
+如果要先重新盤點 Flickr 相簿清單來初始化 `albums`，請執行：
 
 ```bash
 pnpm albums:discover -- --write
@@ -546,7 +546,7 @@ pnpm ai:review -- --run-dir tmp/ai-runs/<run-id>
 - `metadata-diff.md`: 逐欄列出原值、AI 建議值、是否變更、信心與理由。
 - `metadata-update-plan.json` / `metadata-update-plan.csv`: 只列出實際會改變的欄位，供後續 dry-run Sheets 更新工具使用。
 
-`ai:review` 的 CLI `Next:` 與 `metadata-review-summary.md` 的 `## Next Commands` 是 AI 初標流程的主要交接介面。新增或調整後續檢視工具時，應同步更新這兩個地方，避免操作者跑完 review 後仍看不到最新建議流程。
+`ai:review` 的 CLI `Next:` 與 `metadata-review-summary.md` 的 `## Next Commands` 是 AI 初標流程的主要交接介面。新增或調整後續檢視工具時，應同步更新這兩個地方，避免操作者跑完 review 後仍看不到調整後的建議流程。
 
 日常操作建議從 `pnpm workflow -- --task ai-report` 或 `pnpm eval -- --task report` 進入報表流程。互動入口會掃描 `tmp/ai-runs/`，讓操作者直接選擇單一 run / attempt，或多選產生比較報表；下方低階指令仍保留給自動化、文件交接與精確重跑。
 

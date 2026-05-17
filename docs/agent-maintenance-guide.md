@@ -21,7 +21,7 @@
 
 跨介面 filter、task mode、URL key、狀態排序、people count bucket、Apps Script field set 等 interface policy 回到 `data/interface-registry.json`。不要為了單一 Pages、Apps Script 或 CLI 改動另寫一份欄位 mapping；需要短 label 或介面排序時，先更新 registry，再執行 `pnpm apps-script:build-config` 與 `pnpm shared-values:check`。
 
-描述版本或狀態時不要使用「新 / 舊 / 最新」搭配版本的相對詞。改用具體日期、prompt hash、schema version、header shape、target name 或「目前 repo source」；例如比較 AI prompt 時寫出 `prompt_template_sha256`，說明 Sheets 格式時寫出實際 header。`pnpm language:check` 會阻擋這類含糊版本詞再次進入 repo。
+描述版本或狀態時不要使用含糊的相對版本詞。改用具體日期、prompt hash、schema version、header shape、target name 或「目前 repo source」；例如比較 AI prompt 時寫出 `prompt_template_sha256`，說明 Sheets 格式時寫出實際 header。`pnpm language:check` 會阻擋這類含糊版本詞再次進入 repo。
 
 ## Agent 可以協助的工作
 

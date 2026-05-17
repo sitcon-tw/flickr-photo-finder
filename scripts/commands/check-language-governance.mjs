@@ -27,12 +27,18 @@ const ignoredPaths = new Set([
   "scripts/commands/check-language-governance.mjs",
 ]);
 
-const bannedTerms = [
-  "新" + "版",
-  "新" + "版本",
-  "舊" + "版",
-  "最新" + "版",
-  "較舊" + "版",
+const relativeWordingRules = [
+  {
+    id: "relative-state-zh",
+    pattern: /最新|新版|新版本|舊版|舊版本|較新版|較新版本|較舊版|較舊版本|新格式|舊格式|目前版本|現行版本/,
+    guidance: "Use concrete wording such as a dated version, prompt hash, schema version, header shape, target name, or current repo source.",
+  },
+  {
+    id: "relative-state-en",
+    pattern: /\b(latest|new version|old version|current version|newer version|older version)\b/i,
+    allow: [/ubuntu-latest/],
+    guidance: "Use a dated version, exact tool/runtime version, commit, tag, schema version, or named target instead.",
+  },
 ];
 
 function extensionOf(path) {
@@ -76,9 +82,15 @@ async function main() {
     const text = await readFile(fullPath, "utf8");
     const lines = text.split(/\r?\n/);
     lines.forEach((line, index) => {
-      for (const term of bannedTerms) {
-        if (line.includes(term)) {
-          findings.push({ repoPath, lineNumber: index + 1, term, line: line.trim() });
+      for (const rule of relativeWordingRules) {
+        if (rule.pattern.test(line) && !(rule.allow ?? []).some((allowedPattern) => allowedPattern.test(line))) {
+          findings.push({
+            repoPath,
+            lineNumber: index + 1,
+            rule: rule.id,
+            guidance: rule.guidance,
+            line: line.trim(),
+          });
         }
       }
     });
@@ -89,10 +101,10 @@ async function main() {
     return;
   }
 
-  console.error("Language governance check failed: avoid ambiguous relative version wording.");
-  console.error("Use concrete wording such as a dated version, prompt hash, schema version, current repo source, or legacy header shape.");
+  console.error("Language governance check failed: avoid ambiguous relative version or state wording.");
   for (const finding of findings) {
-    console.error(`${finding.repoPath}:${finding.lineNumber}: ${finding.term}: ${finding.line}`);
+    console.error(`${finding.repoPath}:${finding.lineNumber}: ${finding.rule}: ${finding.line}`);
+    console.error(`  ${finding.guidance}`);
   }
   process.exitCode = 1;
 }

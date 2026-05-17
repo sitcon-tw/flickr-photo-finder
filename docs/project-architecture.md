@@ -142,6 +142,6 @@ flowchart LR
 6. GitHub Pages 和外部 AI 能讀同一份公開照片索引。
 7. 真實使用者能用工作需求找到照片，並回饋標籤或欄位是否足夠。
 
-目前專案已支援相簿盤點、相簿選擇、intake run 產生、Sheets 初始化與匯入 dry-run/write、AI 初標 prepare/review/report/apply、公開搜尋前端 artifact build/check，以及 Apps Script 維護輔助 source。GitHub Pages 部署已走 GitHub Actions artifact；Apps Script source 可透過 `clasp` 部署到 Sheet-bound script，但實際綁定與部署仍需由有目標 Sheet / Apps Script 權限的維護者執行。最新可用指令、低階工具與改善項目請以 `docs/README.md` 的「目前狀態」為準。
+目前專案已支援相簿盤點、相簿選擇、intake run 產生、Sheets 初始化與匯入 dry-run/write、AI 初標 prepare/review/report/apply、公開搜尋前端 artifact build/check，以及 Apps Script 維護輔助 source。GitHub Pages 部署已走 GitHub Actions artifact；Apps Script source 可透過 `clasp` 部署到 Sheet-bound script，但實際綁定與部署仍需由有目標 Sheet / Apps Script 權限的維護者執行。目前可用指令、低階工具與改善項目請以 `docs/README.md` 的「目前狀態」為準。
 
 未來發展仍應延伸這個架構：改善公開搜尋體驗、Sheets 內維護輔助、AI 初標審核與資料品質檢查。若資料量或搜尋體驗帶來壓力，應優先改善公開前端的載入、索引、分片、快取與排序策略，正式資料權威仍維持在 Google Sheets。

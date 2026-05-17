@@ -197,7 +197,7 @@ pnpm finder:perf
 - GitHub Pages 發布 `tmp/pages` artifact，不發布 repo root。
 - 多選 filter URL 使用重複 query params，例如 `scene=攤位&scene=會眾`。
 - `public_use_status` 是使用提醒，不是 Flickr 是否公開；`curation_status = ai_labeled` 不等於人工 `reviewed`。
-- 卡片與 preview 的目前規格看本文件；redesign brief 是歷史 baseline，不是最新缺口清單。
+- 卡片與 preview 的目前規格看本文件；redesign brief 是歷史 baseline，不是目前缺口清單。
 - GA4 不註冊 `photo_id`、`content_id`、`search_term`、`result_rank` 等高基數或可能敏感參數為 custom dimensions。
 
 公開前端右上角的外部連結由 `config/project.json` 控制。除了 Flickr 來源連結，也應提供 GitHub 專案連結，讓使用者能回到 repo 了解專案細節或回報問題。

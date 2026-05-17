@@ -371,7 +371,7 @@ async function runProjectChecks() {
 }
 
 async function runAlbumIntake() {
-  if (await askYesNo("先從正式 Google Sheets 匯出最新工作快取？", true)) {
+  if (await askYesNo("先重新匯出正式 Google Sheets 工作快取？", true)) {
     runPnpm("sheets:export");
   }
 
@@ -480,7 +480,7 @@ async function askContinueToAiPrepare({ albumId, wroteSheets }) {
 }
 
 async function prepareAiRun(context = {}) {
-  if (await askYesNo("先從正式 Google Sheets 匯出最新工作快取？", true)) {
+  if (await askYesNo("先重新匯出正式 Google Sheets 工作快取？", true)) {
     runPnpm("sheets:export");
   }
 
