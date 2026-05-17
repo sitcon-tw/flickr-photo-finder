@@ -144,6 +144,14 @@ node --check app/result-render.js
 
 依實際更動範圍選擇需要檢查的檔案，不需要每次全部重跑。
 
+新增或修改操作者會直接執行的 CLI command 時，請提供可在無 credential 環境執行的 `--help`，並執行：
+
+```bash
+pnpm command:smoke
+```
+
+這個檢查只驗證 command help path 與 import-time 基本穩定性；credential、網路、dry-run/write 與遠端整合分類見 `docs/command-smoke-tests.md`。
+
 更動 GitHub Pages 前端時，先讀 `docs/public-frontend-architecture.md` 的模組邊界。若改到搜尋、篩選、排序、URL state、候選清單或 AI 助手提示詞，至少執行：
 
 ```bash
