@@ -52,6 +52,7 @@
     "finder:dev:export": "node scripts/commands/dev-server.mjs --source export",
     "finder:build": "node scripts/commands/build-pages.mjs",
     "finder:check": "node scripts/commands/check-pages-artifact.mjs",
+    "finder:perf": "node scripts/commands/measure-finder-performance.mjs",
     "finder:mobile-filter-smoke": "node scripts/commands/smoke-mobile-filter-picker.mjs",
     "finder:test": "node --test tests/*.test.mjs",
     "dev": "pnpm finder:dev",

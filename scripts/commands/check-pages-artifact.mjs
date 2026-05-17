@@ -1,6 +1,7 @@
 import { join } from "node:path";
 import { readFile, stat } from "node:fs/promises";
 import { collectRelativeJavaScriptImportGraph } from "../lib/pages/js-import-graph.mjs";
+import { defaultFinderDataDir } from "../lib/pages/static-finder-data.mjs";
 
 const defaultArtifactDir = "tmp/pages";
 
@@ -100,6 +101,62 @@ async function assertJavaScriptImportGraph(artifactDir, entryFile) {
   await collectRelativeJavaScriptImportGraph({ rootDir: artifactDir, entryFile });
 }
 
+function extractConfigString(config, key) {
+  const match = config.match(new RegExp(`${key}: "([^"]*)"`));
+  return match?.[1] ?? "";
+}
+
+async function assertJson(path) {
+  return JSON.parse(await readFile(path, "utf8"));
+}
+
+async function assertStaticFinderData(artifactDir) {
+  const dataDir = join(artifactDir, defaultFinderDataDir);
+  const manifest = await assertJson(join(dataDir, "manifest.json"));
+  const albums = await assertJson(join(dataDir, "albums.json"));
+  const index = await assertJson(join(dataDir, "photos-index.json"));
+
+  if (manifest.artifactVersion !== "2026-05-static-sharded-v1") {
+    throw new Error("finder-data manifest has an unknown artifactVersion");
+  }
+  if (!Number.isInteger(manifest.rowCount) || manifest.rowCount < 0) {
+    throw new Error("finder-data manifest rowCount must be a non-negative integer");
+  }
+  if (!Array.isArray(manifest.shards) || (manifest.rowCount > 0 && manifest.shards.length === 0)) {
+    throw new Error("finder-data manifest must list detail shards");
+  }
+  if (!Array.isArray(index.fields) || !index.fields.includes("photo_id") || !index.fields.includes("shard_id")) {
+    throw new Error("photos-index.json must include photo_id and shard_id fields");
+  }
+  if (!Array.isArray(index.rows) || index.rows.length !== manifest.rowCount) {
+    throw new Error("photos-index.json row count does not match manifest rowCount");
+  }
+  if (!Array.isArray(albums.fields) || !Array.isArray(albums.rows)) {
+    throw new Error("albums.json must contain compact fields and rows");
+  }
+
+  let shardRowCount = 0;
+  for (const shard of manifest.shards) {
+    if (!shard.path || !shard.id || !Number.isInteger(shard.count)) {
+      throw new Error("finder-data shard entries must include id, path, and count");
+    }
+    const payload = await assertJson(join(dataDir, shard.path));
+    if (payload.shard_id !== shard.id) {
+      throw new Error(`${shard.path} shard_id does not match manifest`);
+    }
+    if (!Array.isArray(payload.fields) || !payload.fields.includes("photo_id")) {
+      throw new Error(`${shard.path} must include compact fields with photo_id`);
+    }
+    if (!Array.isArray(payload.rows) || payload.rows.length !== shard.count) {
+      throw new Error(`${shard.path} row count does not match manifest`);
+    }
+    shardRowCount += payload.rows.length;
+  }
+  if (shardRowCount !== manifest.rowCount) {
+    throw new Error("finder-data shard rows do not add up to manifest rowCount");
+  }
+}
+
 async function main() {
   const options = parseArgs(process.argv);
   if (options.help) {
@@ -152,28 +209,39 @@ async function main() {
   }
   await assertPngDimensions(join(options.artifactDir, "assets/og-image.png"), 1200, 630);
   await assertJavaScriptImportGraph(options.artifactDir, "main.js");
-  const config = await assertIncludes(join(options.artifactDir, "config.js"), "photosCsvUrl", "photosCsvUrl");
+  const config = await assertIncludes(join(options.artifactDir, "config.js"), "mode", "data mode");
   if (
+    !config.includes("photosCsvUrl") ||
     !config.includes("albumsCsvUrl") ||
+    !config.includes("finderDataManifestUrl") ||
+    !config.includes("finderDataAlbumsUrl") ||
+    !config.includes("finderDataIndexUrl") ||
     !config.includes("interfaceRegistryJsonUrl") ||
     !config.includes("schemaJsonUrl") ||
     !config.includes("searchAliasesJsonUrl") ||
     !config.includes("taxonomyJsonUrl")
   ) {
-    throw new Error("config.js must include albumsCsvUrl, interfaceRegistryJsonUrl, schemaJsonUrl, searchAliasesJsonUrl, and taxonomyJsonUrl");
+    throw new Error("config.js must include all data source URLs");
   }
-  if (!/https:\/\/docs\.google\.com\/spreadsheets\/d\/[^/]+\/gviz\/tq/.test(config.match(/albumsCsvUrl: ([^,]+)/)?.[1] ?? "")) {
-    throw new Error("config.js does not appear to point albumsCsvUrl at a public Google Sheets CSV URL");
-  }
-  if (!/https:\/\/docs\.google\.com\/spreadsheets\/d\/[^/]+\/gviz\/tq/.test(config)) {
-    throw new Error("config.js does not appear to point photosCsvUrl at a public Google Sheets CSV URL");
+  const dataMode = extractConfigString(config, "mode");
+  if (dataMode === "runtime-csv") {
+    if (!/https:\/\/docs\.google\.com\/spreadsheets\/d\/[^/]+\/gviz\/tq/.test(config.match(/albumsCsvUrl: ([^,]+)/)?.[1] ?? "")) {
+      throw new Error("config.js does not appear to point albumsCsvUrl at a public Google Sheets CSV URL");
+    }
+    if (!/https:\/\/docs\.google\.com\/spreadsheets\/d\/[^/]+\/gviz\/tq/.test(config)) {
+      throw new Error("config.js does not appear to point photosCsvUrl at a public Google Sheets CSV URL");
+    }
+  } else if (dataMode === "static-sharded") {
+    await assertStaticFinderData(options.artifactDir);
+  } else {
+    throw new Error(`config.js has unknown data source mode: ${dataMode}`);
   }
 
-  JSON.parse(await readFile(join(options.artifactDir, "config/project.json"), "utf8"));
-  JSON.parse(await readFile(join(options.artifactDir, "data/interface-registry.json"), "utf8"));
-  JSON.parse(await readFile(join(options.artifactDir, "data/photo-schema.json"), "utf8"));
-  JSON.parse(await readFile(join(options.artifactDir, "data/search-aliases.json"), "utf8"));
-  JSON.parse(await readFile(join(options.artifactDir, "data/tag-taxonomy.json"), "utf8"));
+  await assertJson(join(options.artifactDir, "config/project.json"));
+  await assertJson(join(options.artifactDir, "data/interface-registry.json"));
+  await assertJson(join(options.artifactDir, "data/photo-schema.json"));
+  await assertJson(join(options.artifactDir, "data/search-aliases.json"));
+  await assertJson(join(options.artifactDir, "data/tag-taxonomy.json"));
 
   console.log(`GitHub Pages artifact looks valid: ${options.artifactDir}`);
 }

@@ -3,6 +3,15 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { googleSheetsSpreadsheetId, projectConfig } from "../lib/core/project-config.mjs";
 import { collectRelativeJavaScriptImportGraph } from "../lib/pages/js-import-graph.mjs";
+import {
+  buildStaticFinderPayloads,
+  defaultFinderDataDir,
+  defaultShardSize,
+  finderDataModes,
+  finderDataSources,
+  readStaticFinderDataInputs,
+  writeStaticFinderDataArtifacts,
+} from "../lib/pages/static-finder-data.mjs";
 
 export const defaultOutputDir = "tmp/pages";
 
@@ -15,10 +24,15 @@ Options:
   --spreadsheet-id <id>   Google Sheets spreadsheet ID. Default: config/project.json googleSheets.spreadsheetId.
   --albums-csv-url <url>  Override the public albums CSV URL.
   --photos-csv-url <url>  Override the public photos CSV URL.
+  --data-mode <mode>      runtime-csv or static-sharded. Default: static-sharded.
+  --data-source <source>  public-csv or export for static-sharded. Default: public-csv.
+  --shard-size <count>    Photos per detail shard for static-sharded. Default: 512.
   --help, -h              Show this help.
 
 This command builds a clean GitHub Pages artifact. It does not write Google
-Sheets and does not include repo tools, fixtures, tmp data, or credentials.`);
+Sheets and does not include repo tools, fixtures, tmp data, or credentials.
+In static-sharded mode it builds a public read model from Google Sheets data
+at build time so production Pages does not fetch Google Sheets at runtime.`);
 }
 
 function parseArgs(argv) {
@@ -27,7 +41,10 @@ function parseArgs(argv) {
     help: false,
     outputDir: defaultOutputDir,
     albumsCsvUrl: "",
+    dataMode: "static-sharded",
+    dataSource: "public-csv",
     photosCsvUrl: "",
+    shardSize: defaultShardSize,
     spreadsheetId: googleSheetsSpreadsheetId,
   };
 
@@ -47,6 +64,15 @@ function parseArgs(argv) {
     } else if (arg === "--photos-csv-url") {
       options.photosCsvUrl = args[index + 1] ?? "";
       index += 1;
+    } else if (arg === "--data-mode") {
+      options.dataMode = args[index + 1] ?? "";
+      index += 1;
+    } else if (arg === "--data-source") {
+      options.dataSource = args[index + 1] ?? "";
+      index += 1;
+    } else if (arg === "--shard-size") {
+      options.shardSize = Number(args[index + 1] ?? "");
+      index += 1;
     } else {
       throw new Error(`Unknown option: ${arg}`);
     }
@@ -56,7 +82,19 @@ function parseArgs(argv) {
     if (!options.outputDir) {
       throw new Error("--output-dir requires a path");
     }
-    if (!options.photosCsvUrl && !options.spreadsheetId) {
+    if (!finderDataModes.has(options.dataMode)) {
+      throw new Error(`--data-mode must be one of: ${[...finderDataModes].join(", ")}`);
+    }
+    if (!finderDataSources.has(options.dataSource)) {
+      throw new Error(`--data-source must be one of: ${[...finderDataSources].join(", ")}`);
+    }
+    if (!Number.isInteger(options.shardSize) || options.shardSize < 1) {
+      throw new Error("--shard-size must be a positive integer");
+    }
+    if (options.dataMode === "runtime-csv" && !options.photosCsvUrl && !options.spreadsheetId) {
+      throw new Error("Set googleSheets.spreadsheetId in config/project.json, pass --spreadsheet-id, or pass --photos-csv-url");
+    }
+    if (options.dataMode === "static-sharded" && options.dataSource === "public-csv" && !options.spreadsheetId && !options.photosCsvUrl) {
       throw new Error("Set googleSheets.spreadsheetId in config/project.json, pass --spreadsheet-id, or pass --photos-csv-url");
     }
   }
@@ -87,12 +125,16 @@ async function copyPagesJavaScriptModules(outputDir) {
   }
 }
 
-async function writePagesConfig(outputDir, { albumsCsvUrl, photosCsvUrl }) {
+async function writePagesConfig(outputDir, { albumsCsvUrl, dataMode, photosCsvUrl }) {
   const content = `export const projectConfigUrl = "./config/project.json";
 
 export const dataSources = {
+  mode: ${JSON.stringify(dataMode)},
   albumsCsvUrl: ${JSON.stringify(albumsCsvUrl)},
   photosCsvUrl: ${JSON.stringify(photosCsvUrl)},
+  finderDataManifestUrl: "./${defaultFinderDataDir}/manifest.json",
+  finderDataAlbumsUrl: "./${defaultFinderDataDir}/albums.json",
+  finderDataIndexUrl: "./${defaultFinderDataDir}/photos-index.json",
   interfaceRegistryJsonUrl: "./data/interface-registry.json",
   schemaJsonUrl: "./data/photo-schema.json",
   searchAliasesJsonUrl: "./data/search-aliases.json",
@@ -100,6 +142,44 @@ export const dataSources = {
 };
 `;
   await writeFile(join(outputDir, "config.js"), content);
+}
+
+async function fetchText(url, label) {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Could not fetch ${label}: HTTP ${response.status}`);
+  }
+  return response.text();
+}
+
+async function readPublicCsvInputs({ albumsCsvUrl, photosCsvUrl }) {
+  const [albumsText, photosText, photoSchema, taxonomy, searchAliases] = await Promise.all([
+    albumsCsvUrl ? fetchText(albumsCsvUrl, "albums CSV") : Promise.resolve(""),
+    fetchText(photosCsvUrl, "photos CSV"),
+    readFile("data/photo-schema.json", "utf8").then(JSON.parse),
+    readFile("data/tag-taxonomy.json", "utf8").then(JSON.parse),
+    readFile("data/search-aliases.json", "utf8").then(JSON.parse),
+  ]);
+  return { albumsText, photoSchema, photosText, searchAliases, taxonomy };
+}
+
+async function buildStaticFinderData({ albumsCsvUrl, outputDir, photosCsvUrl, dataSource, shardSize }) {
+  const input =
+    dataSource === "export"
+      ? await readStaticFinderDataInputs()
+      : await readPublicCsvInputs({ albumsCsvUrl, photosCsvUrl });
+  const payloads = buildStaticFinderPayloads({
+    ...input,
+    shardSize,
+    source: dataSource === "export"
+      ? { type: "export", albumsCsvPath: "tmp/sheets-export/albums.csv", photosCsvPath: "tmp/sheets-export/photos.csv" }
+      : { type: "public-csv", albumsCsvUrl, photosCsvUrl },
+  });
+  await writeStaticFinderDataArtifacts({
+    outputDir: join(outputDir, defaultFinderDataDir),
+    payloads,
+  });
+  return payloads.manifest;
 }
 
 function escapeHtmlAttribute(value) {
@@ -179,18 +259,30 @@ async function writeIndexHtml(outputDir) {
 export async function buildPagesArtifact({
   outputDir = defaultOutputDir,
   albumsCsvUrl = "",
+  dataMode = "static-sharded",
+  dataSource = "public-csv",
   photosCsvUrl = "",
+  shardSize = defaultShardSize,
   spreadsheetId = googleSheetsSpreadsheetId,
 } = {}) {
   if (!outputDir) {
     throw new Error("--output-dir requires a path");
   }
-  if (!photosCsvUrl && !spreadsheetId) {
+  if (!finderDataModes.has(dataMode)) {
+    throw new Error(`--data-mode must be one of: ${[...finderDataModes].join(", ")}`);
+  }
+  if (!finderDataSources.has(dataSource)) {
+    throw new Error(`--data-source must be one of: ${[...finderDataSources].join(", ")}`);
+  }
+  if (!photosCsvUrl && !spreadsheetId && dataMode === "runtime-csv") {
+    throw new Error("Set googleSheets.spreadsheetId in config/project.json, pass --spreadsheet-id, or pass --photos-csv-url");
+  }
+  if (!photosCsvUrl && !spreadsheetId && dataMode === "static-sharded" && dataSource === "public-csv") {
     throw new Error("Set googleSheets.spreadsheetId in config/project.json, pass --spreadsheet-id, or pass --photos-csv-url");
   }
 
   const resolvedAlbumsCsvUrl = albumsCsvUrl || (spreadsheetId ? googleSheetsCsvUrl(spreadsheetId, "albums") : "");
-  const resolvedPhotosCsvUrl = photosCsvUrl || googleSheetsCsvUrl(spreadsheetId, "photos");
+  const resolvedPhotosCsvUrl = photosCsvUrl || (spreadsheetId ? googleSheetsCsvUrl(spreadsheetId, "photos") : "");
 
   await rm(outputDir, { recursive: true, force: true });
   await mkdir(outputDir, { recursive: true });
@@ -203,13 +295,30 @@ export async function buildPagesArtifact({
   await copyIntoArtifact("data/photo-schema.json", outputDir);
   await copyIntoArtifact("data/search-aliases.json", outputDir);
   await copyIntoArtifact("data/tag-taxonomy.json", outputDir);
-  await writePagesConfig(outputDir, { albumsCsvUrl: resolvedAlbumsCsvUrl, photosCsvUrl: resolvedPhotosCsvUrl });
+  let staticManifest = null;
+  if (dataMode === "static-sharded") {
+    staticManifest = await buildStaticFinderData({
+      albumsCsvUrl: resolvedAlbumsCsvUrl,
+      dataSource,
+      outputDir,
+      photosCsvUrl: resolvedPhotosCsvUrl,
+      shardSize,
+    });
+  }
+  await writePagesConfig(outputDir, {
+    albumsCsvUrl: dataMode === "runtime-csv" ? resolvedAlbumsCsvUrl : "",
+    dataMode,
+    photosCsvUrl: dataMode === "runtime-csv" ? resolvedPhotosCsvUrl : "",
+  });
   await writeFile(join(outputDir, ".nojekyll"), "");
 
   return {
+    dataMode,
+    dataSource,
     outputDir,
     albumsCsvUrl: resolvedAlbumsCsvUrl,
     photosCsvUrl: resolvedPhotosCsvUrl,
+    staticManifest,
   };
 }
 
@@ -223,8 +332,15 @@ async function main() {
   const result = await buildPagesArtifact(options);
 
   console.log(`GitHub Pages artifact written to ${result.outputDir}`);
-  console.log(`Albums CSV URL: ${result.albumsCsvUrl || "(none)"}`);
-  console.log(`Photos CSV URL: ${result.photosCsvUrl}`);
+  console.log(`Data mode: ${result.dataMode}`);
+  console.log(`Data source: ${result.dataSource}`);
+  if (result.dataMode === "runtime-csv") {
+    console.log(`Albums CSV URL: ${result.albumsCsvUrl || "(none)"}`);
+    console.log(`Photos CSV URL: ${result.photosCsvUrl}`);
+  } else {
+    console.log(`Static photos: ${result.staticManifest.rowCount}`);
+    console.log(`Static shards: ${result.staticManifest.shards.length}`);
+  }
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
