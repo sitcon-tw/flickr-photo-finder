@@ -87,6 +87,7 @@ async function prepareArtifact() {
   const result = await buildPagesArtifact({
     outputDir: artifactDir,
     albumsCsvUrl: "./local/albums.csv",
+    dataMode: "runtime-csv",
     photosCsvUrl: "./local/photos.csv",
   });
   await mkdir(join(result.outputDir, "local"), { recursive: true });
