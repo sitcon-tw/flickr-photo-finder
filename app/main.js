@@ -55,6 +55,7 @@ import { applySearchRegistry, filterAndSortPhotos } from "./search-sort.js";
 import { applyUrlStateRegistry, decodeUrlState, encodeUrlState, finderStateUrl } from "./url-state.js";
 import {
   applyTaskModeRegistry,
+  discoverCandidateLimit,
   discoverHistorySize,
   discoverWindowSize,
   pageSize,
@@ -79,6 +80,8 @@ let optionLabelMaps = new Map();
 let searchTokensForField = () => [];
 let filterControlEventsBound = false;
 let activePreviewPhoto = null;
+let loadPhotoDetails = async (photo) => photo;
+let previewLoadToken = 0;
 let sheetDragState = null;
 
 const state = {
@@ -206,6 +209,7 @@ function openCandidateSheet() {
 }
 
 function closePreview() {
+  previewLoadToken += 1;
   resetSheetDragState();
   elements.photoPreviewDialog.hidden = true;
   activePreviewPhoto = null;
@@ -215,6 +219,7 @@ function closePreview() {
 }
 
 function closeMobileOverlays() {
+  previewLoadToken += 1;
   resetSheetDragState();
   elements.searchPanel.classList.remove("is-filter-open");
   elements.sidePanel.classList.remove("is-candidate-open");
@@ -391,6 +396,7 @@ function filteredAndSortedPhotos() {
     filters: currentPhotoFilters(),
     sortMode: controls.sort.value,
     task: activeTask(),
+    discoverCandidateLimit,
     discoverHistorySize,
     discoverWindowSize,
     selectedPhotoIds: state.promotedPhotoIds,
@@ -405,27 +411,41 @@ function sheetRowLink(photo) {
   return buildSheetRowLink(photo, projectConfig);
 }
 
-function openPreview(photo) {
+async function photoWithDetails(photo) {
+  try {
+    return await loadPhotoDetails(photo);
+  } catch {
+    return photo;
+  }
+}
+
+async function openPreview(photo) {
   closeFilterSheet();
   closeCandidateSheet();
-  activePreviewPhoto = photo;
-  const largeUrl = largeImageUrl(photo);
-  const originalUrl = originalSizePageUrl(photo);
-  const previewUrl = largeUrl || photo.image_preview_url;
-  elements.previewTitle.textContent = photoTitle(photo);
-  elements.previewMeta.textContent = [photo.event_year, photo.album_title, `photo_id: ${photo.photo_id}`].filter(Boolean).join(" / ");
+  const token = previewLoadToken + 1;
+  previewLoadToken = token;
+  const detailedPhoto = await photoWithDetails(photo);
+  if (token !== previewLoadToken) {
+    return;
+  }
+  activePreviewPhoto = detailedPhoto;
+  const largeUrl = largeImageUrl(detailedPhoto);
+  const originalUrl = originalSizePageUrl(detailedPhoto);
+  const previewUrl = largeUrl || detailedPhoto.image_preview_url;
+  elements.previewTitle.textContent = photoTitle(detailedPhoto);
+  elements.previewMeta.textContent = [detailedPhoto.event_year, detailedPhoto.album_title, `photo_id: ${detailedPhoto.photo_id}`].filter(Boolean).join(" / ");
   elements.previewImage.src = previewUrl;
-  elements.previewImage.alt = [photoTitle(photo), photo.event_year].filter(Boolean).join(" ");
-  renderPhotoStatuses(elements.previewStatuses, photo, labelFor);
-  renderPhotoReference(elements.previewReference, photo);
-  renderPhotoDetails(elements.previewDetails, photo, { labelFor });
+  elements.previewImage.alt = [photoTitle(detailedPhoto), detailedPhoto.event_year].filter(Boolean).join(" ");
+  renderPhotoStatuses(elements.previewStatuses, detailedPhoto, labelFor);
+  renderPhotoReference(elements.previewReference, detailedPhoto);
+  renderPhotoDetails(elements.previewDetails, detailedPhoto, { labelFor });
   controls.previewLarge.disabled = !largeUrl;
   controls.previewLarge.dataset.largeImageUrl = largeUrl;
-  controls.previewCopyFlickr.disabled = !photo.photo_url;
-  setExternalLink(elements.previewImageLink, photo.photo_url);
-  elements.previewImageLink.title = photo.photo_url ? "開啟 Flickr 照片頁" : "";
+  controls.previewCopyFlickr.disabled = !detailedPhoto.photo_url;
+  setExternalLink(elements.previewImageLink, detailedPhoto.photo_url);
+  elements.previewImageLink.title = detailedPhoto.photo_url ? "開啟 Flickr 照片頁" : "";
   setExternalLink(elements.previewOriginalLink, originalUrl);
-  setExternalLink(elements.previewSheetLink, sheetRowLink(photo));
+  setExternalLink(elements.previewSheetLink, sheetRowLink(detailedPhoto));
   controls.previewCopyFlickr.title = "複製 Flickr 原始照片頁連結";
   controls.previewCopyFinder.title = "複製 Finder 中這張照片的 deep link";
   updatePreviewCandidateButton();
@@ -537,7 +557,7 @@ function toggleCandidateCopyMenu() {
 }
 
 async function copyCandidateTemplate(templateId) {
-  const candidates = selectedPhotos(state.selectedPhotoIds, photos);
+  const candidates = await Promise.all(selectedPhotos(state.selectedPhotoIds, photos).map(photoWithDetails));
   const text = candidateCopyText(
     candidates,
     { photoTitle, finderLink, candidateListLink, sheetRowLink, labelFor },
@@ -830,6 +850,7 @@ async function loadData() {
   searchTokensForField = loadedData.searchTokensForField;
   albums = loadedData.albums;
   photos = loadedData.photos;
+  loadPhotoDetails = loadedData.loadPhotoDetails ?? loadPhotoDetails;
   setupTaskModes(elements.taskModes, taskModes);
   initializeMobileTaskModePanel();
   setupFilters({
