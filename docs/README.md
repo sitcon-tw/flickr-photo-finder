@@ -61,6 +61,7 @@ flowchart TD
 | --- | --- | --- |
 | 我要修改公開前端 | `docs/public-frontend-architecture.md` | 先確認正式資料來源、本機 fixture/export 模式、前端模組邊界、artifact build/check 與 GitHub Pages 部署邊界。 |
 | 我要修改 Apps Script | `docs/apps-script-maintenance-design.md` | 先確認 clasp 綁定、target、GeneratedConfig、Sheets-side validation 與練習表/正式表邊界。 |
+| 我要新增或修改 CLI/CI smoke test | `docs/command-smoke-tests.md` | 先確認 command 是否可在無 credential CI 跑；credential、網路與 write flow 不應混進預設 smoke。 |
 | 我要修改 taxonomy 或欄位 schema | `真理來源` 與 `共用字串歸屬` | 實際 source 是 `data/tag-taxonomy.json` 與 `data/photo-schema.json`；改完需依影響範圍同步 Apps Script、前端或 validation，並執行 `pnpm data:validate`。 |
 | 我要修改 filter、task mode、URL key 或跨介面 field set | `docs/shared-value-governance.md` | Interface policy 來源是 `data/interface-registry.json`；改完需重新產生 Apps Script config 並執行 `pnpm shared-values:check`。 |
 | 我要部署或檢查 Pages artifact | `pnpm workflow -- --task pages-build` | workflow 是日常入口；低階檢查可用 `pnpm finder:build` 後接 `pnpm finder:check`。部署版預設產生 static-sharded finder data；runtime CSV 只作為 fallback。 |
@@ -179,6 +180,7 @@ flowchart TD
 - `pnpm albums:list`，從正式 Sheets 匯出的 `albums.csv` 或 `--source sheets` 直接讀取正式 `albums` 工作表列出與篩選相簿，並可輸出 album id、JSON 或可直接執行的 intake 指令。
 - `pnpm albums:select`，從正式 Sheets 匯出的 `albums.csv` 或 `--source sheets` 直接讀取正式 `albums` 工作表互動式選擇單本相簿，並輸出 album id、JSON 或可直接執行的 intake 指令。
 - `pnpm project:check`，執行不需要 credential 的本機/CI 健康檢查，涵蓋 data validation、AI fixture validation、finder tests、Pages build/check、Apps Script generated config 同步檢查與主要 JavaScript syntax check。
+- `pnpm command:smoke`，在無 credential 環境執行主要 command/workflow 的 `--help` smoke test；integration 分類見 `docs/command-smoke-tests.md`。
 - `pnpm finder:build` / `pnpm finder:check`，產生並檢查 GitHub Pages artifact 到 `tmp/pages/`。部署版預設在 build 階段讀公開 Google Sheets CSV，並輸出 `data/finder-data/` static-sharded index/detail shards；可用 `--data-mode runtime-csv` 緊急退回瀏覽器端 CSV 載入。
 - `pnpm finder:perf`，用 `tmp/sheets-export/` 的正式匯出快照量測目前 row count、26k、40k 等規模的 CSV parse、正規化、排序、搜尋與 static artifact 體積，輸出到 `tmp/finder-perf/`。
 - `pnpm finder:test`，執行 GitHub Pages 前端可測試邏輯；目前涵蓋搜尋/排序、URL state、data-loader 正規化、controls filter entries、候選清單、照片卡連結、結果狀態文字與 AI 助手提示詞。

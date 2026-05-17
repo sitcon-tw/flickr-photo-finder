@@ -29,6 +29,12 @@ const checks = [
     next: "Fix the syntax error in the reported file, then rerun pnpm project:check.",
   },
   {
+    name: "Command help smoke",
+    command: "pnpm",
+    args: ["command:smoke"],
+    next: "Fix the command --help path or update scripts/commands/smoke-commands.mjs if the entrypoint is intentionally not CLI-facing.",
+  },
+  {
     name: "Apps Script generated config sync",
     command: "pnpm",
     args: ["apps-script:build-config", "--", "--check"],
