@@ -633,9 +633,9 @@ pnpm sheets:apply-ai-updates -- --run-dir tmp/ai-runs/<run-id> --allow-current-m
 
 ## 公開讀取流程
 
-GitHub Pages、外部 AI 與其他唯讀工具應讀取 `photos` 主表，或讀取由 `photos` 以同一套欄位匯出的公開 CSV/JSON。
+GitHub Pages 部署版預設在 build 階段讀取 `photos` / `albums` 公開 CSV，轉成 static-sharded finder data；外部 AI 與其他唯讀工具應讀取 `photos` 主表，或讀取由 `photos` 以同一套欄位匯出的公開 CSV/JSON。
 
-公開匯出只是技術傳輸格式，不是另一份資料表，也不應做資料篩選。
+公開 CSV/JSON 與 Pages static artifact 只是技術傳輸格式，不是另一份資料表，也不應做資料篩選。
 
 產生流程：
 

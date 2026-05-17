@@ -8,6 +8,8 @@
 
 舊文件 `docs/public-frontend-agent-research.md` 是重構前的多角色代理研究快照；本文件只針對目前前端狀態與手機版工作流。
 
+資料載入方式已在後續更新為 production static-sharded artifact；本文件若提到直接讀取公開 CSV，應視為當時背景，不是目前部署規格。現況以 `docs/public-frontend-architecture.md` 為準。
+
 ## 方法與限制
 
 本輪以四個找圖核心角色做代理深度訪談：
@@ -27,7 +29,7 @@
 
 ## 確認事實
 
-- GitHub Pages 前端是公開、唯讀、無登入門檻的搜尋介面，讀取 Google Sheets `photos` 公開 CSV，不寫回 Sheets，也不保存 credential。
+- GitHub Pages 前端是公開、唯讀、無登入門檻的搜尋介面。production 部署版讀取 build-time static-sharded artifact，不寫回 Sheets，也不保存 credential。
 - 公開前端的找圖情境包含社群宣傳、網站橫幅、設計素材、贊助提案、贊助成果、新聞稿、對外簡報、志工招募與活動回顧。
 - 目前前端已具備任務模式、搜尋、排序、篩選、候選清單、候選複製格式、AI 助手入口、索引概覽、照片卡片操作與 GA4 事件。
 - 目前手機 CSS 主要把桌機區塊堆成單欄；候選清單、AI 助手與索引概覽仍在照片結果前方，不是手機專用工作流。

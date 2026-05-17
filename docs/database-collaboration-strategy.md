@@ -108,7 +108,7 @@ Apps Script 的規則來源應來自 `data/photo-schema.json`、`data/tag-taxono
 
 GitHub Pages 適合做公開、唯讀、無登入門檻的搜尋前端，讓更多人能夠搜尋與使用照片索引。
 
-GitHub Pages 不應直接寫入正式索引，也不應保存任何 secret 或 credential。它應讀取 Google Sheets `photos` 主表，或讀取由 `photos` 以同一套欄位匯出的公開 CSV/JSON。
+GitHub Pages 不應直接寫入正式索引，也不應保存任何 secret 或 credential。部署版預設讀取由 Google Sheets `photos` / `albums` 在 build 階段轉出的 static-sharded artifact；runtime CSV 只保留為本機開發與緊急 fallback。外部 AI 與其他唯讀工具仍可讀取 `photos` 主表，或讀取由 `photos` 以同一套欄位匯出的公開 CSV/JSON。
 
 更完整的公開前端資料流記錄在 `docs/public-frontend-architecture.md`。
 

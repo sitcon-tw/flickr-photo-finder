@@ -2,13 +2,13 @@
 
 ## 目的
 
-這份文件定義外部 AI、GitHub Pages 與其他唯讀工具應如何讀取 SITCON Flickr Photo Finder 的照片索引資料。
+這份文件定義外部 AI 與其他唯讀工具應如何讀取 SITCON Flickr Photo Finder 的照片索引資料。GitHub Pages production 部署版目前讀取 build-time static-sharded artifact；該 artifact 仍是 `photos` 主表的公開讀取格式，不是新的正式資料來源。
 
 SITCON Flickr 照片量很大，要求每張照片都先完成人工 review 才能被搜尋不實際。照片索引資料應讓 AI 能探索完整資料，同時清楚理解哪些 metadata 已人工確認、哪些是整理提醒、哪些不應預設推薦。
 
 ## 資料來源
 
-AI 使用者應讀取 `photos` 主表，或讀取由 `photos` 以同一套欄位匯出的公開 CSV/JSON。
+AI 使用者應讀取 `photos` 主表，或讀取由 `photos` 以同一套欄位匯出的公開 CSV/JSON。Pages static artifact 是前端效能優化用的讀取格式；AI 若沒有特別需要重現前端 runtime，不應把它當成比 `photos` 主表更權威的資料來源。
 
 公開匯出只是技術傳輸格式，不是另一層篩選資料表。AI 應把它視為 `photos` 的同欄位鏡像，而不是 curated subset。
 

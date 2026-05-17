@@ -28,7 +28,7 @@ flowchart TD
   D --> E["sheets:apply-intake dry-run / --write"]
   E --> S["正式 Google Sheets photo index"]
   S --> X["sheets:export 建立本機工作快取"]
-  S --> P["GitHub Pages Finder 讀公開 Sheets CSV"]
+  S --> P["GitHub Pages Finder 建置 static-sharded artifact"]
   X --> Q["ai:prepare / eval:sample 建立 AI run"]
   Q --> M["LLM 讀 prompt、photos、images"]
   M --> R["metadata-proposals.json 候選 metadata"]

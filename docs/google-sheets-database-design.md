@@ -175,17 +175,17 @@ AI 可以協助產生候選值，但不應靜默覆蓋人類已整理的值。AI
 
 ## 公開讀取方式
 
-1.0 階段不建立額外的公開篩選表。GitHub Pages 使用 Google Sheets `photos` 工作表的公開 CSV URL，外部 AI 與其他唯讀工具也應讀取 `photos` 主表，或讀取由 `photos` 以同一套欄位匯出的公開 CSV/JSON。
+不建立 `photos` 之外的額外公開篩選表。GitHub Pages 部署版預設在 build 階段讀取 Google Sheets `photos` / `albums` 公開 CSV，轉成 `data/finder-data/` static-sharded artifact；外部 AI 與其他唯讀工具仍應讀取 `photos` 主表，或讀取由 `photos` 以同一套欄位匯出的公開 CSV/JSON。
 
-GitHub Pages 使用的公開 CSV URL 形式為：
+Google Sheets 公開 CSV URL 形式為：
 
 ```text
 https://docs.google.com/spreadsheets/d/<spreadsheetId>/gviz/tq?tqx=out:csv&sheet=photos
 ```
 
-這個 URL 由 `pnpm finder:build` 根據 `config/project.json` 的 `googleSheets.spreadsheetId` 產生。它不需要 API key、OAuth、service account 或 Apps Script Web App。
+`pnpm finder:build` 會根據 `config/project.json` 的 `googleSheets.spreadsheetId` 讀取公開 CSV，產生 Pages artifact 內的 `manifest.json`、`photos-index.json` 與 detail shards。這個 build-time 讀取不需要 API key、OAuth、service account 或 Apps Script Web App；若需要緊急 fallback，仍可用 `--data-mode runtime-csv` 讓前端直接讀公開 CSV。
 
-公開匯出只是技術傳輸格式，不是另一份資料表，也不應做資料篩選。它應：
+公開 CSV/JSON 與 static artifact 都只是技術傳輸格式，不是另一份資料表，也不應做資料篩選。它們應：
 
 - 使用 `data/photo-schema.json` 定義的欄位順序。
 - 保留 `photos` 中所有公開索引列。
@@ -193,7 +193,7 @@ https://docs.google.com/spreadsheets/d/<spreadsheetId>/gviz/tq?tqx=out:csv&sheet
 - 不因 `curation_status = unreviewed` 或 `ai_labeled` 排除照片。
 - 不因 `public_use_status = needs_review` 或 `avoid` 排除照片。
 
-若未來真的出現不適合公開的欄位或資料，再重新設計公開/非公開資料邊界；不要在 1.0 先預設一張額外篩選表。
+若未來真的出現不適合公開的欄位或資料，再重新設計公開/非公開資料邊界；不要預設一張額外篩選表。
 
 ## 最低資料品質
 

@@ -6,12 +6,12 @@
 
 2026-05-15 後續 UX 調整已把照片卡片改為視覺優先：卡片只保留大圖、預覽入口與候選快速操作，photo id、整理狀態、命中理由、使用提醒與維護連結集中在預覽 dialog。因此本 brief 中「卡片外顯任務匹配、整理狀態與必要使用提醒」應視為歷史驗收方向；目前實作規格以 `docs/public-frontend-architecture.md` 的照片卡片與預覽規則為準。
 
-截至 2026-05-11，目前前端已完成多數 P0/P1 方向，包含任務模式、搜尋 debounce、分批 render、載入更多、lazy loading、結果數、構圖與贊助篩選、候選清單、可解釋的排序訊號、Sheets/Flickr/下載操作、AI 助手找圖入口與 GA4 事件。仍應保留為後續驗證或 P2 的項目包含：
+截至 2026-05-17，目前前端已完成多數 P0/P1 方向，包含任務模式、搜尋 debounce、分批 render、自動載入更多、lazy loading、結果數、構圖與贊助篩選、候選清單、可解釋的排序訊號、Sheets/Flickr/下載操作、AI 助手找圖入口、GA4 事件，以及 build-time static-sharded finder data。仍應保留為後續驗證或 P2 的項目包含：
 
-- 用正式或合成萬張級資料重新驗證搜尋、篩選、初始載入、載入更多與候選清單的效能；production 12k 級照片已讓 loading state 成為必要 UX。
+- 持續用正式或合成萬張級資料驗證搜尋、篩選、初始載入、自動載入更多與候選清單的效能；production 已達 26k 級照片，loading state 與 static-sharded data 都是必要基礎。
 - 用手機與桌機實際走完社群貼文、網站橫幅、贊助成果等任務。
 - QA 模式、贊助覆蓋率概覽與同義詞橋接。
-- 若正式資料量超過 browser-side CSV 可接受範圍，再導入 build-time index。
+- 若 40k 以上仍出現瓶頸，再評估 Web Worker、dictionary encoding、二級 index、search library 或 server-side search。
 
 ## 目標
 
@@ -51,7 +51,7 @@
 - 圖片使用 lazy loading，並避免替未顯示卡片建立大量 DOM 與事件 listener。
 - 顯示「符合 N 張，目前顯示 M 張」。
 
-如果實測 10k 級 CSV parse 或搜尋仍太慢，再改由 Pages build 產生 optimized JSON 或搜尋索引 artifact。不要在公開前端加入 Google API credential。
+目前 production 已改由 Pages build 產生 static-sharded finder data，避免使用者瀏覽器直接解析完整 CSV。若 40k 以上仍太慢，再評估 Web Worker、dictionary encoding、二級 index 或 search library；不要在公開前端加入 Google API credential。
 
 ### 可用性排序與風險提示
 
@@ -117,7 +117,7 @@
 - QA 模式：給整理志工找欄位矛盾與缺值，例如網站橫幅但無留白、贊助用途但缺贊助欄位、缺攝影師或授權資訊而需要回 Flickr 原頁確認。
 - 贊助覆蓋率概覽：哪些贊助品項已有可用候選，哪些缺圖。
 - 同義詞與任務語言橋接，例如「可放字」對應 `has_negative_space`，「品牌露出」對應 `sponsorship_tags`。
-- 若正式資料量超過 browser-side CSV 可接受範圍，再導入 build-time index。
+- 若 40k 以上仍出現瓶頸，再評估 Web Worker、dictionary encoding、二級 index、search library 或 server-side search。
 
 ## 非目標
 

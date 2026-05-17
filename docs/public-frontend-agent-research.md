@@ -34,7 +34,7 @@
 
 ## 確認事實
 
-- GitHub Pages 是公開唯讀前端，讀取 Google Sheets `photos` 公開 CSV，不保存 credential，也不寫入 Sheets。
+- 研究當時 GitHub Pages 是公開唯讀前端，直接讀取 Google Sheets `photos` 公開 CSV，不保存 credential，也不寫入 Sheets；目前 production Pages 已改為 build-time static-sharded artifact，現況以 `docs/public-frontend-architecture.md` 為準。
 - `photos` 主表是正式照片索引，repo fixture 不是正式資料。
 - 找圖情境包含社群宣傳、網站橫幅、贊助提案、贊助成果、新聞稿、志工招募、活動回顧、設計素材與對外簡報。
 - 目前 schema 已支援用途、氛圍、場景、贊助品項、贊助價值、構圖、裁切、使用提醒、整理狀態與推薦優先度。

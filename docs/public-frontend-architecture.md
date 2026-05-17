@@ -50,7 +50,7 @@ GitHub Pages
 
 目前照片索引的目標是替 Flickr 照片加註 metadata，讓人類、前端與 AI 可以依欄位自行挑選。它不是要在索引內先做出另一層篩選結果。
 
-因此 1.0 不建立 `photos` 之外的公開篩選表。公開前端可以直接讀 `photos`，或讀由 `photos` 匯出的同欄位 CSV/JSON。
+因此不建立 `photos` 之外的公開篩選表。部署版公開前端讀由 `photos` / `albums` 轉出的 static artifact；runtime CSV fallback 與外部唯讀工具可讀 `photos`，或讀由 `photos` 匯出的同欄位 CSV/JSON。
 
 這個設計的好處：
 
@@ -270,7 +270,7 @@ HTML metadata 則需要 crawler 在執行 JavaScript 前就能讀到，因此 `p
 
 GitHub Pages 部署版不應在瀏覽器端一次下載完整 `photos` CSV。build 階段會先產生搜尋 index 與 detail shards，前端初始只讀 index，並且不可一次把所有照片卡片渲染到 DOM。使用者捲到接近結果底部時，前端會自動增加顯示數量；`載入更多` 按鈕仍保留為明確操作與 fallback。
 
-production 資料已達萬張級，且 26k 到 40k 是可預見規模。照片 grid 在資料載入前應呈現明確 loading state，例如 spinner 與 skeleton cards，並透過 `aria-busy` / status text 告知索引仍在讀取中；載入失敗才進入錯誤狀態。這個 loading feedback 是狀態辨識，不是裝飾動畫，因此即使使用者設定 `prefers-reduced-motion: reduce`，仍應保留足以辨識正在載入的視覺變化。
+production 資料已達 26k 級，且 40k 是可預見規模。照片 grid 在資料載入前應呈現明確 loading state，例如 spinner 與 skeleton cards，並透過 `aria-busy` / status text 告知索引仍在讀取中；載入失敗才進入錯誤狀態。這個 loading feedback 是狀態辨識，不是裝飾動畫，因此即使使用者設定 `prefers-reduced-motion: reduce`，仍應保留足以辨識正在載入的視覺變化。
 
 目前推薦排序會優先考慮：
 
@@ -289,9 +289,9 @@ production 資料已達萬張級，且 26k 到 40k 是可預見規模。照片 g
 
 ## 殘餘風險
 
-- Google Sheets 公開輸出 URL 的格式或 CORS 行為可能改變。
+- Google Sheets 公開輸出 URL 的格式或 CORS 行為可能改變，導致 build-time static artifact 產生失敗。
 - Google Sheets 更新到公開匯出 URL 可能有延遲。
 - 若 `photos` 欄位格式沒有驗證，前端可能載入不完整資料。
-- 若前端直接讀太大的 CSV，載入速度會下降。
+- 若 static index 繼續膨脹，初始下載、記憶體與主執行緒搜尋仍可能成為瓶頸。
 
 這些風險應由 Apps Script、repo validation 與同步工具共同處理，而不是讓 GitHub Pages 前端承擔資料治理責任。

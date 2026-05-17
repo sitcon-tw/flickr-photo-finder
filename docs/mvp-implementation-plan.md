@@ -135,7 +135,7 @@ MVP 是否有效，應用任務完成度驗證，而不是用資料量驗證。
 - 已有官方 Google Sheets API SDK 工具可初始化、匯出、套用 intake run，以及 dry-run/write AI metadata 更新計畫。
 - 已有 `pnpm workflow` 作為相簿匯入、AI prepare/review/report、Sheets 維護與 Pages artifact build/check 的日常入口。
 - 已有 `pnpm eval`、`eval:attempt`、`eval:sample` 與 `eval:search` 支援模型、prompt、taxonomy 與 `visual_description` 搜尋增益評估。
-- 已有 GitHub Pages artifact build/check/deploy workflow；部署版讀公開 Google Sheets `photos` CSV。
+- 已有 GitHub Pages artifact build/check/deploy workflow；部署版預設在 build 階段把公開 Google Sheets CSV 轉成 static-sharded finder data。
 - Apps Script source 已進 repo，可提供 Sheet-bound 維護選單、校對 sidebar、schema/taxonomy refresh、`schema_meta` 與 `validation_report`。
 - 已有正式表 `使用說明` 與固定練習用試算表流程，讓非技術整理者先試操作，不必在正式照片索引中測試。
 
@@ -145,4 +145,4 @@ MVP 是否有效，應用任務完成度驗證，而不是用資料量驗證。
 2. 檢查 `visual_description`、`subject_type`、`recommended_uses` 與 sponsorship 欄位是否真的改善搜尋與審核效率。
 3. 將正式 Sheets 的資料品質、Apps Script 維護輔助、Pages 搜尋體驗與 GA4 使用訊號回饋到 schema、taxonomy、prompt 與文件。
 
-若資料量或搜尋體驗帶來壓力，應優先改善公開前端的載入、索引、分片、快取與排序策略；正式照片索引仍以 Google Sheets 為準。
+若資料量或搜尋體驗再次帶來壓力，應優先精進公開前端的 index 欄位、detail shard、快取、Web Worker 或排序策略；正式照片索引仍以 Google Sheets 為準。
