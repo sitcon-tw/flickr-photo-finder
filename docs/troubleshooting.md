@@ -46,6 +46,29 @@ pnpm sheets:check
 
 相關入口：`docs/public-frontend-architecture.md`、`docs/adr/0002-github-pages-artifact-deploy.md`。
 
+## Finder 顯示使用快取資料
+
+### 症狀
+
+- 公開前端結果狀態出現「離線模式：使用已快取資料」。
+- 使用者重新開啟 Finder 時可搜尋照片，但某些尚未打開過的照片 detail 載入失敗。
+- 部署後使用者仍短暫看到舊的索引概覽或搜尋結果。
+
+### 可能原因
+
+- 瀏覽器目前離線，或 GitHub Pages / 網路暫時無法讀取新的 static artifact。
+- service worker 對 finder-data 使用網路優先策略，網路失敗時退回上一次快取。
+- detail shards 只會在使用者實際預覽或複製需要完整欄位時快取；未快取過的 shard 不能離線補抓。
+
+### 修復或升級路徑
+
+- 先確認使用者是否在線上，並重新整理一次頁面。
+- 若剛完成部署，先確認 GitHub Pages workflow 的 `pnpm finder:build` 與 `pnpm finder:check` 通過，再請使用者重新載入。
+- 若單一瀏覽器持續卡在舊資料，請使用者清除該站台的瀏覽器資料或在 DevTools > Application unregister service worker 後重新開啟。
+- 不要為了消除快取狀態而在公開前端加入 Google API credential、Sheets 寫入能力或 Apps Script Web App 授權串接。
+
+相關入口：`docs/public-frontend-architecture.md` 的「PWA 快取邊界」。
+
 ## Sheets public CSV 或固定 tabs 讀不到
 
 ### 症狀
