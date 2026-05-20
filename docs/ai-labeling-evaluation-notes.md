@@ -1515,6 +1515,170 @@ shown total = input_tokens - cached_input_tokens + output_tokens
 - `visual_description` QA 可除了 near-duplicate 外，再統計 generic reason prefix、batch comparison language 與 limited searchable token variety 的欄位分布，方便追蹤 prompt 改動是否真的改善搜尋語料。
 - runtime metrics 文件可補一句：大 run 的 validate/review/review-like 指令都應加 `--codex-session <parent-session-id>`；若後續補 `parent` mark-end，它可能只有 end snapshot，不能取代 phase-level start / end delta。
 
+## 2026-05-20 GPT / Codex sharded 13159 張 attempt 評估
+
+本輪評估對象是使用者指定的 attempt：
+
+```bash
+tmp/ai-runs/ai-prepare-2026-05-17T08-41-36-635Z-attempt-gpt-r1
+```
+
+這是從 base run `ai-prepare-2026-05-17T08-41-36-635Z` 派生的 `gpt` round 1 attempt。`manifest.json` 顯示本輪從 `tmp/sheets-export/photos.csv` 選出 38 本相簿中 `curation_status = unreviewed` 的 13159 張照片，圖片尺寸為 `large-1024`，prompt template 為 `prompts/ai-labeling.md`，SHA-256 為 `8dc9823fa682523caf68ac56fc658b4b481aae5be7097caecf4f4a6942758322`。`metadata-proposals.json` 記錄 producer 為 `ai / codex-sharded-workers`，建立時間為 `2026-05-20T16:54:17.019Z`。
+
+確認事實：
+
+- `metadata-proposals.json` 有 13159 個 items，全部可對應本次 `photos.json`。
+- `metadata-update-plan.json` 有 124705 筆 planned updates。
+- `metadata-review-summary.md` 的 Artifact Provenance 顯示 final proposal SHA-256 為 `ae79776160633de1afde0f2131eae65e6ae66df7bbbcca585ca6037610ac91fd`。
+- sharded workflow 有 527 個 shard，`shard-execution-log.json` 顯示 527/527 completed，retry / repair 為 0/0。
+- `pnpm ai:report` 已有單次報表：`tmp/ai-reports/ai-report-2026-05-20T17-34-35-906Z/index.html`。
+- 本次重新執行 `pnpm eval:search -- --run-dir tmp/ai-runs/ai-prepare-2026-05-17T08-41-36-635Z-attempt-gpt-r1` 完成，7 個查詢都讀到 13159/13159 筆 `visual_description`。
+- 本次嘗試重新執行 `pnpm ai:validate -- --run-dir ...`，第二次以 `timeout 120s` 包住後仍未完成，退出碼為 124。因此這份分析依賴既有 `metadata-review-summary.md`、`metadata-update-plan.json`、`eval:search` 與直接 JSON 統計；沒有在本次回合取得新的 full validate 成功結果。
+
+### 覆蓋率與分布
+
+本輪基礎欄位覆蓋完整，對建立第一層搜尋索引有價值：
+
+| field | proposals | coverage |
+| --- | ---: | ---: |
+| `people_count`、`subject_type`、`orientation`、`has_negative_space`、`visual_description`、`curation_status` | 13159 | 100% |
+| `scene_tags` | 12951 | 98.4% |
+| `mood_tags` | 12059 | 91.6% |
+| `recommended_uses` | 9856 | 74.9% |
+| `safe_crop` | 9774 | 74.3% |
+| `public_use_status` | 351 | 2.7% |
+| `priority_level` | 434 | 3.3% |
+| `sponsorship_items` | 103 | 0.8% |
+| `sponsorship_tags` | 197 | 1.5% |
+| `collections` | 50 | 0.4% |
+
+主要分布：
+
+- `subject_type = people` 有 10568 張；其他為 `screen` 867、`object` 599、`text_signage` 455、`space` 394、`food` 276。
+- `has_negative_space = true` 有 4951 張，`false` 有 8208 張。
+- `safe_crop` 中 `16:9` 8120、`1:1` 4891、`9:16` 810；其中 5845 張是在 `has_negative_space = false` 時仍提出 safe crop，這不必然矛盾，但代表「安全裁切」和「可放字留白」需要分開抽查。
+- `recommended_uses` 以 `活動回顧` 7936 張最高，占全批 60.3%；其次為 `社群貼文` 2698、`講者宣傳` 1961、`簡報` 1817、`社群介紹` 1621、`志工招募` 1000。
+- 贊助用途高於贊助證據：`recommended_uses = 贊助成果報告` 出現 666 張，其中 492 張沒有 `sponsorship_items` 或 `sponsorship_tags`；`贊助提案` 出現 36 張，其中 29 張沒有贊助欄位支撐。
+- `public_use_status` 沒有被當成保守預設：`needs_review` 325、`avoid` 26。這比早期 Claude 幾乎全標 `needs_review` 的行為健康，但 26 張 `avoid` 仍應人工逐張確認。
+- `priority_level` 只有 434 張，其中 `high` 192、`normal` 224、`low` 18。覆蓋率不像早期測試那樣過高，但 `high` 的代表性仍需抽查。
+
+### `visual_description` 品質
+
+`visual_description` 是本輪最有價值的成果之一。直接統計顯示 13159 筆描述全部唯一；非空白字數最小 20、p25 31、中位數 36、p75 44、p90 54、p95 61、最大 111。這比 2026-05-09 的 GPT 122 張 attempt 平均較短描述更穩定，也能承載物件、文字、位置與動作等 taxonomy 難以完整表達的搜尋線索。
+
+優點：
+
+- Exact duplicate 為 0，沒有整批複製同一段描述。
+- 多數描述能保留可搜尋細節，例如投影幕文字、報到桌物件、茶點種類、人物姿勢、背板、手勢、電腦與空間位置。
+- `eval:search` 顯示 `visual_description` 對「志工招募可以呈現工作人員互動」、「茶點或餐點配置可以做活動回顧」、「講者宣傳可用的演講照片」、「適合社群貼文的青春感合照」等查詢有實際 lift，能讓原本只靠 taxonomy baseline 不容易排前面的照片進入前五名。
+
+風險：
+
+- `metadata-review-summary.md` 仍列出描述品質 warning：130 張偏短、29 張過長、261 張可搜尋視覺詞種類偏少、106 張提到贊助或品牌脈絡但缺少贊助欄位支撐、36 張只有泛稱人物或互動。
+- 搜尋目前對否定語沒有語意理解。`eval:search` 中「新聞稿首圖需要橫式且有清楚人物或舞台」的 combined results 第一名是描述含「沒有清楚人物臉部」的照片，因為字面命中了「清楚人物」。這不是 labeling 單點錯誤，而是目前文字搜尋和 scoring 對否定句的限制；若公開前端沿用類似字面搜尋，應避免把含否定語的描述直接視為正向命中。
+- 119 張描述提到贊助或品牌脈絡但沒有贊助欄位。這類描述可保留為可見文字紀錄，但回寫前應確認是否會讓搜尋者誤以為已有 sponsor exposure 判斷。
+
+判斷：`visual_description` 可作為本輪最優先考慮採用的欄位，但應先抽查短描述、贊助/品牌描述、否定語和泛稱互動描述。它適合強化找圖，不適合直接當成贊助或使用情境判斷的唯一依據。
+
+### 批次一致性風險
+
+本輪不是整批退化成同一組值，品質下界比早期 132 張失敗案例高很多；但 sharded workflow 仍留下明顯一致性問題。
+
+最重要的是 `scene_tags` 缺漏集中在 shard 層級。雖然全局覆蓋率是 98.4%，但 `shard-324` 到 `shard-329` 共 149 張照片的 `scene_tags` 覆蓋率是 0/149：
+
+| shard | items | with `scene_tags` |
+| --- | ---: | ---: |
+| shard-324 | 25 | 0 |
+| shard-325 | 25 | 0 |
+| shard-326 | 25 | 0 |
+| shard-327 | 25 | 0 |
+| shard-328 | 25 | 0 |
+| shard-329 | 24 | 0 |
+
+這表示缺漏不是照片本身都無場景可標，而是某一段 worker 或 prompt 執行風格漏掉 recall 欄位。這 149 張應優先重新標記或補標 `scene_tags`，不能因為全批覆蓋率接近 100% 就直接寫回。
+
+Reason reuse 也顯示 sharded workflow 有局部模板化：
+
+- `orientation` 有 93 組 `value + reason` 重複達 5 張以上，影響 6755 筆；最高一組 `landscape / 照片寬度大於高度。` 重複 346 張。
+- `curation_status` 有 70 組重複 reason，影響 7169 筆；這個欄位的 reason 重複風險較低，因為正式回寫只需要狀態值，但仍顯示 worker 風格不一致。
+- `safe_crop` 有 45 組重複 reason，影響 1862 筆；最高一組 146 張。
+- `mood_tags` 有 62 組重複 reason，影響 1083 筆；最高一組 122 張。
+- `recommended_uses` 有 43 組重複 reason，影響 876 筆；最高一組 122 張。
+- `people_count` 有 51 組重複 reason，影響 791 筆；最高一組 40 張。
+
+這些重複不一定代表 proposed value 錯，但 reason 的審核價值下降。對人工 reviewer 來說，重複 reason 會讓「為什麼這張適合這個欄位」變得不夠可信，尤其是 `safe_crop`、`recommended_uses`、`mood_tags` 和 `people_count`。
+
+### 欄位採用風險
+
+`scene_tags`：
+
+- 全局覆蓋高，且能支援篩選；top values 如 `會眾` 4480、`螢幕` 3378、`講者` 3353、`交流` 2884、`工作坊` 2623 大致符合活動照片場景。
+- 但 `shard-324` 到 `shard-329` 漏標是回寫前 blocker。這些照片的 `visual_description` 其實有明確可見內容，例如 T-shirt、識別證、人物近拍、白板文字、餐廳聚餐與筆電上的小貓；不是沒有可標場景。
+
+`people_count`：
+
+- 分布合理地偏向小人數：平均 9.18、中位數 3、p90 24、p95 40、最大 260；top values 為 1:3292、2:1621、3:1150、4:987、5:839、0:808。
+- Review summary 沒有產生中段人數集中 warning，但另有 225 張 `people_count = 0` 同時在 reason 或 scene tags 提到人物相關線索。這批應優先抽查，尤其是局部肢體、背影、投影中人物、海報人物或模糊人群。
+
+`recommended_uses`：
+
+- 可用於初步找圖，但不宜直接視為高信任欄位。`活動回顧` 佔 60.3%，區辨度有限；`贊助成果報告` 和 `贊助提案` 缺少贊助欄位支撐的比例過高。
+- 建議回寫前先移除或人工確認沒有 `sponsorship_items` / `sponsorship_tags` 支撐的贊助用途。單純「現場規模」、「人流」、「茶點供應」或「工作人員執行力」不等於 sponsor fulfillment evidence。
+
+`safe_crop` 與 `has_negative_space`：
+
+- `has_negative_space = true` 4951 張，比早期 Gemini 幾乎全標 true 的行為健康。
+- `safe_crop` 覆蓋 74.3%，其中 `16:9` 8120 張，對網站或社群取圖有用；但 5845 張在 `has_negative_space = false` 時仍有 safe crop，代表模型常把「裁切保留主體」和「可放字留白」分開處理。
+- Review summary 另列出 149 張 `recommended_uses = 網站橫幅` 但缺少 `has_negative_space=true` 或 `safe_crop=16:9`，以及 43 張 `safe_crop` reason 沒說明裁切後保留哪些臉、文字、Logo、主體或手勢。這些應進入設計用途抽查。
+
+`mood_tags`：
+
+- 覆蓋 91.6%，比 early under-labeling 更可用，但 `專注` 5221、`專業` 3989、`交流感` 2710、`友善` 2361 顯示模型容易把 mood 當常態補充欄位。
+- 可以支援搜尋語感，但不應作為精準篩選；人工採用時應特別抽查泛用值是否有明確表情、動作或互動證據。
+
+`sponsorship_items` / `sponsorship_tags`：
+
+- 覆蓋率低，代表模型沒有大規模亂填 sponsorship；這點比早期 GPT 132 張測試健康。
+- 但一旦出現，仍有模板化和語意混用風險。`sponsorship_items = 會場攤位` 有 79 張，`sponsorship_tags` 中 `贊助成果佐證` 119、`品牌露出` 109、`攤位曝光` 96。回寫前應逐張確認是否真的是 CFS 品項與贊助價值，而不是一般攤位、SITCON 自有識別或活動背景。
+
+`confidence`：
+
+- 本輪所有候選值都沒有 confidence。格式允許，但對 13159 張大 run 來說，缺少 confidence 會讓人工排序只能依 warning、欄位類型、相簿和搜尋結果進行。
+- 若下一輪仍由多 worker 執行，建議要求至少高風險欄位穩定輸出 confidence，例如 `people_count`、`safe_crop`、`recommended_uses`、`public_use_status`、sponsorship 欄位；否則工具不應把 confidence 當作排序依據。
+
+### Token 使用狀況
+
+`codex-execution-metrics.json` 有寫入，但本輪沒有可用的 phase-level token delta。
+
+確認事實：
+
+- `pnpm ai:codex:meter -- --run-dir tmp/ai-runs/ai-prepare-2026-05-17T08-41-36-635Z-attempt-gpt-r1 --summary` 顯示 phases 1、completed phases 1、token completed phases 0。
+- 同一份 summary 顯示 total delta、parent delta、worker delta 都是 `shown=0, cached=0, output=0, reasoning=0`。
+- metrics 內唯一 phase 是 `parent`，只有 `end_snapshot`，沒有 `start_snapshot`，所以 `usage_delta` 是 null。
+- parent end snapshot 來自 Codex session `019e43fd-3ffe-7c02-b1a5-2a2e29770e23`，時間 `2026-05-20T17:34:35.258Z`，累積 session snapshot 為：`input_tokens` 184640622、`cached_input_tokens` 178729856、`uncached_input_tokens` 5910766、`output_tokens` 535963、`reasoning_output_tokens` 68919、`total_tokens` 185176585、`shown_total_tokens` 6446729。
+- `shard-execution-log.json` 的 527 個 shards 沒有 worker `codex_start_snapshot` / `codex_end_snapshot` / `codex_usage_delta`，也沒有 duration；`validate_status` 為 `unknown`。
+
+判斷：
+
+- 上述 parent end snapshot 不能當成本輪 labeling 成本，只能代表該 Codex session 在 end snapshot 當下的累積 token 狀態，而且可能包含 orchestration、review、report 或同 session 其他操作。
+- 本輪正式可回報的 token 成本是「無法計算精準 delta」。若需要估算，只能保守標示為「session end snapshot upper bound / not attributable」。
+- 下次大 run 應在 parent 開始前用 `ai:codex:meter --mark-start`，結束後用 `--mark-end`；每個 worker shard 應用 `ai:shard:log --codex-session ... --mark-started/--mark-completed`，否則大型平行標記完成後無法把 token 成本和 worker 產出對齊。
+
+### 採用建議
+
+本輪不建議整包直接寫回正式 Google Sheets。它已經足以作為大型初標候選索引和搜尋實驗材料，但還沒到「全欄位可直接套用」。
+
+建議採用順序：
+
+1. 先修補或重跑 `shard-324` 到 `shard-329` 的 `scene_tags`，再重新產生 review summary。
+2. 優先評估 `visual_description`、`scene_tags`、部分 `people_count` 作為搜尋與基本篩選欄位。
+3. 對 `recommended_uses` 先移除或人工確認贊助用途缺少 sponsorship 欄位的 492 + 29 張。
+4. 對 `safe_crop`、`has_negative_space`、`網站橫幅` 相關候選做設計用途抽查，不要只靠覆蓋率採用。
+5. 對 `people_count = 0` 但有人物線索的 225 張建立優先抽查清單。
+6. `mood_tags`、`priority_level`、`public_use_status`、sponsorship 欄位只作輔助候選，不作高信任自動寫回。
+
+整體判斷：這輪證明 527-shard 的 Codex workers 可以處理 1.3 萬張級別照片，並產生比早期失敗 run 更可用的 `visual_description` 與基礎欄位。但 shard 層級漏標、reason 模板化、贊助用途過度推論、缺少 confidence 和 token delta 不可追溯，都是正式回寫前必須處理的品質與治理問題。
+
 ## 目前已知容易失準的欄位
 
 ### `safe_crop`

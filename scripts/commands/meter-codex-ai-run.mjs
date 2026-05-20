@@ -1,5 +1,6 @@
 import { pathToFileURL } from "node:url";
 import {
+  codexMetricsHealth,
   formatCodexUsage,
   updateCodexRunMetrics,
 } from "../lib/ai/codex-run-metrics.mjs";
@@ -127,6 +128,8 @@ function printResult(result, options) {
   console.log(`- phases: ${result.summary.phase_count}`);
   console.log(`- completed phases: ${result.summary.completed_phases}`);
   console.log(`- token completed phases: ${result.summary.token_completed_phases}`);
+  const health = codexMetricsHealth(result.metrics);
+  console.log(`- token attribution: ${health.status} (${health.message})`);
   console.log(`- total delta: ${formatCodexUsage(result.summary.total_usage_delta)}`);
   console.log(`- parent delta: ${formatCodexUsage(result.summary.by_role.parent)}`);
   console.log(`- worker delta: ${formatCodexUsage(result.summary.by_role.worker)}`);

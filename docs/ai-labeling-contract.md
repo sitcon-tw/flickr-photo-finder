@@ -252,8 +252,10 @@ AI 應遵守以下限制：
 - `visual_description` 不應重複機械欄位，例如「橫式照片」、「有 5 人」；除非人數或方向對理解畫面構圖有必要。
 - `visual_description` 不應寫活動名稱、年份、身份、單位或贊助商推論，除非文字清楚出現在照片中，且應以「畫面可見文字」描述。
 - `visual_description` 不應使用批次比較語，例如「第 N 張」、「同批」、「鄰近照片」、「相近照片」；也不應只靠 `畫面`、`可見`、`呈現`、`人物`、`參與者`、`互動`、`交流` 這類泛詞而缺少具體物件、動作、文字或位置。
+- `visual_description` 不應用否定句承載高價值搜尋詞，例如「沒有清楚人物」、「無舞台」或「看不到 Logo」。若需要表達品質限制，請改寫成中立可見狀態，例如「遠景人群背對鏡頭，人物臉部不可辨識」，避免字面搜尋把否定語附近的詞當成正向命中。
 - `recommended_uses` 應避免全部落在通用用途；請優先提出能幫助取圖排序與情境判斷的用途。
 - `recommended_uses` 必須有用途期待與可見證據支撐。例如 `網站橫幅` 應能支撐留白與版面裁切，`志工招募` 應看得到工作或協作狀態，`講者宣傳` 應看得到講者或發表脈絡，贊助相關用途應有贊助品項或贊助價值證據。
+- `safe_crop` 和 `has_negative_space` 應分開判斷：安全裁切代表裁切後重要內容仍保留；留白代表可覆蓋文字的乾淨區域。`網站橫幅` 應同時有 `has_negative_space = true` 與 `safe_crop` 包含 `16:9` 支撐。
 - `reason` 必須只依據圖片可見內容或 `photos.json` 既有 metadata，不應自行補上未確認的活動名稱、身份、單位或年份。
 - 讀圖欄位的 reason 和 `visual_description` 都不應跨照片重複套用模板。若多張照片建議值相同，也要描述每張照片各自的可見證據。
 - 若現有 taxonomy 無法準確描述照片，應省略不精準欄位，並在人工檢查時另外記錄 taxonomy gap，不要硬套錯誤標籤。
@@ -262,7 +264,7 @@ AI 應遵守以下限制：
 
 產生 `metadata-proposals.json` 後，後續工具會驗證 proposal，並產生 `metadata-review-summary.md`、`metadata-diff.md`、`metadata-update-plan.json` 與 `metadata-update-plan.csv`。具體操作指令由操作者依 `docs/ai-labeling-operator-guide.md` 執行。
 
-驗證 warning 代表 proposal 格式和 AI 責任邊界可接受，但仍有批次品質疑慮需要人工判斷；warning 不等於一定要退回模型重跑。`ai:review` 可能產生 Review Focus、Balanced Review Sample、confidence-by-field 摘要、設計 metadata 與場景組合抽查提示。唯讀 HTML 報表、跨 attempt 分歧比較、`visual_description` 搜尋增益比較與 Sheets dry-run 都是操作者後續流程，不是模型初標任務的一部分。
+驗證 warning 代表 proposal 格式和 AI 責任邊界可接受，但仍有批次品質疑慮需要人工判斷；warning 不等於一定要退回模型重跑。`ai:review` 可能產生 Adoption Readiness、Review Focus、Balanced Review Sample、confidence-by-field 摘要、設計 metadata、shard field coverage 與場景組合抽查提示。若 Adoption Readiness 顯示 `blocked`，代表回寫前應先修補該 blocker；唯讀 HTML 報表、跨 attempt 分歧比較、`visual_description` 搜尋增益比較與 Sheets dry-run 都是操作者後續流程，不是模型初標任務的一部分。
 
 正式 review 不在 AI run 目錄中完成。AI run 最多把資料推進到 `ai_labeled`；`reviewed` 應回到 Google Sheets，由具有編輯權限的志工們協作檢查、修正並補齊必要欄位後再更新。
 

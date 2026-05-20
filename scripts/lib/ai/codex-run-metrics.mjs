@@ -69,6 +69,51 @@ export function summarizeCodexMetrics(metrics) {
   };
 }
 
+export function codexMetricsHealth(metrics) {
+  if (!metrics) {
+    return {
+      completed_phases_without_delta: 0,
+      message: "codex-execution-metrics.json is missing; token cost is not attributable.",
+      status: "missing",
+      token_completed_phases: 0,
+    };
+  }
+  const phases = Array.isArray(metrics.phases) ? metrics.phases : [];
+  const completedPhases = phases.filter((phase) => phase.completed_at);
+  const tokenCompletedPhases = completedPhases.filter((phase) => phase.usage_delta);
+  const completedWithoutDelta = completedPhases.filter((phase) => !phase.usage_delta);
+  if (completedPhases.length === 0) {
+    return {
+      completed_phases_without_delta: 0,
+      message: "No completed Codex metric phases were recorded.",
+      status: "no-completed-phases",
+      token_completed_phases: 0,
+    };
+  }
+  if (tokenCompletedPhases.length === 0) {
+    return {
+      completed_phases_without_delta: completedWithoutDelta.length,
+      message: "Completed Codex metric phases have no start/end token delta; token cost is not attributable.",
+      status: "not-attributable",
+      token_completed_phases: 0,
+    };
+  }
+  if (completedWithoutDelta.length > 0) {
+    return {
+      completed_phases_without_delta: completedWithoutDelta.length,
+      message: `${completedWithoutDelta.length}/${completedPhases.length} completed Codex metric phase(s) have no token delta.`,
+      status: "partial",
+      token_completed_phases: tokenCompletedPhases.length,
+    };
+  }
+  return {
+    completed_phases_without_delta: 0,
+    message: `${tokenCompletedPhases.length}/${completedPhases.length} completed Codex metric phase(s) have attributable token deltas.`,
+    status: "attributable",
+    token_completed_phases: tokenCompletedPhases.length,
+  };
+}
+
 export async function loadCodexMetrics(runDir, manifest) {
   const path = join(runDir, codexMetricsFile);
   const existing = await readJsonIfExists(path);

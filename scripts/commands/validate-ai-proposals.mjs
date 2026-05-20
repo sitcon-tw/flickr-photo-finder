@@ -29,6 +29,8 @@ const sponsorshipVisualLanguagePattern = /贊助|スポンサー|sponsor|Sponsor
 const batchComparisonVisualLanguagePattern = /第\s*\d+\s*張|第[一二三四五六七八九十百]+張|同批|鄰近照片|相近照片|相似場景|不同構圖線索|比鄰近|能和.*區分|和.*照片.*區分/;
 const genericFrameVisualLanguagePattern = /畫面呈現[^。]*?(?:情境|狀態|氛圍)|呈現[^。]*?(?:情境|狀態|氛圍)/;
 const genericHumanInteractionPattern = /(?:有人|人物|人們|多位人物|多名參與者|參與者|與會者|互動|交流|交談|討論)/g;
+const searchNegationVisualLanguagePattern =
+  /(?:沒有|無|未見|未看到|看不到|不可辨識|不清楚|模糊|缺少|難以辨識)[^。；，,]{0,16}(?:清楚)?(?:人物|人臉|講者|舞台|Logo|logo|標誌|文字|贊助|品牌|螢幕)|(?:人物|人臉|講者|舞台|Logo|logo|標誌|文字|贊助|品牌|螢幕)[^。；，,]{0,16}(?:沒有|無|未見|未看到|看不到|不可辨識|不清楚|模糊|缺少|難以辨識)/;
 const concreteVisualPattern =
   /桌|椅|旗|布條|背板|看板|投影|螢幕|講台|麥克風|相機|鏡頭|手機|筆電|餐點|茶點|炸雞|披薩|飲料|盤|碗|杯|袋|背包|證件|掛繩|手|臉|眼鏡|口罩|衣|帽|站|坐|拿|看|聽|交談|拍攝|排隊|合照|前景|背景|左側|右側|中央|桌上|牆面|白板|黑板|文字|標誌|logo|Logo|SITCON/;
 const specificVisualPattern =
@@ -36,7 +38,7 @@ const specificVisualPattern =
 const negativeSpaceLocationPattern =
   /留白|放字|空白|空曠|大片|寬闊|左側|右側|上方|下方|前景|背景|牆面|白牆|地面|投影區|旁邊|邊緣/;
 const cropPreservationPattern = /裁切|保留|不會切|不切|避開|完整|主體|臉|頭|文字|Logo|logo|標誌|螢幕|投影|手勢|人物|物件|邊緣|置中|左右|上下|直式|橫幅|方形|比例/;
-const visualEvidenceFields = new Set([...allowedAiFields].filter((field) => field !== "curation_status"));
+const visualEvidenceFields = new Set([...allowedAiFields].filter((field) => !["curation_status", "orientation"].includes(field)));
 const visualDescriptionSearchTokenGroups = [
   ["people", /人|人物|講者|學員|會眾|工作人員|志工|參與者|主持人|學生|小朋友|孩童|青年|男子|女子|攝影者/],
   ["object", /桌|椅|旗|布條|背板|看板|投影|螢幕|講台|麥克風|相機|鏡頭|手機|筆電|餐點|茶點|炸雞|披薩|飲料|盤|碗|杯|袋|背包|證件|掛繩|海報|立牌|紙張|紙盒|線材/],
@@ -44,6 +46,7 @@ const visualDescriptionSearchTokenGroups = [
   ["text", /文字|字樣|標誌|標示|logo|Logo|SITCON|投影片|白板|黑板|手寫|標題|看板/],
   ["spatial", /前景|背景|左側|右側|中央|旁邊|前方|後方|桌上|牆面|門口|入口|走廊|教室|會場|舞台|攤位|戶外|室內/],
 ];
+const nearDuplicateBucketMaximumSize = 200;
 
 function printUsage() {
   console.log(`Usage:
@@ -257,6 +260,15 @@ function visualDescriptionSearchTokenGroupCount(value) {
     .length;
 }
 
+function visualDescriptionNearDuplicateBucket(value) {
+  const normalized = normalizeTextForSimilarity(value);
+  if (normalized.length <= 16) {
+    return normalized;
+  }
+  const lengthBucket = Math.floor(normalized.length / 8);
+  return `${lengthBucket}:${normalized.slice(0, 8)}:${normalized.slice(-8)}`;
+}
+
 export function visualDescriptionQualityWarningsForItem(item) {
   if (!isPlainObject(item) || typeof item.photo_id !== "string" || !isPlainObject(item.fields)) {
     return [];
@@ -334,6 +346,13 @@ export function visualDescriptionQualityWarningsForItem(item) {
     warnings.push({
       kind: "generic-human-interaction",
       message: "description relies on generic people or interaction words without concrete objects, text, or spatial details",
+      photoId: item.photo_id,
+    });
+  }
+  if (searchNegationVisualLanguagePattern.test(value)) {
+    warnings.push({
+      kind: "search-negation-risk",
+      message: "description places searchable terms near negation or absence language",
       photoId: item.photo_id,
     });
   }
@@ -458,6 +477,7 @@ function validateBatchVisualDescriptionQuality(proposals, warnings) {
     ["batch-comparison-language", "nearby-photo or batch comparison language"],
     ["generic-frame-language", "generic framing or situation language"],
     ["generic-human-interaction", "generic people or interaction language without concrete details"],
+    ["search-negation-risk", "negation or absence language near searchable terms"],
   ]);
   for (const [kind, photoIds] of byKind.entries()) {
     const sampleIds = photoIds.slice(0, 10).join(", ");
@@ -682,51 +702,91 @@ function validateBatchReasonQuality(proposals, warnings) {
     );
   }
 
-  const parent = visualDescriptions.map((_, index) => index);
-  const find = (index) => {
-    let cursor = index;
-    while (parent[cursor] !== cursor) {
-      parent[cursor] = parent[parent[cursor]];
-      cursor = parent[cursor];
-    }
-    return cursor;
-  };
-  const unite = (left, right) => {
-    const leftRoot = find(left);
-    const rightRoot = find(right);
-    if (leftRoot !== rightRoot) {
-      parent[rightRoot] = leftRoot;
-    }
-  };
-
-  for (let leftIndex = 0; leftIndex < visualDescriptions.length; leftIndex += 1) {
-    for (let rightIndex = leftIndex + 1; rightIndex < visualDescriptions.length; rightIndex += 1) {
-      const left = visualDescriptions[leftIndex];
-      const right = visualDescriptions[rightIndex];
-      const similarity = jaccardSimilarity(left.value, right.value);
-      if (similarity < visualDescriptionSimilarityThreshold) {
-        continue;
-      }
-      unite(leftIndex, rightIndex);
-    }
+  const duplicateClusters = new Map();
+  for (const description of visualDescriptions) {
+    const normalized = normalizeTextForSimilarity(description.value);
+    const cluster = duplicateClusters.get(`exact:${normalized}`) ?? [];
+    cluster.push(description);
+    duplicateClusters.set(`exact:${normalized}`, cluster);
   }
 
-  const duplicateClusters = new Map();
-  visualDescriptions.forEach((description, index) => {
-    const root = find(index);
-    const cluster = duplicateClusters.get(root) ?? [];
-    cluster.push(description);
-    duplicateClusters.set(root, cluster);
-  });
-  for (const cluster of duplicateClusters.values()) {
+  const nearDuplicateBuckets = new Map();
+  for (const description of visualDescriptions) {
+    const bucket = visualDescriptionNearDuplicateBucket(description.value);
+    const bucketItems = nearDuplicateBuckets.get(bucket) ?? [];
+    bucketItems.push(description);
+    nearDuplicateBuckets.set(bucket, bucketItems);
+  }
+
+  const reportedClusterKeys = new Set();
+  const reportCluster = (cluster, label = "near-duplicate description cluster") => {
     if (cluster.length < 2) {
-      continue;
+      return;
     }
+    const key = cluster.map((item) => item.photoId).sort().join("\0");
+    if (reportedClusterKeys.has(key)) {
+      return;
+    }
+    reportedClusterKeys.add(key);
     const sampleIds = cluster.slice(0, 10).map((item) => item.photoId).join(", ");
     const suffix = cluster.length > 10 ? ", ..." : "";
     warnings.push(
-      `visual_description: near-duplicate description cluster for ${cluster.length} photos (${sampleIds}${suffix})`,
+      `visual_description: ${label} for ${cluster.length} photos (${sampleIds}${suffix})`,
     );
+  };
+
+  for (const cluster of duplicateClusters.values()) {
+    reportCluster(cluster);
+  }
+
+  for (const bucketItems of nearDuplicateBuckets.values()) {
+    if (bucketItems.length < 2) {
+      continue;
+    }
+    if (bucketItems.length > nearDuplicateBucketMaximumSize) {
+      reportCluster(bucketItems, "large similar description bucket");
+      continue;
+    }
+
+    const parent = bucketItems.map((_, index) => index);
+    const find = (index) => {
+      let cursor = index;
+      while (parent[cursor] !== cursor) {
+        parent[cursor] = parent[parent[cursor]];
+        cursor = parent[cursor];
+      }
+      return cursor;
+    };
+    const unite = (left, right) => {
+      const leftRoot = find(left);
+      const rightRoot = find(right);
+      if (leftRoot !== rightRoot) {
+        parent[rightRoot] = leftRoot;
+      }
+    };
+
+    for (let leftIndex = 0; leftIndex < bucketItems.length; leftIndex += 1) {
+      for (let rightIndex = leftIndex + 1; rightIndex < bucketItems.length; rightIndex += 1) {
+        const left = bucketItems[leftIndex];
+        const right = bucketItems[rightIndex];
+        const similarity = jaccardSimilarity(left.value, right.value);
+        if (similarity < visualDescriptionSimilarityThreshold) {
+          continue;
+        }
+        unite(leftIndex, rightIndex);
+      }
+    }
+
+    const bucketClusters = new Map();
+    bucketItems.forEach((description, index) => {
+      const root = find(index);
+      const cluster = bucketClusters.get(root) ?? [];
+      cluster.push(description);
+      bucketClusters.set(root, cluster);
+    });
+    for (const cluster of bucketClusters.values()) {
+      reportCluster(cluster);
+    }
   }
 }
 
