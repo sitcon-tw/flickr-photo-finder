@@ -10,6 +10,7 @@ import {
   finderDataModes,
   finderDataSources,
   readStaticFinderDataInputs,
+  sha256,
   writeStaticFinderDataArtifacts,
 } from "../lib/pages/static-finder-data.mjs";
 
@@ -123,6 +124,65 @@ async function copyPagesJavaScriptModules(outputDir) {
     }
     await copyIntoArtifact(join("app", file), outputDir, file);
   }
+  return files.filter((file) => file !== "config.js");
+}
+
+function artifactUrl(path) {
+  return `./${String(path).replace(/\\/g, "/")}`;
+}
+
+function uniqueSortedUrls(urls) {
+  return [...new Set(urls)].sort();
+}
+
+function buildPrecacheUrls({ dataMode, jsFiles }) {
+  const urls = [
+    "./",
+    "./index.html",
+    "./styles.css",
+    "./config.js",
+    "./assets/og-image.png",
+    "./config/project.json",
+    "./data/interface-registry.json",
+    "./data/photo-schema.json",
+    "./data/search-aliases.json",
+    "./data/tag-taxonomy.json",
+    ...jsFiles.map(artifactUrl),
+  ];
+
+  if (dataMode === "static-sharded") {
+    urls.push(
+      `./${defaultFinderDataDir}/manifest.json`,
+      `./${defaultFinderDataDir}/albums.json`,
+      `./${defaultFinderDataDir}/photos-index.json`,
+    );
+  }
+
+  return uniqueSortedUrls(urls);
+}
+
+function pwaCacheVersion({ dataMode, dataSource, precacheUrls, staticManifest }) {
+  return sha256(JSON.stringify({
+    dataMode,
+    dataSource,
+    generatedAt: staticManifest?.generatedAt ?? "",
+    photosSha256: staticManifest?.source?.photosSha256 ?? "",
+    precacheUrls,
+    rowCount: staticManifest?.rowCount ?? 0,
+    schemaVersion: staticManifest?.schemaVersion ?? "",
+  })).slice(0, 16);
+}
+
+async function writeServiceWorker(outputDir, { dataMode, dataSource, jsFiles, staticManifest }) {
+  const precacheUrls = buildPrecacheUrls({ dataMode, jsFiles });
+  const cacheVersion = pwaCacheVersion({ dataMode, dataSource, precacheUrls, staticManifest });
+  const source = await readFile("app/service-worker.js", "utf8");
+  const header = [
+    `self.__SITCON_PHOTO_FINDER_PRECACHE_URLS__ = ${JSON.stringify(precacheUrls)};`,
+    `self.__SITCON_PHOTO_FINDER_CACHE_VERSION__ = ${JSON.stringify(cacheVersion)};`,
+    "",
+  ].join("\n");
+  await writeFile(join(outputDir, "service-worker.js"), `${header}${source}`);
 }
 
 async function writePagesConfig(outputDir, { albumsCsvUrl, dataMode, photosCsvUrl }) {
@@ -287,7 +347,7 @@ export async function buildPagesArtifact({
   await rm(outputDir, { recursive: true, force: true });
   await mkdir(outputDir, { recursive: true });
   await writeIndexHtml(outputDir);
-  await copyPagesJavaScriptModules(outputDir);
+  const jsFiles = await copyPagesJavaScriptModules(outputDir);
   await copyIntoArtifact("app/styles.css", outputDir, "styles.css");
   await copyIntoArtifact("app/assets/og-image.png", outputDir, "assets/og-image.png");
   await copyIntoArtifact("config/project.json", outputDir);
@@ -309,6 +369,12 @@ export async function buildPagesArtifact({
     albumsCsvUrl: dataMode === "runtime-csv" ? resolvedAlbumsCsvUrl : "",
     dataMode,
     photosCsvUrl: dataMode === "runtime-csv" ? resolvedPhotosCsvUrl : "",
+  });
+  await writeServiceWorker(outputDir, {
+    dataMode,
+    dataSource,
+    jsFiles,
+    staticManifest,
   });
   await writeFile(join(outputDir, ".nojekyll"), "");
 

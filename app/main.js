@@ -44,6 +44,7 @@ import {
   setTemporaryButtonText,
   sheetRowLink as buildSheetRowLink,
 } from "./photo-render.js";
+import { registerPwa } from "./pwa.js";
 import {
   renderActiveFilters,
   renderEmpty,
@@ -85,6 +86,7 @@ let activePreviewPhoto = null;
 let loadPhotoDetails = async (photo) => photo;
 let previewLoadToken = 0;
 let sheetDragState = null;
+let pwaRegistered = false;
 
 const state = {
   taskMode: "all",
@@ -171,6 +173,22 @@ function setExternalLink(link, href) {
   }
   link.href = href;
   link.removeAttribute("aria-disabled");
+}
+
+function updatePwaStatus({ text, hidden }) {
+  elements.pwaStatus.textContent = text;
+  elements.pwaStatus.hidden = hidden;
+}
+
+function maybeRegisterPwa(generatedAt = "") {
+  if (pwaRegistered) {
+    return;
+  }
+  pwaRegistered = true;
+  registerPwa({
+    generatedAt,
+    onStatusChange: updatePwaStatus,
+  });
 }
 
 function setModalOpen(open) {
@@ -895,6 +913,7 @@ async function loadData() {
   albums = loadedData.albums;
   photos = loadedData.photos;
   loadPhotoDetails = loadedData.loadPhotoDetails ?? loadPhotoDetails;
+  maybeRegisterPwa(loadedData.finderDataManifest?.generatedAt ?? "");
   setupTaskModes(elements.taskModes, taskModes);
   initializeMobileTaskModePanel();
   setupFilters({

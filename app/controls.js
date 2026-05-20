@@ -70,6 +70,7 @@ export function queryElements() {
     grid: document.querySelector("#photoGrid"),
     summary: document.querySelector("#resultSummary"),
     context: document.querySelector("#resultContext"),
+    pwaStatus: document.querySelector("#pwaStatus"),
     activeFilters: document.querySelector("#activeFilters"),
     overviewGrid: document.querySelector("#overviewGrid"),
     overviewSummary: document.querySelector("#overviewSummary"),

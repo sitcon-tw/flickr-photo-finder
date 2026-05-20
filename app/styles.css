@@ -554,6 +554,13 @@ select {
   font-weight: 750;
 }
 
+.pwa-status {
+  margin-top: 6px;
+  color: #7a4a05;
+  font-size: 13px;
+  font-weight: 750;
+}
+
 .mobile-action-bar {
   display: none;
 }
