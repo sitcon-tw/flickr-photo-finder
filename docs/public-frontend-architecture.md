@@ -103,6 +103,19 @@ GitHub Pages 暫不採用以下方式：
 - Apps Script Web App API：公開前端不透過 Apps Script 讀寫資料；Web App 只作為授權校對介面存在。
 - 使用 service account 從 browser 讀資料：credential 不得進入公開前端。若未來 GitHub Actions 需要用 service account 補強 build-time export，也必須只在 CI secret 邊界使用，產物仍是公開唯讀 static artifact。
 
+## PWA 快取邊界
+
+GitHub Pages Finder 可以註冊 service worker，讓已開啟過的公開搜尋前端在弱網路或離線時仍有基本可用性。這層 PWA 能力只處理公開唯讀 artifact，不新增安裝提示、不寫入 Google Sheets，也不串接 Apps Script Web App 或任何 credential。
+
+部署版 service worker 的快取策略：
+
+- app shell、JavaScript 模組、CSS、metadata image 與固定設定檔採快取優先並背景更新。
+- `data/finder-data/manifest.json`、`albums.json`、`photos-index.json`、schema、taxonomy、search aliases 與 project config 採網路優先；網路失敗才退回快取。
+- detail shards 採網路優先並只快取使用者實際打開過的 shard；離線時只能讀已快取過的照片 detail。
+- 前端狀態文字會在離線或使用快取 fallback 時提示「使用已快取資料」，資料時間取自 finder-data manifest 的 `generatedAt`。
+
+這個快取不是第二份資料庫。正式資料權威仍是 Google Sheets，部署 artifact 仍由 `pnpm finder:build` 從公開資料產生。`runtime-csv` 模式保留為開發與緊急 fallback，不承諾完整 PWA 離線體驗。
+
 ## 上線前準備
 
 使用 GitHub Pages 讀取正式 Google Sheets 前，維護者需要確認：

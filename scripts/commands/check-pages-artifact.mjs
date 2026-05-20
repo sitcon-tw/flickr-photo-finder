@@ -208,6 +208,8 @@ async function main() {
     "data/tag-taxonomy.json",
     "index.html",
     "main.js",
+    "pwa.js",
+    "service-worker.js",
     "styles.css",
   ];
 
@@ -219,6 +221,18 @@ async function main() {
   const indexHtml = await assertIncludes(join(options.artifactDir, "index.html"), "./styles.css", "styles.css");
   if (!indexHtml.includes("./main.js")) {
     throw new Error("index.html does not reference main.js");
+  }
+  const pwaModule = await assertIncludes(join(options.artifactDir, "pwa.js"), "./service-worker.js", "service worker registration");
+  if (!pwaModule.includes("navigator.serviceWorker.register")) {
+    throw new Error("pwa.js does not register a service worker");
+  }
+  const serviceWorker = await assertIncludes(
+    join(options.artifactDir, "service-worker.js"),
+    "self.__SITCON_PHOTO_FINDER_PRECACHE_URLS__ = [",
+    "PWA precache list",
+  );
+  if (!serviceWorker.includes("data/finder-data/manifest.json") || !serviceWorker.includes("sitcon-photo-finder-cache-fallback")) {
+    throw new Error("service-worker.js must cache finder data and report cache fallback usage");
   }
   const requiredMetadata = [
     'name="description"',
