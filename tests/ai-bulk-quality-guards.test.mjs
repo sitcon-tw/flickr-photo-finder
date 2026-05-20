@@ -4,6 +4,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, it } from "node:test";
 import {
+  buildAdoptionReadiness,
+  buildShardFieldCoverageRows,
   buildReviewNotes,
   peopleCountSpikeRows,
   peopleCountStats,
@@ -14,9 +16,11 @@ import { updateShardLog } from "../scripts/commands/log-ai-shard.mjs";
 import { summarizeExecutionLog } from "../scripts/commands/status-ai-bulk-run.mjs";
 import {
   designMetadataQualityWarningsForItem,
+  validateAiProposals,
   visualDescriptionQualityWarningsForItem,
 } from "../scripts/commands/validate-ai-proposals.mjs";
 import { renderAiLabelingPrompt } from "../scripts/lib/ai/ai-labeling-prompt.mjs";
+import { codexMetricsHealth } from "../scripts/lib/ai/codex-run-metrics.mjs";
 import {
   buildPeopleCountPairSummary,
   peopleCountDistribution,
@@ -137,6 +141,60 @@ describe("AI bulk quality guards", () => {
     assert.ok(warnings.some((warning) => warning.kind === "generic-frame-language"));
   });
 
+  it("flags visual descriptions that put search terms in negated context", () => {
+    const warnings = visualDescriptionQualityWarningsForItem(item("negated-description", {
+      visual_description: {
+        reason: "描述畫面。",
+        value: "遠景人群背對鏡頭，沒有清楚人物臉部，右側牆面旁有投影幕。",
+      },
+    }));
+
+    assert.ok(warnings.some((warning) => warning.kind === "search-negation-risk"));
+  });
+
+  it("marks low scene_tags shard coverage as an adoption blocker", () => {
+    const items = Array.from({ length: 20 }, (_, index) => item(`scene-missing-${index}`, {
+      visual_description: {
+        reason: "描述畫面。",
+        value: `桌上有筆電與投影幕文字，右側人物正在操作手機 ${index}`,
+      },
+    }));
+    const shardMap = new Map(items.map((entry) => [entry.photo_id, "shard-001"]));
+    const shardFieldRows = buildShardFieldCoverageRows(items, shardMap);
+    const readiness = buildAdoptionReadiness({
+      items,
+      metricsHealth: { message: "test", status: "attributable" },
+      shardFieldCoverageRows: shardFieldRows,
+    });
+
+    assert.ok(shardFieldRows.some((row) => row[0] === "shard-001" && String(row[6]).startsWith("blocker:")));
+    assert.equal(readiness.status, "blocked");
+  });
+
+  it("keeps mechanical orientation reason reuse out of high-risk reason QA", () => {
+    const items = Array.from({ length: 8 }, (_, index) => item(`orientation-${index}`, {
+      orientation: {
+        reason: "照片寬度大於高度。",
+        value: "landscape",
+      },
+    }));
+
+    assert.equal(reasonReuseRows(items).length, 0);
+  });
+
+  it("reports Codex metric phases without token deltas as not attributable", () => {
+    const health = codexMetricsHealth({
+      phases: [
+        {
+          completed_at: "2026-05-20T00:00:00.000Z",
+          usage_delta: null,
+        },
+      ],
+    });
+
+    assert.equal(health.status, "not-attributable");
+  });
+
   it("summarizes shard model, effort, duration, and Codex session coverage", () => {
     const summary = summarizeExecutionLog({
       shards: [
@@ -230,6 +288,39 @@ describe("AI bulk quality guards", () => {
     const prompt = renderAiLabelingPrompt("tmp/ai-runs/example");
 
     assert.match(prompt, /pnpm ai:review -- --run-dir tmp\/ai-runs\/example --codex-session <parent-session-id>/);
+    assert.match(prompt, /worker 輸出 shard 前必須自查本 shard 的 `scene_tags`/);
+    assert.match(prompt, /避免在 `visual_description` 用否定句承載高價值搜尋詞/);
+    assert.match(prompt, /`safe_crop` 和 `has_negative_space` 不是同一件事/);
+  });
+
+  it("validates large visual_description batches without all-pairs duplicate scans", async () => {
+    const root = await mkdtemp(join(tmpdir(), "ai-validate-large-descriptions-"));
+    const runDir = join(root, "run");
+    await mkdir(runDir, { recursive: true });
+    const photos = Array.from({ length: 240 }, (_, index) => ({ photo_id: `large-desc-${index}` }));
+    const proposals = {
+      created_at: "2026-05-20T00:00:00.000Z",
+      items: photos.map((photo, index) => item(photo.photo_id, {
+        visual_description: {
+          reason: "描述桌面操作與投影幕文字。",
+          value: `左側桌上有筆電與投影幕文字，右側人物 ${String(index).padStart(3, "0")} 正在操作手機並看向桌面`,
+        },
+      })),
+      producer: {
+        name: "test",
+        type: "ai",
+      },
+      proposal_version: 1,
+      run_id: "large-description-test",
+    };
+    await writeFile(join(runDir, "manifest.json"), `${JSON.stringify({ run_id: "large-description-test" })}\n`);
+    await writeFile(join(runDir, "photos.json"), `${JSON.stringify(photos)}\n`);
+    await writeFile(join(runDir, "metadata-proposals.json"), `${JSON.stringify(proposals)}\n`);
+
+    const result = await validateAiProposals({ proposalsPath: join(runDir, "metadata-proposals.json"), runDir });
+
+    assert.equal(result.itemCount, 240);
+    assert.ok(result.warnings.some((warning) => warning.includes("large similar description bucket")));
   });
 
   it("flags people_count spike distribution for reports", () => {

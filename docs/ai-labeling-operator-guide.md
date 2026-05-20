@@ -198,6 +198,8 @@ pnpm ai:codex:meter -- --run-dir tmp/ai-runs/<run-id> --session <parent-session-
 
 `ai:validate --codex-session` 與 `ai:review --codex-session` 主要用來補完整流程狀態與牆鐘時間。由於 Codex 會在工具呼叫完成後才把下一筆 `token_count` 寫回 session JSONL，這兩個指令不應被視為單獨精準 token 計量；精準 token 邊界仍應使用 `ai:codex:meter --mark-start/--mark-end` 在 phase 前後打點。
 
+`ai:codex:meter --summary`、`ai:bulk:status` 與 `ai:review` 的 artifact provenance 會顯示 token attribution health。若 completed phase 沒有 start / end token delta，工具會標示 token cost is not attributable；這代表本輪操作成本不能從目前 metrics 精準歸因，不代表 proposal 品質失敗。
+
 若沒有事前打點，也可以用 `--started-at` / `--completed-at` 做事後估算；這種結果應視為 approximate，因為同一條 Codex 對話可能混有其他任務：
 
 ```bash
@@ -252,7 +254,7 @@ pnpm ai:review -- --run-dir tmp/ai-runs/<run-id>
 - 產生 `metadata-update-plan.json` 與 `metadata-update-plan.csv`，列出後續可能回寫的欄位值。
 - 產生 `metadata-review-summary.md`，整理欄位覆蓋率、常見值分布、批次層級警訊、優先抽查照片與下一步指令。
 
-大型或分片 run 的 summary 會額外顯示 `Artifact Provenance`、`Layer Coverage`、`Scene QA`、`Scene Review Packages`、`Balanced Review Sample` 與 `Confidence By Field`。`Artifact Provenance` 用來確認 final proposals 來源、hash、圖片連結模式、shard artifacts 與 execution log 摘要；`Layer Coverage` 用 schema 分層看 baseline、recall、optional 覆蓋率；`Scene QA` 用整體、相簿與分片層級檢查 `scene_tags` 是否低召回、過度集中或平均過密；`Scene Review Packages` 會把常見共現組合整理成抽查入口；`Balanced Review Sample` 會混合 review focus、shard 抽樣、主體邊界、主觀 optional 欄位與 deterministic random，避免只看工具已知警訊；`Confidence By Field` 用來檢查信心分數是否只集中在少數欄位。
+大型或分片 run 的 summary 會額外顯示 `Adoption Readiness`、`Artifact Provenance`、`Layer Coverage`、`Scene QA`、`Shard Field Coverage QA`、`Scene Review Packages`、`Balanced Review Sample` 與 `Confidence By Field`。`Adoption Readiness` 會把採用狀態分成 `blocked`、`needs-review` 與 `ready-with-warnings`；它不會讓 `ai:review` 直接失敗，而是讓操作者先看到回寫前是否有 blocker。`Artifact Provenance` 用來確認 final proposals 來源、hash、圖片連結模式、shard artifacts、execution log 摘要與 token attribution health；`Layer Coverage` 用 schema 分層看 baseline、recall、optional 覆蓋率；`Scene QA` 用整體、相簿與分片層級檢查 `scene_tags` 是否低召回、過度集中或平均過密；`Shard Field Coverage QA` 會針對 `scene_tags`、`mood_tags`、`recommended_uses`、`safe_crop` 與 `confidence` 找出 shard outlier；`Scene Review Packages` 會把常見共現組合整理成抽查入口；`Balanced Review Sample` 會混合 review focus、shard 抽樣、主體邊界、主觀 optional 欄位與 deterministic random，避免只看工具已知警訊；`Confidence By Field` 用來檢查信心分數是否只集中在少數欄位。
 
 每次 `ai:review` 都會顯示 `People Count QA` 與 `Reason Reuse QA`，不只限於大型 run。`People Count QA` 的分布摘要會列出 `people_count` 的平均、中位數、分位數與 top values；警訊列則只在達到門檻時產生：整批至少 200 張且 `3..10` 任一中段人數值佔比達 15%，或相簿 / shard 至少 20 張且最常見的 `3..10` 中段人數值佔比達 50%。只有這些警訊列會進入 Review Notes 與 Review Focus。這類警訊不代表該人數一定錯，而是提示模型可能把常見小組人數當成 fallback，應從 Review Focus 抽查。`Reason Reuse QA` 會列出各欄位 unique reason 數、最大 reason 重複群與最大 value+reason 重複群；若最大群偏大，代表可能有模板化或 archetype 套用，需要確認 reason 是否真的描述每張照片的可見證據。
 
@@ -268,7 +270,7 @@ pnpm ai:review -- --run-dir tmp/ai-runs/<run-id>
 
 `metadata-review-summary.md` 頂部會列出本次使用的 prompt template path 與短 hash。舊 run 若顯示 `unknown`，代表當時尚未記錄 prompt 版本；比較結果時應把 prompt 版本視為未知因素。若 run 使用的 prompt hash 與目前 repo prompt 不同，`Review Notes` 會提示重新建立 run 或 attempt，避免把較早 prompt 產物當成目前 repo prompt 的評估結果。
 
-`scene_tags` 是 AI 高召回欄位，也是人工 `reviewed` 的完成門檻。`ai:review` 會顯示整批、相簿與分片層級的 `scene_tags` 覆蓋率；低覆蓋代表可能影響找圖召回，應進入抽查或重跑低覆蓋 shard，但不代表 proposal 格式失敗。
+`scene_tags` 是 AI 高召回欄位，也是人工 `reviewed` 的完成門檻。`ai:review` 會顯示整批、相簿與分片層級的 `scene_tags` 覆蓋率；低覆蓋代表可能影響找圖召回，應進入抽查或重跑低覆蓋 shard，但不代表 proposal 格式失敗。若某個至少 20 張的 shard 的 `scene_tags` 覆蓋率低於 25%，`Adoption Readiness` 會標成 `blocked`，表示回寫前應先補標或重跑該 shard。
 
 大型 run 的正式判讀來源是 run 目錄中的 root `metadata-proposals.json`。`/tmp/ai-labeling-shards/<run-id>/` 或 run 內 `proposal-shards/` 只作為分工與診斷 artifact；若 shard output 與 root proposal 不一致，回寫與 review 應以 root proposal 為準，避免重新 merge 倒退已修正結果。
 

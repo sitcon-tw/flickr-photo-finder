@@ -4,6 +4,7 @@ import { pathToFileURL } from "node:url";
 import { addTokenUsage } from "../lib/ai/codex-session-usage.mjs";
 import {
   codexMetricsFile,
+  codexMetricsHealth,
   formatCodexUsage,
   summarizeCodexMetrics,
 } from "../lib/ai/codex-run-metrics.mjs";
@@ -199,6 +200,7 @@ async function inspectBulkStatus(options) {
     run_id: runId,
     shard_dir: shardDir,
     codex_metrics_exists: Boolean(codexMetrics),
+    codex_metrics_health: codexMetricsHealth(codexMetrics),
     codex_metrics_path: codexMetricsPath,
     codex_metrics_summary: summarizeCodexMetrics(codexMetrics),
     shard_execution_log_exists: Boolean(shardExecutionLog),
@@ -231,6 +233,7 @@ function printStatus(status) {
     }
   }
   console.log(`- Codex run metrics: ${status.codex_metrics_exists ? `${status.codex_metrics_summary.completed_phases} completed phase(s), ${status.codex_metrics_summary.token_completed_phases} token phase(s), ${formatCodexUsage(status.codex_metrics_summary.total_usage_delta)}` : "missing"}`);
+  console.log(`- Codex token attribution: ${status.codex_metrics_health.status} (${status.codex_metrics_health.message})`);
   console.log(`- shard inputs: ${status.input_shards}`);
   console.log(`- shard outputs: ${status.existing_outputs}/${status.expected_outputs}`);
   console.log(`- merged shard proposal: ${status.shard_merged_proposal_exists ? `${status.shard_merged_proposal_items} item(s)` : "missing"}`);

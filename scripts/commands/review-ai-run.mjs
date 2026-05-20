@@ -3,7 +3,11 @@ import { access, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { getAiLabelingPromptMetadata } from "../lib/ai/ai-labeling-prompt.mjs";
-import { updateCodexRunMetrics } from "../lib/ai/codex-run-metrics.mjs";
+import {
+  codexMetricsFile,
+  codexMetricsHealth,
+  updateCodexRunMetrics,
+} from "../lib/ai/codex-run-metrics.mjs";
 import { aiBaselineFields, aiOptionalFields, aiRecallFields } from "../lib/core/photo-schema.mjs";
 import { buildPlan } from "./plan-ai-updates.mjs";
 import { renderDiff } from "./render-ai-diff.mjs";
@@ -68,7 +72,22 @@ const reasonReuseFields = new Set([
   "mood_tags",
   "recommended_uses",
   "has_negative_space",
+  "safe_crop",
 ]);
+const highRiskReasonReuseFields = new Set([
+  "people_count",
+  "scene_tags",
+  "mood_tags",
+  "recommended_uses",
+  "safe_crop",
+]);
+const shardFieldCoverageFields = [
+  "scene_tags",
+  "mood_tags",
+  "recommended_uses",
+  "safe_crop",
+  "confidence",
+];
 const reasonReuseQaWarningMinimum = 5;
 const reviewFocusMaxRows = 25;
 const balancedSampleMaxRows = 40;
@@ -265,6 +284,10 @@ function repeatedReasonWarningMinimum() {
   return reasonReuseQaWarningMinimum;
 }
 
+function rawFieldFromDisplayLabel(label) {
+  return String(label).match(/\(([^()]+)\)$/)?.[1] ?? String(label);
+}
+
 function quantile(sortedValues, percentile) {
   if (sortedValues.length === 0) {
     return "";
@@ -313,6 +336,82 @@ function layerCoverageRows(items) {
       ];
     }),
   );
+}
+
+function proposalHasConfidence(item) {
+  return Object.values(item.fields).some((proposal) => typeof proposal?.confidence === "number");
+}
+
+function fieldCoverageCount(items, field) {
+  if (field === "confidence") {
+    return items.filter(proposalHasConfidence).length;
+  }
+  return items.filter((item) => item.fields[field]).length;
+}
+
+function fieldCoverageLabel(field) {
+  return field === "confidence" ? "confidence" : fieldLabel(field, { includeRaw: true });
+}
+
+function shardFieldCoverageIssue({ coverage, field, runCoverage }) {
+  if (field === "scene_tags") {
+    if (coverage < urgentSceneScopeCoverageThreshold) {
+      return `blocker: shard scene_tags 覆蓋率低於 ${formatPercent(urgentSceneScopeCoverageThreshold)}，不可直接採用`;
+    }
+    if (coverage < lowSceneScopeCoverageThreshold) {
+      return `warning: shard scene_tags 覆蓋率低於 ${formatPercent(lowSceneScopeCoverageThreshold)}，建議抽查或補標`;
+    }
+    return "";
+  }
+  if (field === "confidence" && runCoverage === 0) {
+    return "";
+  }
+  if (runCoverage >= 0.2 && coverage === 0) {
+    return "warning: shard 覆蓋率為 0，可能有 worker 漏判該欄位";
+  }
+  if (runCoverage >= 0.2 && Math.abs(coverage - runCoverage) >= 0.5) {
+    return "warning: shard 覆蓋率與整批差距過大，建議抽查 worker 風格";
+  }
+  return "";
+}
+
+export function buildShardFieldCoverageRows(items, shardMap) {
+  if (shardMap.size === 0) {
+    return [];
+  }
+  const runCoverage = new Map(shardFieldCoverageFields.map((field) => [
+    field,
+    items.length > 0 ? fieldCoverageCount(items, field) / items.length : 0,
+  ]));
+  const byShard = groupItemsBy(items, (item) => shardMap.get(item.photo_id) || "unknown");
+  const rows = [];
+  for (const [shard, shardItems] of [...byShard.entries()].sort((left, right) => String(left[0]).localeCompare(String(right[0])))) {
+    if (shard === "unknown" || shardItems.length < lowSceneScopeMinimumItems) {
+      continue;
+    }
+    for (const field of shardFieldCoverageFields) {
+      const count = fieldCoverageCount(shardItems, field);
+      const coverage = shardItems.length > 0 ? count / shardItems.length : 0;
+      const issue = shardFieldCoverageIssue({
+        coverage,
+        field,
+        runCoverage: runCoverage.get(field) ?? 0,
+      });
+      if (!issue) {
+        continue;
+      }
+      rows.push([
+        shard,
+        fieldCoverageLabel(field),
+        shardItems.length,
+        count,
+        formatPercent(coverage),
+        formatPercent(runCoverage.get(field) ?? 0),
+        issue,
+      ]);
+    }
+  }
+  return rows;
 }
 
 function sceneStatsForItems(items) {
@@ -864,6 +963,7 @@ function buildReviewFocusRows(items) {
     ["batch-comparison-language", "visual_description 混入同批或鄰近照片比較語言"],
     ["generic-frame-language", "visual_description 使用泛用情境包裝語"],
     ["generic-human-interaction", "visual_description 只有泛稱人物或互動，缺具體可見線索"],
+    ["search-negation-risk", "visual_description 把搜尋詞放在否定或缺漏語境附近"],
   ];
   for (const [kind, issue] of visualQualityFocus) {
     pushFocusRows(rows, seen, issue, visualDescriptionQualityItems(items, kind), "visual_description", 3);
@@ -922,7 +1022,7 @@ function pushPeopleCountSpikeFocus(rows, seen, items, peopleCountRows) {
 
 function pushReasonReuseFocus(rows, seen, items, reasonRows) {
   for (const row of reasonRows.slice(0, 4)) {
-    const field = String(row[0]).match(/\(([^()]+)\)$/)?.[1] ?? String(row[0]);
+    const field = rawFieldFromDisplayLabel(row[0]);
     if (!reasonReuseFields.has(field)) {
       continue;
     }
@@ -1195,6 +1295,7 @@ export function buildReviewNotes(items, { peopleCountQaRows = [], reasonReuseQaR
     ["batch-comparison-language", "`visual_description` 混入同批、鄰近照片或相似照片比較語言"],
     ["generic-frame-language", "`visual_description` 使用泛用情境、狀態或氛圍包裝語"],
     ["generic-human-interaction", "`visual_description` 只有泛稱人物或互動，缺少具體物件、文字或位置線索"],
+    ["search-negation-risk", "`visual_description` 把搜尋詞放在否定或缺漏語境附近，可能污染字面搜尋"],
   ]);
   for (const [kind, label] of visualDescriptionQualityLabels.entries()) {
     const count = visualDescriptionQualityCounts.get(kind) ?? 0;
@@ -1218,6 +1319,86 @@ export function buildReviewNotes(items, { peopleCountQaRows = [], reasonReuseQaR
   return notes;
 }
 
+function sponsorMismatchCount(items, useValue) {
+  return items.filter((item) =>
+    valuesForField(item, "recommended_uses").includes(useValue)
+    && valuesForField(item, "sponsorship_items").length === 0
+    && valuesForField(item, "sponsorship_tags").length === 0,
+  ).length;
+}
+
+function visualDescriptionWarningCount(items, kind) {
+  return items.filter((item) =>
+    visualDescriptionQualityWarningsForItem(item).some((warning) => warning.kind === kind),
+  ).length;
+}
+
+export function buildAdoptionReadiness({ items = [], metricsHealth, reasonReuseQaRows = [], shardFieldCoverageRows = [], validationWarnings = [] } = {}) {
+  const rows = [];
+  const blockerRows = shardFieldCoverageRows.filter((row) => String(row[6]).startsWith("blocker:"));
+  for (const row of blockerRows.slice(0, 12)) {
+    rows.push([
+      "blocked",
+      "shard scene_tags",
+      `${row[0]} ${row[4]} (${row[3]}/${row[2]})；${String(row[6]).replace(/^blocker:\s*/, "")}`,
+    ]);
+  }
+
+  const sponsorReportCount = sponsorMismatchCount(items, "贊助成果報告");
+  if (sponsorReportCount > 0) {
+    rows.push(["needs-review", "sponsorship consistency", `${sponsorReportCount} 張建議贊助成果報告但缺少 sponsorship 欄位。`]);
+  }
+  const sponsorProposalCount = sponsorMismatchCount(items, "贊助提案");
+  if (sponsorProposalCount > 0) {
+    rows.push(["needs-review", "sponsorship consistency", `${sponsorProposalCount} 張建議贊助提案但缺少 sponsorship 欄位。`]);
+  }
+
+  const confidence = confidenceStats(items);
+  if (items.length > 0 && confidence.total === 0) {
+    rows.push(["needs-review", "confidence", "所有候選值都未提供 confidence，人工排序不能依賴信心分數。"]);
+  }
+
+  const highRiskReasonRows = reasonReuseQaRows.filter((row) =>
+    highRiskReasonReuseFields.has(rawFieldFromDisplayLabel(row[0]))
+    && Number(row[3]) >= repeatedReasonWarningMinimum(),
+  );
+  if (highRiskReasonRows.length > 0) {
+    rows.push(["needs-review", "reason reuse", `${highRiskReasonRows.length} 個高風險欄位 reason 重複群達到抽查門檻。`]);
+  }
+
+  const negationRiskCount = visualDescriptionWarningCount(items, "search-negation-risk");
+  if (negationRiskCount > 0) {
+    rows.push(["needs-review", "visual_description search", `${negationRiskCount} 張描述把搜尋詞放在否定或缺漏語境附近。`]);
+  }
+
+  if (validationWarnings.length > 0) {
+    rows.push(["needs-review", "validator warnings", `${validationWarnings.length} 個 validator warning 需要 Review Focus 或 diff 抽查。`]);
+  }
+
+  if (metricsHealth && metricsHealth.status !== "attributable") {
+    rows.push(["ready-with-warnings", "token metrics", metricsHealth.message]);
+  }
+
+  const status = blockerRows.length > 0
+    ? "blocked"
+    : rows.some((row) => row[0] === "needs-review")
+      ? "needs-review"
+      : "ready-with-warnings";
+  return {
+    rows: [
+      [
+        status,
+        "summary",
+        status === "blocked"
+          ? "回寫前必須先處理 adoption blocker。"
+          : "沒有偵測到 adoption blocker；仍需依 Review Focus 與抽樣人工確認。",
+      ],
+      ...rows,
+    ],
+    status,
+  };
+}
+
 function buildPromptVersionNotes(manifest) {
   const currentPrompt = getAiLabelingPromptMetadata();
   if (!manifest.prompt_template_sha256) {
@@ -1231,7 +1412,7 @@ function buildPromptVersionNotes(manifest) {
   return [];
 }
 
-function renderSummary({ artifactRows, codexSession, diffPath, layerRows, manifest, notes, outputDir, peopleCountQaRows, plan, proposals, reasonReuseQaRows, runDir, sample, scenePackageRows: scenePackageTableRows, sceneQaRows, shardMap, shardRows, summaryPath }) {
+function renderSummary({ adoptionReadiness, artifactRows, codexSession, diffPath, layerRows, manifest, notes, outputDir, peopleCountQaRows, plan, proposals, reasonReuseQaRows, runDir, sample, scenePackageRows: scenePackageTableRows, sceneQaRows, shardFieldCoverageRows, shardMap, shardRows, summaryPath }) {
   const items = proposals.items;
   const fieldCountRows = fieldCounts(items).map(({ field, count }) => [
     fieldLabel(field, { includeRaw: true }),
@@ -1280,6 +1461,7 @@ function renderSummary({ artifactRows, codexSession, diffPath, layerRows, manife
     `- Prompt template: \`${promptTemplate}\` @ \`${promptHash}\``,
     `- Proposal items: ${items.length}`,
     `- Planned updates: ${plan.update_count}`,
+    `- Adoption readiness: \`${adoptionReadiness.status}\``,
     "",
     "## Output Files",
     "",
@@ -1292,6 +1474,10 @@ function renderSummary({ artifactRows, codexSession, diffPath, layerRows, manife
     "## Review Notes",
     "",
     ...(notes.length > 0 ? notes.map((note) => `- ${note}`) : ["- 未偵測到明顯的批次層級警訊；仍請抽查照片與 reason。"]),
+    "",
+    "## Adoption Readiness",
+    "",
+    table(["status", "area", "detail"], adoptionReadiness.rows),
     "",
     "## Review Focus",
     "",
@@ -1324,6 +1510,12 @@ function renderSummary({ artifactRows, codexSession, diffPath, layerRows, manife
     sceneQaRows.length > 0
       ? table(["scope", "name", "items", "with scene_tags", "coverage", "tag density", "top tag", "issue"], sceneQaRows)
       : "No scene QA rows were generated.",
+    "",
+    "## Shard Field Coverage QA",
+    "",
+    shardFieldCoverageRows.length > 0
+      ? table(["shard", "field", "items", "with field", "coverage", "run coverage", "issue"], shardFieldCoverageRows)
+      : "No shard field coverage outliers were generated.",
     "",
     "## Scene Review Packages",
     "",
@@ -1447,19 +1639,30 @@ async function reviewAiRun(options) {
     readJson(options.proposalsPath),
     readFile(options.proposalsPath, "utf8"),
   ]);
+  const metrics = await readJsonIfExists(join(options.runDir, codexMetricsFile));
+  const metricsHealth = codexMetricsHealth(metrics);
   const shardMap = await buildShardMap(options.runDir, manifest.run_id);
   const shardInspection = await inspectShardArtifacts(options.runDir, manifest.run_id);
   const sceneQaRows = buildSceneQaRows(proposals.items, photos, shardMap);
+  const shardFieldCoverageRows = buildShardFieldCoverageRows(proposals.items, shardMap);
   const packageRows = sceneReviewPackageRows(proposals.items);
   const peopleCountQaRows = peopleCountSpikeRows(proposals.items, photos, shardMap);
   const reasonReuseQaRows = reasonReuseRows(proposals.items);
   const layerRows = layerCoverageRows(proposals.items);
+  const adoptionReadiness = buildAdoptionReadiness({
+    items: proposals.items,
+    metricsHealth,
+    reasonReuseQaRows,
+    shardFieldCoverageRows,
+    validationWarnings: validation.warnings,
+  });
   const artifactRows = [
     ["final proposals", options.proposalsPath],
     ["final proposals sha256", sha256Text(proposalText)],
     ["photos source", manifest.photos_source ?? ""],
     ["image link mode", manifest.image_link_mode ?? ""],
     ["source runs", Array.isArray(manifest.source_runs) ? String(manifest.source_runs.length) : ""],
+    ["Codex metrics health", `${metricsHealth.status}: ${metricsHealth.message}`],
     ["shard execution log", shardInspection.executionSummary?.logPath ?? ""],
     ["shard execution completed", shardInspection.executionSummary ? `${shardInspection.executionSummary.completed}/${shardInspection.executionSummary.shards}` : ""],
     ["shard retries / repairs", shardInspection.executionSummary ? `${shardInspection.executionSummary.retries}/${shardInspection.executionSummary.repairs}` : ""],
@@ -1471,6 +1674,7 @@ async function reviewAiRun(options) {
     ...buildReviewNotes(proposals.items, { peopleCountQaRows, reasonReuseQaRows, sceneQaRows }),
   ];
   const summary = renderSummary({
+    adoptionReadiness,
     artifactRows,
     codexSession: options.codexSession,
     diffPath: diff.outputPath,
@@ -1486,6 +1690,7 @@ async function reviewAiRun(options) {
     sample: options.sample,
     scenePackageRows: packageRows,
     sceneQaRows,
+    shardFieldCoverageRows,
     shardMap,
     shardRows: shardInspection.rows,
     summaryPath: options.summaryPath,
@@ -1502,6 +1707,7 @@ async function reviewAiRun(options) {
     summaryPath: options.summaryPath,
     updateCount: plan.update_count,
     warningCount: notes.length,
+    adoptionStatus: adoptionReadiness.status,
   };
 }
 
@@ -1562,6 +1768,7 @@ async function main() {
   console.log(`- diff rows: ${result.diffRows}`);
   console.log(`- planned updates: ${result.updateCount}`);
   console.log(`- review warnings: ${result.warningCount}`);
+  console.log(`- adoption readiness: ${result.adoptionStatus}`);
   console.log(`- summary: ${result.summaryPath}`);
   console.log(`- diff: ${result.diffPath}`);
   console.log(`- update plan: ${result.planJsonPath}`);
