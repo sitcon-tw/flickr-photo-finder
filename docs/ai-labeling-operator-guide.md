@@ -319,7 +319,7 @@ pnpm eval:search -- --photos tmp/sheets-export/photos.csv --scoring idf --query 
 
 這個 prototype 不呼叫 LLM、不抓圖片，也不寫入 Sheets；它只比較 taxonomy-only baseline 與 taxonomy + `visual_description` 的排序差異。`--scoring idf` 會用資料集中的詞頻降低高頻泛詞影響，並在 `visual_description` 中額外降權 `畫面`、`可見`、`呈現`、`有人`、`人物`、`參與者`、`互動`、`交流` 等低資訊詞。調整搜尋端前，建議先用這個模式確認哪些 query 的排序確實改善。
 
-若這次目標是統整 prompt、schema、workflow 與人工審核成本的多專家意見，不要直接改 `prompts/ai-labeling.md`。先建立 prompt review 決策包：
+若這次目標是統整 prompt、schema、workflow 與人工審核成本的多角色 review 意見，不要直接改 `prompts/ai-labeling.md`。先建立 prompt review 決策包：
 
 ```bash
 pnpm eval:prompt-review -- --mode prepare --runs tmp/ai-runs/<attempt-a> tmp/ai-runs/<attempt-b> --output tmp/prompt-reviews/<review-id>
@@ -331,11 +331,19 @@ pnpm eval:prompt-review -- --mode prepare --runs tmp/ai-runs/<attempt-a> tmp/ai-
 pnpm eval:prompt-review -- --mode prepare --runs tmp/ai-runs/<attempt-or-run> --queries <queries-file> --scoring idf
 ```
 
-`prepare` 會產生 `input-manifest.json`、`expert-prompts/`、空的 `expert-reviews/`、`report-links.json`，以及可選的 `search-results/`。把 `expert-prompts/` 交給專家或代理，收到回覆後放回 `expert-reviews/`，再彙整：
+`prepare` 會產生 `input-manifest.json`、`expert-prompts/`、空的 `expert-reviews/`、`report-links.json`，以及可選的 `search-results/`。它不會自動呼叫外部 LLM，也不會自動分派 agent。若需要獨立審查意見，操作者必須明確把 `expert-prompts/` 分派給不同 agent 或不同可追溯執行 session，收到回覆後放回 `expert-reviews/`，再彙整：
 
 ```bash
 pnpm eval:prompt-review -- --mode compile --review-dir tmp/prompt-reviews/<review-id>
 ```
+
+接手維護時請先完成這個 checklist：
+
+- 若 owner 需要獨立審查，先主動要求或安排不同 agent / 不同可追溯執行 session，不要讓同一 agent 直接補完四個角色。
+- 若只能由同一 agent 整理多個角度，必須在 review 中標成 `same-agent synthesis`。
+- 每份 `expert-reviews/` 都必須填 review provenance；缺 provenance 的 review 不應被視為獨立審查意見。
+
+`expert-reviews/` 應記錄 review provenance：`reviewer_type`（`independent-agent` 或 `same-agent`）、`reviewer_id`、`session_id`、是否獨立閱讀 evidence，以及是否與其他 review 共用同一個 agent context。由同一 agent 依多個角色撰寫的 review，或無法確認獨立性的多角色輸出，只能視為 `same-agent synthesis`，不應標示為獨立審查共識。
 
 `compile` 只讀取本機 review artifact，輸出 `decision-package.md` 與 `decision-package.json`。這個流程不呼叫外部 LLM、不修改 prompt、不修改 schema，也不寫入 Google Sheets；owner 接受決策包後，才進入 prompt 或 schema 變更切片。互動式入口可用 `pnpm eval -- --task prompt-review`。
 
