@@ -56,7 +56,7 @@ Options:
   --help, -h           Show this help.
 
 This command builds a prompt review decision package. It does not call an LLM,
-modify prompts or schemas, update AI runs, or write Google Sheets.`);
+assign reviewers, modify prompts or schemas, update AI runs, or write Google Sheets.`);
 }
 
 function parseArgs(argv) {
@@ -325,7 +325,7 @@ function crossRunWarnings(runs) {
 }
 
 function renderExpertPrompt(role, manifestPath) {
-  return `# ${role.title}專家審查
+  return `# ${role.title}角色審查
 
 請只做唯讀分析，不要修改 repo、AI run 或 Google Sheets。
 
@@ -343,12 +343,30 @@ ${role.focus}
 
 請在 \`expert-reviews/${role.id}.md\` 或同名 JSON 中回覆，至少包含：
 
+- Review provenance（審查來源）：\`reviewer_type\`（independent-agent / same-agent）、\`reviewer_id\`、\`session_id\`、是否獨立閱讀 evidence、是否與其他 review 共用同一個 agent context
 - 確認事實
 - 推測或判斷
 - 風險
 - 可行建議
 - 不建議做的事
 - 需要 owner 決策的問題
+
+若同一個 agent 依多個角色撰寫 review，或無法確認不同 review 的獨立性，請標示為 same-agent synthesis；這不應被描述為獨立審查共識。
+
+JSON review 建議使用：
+
+\`\`\`json
+{
+  "review_provenance": {
+    "reviewer_type": "independent-agent | same-agent",
+    "reviewer_id": "",
+    "session_id": "",
+    "independent_evidence_read": true,
+    "shared_context_with": "",
+    "notes": ""
+  }
+}
+\`\`\`
 
 請把建議標成 prompt / validator / search / docs / schema / no-change，方便 compile 階段彙整。
 `;
@@ -487,6 +505,59 @@ function roleFromMarkdown(path, text) {
   return text.match(/^#\s+(.+)$/m)?.[1]?.trim() || basename(path).replace(/\.(md|json)$/, "");
 }
 
+function normalizeReviewProvenance(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+  return {
+    independent_evidence_read: value.independent_evidence_read ?? value.independentEvidenceRead ?? "",
+    notes: typeof value.notes === "string" ? value.notes : "",
+    reviewer_id: typeof value.reviewer_id === "string"
+      ? value.reviewer_id
+      : typeof value.reviewerId === "string"
+        ? value.reviewerId
+        : "",
+    reviewer_type: typeof value.reviewer_type === "string"
+      ? value.reviewer_type
+      : typeof value.reviewerType === "string"
+        ? value.reviewerType
+        : "",
+    session_id: typeof value.session_id === "string"
+      ? value.session_id
+      : typeof value.sessionId === "string"
+        ? value.sessionId
+        : "",
+    shared_context_with: typeof value.shared_context_with === "string"
+      ? value.shared_context_with
+      : typeof value.sharedContextWith === "string"
+        ? value.sharedContextWith
+        : "",
+  };
+}
+
+function reviewProvenanceSummary(provenance) {
+  const type = provenance?.reviewer_type || "not-declared";
+  const reviewer = provenance?.reviewer_id || "";
+  const session = provenance?.session_id || "";
+  const independent = provenance?.independent_evidence_read === true
+    ? "yes"
+    : provenance?.independent_evidence_read === false
+      ? "no"
+      : "not-declared";
+  const shared = provenance?.shared_context_with || "";
+  const parts = [`type=${type}`, `independent_evidence_read=${independent}`];
+  if (reviewer) {
+    parts.push(`reviewer=${reviewer}`);
+  }
+  if (session) {
+    parts.push(`session=${session}`);
+  }
+  if (shared) {
+    parts.push(`shared_context_with=${shared}`);
+  }
+  return parts.join("; ");
+}
+
 async function readExpertReview(path) {
   const text = await readFile(path, "utf8");
   if (path.endsWith(".json")) {
@@ -496,6 +567,7 @@ async function readExpertReview(path) {
       content: text,
       format: "json",
       path,
+      review_provenance: normalizeReviewProvenance(parsed.review_provenance ?? parsed.provenance),
       role: parsed.role || basename(path, ".json"),
       summary: parsed.summary || "",
     };
@@ -505,6 +577,7 @@ async function readExpertReview(path) {
     content: text,
     format: "markdown",
     path,
+    review_provenance: {},
     role: roleFromMarkdown(path, text),
     summary: "",
   };
@@ -552,9 +625,18 @@ function renderDecisionPackage({ expertReviews, inputManifest, reportLinks, revi
   if (expertReviews.length === 0) {
     lines.push("- No expert review files found under `expert-reviews/` yet.");
   } else {
+    lines.push(
+      "| role | provenance |",
+      "| --- | --- |",
+    );
+    for (const review of expertReviews) {
+      lines.push(`| ${review.role} | ${reviewProvenanceSummary(review.review_provenance)} |`);
+    }
+    lines.push("");
     for (const review of expertReviews) {
       lines.push(`### ${review.role}`, "");
       lines.push(`- Source: \`${relative(reviewDir, review.path)}\``);
+      lines.push(`- Provenance: ${reviewProvenanceSummary(review.review_provenance)}`);
       if (review.summary) {
         lines.push(`- Summary: ${review.summary}`);
       }
@@ -613,6 +695,7 @@ async function compileDecisionPackage(options) {
       actionable_recommendations: review.actionable_recommendations,
       format: review.format,
       path: review.path,
+      review_provenance: review.review_provenance,
       role: review.role,
       summary: review.summary,
     })),

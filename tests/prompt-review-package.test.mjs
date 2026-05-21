@@ -78,6 +78,10 @@ describe("prompt review package workflow", () => {
       assert.ok(prompt.includes(role.title));
       assert.ok(prompt.includes("請只做唯讀分析"));
       assert.ok(prompt.includes("expert-reviews/"));
+      assert.ok(prompt.includes("Review provenance"));
+      assert.ok(prompt.includes("same-agent synthesis"));
+      assert.ok(prompt.includes("session_id"));
+      assert.ok(prompt.includes("review_provenance"));
     }
   });
 
@@ -97,6 +101,13 @@ describe("prompt review package workflow", () => {
         actionable_recommendations: [
           { area: "prompt", title: "重構成功標準" },
         ],
+        review_provenance: {
+          independent_evidence_read: true,
+          reviewer_id: "agent-a",
+          reviewer_type: "independent-agent",
+          session_id: "session-a",
+          shared_context_with: "",
+        },
         role: "Prompt 架構",
         summary: "成功標準需要更具體。",
       }, null, 2)}\n`,
@@ -118,7 +129,11 @@ describe("prompt review package workflow", () => {
     assert.equal(result.payload.run_count, 1);
     assert.equal(payload.expert_reviews.length, 2);
     assert.ok(payload.expert_reviews.some((review) => review.summary === "成功標準需要更具體。"));
+    assert.ok(payload.expert_reviews.some((review) => review.review_provenance?.reviewer_type === "independent-agent"));
     assert.ok(markdown.includes("[prompt] 重構成功標準"));
+    assert.ok(markdown.includes("type=independent-agent"));
+    assert.ok(markdown.includes("session=session-a"));
+    assert.ok(markdown.includes("type=not-declared"));
     assert.ok(markdown.includes("Schema / 資料治理"));
     assert.ok(result.markdown.includes("Owner Decisions"));
   });
