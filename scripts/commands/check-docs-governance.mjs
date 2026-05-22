@@ -21,6 +21,7 @@ Checks documentation governance rules that should stay automated:
   - docs/README.md mentions every top-level docs/*.md file
   - docs/adr/README.md mentions every ADR file
   - docs/research/README.md mentions every research Markdown file
+  - research Markdown files state their status and current rule source
   - research/brief files stay out of top-level docs/ and docs/README.md source-of-truth
   - documented pnpm script references point to package.json scripts
 
@@ -203,6 +204,25 @@ async function checkResearchDocsGovernance() {
         file: "docs/research/README.md",
         line: 1,
         message: `docs/research/${fileName} is not mentioned in docs/research/README.md`,
+      });
+    }
+
+    const file = `docs/research/${fileName}`;
+    const text = await readFile(file, "utf8");
+    if (!/^## (文件狀態|狀態)\s*$/m.test(text)) {
+      findings.push({
+        type: "missing-research-status-section",
+        file,
+        line: 1,
+        message: "research documents must include a status section",
+      });
+    }
+    if (!/(目前規則來源|現況以|目前.*以 `docs\/|長期.*以 `docs\/|歷史.*baseline)/s.test(text)) {
+      findings.push({
+        type: "missing-research-current-rule-source",
+        file,
+        line: 1,
+        message: "research documents must point to the current rule source or clearly mark historical baseline status",
       });
     }
   }

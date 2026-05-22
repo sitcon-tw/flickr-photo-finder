@@ -34,7 +34,7 @@
 pnpm workflow
 ```
 
-完整 Sheets 同步流程請看 `docs/sheets-sync-workflow.md`。下列低階指令保留給 fixture 更新、demo、除錯或精確重跑；正式資料仍應以 Google Sheets 為準：
+完整 Sheets 同步流程請看 `docs/sheets-sync-workflow.md`。下列低階指令保留給 fixture 更新、demo、除錯或精確重跑；正式資料仍應以 Google Sheets 為準。這裡的 `--write` 不代表直接寫入正式 Sheets，正式 Sheets 寫入仍必須走對應的 dry-run / `--write` workflow 並由人類確認：
 
 ```bash
 pnpm albums:discover

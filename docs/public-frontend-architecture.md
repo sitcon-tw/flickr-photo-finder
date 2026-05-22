@@ -183,6 +183,19 @@ pnpm finder:perf
 - GA4 event、custom dimension 或分析流程：再讀 `docs/frontend-analytics-design.md` 與 `docs/ga4-operations.md`。
 - 歷史研究與驗收背景：只在需要理解設計脈絡時讀 `docs/research/public-frontend-agent-research.md`、`docs/research/public-frontend-mobile-research.md` 與 `docs/research/public-frontend-redesign-brief.md`；目前實作規格以本文件為準。搜尋信任邊界與空結果風險見 `docs/adr/0007-finder-index-results-are-not-absence-proof.md`，研究證據見 `docs/research/public-frontend-user-literacy-research.md`。
 
+Pages 現況矩陣：
+
+| 變更面向 | 現行規格來源 | 主要程式檔 | 基本驗證 |
+| --- | --- | --- | --- |
+| 搜尋、排序、空結果與索引信任邊界 | 本文件、`docs/adr/0007-finder-index-results-are-not-absence-proof.md` | `app/search-sort.js`、`app/result-render.js` | `pnpm finder:test`、`pnpm finder:build`、`pnpm finder:check` |
+| filter、task mode、URL key 與跨介面欄位集合 | 本文件、`docs/shared-value-governance.md`、`data/interface-registry.json` | `app/controls.js`、`app/url-state.js`、`app/task-modes.js` | `pnpm finder:test`、`pnpm shared-values:check` |
+| 照片卡片、preview 與照片 action | 本文件 | `app/photo-render.js`、`app/styles.css` | `pnpm finder:test`、`pnpm finder:build`、`pnpm finder:check` |
+| 候選清單與複製格式 | 本文件、ADR 0007 的輕量分享邊界 | `app/candidates.js`、`app/main.js` | `pnpm finder:test`、`pnpm finder:build`、`pnpm finder:check` |
+| 手機 bottom sheet、filter 與候選入口 | 本文件；研究背景只看 `docs/research/public-frontend-mobile-research.md` | `app/main.js`、`app/controls.js`、`app/styles.css` | `pnpm finder:mobile-filter-smoke`、`pnpm finder:build`、`pnpm finder:check` |
+| AI 助手找圖入口 | 本文件、`docs/ai-readable-dataset.md`、ADR 0007 | `app/ai-assistant.js`、`app/main.js` | `pnpm finder:test`、`pnpm finder:build`、`pnpm finder:check` |
+| GA4 事件與 custom dimensions | `docs/frontend-analytics-design.md`、`docs/ga4-operations.md` | `app/analytics.js`、`config/ga4-custom-dimensions.json` | `pnpm analytics:dimensions:check` |
+| Pages build artifact 與資料載入 | 本文件、ADR 0002 | `app/data-loader.js`、`scripts/commands/build-pages.mjs`、`scripts/commands/check-pages-artifact.mjs` | `pnpm finder:build`、`pnpm finder:check` |
+
 常見改檔對照：
 
 - 搜尋、篩選、排序與 scoring：`app/search-sort.js`，測試放 `tests/pages-search-sort.test.mjs`。
@@ -211,6 +224,7 @@ pnpm finder:perf
 - GitHub Pages 發布 `tmp/pages` artifact，不發布 repo root。
 - 多選 filter URL 使用重複 query params，例如 `scene=攤位&scene=會眾`。
 - 沒有命中目前索引不代表 Flickr 沒有相關照片；不要把空結果、篩選結果或任務模式寫成存在性判定。
+- 改搜尋、空結果、候選清單或 AI 助手提示詞時，應檢查 ADR 0007 是否仍被 UI 文案與測試覆蓋。
 - `public_use_status` 是使用提醒，不是 Flickr 是否公開；`curation_status = ai_labeled` 不等於人工 `reviewed`。
 - 卡片與 preview 的目前規格看本文件；redesign brief 是歷史 baseline，不是目前缺口清單。
 - GA4 不註冊 `photo_id`、`content_id`、`search_term`、`result_rank` 等高基數或可能敏感參數為 custom dimensions。

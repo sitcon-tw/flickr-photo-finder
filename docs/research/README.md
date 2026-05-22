@@ -12,9 +12,9 @@
 
 ## 文件列表
 
-| 文件 | 用途 |
-| --- | --- |
-| [public-frontend-agent-research.md](public-frontend-agent-research.md) | GitHub Pages 前端重構前的多角色代理使用者研究快照。 |
-| [public-frontend-mobile-research.md](public-frontend-mobile-research.md) | #5 手機版重設計的代理深訪、owner 評估表、P0 範圍與驗收建議。 |
-| [public-frontend-redesign-brief.md](public-frontend-redesign-brief.md) | GitHub Pages 前端重構的歷史需求基準與驗收 baseline。 |
-| [public-frontend-user-literacy-research.md](public-frontend-user-literacy-research.md) | 一般找圖者可能誤解索引完整性、待人工確認與空結果的代理研究紀錄。 |
+| 文件 | 狀態 | 目前規則來源 | 相關 ADR/runbook |
+| --- | --- | --- | --- |
+| [public-frontend-agent-research.md](public-frontend-agent-research.md) | 歷史研究快照 | `docs/public-frontend-architecture.md` | `docs/public-frontend-architecture.md` |
+| [public-frontend-mobile-research.md](public-frontend-mobile-research.md) | 代理研究與 owner 評估紀錄 | `docs/public-frontend-architecture.md` | `docs/public-frontend-architecture.md`、GitHub issue #5 / #43 |
+| [public-frontend-redesign-brief.md](public-frontend-redesign-brief.md) | 歷史需求與驗收 baseline | `docs/public-frontend-architecture.md` | `docs/public-frontend-architecture.md` |
+| [public-frontend-user-literacy-research.md](public-frontend-user-literacy-research.md) | 使用素養風險研究證據 | `docs/adr/0007-finder-index-results-are-not-absence-proof.md` | `docs/adr/0007-finder-index-results-are-not-absence-proof.md` |

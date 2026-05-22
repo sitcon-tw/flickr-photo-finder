@@ -8,7 +8,7 @@
 
 | 名詞 | 在本專案的意思 |
 | --- | --- |
-| 正式 Sheets | Google Sheets 中的正式照片索引，是 `photos`、`albums`、`import_batches`、`taxonomy` 與 `sponsorship_items` 的權威資料來源。 |
+| 正式 Sheets | Google Sheets 中的正式照片索引。`photos`、`albums`、`import_batches` 是正式 operational data；`taxonomy` 與 `sponsorship_items` 是由 repo source 同步到 Sheets 的輔助查閱表。 |
 | 本機工作快取 | `tmp/sheets-export/*.csv`，由 `pnpm sheets:export` 從正式 Sheets 匯出，供本機 validation、intake 與 AI 工具使用；可重建，不 commit。 |
 | intake run | `tmp/intake-runs/<run-id>/`，一次 Flickr 相簿匯入的可審核 artifact，包含候選照片、相簿更新、匯入批次與摘要；人類確認後才用 `sheets:apply-intake` dry-run/write。 |
 | AI run | `tmp/ai-runs/<run-id>/`，一次 AI 初標工作包，通常由 `ai:prepare` 或 `eval:sample` 建立，包含 `manifest.json`、`photos.json`、`images/`、`ai-labeling-prompt.md`，模型完成後才加入 `metadata-proposals.json`。AI run 不是人工 review 狀態。 |
@@ -109,6 +109,7 @@ flowchart TD
 | ADR | `docs/adr/` | 記錄已採用的長期決策、背景、取捨、替代方案與重新評估條件。 |
 | 研究與歷史 brief | `docs/research/` | 保存觀察、方法限制、代理訪談、owner 評估與歷史驗收 baseline；不直接承載目前規則。 |
 | Runbook / architecture | `docs/*.md` | 說明目前怎麼操作、怎麼維護，以及系統現在如何運作。 |
+| 評估證據 | `docs/*evaluation*.md` 或具體評估文件 | 保存模型、工具或流程評估依據；可提出調校方向，但目前規則仍要回到 contract、runbook、ADR 或 source data。 |
 
 撰寫原則：
 
@@ -116,6 +117,16 @@ flowchart TD
 - 研究文件可以保留當時推測與被否決的方向，但要標明文件狀態與目前規則來源。
 - `docs/README.md` 只做入口、狀態與 source-of-truth map，不重複維護完整 artifact inventory。
 - 欄位、受控值、顯示文字與共用 UI policy 不在文件複製清單，應引用 `data/photo-schema.json`、`data/tag-taxonomy.json` 或 `data/interface-registry.json`。
+
+新增或修改文件時，依下表決定要改哪一層：
+
+| 變更情境 | 主要修改位置 | 檢查 |
+| --- | --- | --- |
+| 新增長期決策、取捨或維護邊界 | `docs/adr/`，再由 architecture/runbook 引用 | `pnpm docs:check`、`pnpm language:check` |
+| 新增研究、代理訪談、歷史 brief 或 owner 評估證據 | `docs/research/`，並更新 `docs/research/README.md` | `pnpm docs:check`、`pnpm language:check` |
+| 更新目前操作流程或系統現況 | 對應的 architecture/runbook，必要時同步 `docs/README.md` 入口 | `pnpm docs:check`、相關 workflow check |
+| 更新欄位、受控值、顯示文字或跨介面 policy | `data/photo-schema.json`、`data/tag-taxonomy.json`、`data/interface-registry.json` | `pnpm data:validate`、`pnpm shared-values:check` |
+| 新增模型、prompt、搜尋或工具評估紀錄 | 評估文件或 `tmp/` artifact 摘要；若形成長期規則，再升格到 ADR/runbook/contract | `pnpm docs:check`、相關 eval / AI check |
 
 ## 真理來源
 
@@ -140,7 +151,6 @@ flowchart TD
 | Sheets 正式寫入身份 | `docs/sheets-sync-workflow.md` | 建議使用 SITCON 管理的 service account，並將 service account email 加入正式 Sheets 編輯者。 |
 | AI 初標輸入與輸出格式 | `docs/ai-labeling-contract.md` | 定義 `tmp/ai-runs/<run-id>/` 的輸入檔、圖片來源、`metadata-proposals.json` 格式與驗證流程。 |
 | AI 初標操作與 prompt | `docs/ai-labeling-operator-guide.md`、`prompts/ai-labeling.md` | 操作指南給人類操作者與 repo 維護 agent；prompt 是可交給模型使用的任務範本。 |
-| AI 初標品質評估 | `docs/ai-labeling-evaluation-notes.md` | 記錄模型 run 觀察、常見失準欄位與未來可工具化的檢查方向。 |
 | AI 初標 prompt 角色審查決策 | `docs/ai-labeling-prompt-expert-review.md` | 記錄多角色 prompt review 的角色、共識、owner 決策與後續切片；本機 review artifact 留在 `tmp/prompt-reviews/`。 |
 | 跨活動 AI 測試抽樣計畫 | `data/ai-cross-activity-sample-plan.json` | 用於建立欄位、taxonomy、prompt 與 validator 評估工作包；不是正式照片資料。 |
 | AI proposal 範例 | `fixtures/ai-proposals/` | valid/invalid examples 應由 `pnpm eval:validate-fixtures` 驗證。 |
@@ -166,6 +176,17 @@ flowchart TD
 | 公開前端手機版代理研究 | `docs/research/public-frontend-mobile-research.md` | 針對 #5 手機版重設計的代理深訪與 owner 評估紀錄；不等同真人訪談或已完成 usability test。 |
 | 公開前端使用素養代理研究 | `docs/research/public-frontend-user-literacy-research.md` | 針對一般找圖者可能誤解索引完整性的代理訪談與 Pages 文案採納紀錄；長期信任邊界看 ADR 0007。 |
 | 公開前端重構需求簡報 | `docs/research/public-frontend-redesign-brief.md` | GitHub Pages 前端重構的歷史需求基準與驗收 baseline；目前已完成多數 P0/P1。 |
+| AI 初標品質評估 | `docs/ai-labeling-evaluation-notes.md` | 模型 run 觀察、常見失準欄位與工具化警訊候選；目前操作規則仍看 operator guide、contract 與 ADR 0003。 |
+
+## AI 文件責任
+
+| 文件 | 責任 | 不是什麼 |
+| --- | --- | --- |
+| `docs/ai-labeling-contract.md` | AI run 輸入、輸出與 proposal 驗證合約。 | 不是操作者 runbook。 |
+| `docs/ai-labeling-operator-guide.md` | 人類操作者與維護 agent 的 prepare/review/report/write 流程。 | 不是模型初標 prompt。 |
+| `docs/ai-labeling-evaluation-notes.md` | 歷史模型 run、prompt 調校與工具警訊的評估證據。 | 不是目前規則或模型永久能力排名。 |
+| `docs/ai-labeling-prompt-expert-review.md` | prompt review 的角色、owner 決策與後續切片紀錄。 | 不是 ADR，也不自動套用規則。 |
+| `docs/adr/0003-ai-candidate-only.md` | AI 只產生候選 metadata 的長期治理邊界。 | 不取代 contract 或 operator guide 的操作細節。 |
 
 ## 共用字串歸屬
 
