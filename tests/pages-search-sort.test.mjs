@@ -675,8 +675,8 @@ describe("Pages search/sort pure logic", () => {
     });
 
     assert.match(text, /探索更多排序/);
-    assert.match(text, /篩選依目前索引欄位比對/);
-    assert.match(text, /待人工確認與未整理照片可能缺少標籤/);
+    assert.match(text, /目前命中的照片/);
+    assert.match(text, /有些標籤尚未人工確認/);
     assert.match(text, /已套用：場景 交流/);
   });
 
@@ -689,9 +689,10 @@ describe("Pages search/sort pure logic", () => {
       activeFilterEntries: () => [["task", "任務", "社群貼文"]],
     });
 
-    assert.match(text, /沒有命中索引/);
-    assert.match(text, /不代表 Flickr 沒有相關照片/);
-    assert.match(text, /回 Flickr 相簿確認/);
+    assert.match(text, /沒找到不一定代表沒有照片/);
+    assert.match(text, /有些標籤尚未確認/);
+    assert.match(text, /放寬條件/);
+    assert.match(text, /回相簿看看/);
   });
 
   it("detects when the load-more panel is close enough to auto load", () => {
