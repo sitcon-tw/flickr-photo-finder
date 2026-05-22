@@ -282,6 +282,13 @@ h3 {
   margin-bottom: 12px;
 }
 
+.index-boundary-note {
+  margin: -2px 0 14px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 label {
   display: grid;
   gap: 6px;

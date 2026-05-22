@@ -6,7 +6,7 @@
 
 此專案的正式照片資料不放在 repo 內。repo 負責保存 schema、taxonomy、驗證規則、匯入工具、同步流程、Apps Script 來源與 AI/agent 維護文件；Google Sheets 則是志工實際共同維護照片索引的地方。
 
-第一次接手專案時，請先讀 `docs/README.md` 的「先建立共同語言」與「整體資料生命週期」。本文件只定義正式 Sheets 的表格責任；相簿匯入、intake run、AI run 與 dry-run/write 操作請看 `docs/sheets-sync-workflow.md`。
+第一次接手專案時，請先讀 `docs/README.md` 的「先建立共同語言」與「整體資料生命週期」。本文件只定義正式 Sheets 的 tab shape 與表格責任，不是完整操作 runbook；相簿匯入、intake run、AI run 與 dry-run/write 操作請看 `docs/sheets-sync-workflow.md`。
 
 ## 核心決策
 

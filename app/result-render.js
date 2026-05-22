@@ -25,7 +25,7 @@ export function resultContextText({ photos, filtered, controls, activeTask, acti
     return "尚未載入照片";
   }
   if (filtered.length === 0) {
-    return "目前條件沒有結果，可先移除部分條件、放寬場景或構圖限制。";
+    return "目前條件沒有命中索引，不代表 Flickr 沒有相關照片。可清除部分條件、改用探索更多、只保留活動/相簿，或回 Flickr 相簿確認。";
   }
 
   const task = activeTask();
@@ -47,7 +47,7 @@ export function resultContextText({ photos, filtered, controls, activeTask, acti
     .filter(([key]) => key !== "task")
     .map(([, label, value]) => `${label} ${value}`)
     .join(" / ");
-  return `${sortText}，仍顯示符合篩選的照片。${filterText ? `已套用：${filterText}` : "未套用額外篩選。"}`;
+  return `${sortText}，仍顯示符合篩選的照片。篩選依目前索引欄位比對；待人工確認與未整理照片可能缺少標籤。${filterText ? `已套用：${filterText}` : "未套用額外篩選。"}`;
 }
 
 export const autoLoadMoreDistancePx = 640;

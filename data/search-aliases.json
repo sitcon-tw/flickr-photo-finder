@@ -28,7 +28,7 @@
   },
   "curation_status": {
     "reviewed": ["人工確認"],
-    "ai_labeled": ["AI 初標", "ai labeled"],
+    "ai_labeled": ["待人工確認", "AI 初標", "ai labeled"],
     "unreviewed": ["未審", "未整理"]
   },
   "safe_crop": {

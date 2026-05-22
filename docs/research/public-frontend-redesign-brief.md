@@ -2,7 +2,7 @@
 
 ## 狀態
 
-這份 brief 依據 `docs/public-frontend-agent-research.md` 的代理使用者研究建立。它不是最終 UI 設計稿；目前應視為 GitHub Pages 前端重構的歷史需求基準與驗收 baseline，不是目前缺口清單。
+這份 brief 依據 `docs/research/public-frontend-agent-research.md` 的代理使用者研究建立。它不是最終 UI 設計稿；目前應視為 GitHub Pages 前端重構的歷史需求基準與驗收 baseline，不是目前缺口清單。
 
 2026-05-15 後續 UX 調整已把照片卡片改為視覺優先：卡片只保留大圖、預覽入口與候選快速操作，photo id、整理狀態、命中理由、使用提醒與維護連結集中在預覽 dialog。因此本 brief 中「卡片外顯任務匹配、整理狀態與必要使用提醒」應視為歷史驗收方向；目前實作規格以 `docs/public-frontend-architecture.md` 的照片卡片與預覽規則為準。
 
@@ -14,6 +14,8 @@
 - 若 40k 以上仍出現瓶頸，再評估 Web Worker、dictionary encoding、二級 index、search library 或 server-side search。
 
 ## 目標
+
+以下是研究當時的歷史 baseline，不是目前前端規格。現行規格、模組邊界與驗收門檻請以 `docs/public-frontend-architecture.md` 為準。
 
 原始目標是把欄位導向的 MVP 前端，重構成面向大量照片的找圖工作台。使用者應能從工作任務出發，在上千到上萬張照片中快速得到可信候選，並能把候選交給其他人討論或使用。
 

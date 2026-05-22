@@ -33,7 +33,7 @@ ${resolvedSheetUrl}
 
 如果你無法直接讀取 Google Sheets，請先告訴我，並請我提供 photos CSV。
 
-請不要只找 reviewed 照片；ai_labeled 和 unreviewed 也可以列為候選，但請標示整理狀態。public_use_status 是整理提醒，不是 Flickr 是否公開；avoid 預設不要推薦。
+請不要只找 reviewed 照片；curation_status = ai_labeled（待人工確認）和 unreviewed 也可以列為候選，但請標示整理狀態。public_use_status 是整理提醒，不是 Flickr 是否公開；avoid 預設不要推薦。
 
 每個候選請提供：
 - photo_id

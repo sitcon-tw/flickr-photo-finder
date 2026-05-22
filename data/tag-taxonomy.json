@@ -168,7 +168,7 @@
     },
     "curation_status": {
       "unreviewed": "未整理",
-      "ai_labeled": "AI 初標",
+      "ai_labeled": "待人工確認",
       "reviewed": "已整理"
     },
     "recommended_uses": {
