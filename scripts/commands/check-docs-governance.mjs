@@ -20,6 +20,8 @@ Checks documentation governance rules that should stay automated:
   - local Markdown links resolve
   - docs/README.md mentions every top-level docs/*.md file
   - docs/adr/README.md mentions every ADR file
+  - docs/research/README.md mentions every research Markdown file
+  - research/brief files stay out of top-level docs/ and docs/README.md source-of-truth
   - documented pnpm script references point to package.json scripts
 
 This does not verify external URLs or prose quality.
@@ -157,6 +159,72 @@ async function checkDocsIndex() {
   return findings;
 }
 
+async function checkResearchDocsGovernance() {
+  const findings = [];
+  const docsEntries = await readdir("docs", { withFileTypes: true });
+  const topLevelResearchPattern = /(^|[-_])(research|brief)([-_.]|$)/;
+
+  for (const entry of docsEntries) {
+    if (!entry.isFile() || !entry.name.endsWith(".md") || entry.name === "README.md") {
+      continue;
+    }
+    if (!topLevelResearchPattern.test(entry.name)) {
+      continue;
+    }
+    findings.push({
+      type: "top-level-research-doc",
+      file: `docs/${entry.name}`,
+      line: 1,
+      message: "research and brief documents should live under docs/research/ and be indexed there",
+    });
+  }
+
+  if (!existsSync("docs/research/README.md")) {
+    findings.push({
+      type: "missing-research-index",
+      file: "docs/research/README.md",
+      line: 1,
+      message: "docs/research/README.md is required to index research documents",
+    });
+    return findings;
+  }
+
+  const researchIndex = await readFile("docs/research/README.md", "utf8");
+  const researchEntries = await readdir("docs/research", { withFileTypes: true });
+  const researchDocs = researchEntries
+    .filter((entry) => entry.isFile() && entry.name.endsWith(".md") && entry.name !== "README.md")
+    .map((entry) => entry.name)
+    .sort();
+
+  for (const fileName of researchDocs) {
+    if (!researchIndex.includes(fileName)) {
+      findings.push({
+        type: "missing-research-index-entry",
+        file: "docs/research/README.md",
+        line: 1,
+        message: `docs/research/${fileName} is not mentioned in docs/research/README.md`,
+      });
+    }
+  }
+
+  const docsIndex = await readFile("docs/README.md", "utf8");
+  const sourceOfTruthMatch = docsIndex.match(/## 真理來源[\s\S]*?(?=\n## |\s*$)/);
+  if (sourceOfTruthMatch) {
+    const researchReference = sourceOfTruthMatch[0].match(/docs\/research\/[^\s|`)]+/);
+    if (researchReference) {
+      const offset = (sourceOfTruthMatch.index ?? 0) + sourceOfTruthMatch[0].indexOf(researchReference[0]);
+      findings.push({
+        type: "research-in-source-of-truth",
+        file: "docs/README.md",
+        line: lineNumberAt(docsIndex, offset),
+        message: `${researchReference[0]} appears in the source-of-truth section; move it to the research evidence section`,
+      });
+    }
+  }
+
+  return findings;
+}
+
 function fencedCodeBlocks(text) {
   const blocks = [];
   const fencePattern = /```[^\n`]*\n([\s\S]*?)```/g;
@@ -259,6 +327,7 @@ async function main() {
   const findings = [
     ...(await checkLocalLinks(markdownFiles)),
     ...(await checkDocsIndex()),
+    ...(await checkResearchDocsGovernance()),
     ...(await checkDocumentedPnpmScripts(markdownFiles)),
   ];
 

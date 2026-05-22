@@ -71,6 +71,7 @@ flowchart TD
 | 我要交接維運權限與資產 | `docs/operations-handoff-checklist.md` | 不保存 credential；列出正式 Sheets、service account、Apps Script、GitHub Pages、GA4 與 dry-run 驗證方式。 |
 | 我要定位常見維運事故 | `docs/troubleshooting.md` | 從症狀分流到 Pages artifact、Sheets public CSV、Apps Script、AI run、clasp 或 GA4 的檢查命令與 runbook。 |
 | 我要理解架構決策背景與維護邊界 | `docs/adr/README.md` | ADR 只記錄決策脈絡、取捨與維護邊界；目前架構總覽仍看 `docs/project-architecture.md`。 |
+| 我要理解研究、代理訪談或歷史 brief | `docs/research/README.md` | 研究文件只保存證據、限制與當時判斷；目前規則仍回到 ADR、architecture 或 runbook。 |
 
 ## AI 評估與決策子流程
 
@@ -98,6 +99,24 @@ flowchart TD
 | repo 維護 agent | `AGENTS.md`、`docs/agent-maintenance-guide.md`、本文件 | 操作流程前先確認 source-of-truth 文件與 run artifact。 |
 | prompt review 角色 agent | `tmp/prompt-reviews/<review-id>/input-manifest.json`、`expert-prompts/`、run 的 `metadata-review-summary.md`、`docs/ai-labeling-prompt-expert-review.md` | 角色 review 只做唯讀分析；若要獨立 review，操作者必須主動分派不同 agent 或不同可追溯執行 session，並在 `expert-reviews/` 記錄 provenance；決策包不會自動套用建議。 |
 
+## 文件類型與撰寫規則
+
+文件新增或改寫時，先判斷它要承擔哪一種責任，避免同一個決策在多處變成不同版本。
+
+| 類型 | 位置 | 責任 |
+| --- | --- | --- |
+| 真理來源 | `data/*.json`、`config/project.json`、正式 Google Sheets、architecture/runbook | 定義目前欄位、資料、部署、操作與公開介面規則。 |
+| ADR | `docs/adr/` | 記錄已採用的長期決策、背景、取捨、替代方案與重新評估條件。 |
+| 研究與歷史 brief | `docs/research/` | 保存觀察、方法限制、代理訪談、owner 評估與歷史驗收 baseline；不直接承載目前規則。 |
+| Runbook / architecture | `docs/*.md` | 說明目前怎麼操作、怎麼維護，以及系統現在如何運作。 |
+
+撰寫原則：
+
+- 若研究結論變成長期維護邊界，新增或更新 ADR，再讓 architecture/runbook 引用 ADR。
+- 研究文件可以保留當時推測與被否決的方向，但要標明文件狀態與目前規則來源。
+- `docs/README.md` 只做入口、狀態與 source-of-truth map，不重複維護完整 artifact inventory。
+- 欄位、受控值、顯示文字與共用 UI policy 不在文件複製清單，應引用 `data/photo-schema.json`、`data/tag-taxonomy.json` 或 `data/interface-registry.json`。
+
 ## 真理來源
 
 | 資訊 | 真理來源 | 備註 |
@@ -111,10 +130,7 @@ flowchart TD
 | 組織名稱、Flickr 帳號、GitHub 專案連結與前端標題 | `config/project.json` | SITCON 是此 repo 的預設實例；其他組織 fork 時應先改這份設定。 |
 | 公開 Google Sheets ID | `config/project.json` 的 `googleSheets.spreadsheetId` | 這份 Sheets 預期可公開讀取；寫入權限由 Google Drive/Sheets 管理。 |
 | GitHub Pages 前端資料流、本機資料來源與部署 artifact | `docs/public-frontend-architecture.md` | 前端現況 runbook；`pnpm finder:dev`、`pnpm finder:dev:fixture`、`pnpm finder:dev:export` 的差異以這份為準。 |
-| 公開前端代理使用者研究 | `docs/public-frontend-agent-research.md` | 重構前的多角色代理研究快照；不等同真人訪談，也不是目前缺口清單。 |
-| 公開前端手機版代理研究 | `docs/public-frontend-mobile-research.md` | 針對 #5 手機版重設計的代理深訪與 owner 評估紀錄；不等同真人訪談或已完成 usability test。 |
-| 公開前端使用素養代理研究 | `docs/public-frontend-user-literacy-research.md` | 針對一般找圖者可能誤解索引完整性的代理訪談與 Pages 文案決策；不是真人使用者訪談。 |
-| 公開前端重構需求簡報 | `docs/public-frontend-redesign-brief.md` | GitHub Pages 前端重構的歷史需求基準與驗收 baseline；目前已完成多數 P0/P1。 |
+| 公開前端索引與空結果信任邊界 | `docs/adr/0007-finder-index-results-are-not-absence-proof.md` | Finder 是 Flickr 上方的索引輔助；搜尋、篩選與空結果不可作為 Flickr 照片不存在的判定。 |
 | 前端使用行為分析設計 | `docs/frontend-analytics-design.md` | 導入 GA4 或分析前，先確認目前前端狀態、事件邊界、隱私限制與後續分析流程。 |
 | GA4 後台操作與 service account 權限 | `docs/ga4-operations.md` | 管理 GA4 權限、service account 加入 property、custom dimensions 與 BigQuery 延後策略。 |
 | GA4 custom dimensions 註冊清單 | `config/ga4-custom-dimensions.json` | 低基數 event-scoped custom dimensions 的 repo source of truth；不要加入 `photo_id`、`content_id`、`search_term`、`result_rank`。 |
@@ -139,6 +155,17 @@ flowchart TD
 | 練習用試算表資料包 | `tmp/sheets-practice/*.csv` | 從正式匯出資料切出的小樣本，供維護者重置固定練習表；可刪除，不 commit，不是第二份正式資料庫。 |
 | 專案角色與資料流 | `docs/project-architecture.md` | 若架構改變，先更新架構總覽，再同步相關文件。 |
 | 架構決策脈絡與維護邊界 | `docs/adr/README.md` | ADR 不取代架構總覽或 runbook；用來理解已採用決策的背景、取捨與長期維護方式。 |
+
+## 背景研究與決策證據
+
+這些文件保留研究過程、代理推測、owner 評估或歷史 brief。它們能協助理解某些 UI 或文件決策從何而來，但不取代 ADR、architecture 或資料 source of truth。
+
+| 資訊 | 文件 | 備註 |
+| --- | --- | --- |
+| 公開前端代理使用者研究 | `docs/research/public-frontend-agent-research.md` | 重構前的多角色代理研究快照；不等同真人訪談，也不是目前缺口清單。 |
+| 公開前端手機版代理研究 | `docs/research/public-frontend-mobile-research.md` | 針對 #5 手機版重設計的代理深訪與 owner 評估紀錄；不等同真人訪談或已完成 usability test。 |
+| 公開前端使用素養代理研究 | `docs/research/public-frontend-user-literacy-research.md` | 針對一般找圖者可能誤解索引完整性的代理訪談與 Pages 文案採納紀錄；長期信任邊界看 ADR 0007。 |
+| 公開前端重構需求簡報 | `docs/research/public-frontend-redesign-brief.md` | GitHub Pages 前端重構的歷史需求基準與驗收 baseline；目前已完成多數 P0/P1。 |
 
 ## 共用字串歸屬
 
@@ -188,7 +215,7 @@ flowchart TD
 | 整理照片的志工 | `README.md`、Google Sheets `使用說明`、`docs/data-entry-guide.md`、`docs/photo-fields-reference.md` |
 | 技術志工 | `pnpm workflow`、`docs/project-architecture.md`、`docs/sheets-sync-workflow.md`、`docs/google-sheets-database-design.md` |
 | 維護 Apps Script 的人 | `docs/apps-script-maintenance-design.md`、`data/photo-schema.json`、`data/tag-taxonomy.json` |
-| 維護 GitHub Pages 前端的人 | `docs/public-frontend-architecture.md`、`docs/frontend-analytics-design.md`、`docs/ga4-operations.md`；需要理解重構背景時再讀 `docs/public-frontend-agent-research.md` 與 `docs/public-frontend-redesign-brief.md`；處理 #5 手機版重設計時先讀 `docs/public-frontend-mobile-research.md` |
+| 維護 GitHub Pages 前端的人 | `docs/public-frontend-architecture.md`、`docs/frontend-analytics-design.md`、`docs/ga4-operations.md`；需要理解重構背景時再讀 `docs/research/README.md`；處理搜尋信任邊界時先讀 `docs/adr/0007-finder-index-results-are-not-absence-proof.md` |
 | AI / agent | `AGENTS.md`、`docs/agent-maintenance-guide.md`；若只是產生初標 metadata，讀 run 目錄的 `ai-labeling-prompt.md` 與 `docs/ai-labeling-contract.md`；若要操作流程才讀 `docs/ai-labeling-operator-guide.md` |
 
 ## 文件分工
@@ -200,10 +227,11 @@ flowchart TD
 - `sheets-sync-workflow.md`: Sheets 與 repo 工具同步流程。
 - `apps-script-maintenance-design.md`: Apps Script 維護輔助與 `clasp` 部署原則。
 - `public-frontend-architecture.md`: GitHub Pages 唯讀前端資料流、本機開發資料來源與部署 artifact runbook。
-- `public-frontend-agent-research.md`: 重構前的多角色代理使用者研究快照，整理任務脈絡、痛點、確認事實與推測；不是目前缺口清單。
-- `public-frontend-mobile-research.md`: #5 手機版重設計的代理深訪、owner 評估表、P0 範圍與驗收建議；不是真人訪談結果。
-- `public-frontend-user-literacy-research.md`: 只看 Pages 入口的一般找圖者，對索引完整性、待人工確認與空結果可能誤解的代理研究紀錄。
-- `public-frontend-redesign-brief.md`: GitHub Pages 前端重構的歷史需求基準與驗收標準；後續回歸或 P2 規劃可用來比對。
+- `research/README.md`: 研究紀錄索引與撰寫規則；研究文件只保存證據與歷史脈絡，不承載目前規則。
+- `research/public-frontend-agent-research.md`: 重構前的多角色代理使用者研究快照，整理任務脈絡、痛點、確認事實與推測；不是目前缺口清單。
+- `research/public-frontend-mobile-research.md`: #5 手機版重設計的代理深訪、owner 評估表、P0 範圍與驗收建議；不是真人訪談結果。
+- `research/public-frontend-user-literacy-research.md`: 只看 Pages 入口的一般找圖者，對索引完整性、待人工確認與空結果可能誤解的代理研究紀錄。
+- `research/public-frontend-redesign-brief.md`: GitHub Pages 前端重構的歷史需求基準與驗收標準；後續回歸或 P2 規劃可用來比對。
 - `frontend-analytics-design.md`: 前端使用行為分析目的、GA4 事件設計、實作前檢查與後續分析流程。
 - `ga4-operations.md`: GA4 後台操作、service account 權限、custom dimensions 與 BigQuery 延後策略。
 - `operations-handoff-checklist.md`: 不含 credential 的維運交接清單，列出正式 Sheets、service account、Apps Script、GitHub Pages、GA4 與 dry-run 驗證方式。

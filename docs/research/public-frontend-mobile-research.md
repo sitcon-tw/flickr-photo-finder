@@ -6,7 +6,7 @@
 
 本文件用來支援 GitHub issue #5「手機體驗極差」的設計決策。實作前應先由 owner 檢查本文件的代理推測，標記採納、修正或否決，再把可採用的需求回填到 #5。
 
-舊文件 `docs/public-frontend-agent-research.md` 是重構前的多角色代理研究快照；本文件只針對目前前端狀態與手機版工作流。
+舊文件 `docs/research/public-frontend-agent-research.md` 是重構前的多角色代理研究快照；本文件只針對目前前端狀態與手機版工作流。
 
 資料載入方式已在後續更新為 production static-sharded artifact；本文件若提到直接讀取公開 CSV，應視為當時背景，不是目前部署規格。現況以 `docs/public-frontend-architecture.md` 為準。
 

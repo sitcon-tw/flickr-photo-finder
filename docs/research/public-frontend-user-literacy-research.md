@@ -2,7 +2,7 @@
 
 ## 文件狀態
 
-這份文件記錄 2026-05-22 針對 GitHub Pages Finder 使用素養風險的代理訪談結論。它不是真人使用者訪談，也不是完整 usability test；用途是保存本輪 Pages 文案與心智模型改進的產品判斷。
+這份文件記錄 2026-05-22 針對 GitHub Pages Finder 使用素養風險的代理訪談結論。它不是真人使用者訪談，也不是完整 usability test；用途是保存本輪 Pages 文案與心智模型改進的研究證據。長期信任邊界以 `docs/adr/0007-finder-index-results-are-not-absence-proof.md` 為準。
 
 本輪背景是：行銷、開發、編輯等找圖者通常只會從公開網址進入 Finder，不會先閱讀 repo README 或維護文件。
 
@@ -31,7 +31,7 @@
 - 空結果是最容易形成錯誤結論的時刻。文案應直接說明沒有命中索引不代表 Flickr 沒有相關照片。
 - 候選清單分享應保持輕量；信任邊界應主要放在搜尋前、結果狀態與空結果，而不是塞進每次分享輸出。
 
-## 採納決策
+## 本輪採納
 
 - Pages 一般使用者介面將 `curation_status = ai_labeled` 顯示為「待人工確認」，raw value 仍維持 `ai_labeled`。
 - 搜尋區加入短提醒，說明 Finder 是找圖索引，不是完整判定。

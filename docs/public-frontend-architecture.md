@@ -14,6 +14,7 @@ Apps Script Web App 是另一個授權後的校對入口，適合需要批量瀏
 - 資料來源仍是 Google Sheets，不是 repo 內 sample data。
 - GitHub Pages 前端不保存 secret，也不使用需要私人 credential 的 Google API。
 - GitHub Pages 部署版預設讀取 build 階段產生的靜態搜尋 artifact，不在使用者瀏覽器端直接抓 Google Sheets CSV。
+- Finder 是 Flickr 上方的照片索引輔助；搜尋、篩選與空結果不可作為 Flickr 照片不存在的判定，信任邊界見 `docs/adr/0007-finder-index-results-are-not-absence-proof.md`。
 - 公開 CSV 仍只是 `photos` 主表的傳輸格式，不是另一張篩選表或 curated subset；runtime CSV 模式只作為開發與緊急 fallback。
 - Apps Script 保留為授權維護介面與欄位驗證工具，不負責建立額外篩選表。
 - Apps Script Web App 可以提供可寫入的校對 UI，但 GitHub Pages 不呼叫它，也不共用其授權狀態。
@@ -180,7 +181,7 @@ pnpm finder:perf
 - 一般 Pages 變更：`docs/README.md` 與本文件。
 - filter、task mode、URL key、狀態排序或跨介面 field set：再讀 `docs/shared-value-governance.md`，並從 `data/interface-registry.json` 修改 source of truth。
 - GA4 event、custom dimension 或分析流程：再讀 `docs/frontend-analytics-design.md` 與 `docs/ga4-operations.md`。
-- 歷史研究與驗收背景：只在需要理解設計脈絡時讀 `docs/public-frontend-agent-research.md`、`docs/public-frontend-mobile-research.md` 與 `docs/public-frontend-redesign-brief.md`；目前實作規格以本文件為準。
+- 歷史研究與驗收背景：只在需要理解設計脈絡時讀 `docs/research/public-frontend-agent-research.md`、`docs/research/public-frontend-mobile-research.md` 與 `docs/research/public-frontend-redesign-brief.md`；目前實作規格以本文件為準。搜尋信任邊界與空結果風險見 `docs/adr/0007-finder-index-results-are-not-absence-proof.md`，研究證據見 `docs/research/public-frontend-user-literacy-research.md`。
 
 常見改檔對照：
 
@@ -209,6 +210,7 @@ pnpm finder:perf
 - `fixtures/` 與 `tmp/sheets-export/` 不是 production data；真實資料來源仍是公開 Google Sheets。
 - GitHub Pages 發布 `tmp/pages` artifact，不發布 repo root。
 - 多選 filter URL 使用重複 query params，例如 `scene=攤位&scene=會眾`。
+- 沒有命中目前索引不代表 Flickr 沒有相關照片；不要把空結果、篩選結果或任務模式寫成存在性判定。
 - `public_use_status` 是使用提醒，不是 Flickr 是否公開；`curation_status = ai_labeled` 不等於人工 `reviewed`。
 - 卡片與 preview 的目前規格看本文件；redesign brief 是歷史 baseline，不是目前缺口清單。
 - GA4 不註冊 `photo_id`、`content_id`、`search_term`、`result_rank` 等高基數或可能敏感參數為 custom dimensions。
