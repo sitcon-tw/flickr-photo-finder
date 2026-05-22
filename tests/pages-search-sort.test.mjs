@@ -338,6 +338,7 @@ describe("Pages search/sort pure logic", () => {
     assert.match(prompt, /網站橫幅/);
     assert.match(prompt, /有留白的講者/);
     assert.match(prompt, /方向: 橫式/);
+    assert.match(prompt, /ai_labeled（待人工確認）/);
     assert.match(prompt, /不要自行推測/);
   });
 
@@ -483,6 +484,18 @@ describe("Pages search/sort pure logic", () => {
       urlText,
       "https://www.flickr.com/photos/sitcon/100\nhttps://www.flickr.com/photos/sitcon/200",
     );
+  });
+
+  it("keeps ai_labeled display wording understandable for public finder users", () => {
+    const optionLabelMaps = buildOptionLabelMaps({
+      option_labels: {
+        curation_status: {
+          ai_labeled: "待人工確認",
+        },
+      },
+    });
+
+    assert.equal(optionLabelMaps.get("curation_status").get("ai_labeled"), "待人工確認");
   });
 
   it("normalizes CSV photo rows with schema list fields and search text", () => {
@@ -662,7 +675,23 @@ describe("Pages search/sort pure logic", () => {
     });
 
     assert.match(text, /探索更多排序/);
+    assert.match(text, /篩選依目前索引欄位比對/);
+    assert.match(text, /待人工確認與未整理照片可能缺少標籤/);
     assert.match(text, /已套用：場景 交流/);
+  });
+
+  it("explains that empty finder results are not absence proof", () => {
+    const text = resultContextText({
+      photos: [photo({ photo_id: "1" })],
+      filtered: [],
+      controls: { sort: { value: "recommended" } },
+      activeTask: () => socialTask,
+      activeFilterEntries: () => [["task", "任務", "社群貼文"]],
+    });
+
+    assert.match(text, /沒有命中索引/);
+    assert.match(text, /不代表 Flickr 沒有相關照片/);
+    assert.match(text, /回 Flickr 相簿確認/);
   });
 
   it("detects when the load-more panel is close enough to auto load", () => {

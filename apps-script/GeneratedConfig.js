@@ -2,7 +2,7 @@
 var SITCON_PHOTO_FINDER_CONFIG = {
   "generatedAt": "not recorded in committed source",
   "schemaVersion": "2026-1.0.0",
-  "taxonomyVersion": "sha256:e238f9a83700",
+  "taxonomyVersion": "sha256:d40977cda8ff",
   "sponsorshipItemsVersion": "sha256:e33bfe6034e1",
   "sponsorshipItemsSnapshotNote": "SITCON 2026 CFS has ended. Treat this file as a fixed snapshot; future CFS versions should replace or extend it explicitly instead of being automatically synced.",
   "photosSheetName": "photos",
@@ -436,7 +436,7 @@ var SITCON_PHOTO_FINDER_CONFIG = {
       },
       "curation_status": {
         "unreviewed": "未整理",
-        "ai_labeled": "AI 初標",
+        "ai_labeled": "待人工確認",
         "reviewed": "已整理"
       },
       "recommended_uses": {
@@ -1247,7 +1247,7 @@ var SITCON_PHOTO_FINDER_CONFIG = {
       {
         "taxonomy_key": "curation_status",
         "value": "ai_labeled",
-        "label_zh": "AI 初標",
+        "label_zh": "待人工確認",
         "order": "2"
       },
       {

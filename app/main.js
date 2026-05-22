@@ -794,7 +794,7 @@ function render({ resetPage = false, preservePage = false, preserveScroll = fals
   }
 
   if (filtered.length === 0) {
-    renderEmpty(elements.grid, "沒有符合條件的照片");
+    renderEmpty(elements.grid, "沒有命中目前索引的照片");
     updateLoadMore({ elements, visibleCount, filtered });
     maybeTrackZeroResults();
     syncUrlState();
