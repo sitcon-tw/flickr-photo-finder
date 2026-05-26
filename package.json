@@ -86,7 +86,7 @@
     "ga4:dimensions:sync": "pnpm analytics:dimensions:sync"
   },
   "dependencies": {
-    "@inquirer/prompts": "^8.4.3",
+    "@inquirer/prompts": "^8.5.0",
     "googleapis": "^171.4.0"
   }
 }
