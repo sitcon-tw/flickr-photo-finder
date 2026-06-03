@@ -87,6 +87,6 @@
   },
   "dependencies": {
     "@inquirer/prompts": "^8.5.0",
-    "googleapis": "^172.0.0"
+    "googleapis": "^173.0.0"
   }
 }
