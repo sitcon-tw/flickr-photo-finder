@@ -1,10 +1,16 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { buildAiAssistantPrompt } from "../app/ai-assistant.js";
-import { candidateCopyText, candidateMarkdown, selectedPhotos } from "../app/candidates.js";
+import {
+  candidateCopyText,
+  candidateLargeImageTargets,
+  candidateMarkdown,
+  candidateOriginalPageUrls,
+  selectedPhotos,
+} from "../app/candidates.js";
 import { activeFilterEntries, albumFilterOptions, filterDefinitions, updateFilterLayout } from "../app/controls.js";
 import { buildOptionLabelMaps, createSearchTokenBuilder, normalizePhotoRows } from "../app/data-loader.js";
-import { photoTitle, sheetRowLink } from "../app/photo-render.js";
+import { imageDownloadFilename, largeImageUrl, originalSizePageUrl, photoTitle, sheetRowLink } from "../app/photo-render.js";
 import { resultContextText, shouldAutoLoadMore } from "../app/result-render.js";
 import {
   buildSearchText,
@@ -420,6 +426,56 @@ describe("Pages search/sort pure logic", () => {
     assert.equal(selected.length, 1);
     assert.match(markdown, /SITCON 2025/);
     assert.match(markdown, /Finder: https:\/\/finder\.test\/#photo-200/);
+  });
+
+  it("builds candidate batch image and original-page targets", () => {
+    const items = [
+      photo({
+        photo_id: "100",
+        event_name: "SITCON 2026",
+        photo_url: "https://www.flickr.com/photos/sitcon/100/?context=album#comments",
+        image_preview_url: "https://live.staticflickr.com/65535/100_abc_q.jpg",
+      }),
+      photo({
+        photo_id: "200",
+        event_name: "SITCON 2025",
+        photo_url: "https://www.flickr.com/photos/sitcon/200",
+        image_preview_url: "https://live.staticflickr.com/65535/200_def_z.jpg",
+      }),
+      photo({
+        photo_id: "300",
+        event_name: "SITCON 2024",
+        photo_url: "",
+        image_preview_url: "",
+      }),
+    ];
+    const selected = selectedPhotos(new Set(["200", "300", "100"]), items);
+
+    assert.equal(largeImageUrl(items[0]), "https://live.staticflickr.com/65535/100_abc_b.jpg");
+    assert.equal(originalSizePageUrl(items[0]), "https://www.flickr.com/photos/sitcon/100/sizes/o/");
+    assert.deepEqual(
+      candidateLargeImageTargets(selected, { largeImageUrl, imageDownloadFilename }).map(({ photo, url, filename }) => ({
+        photo_id: photo.photo_id,
+        url,
+        filename,
+      })),
+      [
+        {
+          photo_id: "200",
+          url: "https://live.staticflickr.com/65535/200_def_b.jpg",
+          filename: "200-SITCON-2025.jpg",
+        },
+        {
+          photo_id: "100",
+          url: "https://live.staticflickr.com/65535/100_abc_b.jpg",
+          filename: "100-SITCON-2026.jpg",
+        },
+      ],
+    );
+    assert.deepEqual(candidateOriginalPageUrls(selected, { originalSizePageUrl }), [
+      "https://www.flickr.com/photos/sitcon/200/sizes/o/",
+      "https://www.flickr.com/photos/sitcon/100/sizes/o/",
+    ]);
   });
 
   it("builds purpose-specific candidate copy text", () => {
