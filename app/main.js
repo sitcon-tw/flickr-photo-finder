@@ -9,7 +9,13 @@ import {
   trackEvent,
 } from "./analytics.js";
 import { aiAssistantEventParams, buildAiAssistantPrompt } from "./ai-assistant.js";
-import { candidateCopyText, renderCandidates, selectedPhotos } from "./candidates.js";
+import {
+  candidateCopyText,
+  candidateLargeImageTargets,
+  candidateOriginalPageUrls,
+  renderCandidates,
+  selectedPhotos,
+} from "./candidates.js";
 import { dataSources, projectConfigUrl } from "./config.js";
 import {
   activeFilterEntries as buildActiveFilterEntries,
@@ -638,6 +644,89 @@ async function copyCandidateTemplate(templateId) {
   }
 }
 
+async function downloadCandidateLargeImages() {
+  const candidates = selectedPhotos(state.selectedPhotoIds, photos);
+  const targets = candidateLargeImageTargets(candidates, { largeImageUrl, imageDownloadFilename });
+  if (targets.length === 0) {
+    setTemporaryButtonText(controls.copyCandidates, "無大圖");
+    return;
+  }
+
+  const originalText = controls.copyCandidates.textContent;
+  let failedCount = 0;
+  controls.copyCandidates.disabled = true;
+  controls.candidateCopyMenuButton.disabled = true;
+  controls.copyCandidates.textContent = "下載中";
+  for (const target of targets) {
+    try {
+      await downloadImageUrl(target.url, target.filename);
+    } catch {
+      failedCount += 1;
+    }
+  }
+  controls.copyCandidates.textContent = failedCount > 0 ? "部分失敗" : "已下載";
+  trackEvent("download_candidate_large_images", {
+    candidate_count: candidates.length,
+    download_count: targets.length - failedCount,
+    failed_count: failedCount,
+    task_mode: state.taskMode,
+    sort_mode: controls.sort.value,
+  });
+  window.setTimeout(() => {
+    controls.copyCandidates.disabled = state.selectedPhotoIds.size === 0;
+    controls.candidateCopyMenuButton.disabled = state.selectedPhotoIds.size === 0;
+    controls.copyCandidates.textContent = originalText;
+  }, 1900);
+}
+
+async function openCandidateOriginalPages() {
+  const candidates = selectedPhotos(state.selectedPhotoIds, photos);
+  const urls = candidateOriginalPageUrls(candidates, { originalSizePageUrl });
+  if (urls.length === 0) {
+    setTemporaryButtonText(controls.copyCandidates, "無原圖頁");
+    return;
+  }
+
+  let openedCount = 0;
+  for (const url of urls) {
+    const opened = window.open(url, "_blank");
+    if (opened) {
+      opened.opener = null;
+      openedCount += 1;
+    }
+  }
+
+  const blockedCount = urls.length - openedCount;
+  if (blockedCount === 0) {
+    setTemporaryButtonText(controls.copyCandidates, "已打開");
+  } else {
+    try {
+      const copied = await copyTextToClipboard(urls.join("\n"));
+      setTemporaryButtonText(controls.copyCandidates, copied ? "已複製原圖頁" : "部分被阻擋");
+    } catch {
+      setTemporaryButtonText(controls.copyCandidates, "部分被阻擋");
+    }
+  }
+
+  trackEvent("open_candidate_original_pages", {
+    candidate_count: candidates.length,
+    opened_count: openedCount,
+    blocked_count: blockedCount,
+    task_mode: state.taskMode,
+    sort_mode: controls.sort.value,
+  });
+}
+
+function runCandidateBatchAction(actionId) {
+  if (actionId === "download_large") {
+    downloadCandidateLargeImages();
+    return;
+  }
+  if (actionId === "open_original_pages") {
+    openCandidateOriginalPages();
+  }
+}
+
 async function downloadPreviewLargeImage() {
   if (!activePreviewPhoto) {
     return;
@@ -1005,12 +1094,16 @@ controls.copyCandidates.addEventListener("click", copyCandidateLink);
 controls.candidateCopyMenuButton.addEventListener("click", toggleCandidateCopyMenu);
 controls.candidateCopyMenu.addEventListener("click", (event) => {
   const target = event.target instanceof Element ? event.target : null;
-  const button = target?.closest("[data-candidate-copy-template]");
+  const button = target?.closest("[data-candidate-copy-template], [data-candidate-batch-action]");
   if (!button) {
     return;
   }
   closeCandidateCopyMenu();
-  copyCandidateTemplate(button.dataset.candidateCopyTemplate);
+  if (button.dataset.candidateBatchAction) {
+    runCandidateBatchAction(button.dataset.candidateBatchAction);
+  } else {
+    copyCandidateTemplate(button.dataset.candidateCopyTemplate);
+  }
 });
 controls.clearCandidates.addEventListener("click", clearCandidates);
 controls.copyAiAssistantPrompt.addEventListener("click", copyAiAssistantPrompt);

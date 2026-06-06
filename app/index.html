@@ -211,14 +211,16 @@
                   id="candidateCopyMenuButton"
                   class="candidate-copy-menu-button"
                   type="button"
-                  aria-label="選擇其他複製格式"
+                  aria-label="選擇其他候選清單動作"
                   aria-haspopup="menu"
                   aria-expanded="false"
                 >
                   <span class="candidate-copy-menu-icon" aria-hidden="true">▾</span>
-                  <span class="candidate-copy-menu-label">其他格式</span>
+                  <span class="candidate-copy-menu-label">其他</span>
                 </button>
                 <div id="candidateCopyMenu" class="candidate-copy-menu-list" role="menu" hidden>
+                  <button type="button" role="menuitem" data-candidate-batch-action="download_large">下載全部大圖</button>
+                  <button type="button" role="menuitem" data-candidate-batch-action="open_original_pages">打開全部原圖下載頁</button>
                   <button type="button" role="menuitem" data-candidate-copy-template="im">IM 討論版</button>
                   <button type="button" role="menuitem" data-candidate-copy-template="sponsor">贊助佐證版</button>
                   <button type="button" role="menuitem" data-candidate-copy-template="collaboration">協作檢查版</button>

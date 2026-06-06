@@ -50,7 +50,7 @@ export function queryControls() {
     copyCandidates: document.querySelector("#copyCandidatesButton"),
     candidateCopyMenuButton: document.querySelector("#candidateCopyMenuButton"),
     candidateCopyMenu: document.querySelector("#candidateCopyMenu"),
-    candidateCopyMenuItems: [...document.querySelectorAll("[data-candidate-copy-template]")],
+    candidateCopyMenuItems: [...document.querySelectorAll("#candidateCopyMenu [role='menuitem']")],
     clearCandidates: document.querySelector("#clearCandidatesButton"),
     copyAiAssistantPrompt: document.querySelector("#copyAiAssistantPromptButton"),
     mobileFilter: document.querySelector("#mobileFilterButton"),

@@ -6,6 +6,19 @@ export function selectedPhotos(selectedPhotoIds, photos) {
     .filter(Boolean);
 }
 
+export function candidateLargeImageTargets(candidates, { largeImageUrl, imageDownloadFilename }) {
+  return candidates
+    .map((photo) => {
+      const url = largeImageUrl(photo);
+      return url ? { photo, url, filename: imageDownloadFilename(photo, url) } : null;
+    })
+    .filter(Boolean);
+}
+
+export function candidateOriginalPageUrls(candidates, { originalSizePageUrl }) {
+  return candidates.map((photo) => originalSizePageUrl(photo)).filter(Boolean);
+}
+
 function photoReviewStatus(photo, labelFor) {
   return {
     publicStatus: photo.public_use_status ? labelFor("public_use_status", photo.public_use_status) : "未填",
