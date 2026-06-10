@@ -10,6 +10,7 @@ const defaultImageSize = "large-1024";
 const defaultStatus = "unreviewed";
 const defaultFocus = "none";
 const defaultDownloadConcurrency = 8;
+const imageProgressIntervalMs = 5000;
 const focusOptions = [defaultFocus, "design-metadata"];
 const imageSizeSuffixes = new Map([
   ["medium-640", "z"],
@@ -526,11 +527,27 @@ async function prepareRun(options) {
 
   let downloadedCount = 0;
   let cacheReusedCount = 0;
+  let completedImageInputCount = 0;
+  let lastImageProgressAt = Date.now();
+  let lastReportedImageInputCount = 0;
   const errors = [];
 
+  function printImageProgress({ force = false } = {}) {
+    const now = Date.now();
+    if (!force && now - lastImageProgressAt < imageProgressIntervalMs) {
+      return;
+    }
+    if (completedImageInputCount === lastReportedImageInputCount) {
+      return;
+    }
+
+    console.error(`Progress: image inputs ${completedImageInputCount}/${selectedPhotos.length} complete (downloaded ${downloadedCount}, cache reused ${cacheReusedCount}, failed ${errors.length}).`);
+    lastImageProgressAt = now;
+    lastReportedImageInputCount = completedImageInputCount;
+  }
+
   console.error(`Progress: preparing image inputs with concurrency ${options.downloadConcurrency}.`);
-  const preparedPhotos = await mapWithConcurrency(selectedPhotos, options.downloadConcurrency, async (photo, index) => {
-    console.error(`Progress: preparing photo ${index + 1}/${selectedPhotos.length} (${photo.photo_id}).`);
+  const preparedPhotos = await mapWithConcurrency(selectedPhotos, options.downloadConcurrency, async (photo) => {
     const item = {
       ...photo,
       image_download_url: "",
@@ -543,9 +560,7 @@ async function prepareRun(options) {
         let image = await reuseCachedImage(photo, imagesDir, options.imageSize, imageCache);
         if (image) {
           cacheReusedCount += 1;
-          console.error(`Progress: reused cached image ${index + 1}/${selectedPhotos.length} (${photo.photo_id}).`);
         } else {
-          console.error(`Progress: downloading image ${index + 1}/${selectedPhotos.length} (${photo.photo_id}).`);
           image = await downloadImage(photo, imagesDir, options.imageSize);
           downloadedCount += 1;
         }
@@ -564,7 +579,6 @@ async function prepareRun(options) {
       }
     } else {
       try {
-        console.error(`Progress: resolving image URL ${index + 1}/${selectedPhotos.length} (${photo.photo_id}).`);
         item.image_download_url = await resolveImageDownloadUrl(photo, options.imageSize);
       } catch (error) {
         errors.push({
@@ -574,8 +588,11 @@ async function prepareRun(options) {
       }
     }
 
+    completedImageInputCount += 1;
+    printImageProgress();
     return item;
   });
+  printImageProgress({ force: true });
 
   if (errors.length > 0) {
     throw new Error(`Failed to download ${errors.length} image(s): ${errors.map((error) => `${error.photo_id}: ${error.message}`).join("; ")}`);
