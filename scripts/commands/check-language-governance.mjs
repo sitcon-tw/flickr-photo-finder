@@ -75,7 +75,36 @@ const taiwanTraditionalRules = [
   ["導出", "Use 匯出."],
 ].map(([term, guidance]) => exactRule(`taiwan-wording-${term}`, term, guidance));
 
+const deprecatedLabelingTerminologyRules = [
+  {
+    id: "deprecated-ai-labeling-初標",
+    pattern: /初標/u,
+    guidance: "Use 搜尋級 AI 標記, AI 標記候選, 標記候選, or 待人工確認 depending on context.",
+  },
+  {
+    id: "deprecated-ai-labeling-AI-標註",
+    pattern: /AI 標註/u,
+    guidance: "Use AI 標記 for AI-generated metadata candidates.",
+  },
+  {
+    id: "deprecated-ai-labeling-initial-label",
+    pattern: /\binitial[- ]label(?:ing|s|ed)?\b/i,
+    guidance: "Use search-grade AI labeling, AI metadata candidates, or pending human review depending on context.",
+  },
+  {
+    id: "deprecated-ai-labeling-draft-label",
+    pattern: /\bdraft[- ]label(?:ing|s|ed)?\b/i,
+    guidance: "Avoid low-commitment draft labeling language; describe the result as AI metadata candidates or pending human review.",
+  },
+  {
+    id: "deprecated-ai-labeling-pre-label",
+    pattern: /\bpre[- ]label(?:ing|s|ed)?\b/i,
+    guidance: "Avoid pre-labeling language; describe the workflow as search-grade AI labeling or AI metadata candidate generation.",
+  },
+];
+
 const languageRules = [
+  ...deprecatedLabelingTerminologyRules,
   ...relativeWordingRules,
   ...taiwanTraditionalRules,
   {
