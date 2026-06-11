@@ -1,5 +1,7 @@
 import { spawnSync } from "node:child_process";
+import { closeSync, mkdtempSync, openSync, readFileSync, rmSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import path from "node:path";
 
 const smokeRoots = [
@@ -73,16 +75,22 @@ function supportsHelpOption(content) {
 }
 
 function runHelp(file, { verbose }) {
+  const entrypoint = path.resolve(file);
+  const outputDir = mkdtempSync(path.join(tmpdir(), "command-smoke-"));
+  const outputPath = path.join(outputDir, "help-output.txt");
+  const outputFd = openSync(outputPath, "w+");
   if (verbose) {
     console.log(`Help smoke: node ${file} --help`);
   }
 
-  const result = spawnSync(process.execPath, [file, "--help"], {
+  const result = spawnSync(process.execPath, [entrypoint, "--help"], {
     encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"],
+    stdio: ["ignore", outputFd, outputFd],
   });
+  closeSync(outputFd);
 
-  const output = `${result.stdout ?? ""}${result.stderr ?? ""}`.trim();
+  const output = readFileSync(outputPath, "utf8").trim();
+  rmSync(outputDir, { force: true, recursive: true });
   if (result.error) {
     return {
       ok: false,
