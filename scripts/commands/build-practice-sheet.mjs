@@ -181,7 +181,7 @@ function practiceNoteCandidates(row) {
   }
 
   if (curationStatus === "ai_labeled" || curationStatus === "unreviewed") {
-    candidates.push("AI 初標只是候選。請用人審重新判斷，沒有明確用途時 recommended_uses 可以留空。");
+    candidates.push("AI 標記只是候選。請用人審重新判斷，沒有明確用途時 recommended_uses 可以留空。");
   }
 
   if (peopleCount !== "" || subjectType || hasAnyListValue(row, "scene_tags")) {

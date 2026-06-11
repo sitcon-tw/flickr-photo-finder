@@ -79,7 +79,7 @@
 
     <rect class="tool" x="470" y="48" width="160" height="88" rx="16"/>
     <text class="label" x="506" y="84">AI 輔助</text>
-    <text class="small" x="506" y="110">初標、檢查</text>
+    <text class="small" x="506" y="110">AI 標記、檢查</text>
     <text class="small" x="506" y="130">報表、更新計畫</text>
 
     <rect class="tool" x="660" y="48" width="170" height="88" rx="16"/>
@@ -94,6 +94,6 @@
 
     <rect class="feedback" x="288" y="496" width="430" height="76" rx="18"/>
     <text class="label" x="324" y="536">找不到 / 不好找</text>
-    <text class="body" x="324" y="562">回頭改善欄位、分類、搜尋體驗與 AI 初標規則</text>
+    <text class="body" x="324" y="562">回頭改善欄位、分類、搜尋體驗與 AI 標記規則</text>
   </g>
 </svg>

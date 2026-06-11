@@ -76,7 +76,7 @@
 - 推薦。
 - 待整理確認。
 - 不建議。
-- AI 初標。
+- AI 標記。
 - 未整理。
 
 `ai_labeled`、`unreviewed`、`needs_review` 不預設隱藏，但必須用整理狀態或使用提醒標示。SITCON Flickr 照片本身已公開；`public_use_status` 不應被當成 GitHub Pages 的公開 / 非公開門檻。

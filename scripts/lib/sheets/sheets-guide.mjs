@@ -70,7 +70,7 @@ export function guideRows({
     guideRow("section", ["重要邊界", "", "", ""]),
     guideRow("tableHeader", ["事項", "說明", "連結", "提醒"]),
     guideRow("tableRow", ["照片來源", "照片仍在 Flickr；發布或交付素材前，請回 Flickr 原頁確認脈絡。", flickrAlbumsUrl, "這裡只是索引，不保存原圖。"]),
-    guideRow("tableRow", ["AI 初標", "AI 標註只是候選。", "", "ai_labeled 不等於 reviewed。"]),
+    guideRow("tableRow", ["AI 標記", "AI 標記只是候選。", "", "ai_labeled 不等於 reviewed。"]),
     guideRow("tableRow", ["公開欄位", "curation_notes 等欄位會進入公開索引。", "", "不要放敏感內部資訊。"]),
     guideRow("tableRow", ["專案文件", "規則、工具與重建流程放在 GitHub。", repositoryUrl, "技術維護請從 README 與 docs/README.md 開始。"]),
   ];

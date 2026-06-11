@@ -42,7 +42,7 @@ Agent 不應自行假設：
 - 擁有 Google Sheets、Google API、OAuth、第三方工具或 Apps Script credential。
 - 某位維護者本機可用的授權方式，在其他使用者或未來 agent 手上也一定可用。
 - 可以繞過 SITCON 既有文件與權限交接制度。
-- AI 標註結果可以直接取代人工確認。
+- AI 標記結果可以直接取代人工確認。
 
 ## 權限與交接
 

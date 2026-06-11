@@ -135,7 +135,7 @@ Apps Script 應能顯示目前 Sheets 使用的：
 1.0 Apps Script 不處理：
 
 - 大量 Flickr 相簿掃描。
-- 大量 AI 標註。
+- 大量 AI 標記。
 - 需要 secret 的外部 API 呼叫。
 - Sheets API SDK credential 或權限交接。
 - 正式審核工作流。

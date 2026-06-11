@@ -98,7 +98,7 @@ Apps Script source 應保存在 repo，並透過 `clasp` 部署到 Google Apps S
 不適合由 Apps Script 承擔的功能：
 
 - 大量 Flickr 相簿掃描。
-- 大量 AI 標註。
+- 大量 AI 標記。
 - 權限敏感操作。
 - 會產生成本或大量外部 API 呼叫的流程。
 

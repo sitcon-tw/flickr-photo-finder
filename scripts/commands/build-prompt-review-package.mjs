@@ -585,7 +585,7 @@ async function readExpertReview(path) {
 
 function renderDecisionPackage({ expertReviews, inputManifest, reportLinks, reviewDir }) {
   const lines = [
-    "# AI 初標 Prompt Review 決策包",
+    "# AI 標記 Prompt Review 決策包",
     "",
     "## Package",
     "",

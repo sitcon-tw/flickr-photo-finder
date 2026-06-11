@@ -80,7 +80,7 @@
         },
         "curation_status": {
           "value": "ai_labeled",
-          "reason": "此列已由 AI 產生初標候選值，仍待人工 review。",
+          "reason": "此列已由 AI 產生標記候選值，仍待人工 review。",
           "confidence": 1
         }
       }
@@ -130,7 +130,7 @@
         },
         "curation_status": {
           "value": "ai_labeled",
-          "reason": "此列已由 AI 產生初標候選值，仍待人工 review。",
+          "reason": "此列已由 AI 產生標記候選值，仍待人工 review。",
           "confidence": 1
         }
       }

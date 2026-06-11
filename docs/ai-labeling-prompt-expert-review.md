@@ -1,10 +1,10 @@
-# AI 初標 Prompt 角色審查決策紀錄
+# AI 標記 Prompt 角色審查決策紀錄
 
 ## 文件狀態
 
-這份文件記錄 AI 初標 prompt 的多角色代理審查、owner 決策與後續實作方向。它不是實際真人訪談結果，也不是模型品質保證；用途是把 prompt 調整從一次性討論轉成可追溯、可重跑、可交接的決策流程。
+這份文件記錄 AI 標記 prompt 的多角色代理審查、owner 決策與後續實作方向。它不是實際真人訪談結果，也不是模型品質保證；用途是把 prompt 調整從一次性討論轉成可追溯、可重跑、可交接的決策流程。
 
-第一次接手專案時，請先讀 `docs/README.md` 的「先建立共同語言」與「整體資料生命週期」。本文只處理 AI run（`tmp/ai-runs/<run-id>/` 的 AI 初標工作包）已經產生 review/report/search evidence 之後的 prompt review 決策，不處理 Flickr 匯入或 Sheets 寫入。
+第一次接手專案時，請先讀 `docs/README.md` 的「先建立共同語言」與「整體資料生命週期」。本文只處理 AI run（`tmp/ai-runs/<run-id>/` 的 AI 標記工作包）已經產生 review/report/search evidence 之後的 prompt review 決策，不處理 Flickr 匯入或 Sheets 寫入。
 
 若需要執行實際模型評估，請搭配 `pnpm eval`、`pnpm eval:sample`、`pnpm ai:review`、`pnpm ai:report` 與 `pnpm eval:search`。若只是要讓模型標註照片，仍以 run 目錄中的 `ai-labeling-prompt.md` 為主要任務入口。
 
@@ -62,7 +62,7 @@ flowchart TD
 ## 確認事實
 
 - SITCON Flickr Photo Finder 是 Flickr 之上的照片索引層，目標是讓籌備團隊依社群宣傳、網站橫幅、贊助提案、贊助成果報告、新聞稿、志工招募、活動回顧、設計素材與對外簡報等工作需求找照片。
-- AI 初標只產生人類可審核候選值，不代表人工 `reviewed`，也不應直接產生 `public_use_status = approved`。
+- AI 標記只產生人類可審核候選值，不代表人工 `reviewed`，也不應直接產生 `public_use_status = approved`。
 - `data/photo-schema.json` 已把 AI 欄位分成 baseline、recall、optional 與 human-only。這個分層可支持 prompt 重構，不需要先把每個品質問題都改成 schema 變更。
 - `visual_description` 對自然語言找圖有實際價值，但前提是它保存具體可見物件、動作、文字、位置與構圖關係，而不是寫成 caption 或宣傳文案。
 - `recommended_uses`、`safe_crop`、`public_use_status`、sponsorship 欄位與 `priority_level` 都是高價值但高風險欄位。它們適合用 gate 控制輸出，不適合為了提高覆蓋率而每張都填。

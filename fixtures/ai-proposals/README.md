@@ -1,6 +1,6 @@
 # AI Proposal Fixtures
 
-這個目錄保存 AI 初標 proposal 的回歸測試範例。每個子目錄都是一個最小 AI run 目錄，包含：
+這個目錄保存 AI 標記 proposal 的回歸測試範例。每個子目錄都是一個最小 AI run 目錄，包含：
 
 - `manifest.json`
 - `photos.json`

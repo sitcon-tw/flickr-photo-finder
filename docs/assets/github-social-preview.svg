@@ -2,7 +2,7 @@
   <!-- The final PNG composites photo crops from the formal public photo index onto this layout. -->
   <!-- Selected formal photo IDs: 54847452218 social post, 54847515585 activity recap, 55246493860 sponsorship report, 55200405673 press release. -->
   <title id="title">SITCON Flickr Photo Finder GitHub social preview</title>
-  <desc id="desc">SITCON Flickr Photo Finder 將 Flickr 公開活動照片整理成可搜尋、可協作、可由 AI 協助初標的照片索引。</desc>
+  <desc id="desc">SITCON Flickr Photo Finder 將 Flickr 公開活動照片整理成可搜尋、可協作、可由 AI 協助產生標記候選的照片索引。</desc>
   <defs>
     <style>
       .bg { fill: #f6f7f9; }
@@ -42,7 +42,7 @@
     <text x="0" y="118" class="title-text ink">SITCON Flickr</text>
     <text x="0" y="190" class="title-text ink">Photo Finder</text>
     <text x="2" y="246" class="subtitle muted">把公開活動照片整理成</text>
-    <text x="2" y="286" class="subtitle muted">可搜尋、可協作、可由 AI 協助初標的照片索引</text>
+    <text x="2" y="286" class="subtitle muted">可搜尋、可協作、可由 AI 協助產生標記候選的照片索引</text>
 
     <g transform="translate(0 326)">
       <rect x="0" y="0" width="116" height="44" rx="22" class="pill"/>
@@ -96,7 +96,7 @@
       <g transform="translate(0 388)">
         <rect x="0" y="0" width="356" height="1.6" fill="#e5ebf0"/>
         <circle cx="18" cy="28" r="8" class="green"/>
-        <text x="42" y="35" class="small muted">AI 初標為候選，審核後使用</text>
+        <text x="42" y="35" class="small muted">AI 標記為候選，審核後使用</text>
       </g>
     </g>
   </g>

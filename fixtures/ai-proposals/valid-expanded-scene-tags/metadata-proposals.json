@@ -40,7 +40,7 @@
         },
         "curation_status": {
           "value": "ai_labeled",
-          "reason": "已根據照片可見內容提出 AI 初標候選。"
+          "reason": "已根據照片可見內容提出 AI 標記候選。"
         }
       }
     }

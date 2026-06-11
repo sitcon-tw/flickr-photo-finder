@@ -823,7 +823,7 @@ function buildReportData(runs, options) {
     option_labels: defaultMetadataDisplayContext.taxonomy.option_labels ?? {},
     photos,
     people_count_pair_summary: peopleCountPairSummary,
-    title: options.title || (mode === "single" ? "AI 初標單次檢視報表" : "AI 初標比較報表"),
+    title: options.title || (mode === "single" ? "AI 標記單次檢視報表" : "AI 標記比較報表"),
     watch_fields: [...watchFields],
     warnings: buildWarnings(runs),
   };

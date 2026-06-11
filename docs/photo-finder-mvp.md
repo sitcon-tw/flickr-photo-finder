@@ -72,7 +72,7 @@ MVP 應該先建立一個 Flickr 之上的照片索引層，而不是取代 Flic
 | `priority_level` | 推薦使用優先度，方便排序與快速挑選候選照片。 |
 | `collections` | 素材包關聯，例如志工招募精選、贊助提案、SITCON 介紹。 |
 | `curation_notes` | 可公開閱讀的整理脈絡、注意事項或使用建議。 |
-| `curation_status` | 未整理、AI 初標、已審核。只描述資料是否經過人工確認；精選或不推薦使用由其他欄位表達。 |
+| `curation_status` | 未整理、待人工確認、已審核。只描述資料是否經過人工確認；精選或不推薦使用由其他欄位表達。 |
 
 這些欄位的目的不是完整描述照片，而是支援「能不能快速找到並放心使用」。
 
@@ -145,7 +145,7 @@ sponsorship_tags = sponsor value / proof use
 
 `face_prominence` 若未來被重新評估，也只應用來判斷人物露出與裁切，不應延伸為人臉辨識、人物聚類、face embedding 或自動人名標註。這類身份索引能力會改變照片資料的隱私與肖像權風險，不屬於目前 MVP 的照片索引層定位；詳細取捨見 `docs/field-design-reflection.md`。
 
-`visual_description` 原本也屬於這類長尾內容輔助構想；目前已進入正式 photo schema，原因是實際 AI 初標與搜尋實驗顯示它能承接 taxonomy 無法完整描述的可見細節。它仍不應取代結構化欄位，也不列入 `reviewed_required_fields`，避免把人工整理門檻拉太高。
+`visual_description` 原本也屬於這類長尾內容輔助構想；目前已進入正式 photo schema，原因是實際 AI 標記與搜尋實驗顯示它能承接 taxonomy 無法完整描述的可見細節。它仍不應取代結構化欄位，也不列入 `reviewed_required_fields`，避免把人工整理門檻拉太高。
 
 ### 情緒與社群感
 
