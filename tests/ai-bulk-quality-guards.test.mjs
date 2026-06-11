@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { describe, it } from "node:test";
 import {
   buildAdoptionReadiness,
+  buildArtifactCheckpointRows,
   buildShardFieldCoverageRows,
   buildReviewNotes,
   peopleCountSpikeRows,
@@ -12,6 +13,8 @@ import {
   reasonReuseRows,
   sceneReviewPackageRows,
 } from "../scripts/commands/review-ai-run.mjs";
+import { mergePhotoArtifacts } from "../scripts/commands/merge-ai-photo-artifacts.mjs";
+import { buildPlan } from "../scripts/commands/plan-ai-updates.mjs";
 import { updateShardLog } from "../scripts/commands/log-ai-shard.mjs";
 import { summarizeExecutionLog } from "../scripts/commands/status-ai-bulk-run.mjs";
 import {
@@ -287,10 +290,164 @@ describe("AI bulk quality guards", () => {
   it("includes the parent Codex session placeholder in generated review commands", () => {
     const prompt = renderAiLabelingPrompt("tmp/ai-runs/example");
 
+    assert.match(prompt, /pnpm ai:artifacts:merge -- --run-dir tmp\/ai-runs\/example/);
     assert.match(prompt, /pnpm ai:review -- --run-dir tmp\/ai-runs\/example --codex-session <parent-session-id>/);
     assert.match(prompt, /worker 輸出 shard 前必須自查本 shard 的 `scene_tags`/);
     assert.match(prompt, /避免在 `visual_description` 用否定句承載高價值搜尋詞/);
     assert.match(prompt, /`safe_crop` 和 `has_negative_space` 不是同一件事/);
+  });
+
+  it("merges per-photo artifacts and records checkpoint provenance", async () => {
+    const root = await mkdtemp(join(tmpdir(), "ai-photo-artifacts-"));
+    const runDir = join(root, "run");
+    const artifactDir = join(runDir, "photo-artifacts");
+    await mkdir(artifactDir, { recursive: true });
+    const photos = [
+      { photo_id: "artifact-1", recommended_uses: "活動回顧" },
+      { photo_id: "artifact-2", recommended_uses: "" },
+    ];
+    await writeFile(join(runDir, "manifest.json"), `${JSON.stringify({ image_size: "large-1024", run_id: "artifact-test" })}\n`);
+    await writeFile(join(runDir, "photos.json"), `${JSON.stringify(photos)}\n`);
+    for (const photo of photos) {
+      await writeFile(join(artifactDir, `${photo.photo_id}.json`), `${JSON.stringify({
+        artifact_version: 1,
+        photo_id: photo.photo_id,
+        inspection: {
+          contact_sheet_used: false,
+          image_path: `images/${photo.photo_id}.jpg`,
+          inspection_mode: "single-image",
+          visual_evidence: {
+            design_basis: "人物位於中央，背景沒有乾淨留白。",
+            people_count_basis: "畫面中央可辨識一人。",
+            scene_basis: "單人站在舞台旁，符合講者線索。",
+            search_details: ["舞台", "麥克風"],
+            subject: "主要主體是中央人物。",
+          },
+        },
+        proposal_item: {
+          photo_id: photo.photo_id,
+          fields: {
+            people_count: {
+              reason: "畫面中央可辨識一人。",
+              value: 1,
+            },
+            subject_type: {
+              reason: "主要主體是中央人物。",
+              value: "people",
+            },
+            orientation: {
+              reason: "照片為橫式構圖。",
+              value: "landscape",
+            },
+            has_negative_space: {
+              reason: "人物和背景元素填滿畫面，沒有乾淨可放字區。",
+              value: false,
+            },
+            visual_description: {
+              reason: "描述本張照片的舞台與人物線索。",
+              value: `中央人物站在舞台旁拿著麥克風，背景可見活動牆面 ${photo.photo_id}`,
+            },
+            curation_status: {
+              reason: "本張照片已完成單張 artifact 標記。",
+              value: "ai_labeled",
+            },
+          },
+        },
+      }, null, 2)}\n`);
+    }
+
+    const merge = await mergePhotoArtifacts({ artifactDir, runDir });
+    const proposalText = await readFile(join(runDir, "metadata-proposals.json"), "utf8");
+    const checkpointRows = await buildArtifactCheckpointRows({
+      photos,
+      proposalText,
+      proposalsPath: join(runDir, "metadata-proposals.json"),
+      runDir,
+      shardVisualAuditRows: [],
+    });
+
+    assert.equal(merge.artifactCount, 2);
+    assert.equal(checkpointRows[0][2], 2);
+    assert.equal(checkpointRows[0][4], "");
+  });
+
+  it("blocks direct root proposals without per-photo checkpoint manifest", async () => {
+    const root = await mkdtemp(join(tmpdir(), "ai-missing-artifact-manifest-"));
+    const runDir = join(root, "run");
+    await mkdir(runDir, { recursive: true });
+    const photos = [{ photo_id: "missing-checkpoint" }];
+    const proposalText = `${JSON.stringify({
+      created_at: "2026-06-12T00:00:00.000Z",
+      items: [{ fields: { people_count: { reason: "畫面中可辨識一人。", value: 1 } }, photo_id: "missing-checkpoint" }],
+      producer: { name: "test", type: "ai" },
+      proposal_version: 1,
+      run_id: "missing-checkpoint-test",
+    })}\n`;
+    await writeFile(join(runDir, "manifest.json"), `${JSON.stringify({ run_id: "missing-checkpoint-test" })}\n`);
+    await writeFile(join(runDir, "photos.json"), `${JSON.stringify(photos)}\n`);
+    await writeFile(join(runDir, "metadata-proposals.json"), proposalText);
+
+    const checkpointRows = await buildArtifactCheckpointRows({
+      photos,
+      proposalText,
+      proposalsPath: join(runDir, "metadata-proposals.json"),
+      runDir,
+      shardVisualAuditRows: [],
+    });
+    const readiness = buildAdoptionReadiness({ artifactCheckpointRows: checkpointRows });
+
+    assert.match(checkpointRows[0][4], /^blocker:/);
+    assert.equal(readiness.status, "blocked");
+  });
+
+  it("clears omitted optional fields in fresh relabel plans", async () => {
+    const root = await mkdtemp(join(tmpdir(), "ai-fresh-relabel-plan-"));
+    const runDir = join(root, "run");
+    await mkdir(runDir, { recursive: true });
+    const photos = [
+      {
+        photo_id: "fresh-1",
+        photo_url: "https://www.flickr.com/photos/sitcon/fresh-1",
+        recommended_uses: "活動回顧;社群貼文",
+      },
+    ];
+    const proposals = {
+      created_at: "2026-06-12T00:00:00.000Z",
+      items: [
+        {
+          photo_id: "fresh-1",
+          fields: {
+            people_count: {
+              reason: "畫面中可辨識一人。",
+              value: 1,
+            },
+          },
+        },
+      ],
+      producer: { name: "test", type: "ai" },
+      proposal_version: 1,
+      run_id: "fresh-relabel-test",
+    };
+    await writeFile(join(runDir, "manifest.json"), `${JSON.stringify({ image_size: "large-1024", run_id: "fresh-relabel-test" })}\n`);
+    await writeFile(join(runDir, "photos.json"), `${JSON.stringify(photos)}\n`);
+    await writeFile(join(runDir, "metadata-proposals.json"), `${JSON.stringify(proposals)}\n`);
+
+    const plan = await buildPlan({
+      csvOutputPath: join(runDir, "metadata-update-plan.csv"),
+      freshRelabel: true,
+      includeUnchanged: false,
+      jsonOutputPath: join(runDir, "metadata-update-plan.json"),
+      proposalsPath: join(runDir, "metadata-proposals.json"),
+      runDir,
+    });
+
+    assert.ok(plan.fresh_relabel);
+    assert.ok(plan.updates.some((update) =>
+      update.photo_id === "fresh-1"
+      && update.field === "recommended_uses"
+      && update.current_value === "活動回顧;社群貼文"
+      && update.proposed_value === "",
+    ));
   });
 
   it("validates large visual_description batches without all-pairs duplicate scans", async () => {

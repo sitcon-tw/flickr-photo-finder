@@ -19,7 +19,7 @@ const tasks = [
     handler: buildCrossActivitySample,
     id: "sample",
     inputs: ["data/ai-cross-activity-sample-plan.json", "SITCON Flickr 相簿", "可選的既有 photos CSV metadata"],
-    next: ["把 run 目錄中的 ai-labeling-prompt.md 與工作包交給模型；direct run 輸出 metadata-proposals.json 與 visual-inspection-audit.json。大型 run 先用 ai:shard:prepare / ai:shard:merge 把中間檔放在 /tmp。若要多模型比較，接著建立 attempt，並確認 prompt_template_sha256 一致。"],
+    next: ["把 run 目錄中的 ai-labeling-prompt.md 與工作包交給模型；direct run 先逐張輸出 photo-artifacts/<photo_id>.json，再用 ai:artifacts:merge 合併。大型 run 先用 ai:shard:prepare / ai:shard:merge 把中間檔放在 /tmp。若要多模型比較，接著建立 attempt，並確認 prompt_template_sha256 一致。"],
     outputs: ["tmp/ai-samples/<run-id>/", "tmp/ai-runs/<run-id>/"],
     phase: "建立評估輸入",
     title: "建立跨活動測試樣本",
@@ -29,7 +29,7 @@ const tasks = [
     handler: createAttempt,
     id: "attempt",
     inputs: ["tmp/ai-runs/<run-id>/"],
-    next: ["把 attempt 目錄中的 ai-labeling-prompt.md 與工作包交給對應模型；direct attempt 輸出 metadata-proposals.json 與 visual-inspection-audit.json，大型 attempt 可先用 /tmp sharded 流程，之後由操作者執行 review。比較前確認各 attempt 的 prompt_template_sha256 一致。"],
+    next: ["把 attempt 目錄中的 ai-labeling-prompt.md 與工作包交給對應模型；direct attempt 先逐張輸出 photo-artifacts/<photo_id>.json，再用 ai:artifacts:merge 合併，大型 attempt 可先用 /tmp sharded 流程，之後由操作者執行 review。比較前確認各 attempt 的 prompt_template_sha256 一致。"],
     outputs: ["tmp/ai-runs/<attempt-id>/"],
     phase: "建立評估輸入",
     title: "建立模型 attempt",
@@ -272,7 +272,7 @@ async function showEvalOverview() {
   console.log("");
   console.log("主要工作目錄：");
   console.log("- tmp/ai-samples/: eval:sample 產生的抽樣 CSV 與摘要，不 commit。");
-  console.log("- tmp/ai-runs/: AI run 與 attempt 工作包，包含 photos.json、images/、metadata-proposals.json 與 visual-inspection-audit.json。");
+  console.log("- tmp/ai-runs/: AI run 與 attempt 工作包，包含 photos.json、images/、photo-artifacts/，合併後包含 metadata-proposals.json、visual-inspection-audit.json 與 artifact-manifest.json。");
   console.log("- tmp/ai-reports/: ai:report 產生的唯讀 HTML 報表，不 commit。");
   console.log("");
   console.log("常見起點：");

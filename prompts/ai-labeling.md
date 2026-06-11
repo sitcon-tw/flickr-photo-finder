@@ -45,7 +45,7 @@
 
 「逐一打開」指的是以單張照片為判讀單位。若你只看過多張照片拼在一起的 contact sheet、縮圖牆或截圖總覽，該照片尚未被有效檢視，不能輸出候選欄位。即使是 25 張以下的小型相簿，也不得先建立 contact sheet 來理解整體場景；請直接逐張打開單張圖片。
 
-不論是小型 direct run 或大型 shard run，你都必須寫出逐張視覺稽核，證明每張照片都以單張圖片判讀。小型 direct run 的預設檔名是 `visual-inspection-audit.json`；shard run 則依 worker prompt 指定的 `visual_audit_path` 寫入。
+不論是小型 direct run 或大型 shard run，你都必須寫出逐張落盤 artifact，證明每張照片都以單張圖片判讀。未寫入 artifact 的視覺觀察視為不存在；不要把多張照片的觀察先留在對話 context，等全部看完或 context compact 後再一次整理。每張照片應是獨立判讀單位，下一張照片不需要前一張照片的 context。
 
 若你無法實際載入或視覺解析某張圖片，請停止並回報無法處理的 `photo_id`；不要用通用值、預設值或「推測」字眼填入 proposal。寧可缺項，不可虛構。
 
@@ -130,25 +130,22 @@
 
 `safe_crop` 的 reason 必須說明該比例會保留什麼，例如「16:9 可保留右側講者與左側牆面留白」、「1:1 裁切仍保留兩位人物臉部與桌上筆電」。不要只寫「橫式照片」、「構圖適合」或「有留白」。若沒有安全裁切比例，請省略整個欄位。
 
-小型 direct run 必須寫成 AI run 目錄中的兩個檔案：
+小型 direct run 必須先寫成 AI run 目錄中的逐張檔案：
 
 ```text
-metadata-proposals.json
-visual-inspection-audit.json
+photo-artifacts/<photo_id>.json
 ```
 
-`visual-inspection-audit.json` 格式：
+每個 `photo-artifacts/<photo_id>.json` 格式：
 
 ```json
 {
-  "audit_version": 1,
-  "inspection_policy": "single-image-only",
-  "contact_sheet_used": false,
-  "items": [
-    {
-      "photo_id": "55200405673",
+  "artifact_version": 1,
+  "photo_id": "55200405673",
+  "inspection": {
       "image_path": "images/55200405673.jpg",
       "inspection_mode": "single-image",
+      "contact_sheet_used": false,
       "visual_evidence": {
         "subject": "本張主要主體與位置",
         "people_count_basis": "人數估計依據，無人也要寫無人依據",
@@ -156,10 +153,21 @@ visual-inspection-audit.json
         "search_details": ["可搜尋物件、動作、文字或空間關係"],
         "design_basis": "留白與裁切判斷依據，沒有也要寫為何沒有"
       }
+  },
+  "proposal_item": {
+    "photo_id": "55200405673",
+    "fields": {
+      "people_count": {
+        "value": 15,
+        "reason": "本張照片的人數依據。",
+        "confidence": 0.8
+      }
     }
-  ]
+  }
 }
 ```
+
+看完一張照片後應立即寫出該張 artifact，再進入下一張。完成全部逐張 artifact 後，具備 repo 指令能力的 agent 必須執行 `pnpm ai:artifacts:merge -- --run-dir <run-dir>`，由工具合併成 `metadata-proposals.json`、`visual-inspection-audit.json` 與 `artifact-manifest.json`。不要直接手寫 root `metadata-proposals.json` 作為正式結果。
 
 若你建立或使用過 contact sheet、montage、縮圖牆或多圖截圖，`contact_sheet_used` 不能填 `false`，而該批標記結果也不應交付採用；請回到單張原圖逐張重做。
 
@@ -273,7 +281,7 @@ visual-inspection-audit.json
 ## 輸出前自我檢查
 
 - 是否曾用 contact sheet、montage、縮圖牆或多圖截圖來判斷欄位？若有，這些欄位無效；請回到單張原圖逐張重做。
-- 是否已為每張照片寫出逐張視覺稽核，且 `contact_sheet_used = false`、每張 `inspection_mode = single-image`？若沒有，請先補齊，不要交付。
+- 是否已為每張照片寫出逐張 `photo-artifacts/<photo_id>.json`，且每張 artifact 都是 `contact_sheet_used = false`、`inspection_mode = single-image`？若沒有，請先補齊，不要交付。
 - 是否有超過 5 張照片在同一個欄位產出完全相同的 `value` 與 `reason`？若有，代表你可能沒有逐張看圖，請重做這些 item，或將該欄位省略。
 - 是否有多張照片使用「推測值」、「預設為」、「圖片尺寸為」或其他固定語言？若有，請改成描述本張照片的可見證據。
 - 是否幾乎每張照片都有 `mood_tags`，或大量照片都落在 `專業`、`專注`、`友善`？若有，請重新確認是否把 mood 當成預設分類。

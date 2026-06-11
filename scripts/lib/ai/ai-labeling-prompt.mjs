@@ -26,14 +26,19 @@ export function renderAiLabelingPrompt(runDir) {
 - manifest：\`${runDir}/manifest.json\`
 - photos：\`${runDir}/photos.json\`
 - images：\`${runDir}/images/\`
-- 輸出檔：\`${runDir}/metadata-proposals.json\`
-- 逐張視覺稽核：\`${runDir}/visual-inspection-audit.json\`
+- 逐張輸出目錄：\`${runDir}/photo-artifacts/\`
+- 合併後輸出檔：\`${runDir}/metadata-proposals.json\`
+- 合併後逐張視覺稽核：\`${runDir}/visual-inspection-audit.json\`
+- 合併 manifest：\`${runDir}/artifact-manifest.json\`
 
-小型 direct run 也必須逐張打開單張圖片，並寫出 \`${runDir}/visual-inspection-audit.json\`。禁止建立或使用 contact sheet、montage、縮圖牆、HTML gallery screenshot 或多圖截圖來判斷任何欄位；這些合成圖即使只用來「快速掌握整體」也會降低逐張標記品質，不能作為本任務步驟。
+小型 direct run 也必須逐張打開單張圖片，並在看完每張照片後立刻寫出 \`${runDir}/photo-artifacts/<photo_id>.json\`。不要先把多張照片的觀察累積在對話 context，因為 context compact 或長上下文注意力偏移會讓未落盤觀察遺失或被重寫。每張照片都是獨立判讀單位；下一張照片不需要前一張照片的 context。
+
+禁止建立或使用 contact sheet、montage、縮圖牆、HTML gallery screenshot 或多圖截圖來判斷任何欄位；這些合成圖即使只用來「快速掌握整體」也會降低逐張標記品質，不能作為本任務步驟。
 
 完成後請交還操作者執行檢查。若你是具備 repo 指令執行能力的 agent，小型 run 可接著執行：
 
 \`\`\`bash
+pnpm ai:artifacts:merge -- --run-dir ${runDir}
 pnpm ai:review -- --run-dir ${runDir} --codex-session <parent-session-id>
 \`\`\`
 

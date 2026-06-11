@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { access, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { getAiLabelingPromptMetadata } from "../lib/ai/ai-labeling-prompt.mjs";
 import {
@@ -20,6 +20,7 @@ import {
 
 const defaultProposalFile = "metadata-proposals.json";
 const defaultSummaryFile = "metadata-review-summary.md";
+const artifactManifestFile = "artifact-manifest.json";
 const directVisualAuditFile = "visual-inspection-audit.json";
 const shardExecutionLogFile = "shard-execution-log.json";
 const visualAuditDirName = "visual-audits";
@@ -132,6 +133,7 @@ Options:
   --output-dir <dir>    Directory for review artifacts. Default: <run-dir>.
   --summary <path>      Markdown summary path. Default: <run-dir>/metadata-review-summary.md.
   --sample <number>     Number of planned updates to preview in the summary. Default: 20.
+  --fresh-relabel       Clear existing AI optional fields omitted by this proposal.
   --codex-session <id>  Record review runtime in codex-execution-metrics.json.
   --codex-home <dir>    Codex home. Default: CODEX_HOME or ~/.codex.
   --help, -h            Show this help.
@@ -146,6 +148,7 @@ function parseArgs(argv) {
   const options = {
     codexHome: "",
     codexSession: "",
+    freshRelabel: false,
     help: false,
     outputDir: "",
     proposalsPath: "",
@@ -173,6 +176,8 @@ function parseArgs(argv) {
     } else if (arg === "--sample") {
       options.sample = Number(args[index + 1] ?? "");
       index += 1;
+    } else if (arg === "--fresh-relabel") {
+      options.freshRelabel = true;
     } else if (arg === "--codex-session") {
       options.codexSession = args[index + 1] ?? "";
       index += 1;
@@ -816,6 +821,53 @@ async function buildDirectVisualAuditRows(runDir, photos, shardVisualAuditRows) 
   return [visualAuditRowForItems("direct-run", Array.isArray(photos) ? photos : [], audit, auditPath, "agent")];
 }
 
+export async function buildArtifactCheckpointRows({ photos, proposalText, proposalsPath, runDir, shardVisualAuditRows }) {
+  if (shardVisualAuditRows.length > 0) {
+    return [];
+  }
+  const manifestPath = join(runDir, artifactManifestFile);
+  const manifest = await readJsonIfExists(manifestPath);
+  const inputCount = Array.isArray(photos) ? photos.length : 0;
+  if (!manifest) {
+    return [[
+      "direct-run",
+      inputCount,
+      0,
+      manifestPath,
+      "blocker: 缺少 per-photo artifact manifest，無法證明觀察已逐張落盤而非 compact 後事後整理",
+    ]];
+  }
+  const artifacts = Array.isArray(manifest.artifacts) ? manifest.artifacts : [];
+  const artifactIds = new Set(artifacts.map((artifact) => artifact?.photo_id).filter(Boolean));
+  const expectedIds = new Set((Array.isArray(photos) ? photos : []).map((photo) => photo.photo_id));
+  const missing = [...expectedIds].filter((photoId) => !artifactIds.has(photoId)).length;
+  const extra = [...artifactIds].filter((photoId) => !expectedIds.has(photoId)).length;
+  const nonSingleImage = artifacts.filter((artifact) => artifact?.inspection_mode !== "single-image").length;
+  const expectedProposalHash = manifest.proposal_sha256 ?? "";
+  const actualProposalHash = sha256Text(proposalText);
+  const proposalHashMismatch = expectedProposalHash && expectedProposalHash !== actualProposalHash;
+  const pathMismatch = manifest.proposal_path && resolve(proposalsPath) !== resolve(manifest.proposal_path);
+  let issue = "";
+  if (manifest.generated_by !== "ai:artifacts:merge") {
+    issue = "blocker: artifact manifest 不是由 ai:artifacts:merge 產生";
+  } else if (missing > 0 || extra > 0 || artifacts.length !== inputCount) {
+    issue = `blocker: per-photo artifacts 未完整涵蓋輸入照片，artifact ${artifacts.length}/${inputCount}，缺 ${missing}，多 ${extra}`;
+  } else if (nonSingleImage > 0) {
+    issue = `blocker: ${nonSingleImage} 個 per-photo artifact 沒有 single-image checkpoint`;
+  } else if (proposalHashMismatch) {
+    issue = "blocker: root metadata-proposals.json hash 與 artifact manifest 不一致，可能在 merge 後被手動修改";
+  } else if (pathMismatch) {
+    issue = "needs-review: artifact manifest 記錄的 proposal path 不同於本次 review path";
+  }
+  return [[
+    "direct-run",
+    inputCount,
+    artifacts.length,
+    manifestPath,
+    issue,
+  ]];
+}
+
 function visualAuditRowForItems(scopeName, inputItems, audit, auditPath, actorLabel) {
   if (!audit) {
     return [scopeName, inputItems.length, 0, 0, 0, auditPath, `blocker: 缺少逐張視覺稽核，無法證明 ${actorLabel} 逐張單圖判讀`];
@@ -1422,7 +1474,7 @@ function visualDescriptionWarningCount(items, kind) {
   ).length;
 }
 
-export function buildAdoptionReadiness({ items = [], metricsHealth, reasonReuseQaRows = [], shardFieldCoverageRows = [], validationWarnings = [], visualAuditRows = [] } = {}) {
+export function buildAdoptionReadiness({ artifactCheckpointRows = [], items = [], metricsHealth, reasonReuseQaRows = [], shardFieldCoverageRows = [], validationWarnings = [], visualAuditRows = [] } = {}) {
   const rows = [];
   const blockerRows = shardFieldCoverageRows.filter((row) => String(row[6]).startsWith("blocker:"));
   for (const row of blockerRows.slice(0, 12)) {
@@ -1443,6 +1495,18 @@ export function buildAdoptionReadiness({ items = [], metricsHealth, reasonReuseQ
   const visualAuditNeedsReview = visualAuditRows.filter((row) => String(row[6]).startsWith("needs-review:"));
   if (visualAuditNeedsReview.length > 0) {
     rows.push(["needs-review", "visual audit", `${visualAuditNeedsReview.length} 個 scope 的逐張視覺證據偏弱。`]);
+  }
+  const artifactBlockers = artifactCheckpointRows.filter((row) => String(row[4]).startsWith("blocker:"));
+  for (const row of artifactBlockers.slice(0, 12)) {
+    rows.push([
+      "blocked",
+      "artifact checkpoint",
+      `${row[0]} ${row[2]}/${row[1]} per-photo artifact(s)；${String(row[4]).replace(/^blocker:\s*/, "")}`,
+    ]);
+  }
+  const artifactNeedsReview = artifactCheckpointRows.filter((row) => String(row[4]).startsWith("needs-review:"));
+  if (artifactNeedsReview.length > 0) {
+    rows.push(["needs-review", "artifact checkpoint", `${artifactNeedsReview.length} 個 checkpoint manifest 需要人工確認。`]);
   }
 
   const sponsorReportCount = sponsorMismatchCount(items, "贊助成果報告");
@@ -1480,7 +1544,7 @@ export function buildAdoptionReadiness({ items = [], metricsHealth, reasonReuseQ
     rows.push(["ready-with-warnings", "token metrics", metricsHealth.message]);
   }
 
-  const status = blockerRows.length > 0 || visualAuditBlockers.length > 0
+  const status = blockerRows.length > 0 || visualAuditBlockers.length > 0 || artifactBlockers.length > 0
     ? "blocked"
     : rows.some((row) => row[0] === "needs-review")
       ? "needs-review"
@@ -1513,7 +1577,7 @@ function buildPromptVersionNotes(manifest) {
   return [];
 }
 
-function renderSummary({ adoptionReadiness, artifactRows, codexSession, diffPath, layerRows, manifest, notes, outputDir, peopleCountQaRows, plan, proposals, reasonReuseQaRows, runDir, sample, scenePackageRows: scenePackageTableRows, sceneQaRows, shardFieldCoverageRows, shardMap, shardRows, summaryPath, visualAuditRows }) {
+function renderSummary({ adoptionReadiness, artifactCheckpointRows, artifactRows, codexSession, diffPath, layerRows, manifest, notes, outputDir, peopleCountQaRows, plan, proposals, reasonReuseQaRows, runDir, sample, scenePackageRows: scenePackageTableRows, sceneQaRows, shardFieldCoverageRows, shardMap, shardRows, summaryPath, visualAuditRows }) {
   const items = proposals.items;
   const fieldCountRows = fieldCounts(items).map(({ field, count }) => [
     fieldLabel(field, { includeRaw: true }),
@@ -1562,6 +1626,7 @@ function renderSummary({ adoptionReadiness, artifactRows, codexSession, diffPath
     `- Prompt template: \`${promptTemplate}\` @ \`${promptHash}\``,
     `- Proposal items: ${items.length}`,
     `- Planned updates: ${plan.update_count}`,
+    `- Fresh relabel mode: ${plan.fresh_relabel ? "`true`" : "`false`"}`,
     `- Adoption readiness: \`${adoptionReadiness.status}\``,
     "",
     "## Output Files",
@@ -1601,6 +1666,12 @@ function renderSummary({ adoptionReadiness, artifactRows, codexSession, diffPath
     shardRows.length > 0
       ? table(["source", "input shards", "proposal shards", "path"], shardRows)
       : "No shard artifacts were detected.",
+    "",
+    "## Artifact Checkpoint QA",
+    "",
+    artifactCheckpointRows.length > 0
+      ? table(["scope", "input items", "per-photo artifacts", "manifest path", "issue"], artifactCheckpointRows)
+      : "No direct-run artifact checkpoint rows were generated.",
     "",
     "## Layer Coverage",
     "",
@@ -1697,7 +1768,7 @@ function renderSummary({ adoptionReadiness, artifactRows, codexSession, diffPath
           "Record or refresh review runtime metrics:",
           "",
           "```bash",
-          `pnpm ai:review -- --run-dir ${runDir}${codexSessionSuffix(codexSession)}`,
+          `pnpm ai:review -- --run-dir ${runDir}${plan.fresh_relabel ? " --fresh-relabel" : ""}${codexSessionSuffix(codexSession)}`,
           "```",
           "",
         ]
@@ -1705,7 +1776,7 @@ function renderSummary({ adoptionReadiness, artifactRows, codexSession, diffPath
           "這是暫存 review。proposal 被採用並寫回 run 目錄後，請重新執行：",
           "",
           "```bash",
-          `pnpm ai:review -- --run-dir ${runDir}${codexSessionSuffix(codexSession)}`,
+          `pnpm ai:review -- --run-dir ${runDir}${plan.fresh_relabel ? " --fresh-relabel" : ""}${codexSessionSuffix(codexSession)}`,
           "```",
           "",
         ]),
@@ -1735,6 +1806,7 @@ async function reviewAiRun(options) {
     csvOutputPath,
     help: false,
     includeUnchanged: false,
+    freshRelabel: options.freshRelabel,
     jsonOutputPath,
     proposalsPath: options.proposalsPath,
     runDir: options.runDir,
@@ -1754,6 +1826,13 @@ async function reviewAiRun(options) {
     ...shardInspection.visualAuditRows,
     ...(await buildDirectVisualAuditRows(options.runDir, photos, shardInspection.visualAuditRows)),
   ];
+  const artifactCheckpointRows = await buildArtifactCheckpointRows({
+    photos,
+    proposalText,
+    proposalsPath: options.proposalsPath,
+    runDir: options.runDir,
+    shardVisualAuditRows: shardInspection.visualAuditRows,
+  });
   const sceneQaRows = buildSceneQaRows(proposals.items, photos, shardMap);
   const shardFieldCoverageRows = buildShardFieldCoverageRows(proposals.items, shardMap);
   const packageRows = sceneReviewPackageRows(proposals.items);
@@ -1761,6 +1840,7 @@ async function reviewAiRun(options) {
   const reasonReuseQaRows = reasonReuseRows(proposals.items);
   const layerRows = layerCoverageRows(proposals.items);
   const adoptionReadiness = buildAdoptionReadiness({
+    artifactCheckpointRows,
     items: proposals.items,
     metricsHealth,
     reasonReuseQaRows,
@@ -1771,6 +1851,7 @@ async function reviewAiRun(options) {
   const artifactRows = [
     ["final proposals", options.proposalsPath],
     ["final proposals sha256", sha256Text(proposalText)],
+    ["artifact manifest", artifactCheckpointRows[0]?.[3] ?? ""],
     ["photos source", manifest.photos_source ?? ""],
     ["image link mode", manifest.image_link_mode ?? ""],
     ["source runs", Array.isArray(manifest.source_runs) ? String(manifest.source_runs.length) : ""],
@@ -1782,12 +1863,14 @@ async function reviewAiRun(options) {
   const notes = [
     ...buildPromptVersionNotes(manifest),
     ...shardInspection.warnings,
+    ...artifactCheckpointRows.filter((row) => String(row[4]).trim()).map((row) => `${row[0]} artifact checkpoint: ${row[4]}`),
     ...visualAuditRows.filter((row) => String(row[6]).trim()).map((row) => `${row[0]} visual audit: ${row[6]}`),
     ...validation.warnings,
     ...buildReviewNotes(proposals.items, { peopleCountQaRows, reasonReuseQaRows, sceneQaRows }),
   ];
   const summary = renderSummary({
     adoptionReadiness,
+    artifactCheckpointRows,
     artifactRows,
     codexSession: options.codexSession,
     diffPath: diff.outputPath,
@@ -1896,11 +1979,11 @@ async function main() {
     console.log(`- Compare attempts: pnpm ai:report -- --runs ${options.runDir} tmp/ai-runs/<other-run-or-attempt>`);
     console.log(`- Dry-run Sheets cells: pnpm sheets:apply-ai-updates -- --run-dir ${options.runDir}`);
     if (!options.codexSession) {
-      console.log(`- Record review runtime metrics: pnpm ai:review -- --run-dir ${options.runDir}${codexSessionSuffix("")}`);
+      console.log(`- Record review runtime metrics: pnpm ai:review -- --run-dir ${options.runDir}${options.freshRelabel ? " --fresh-relabel" : ""}${codexSessionSuffix("")}`);
     }
   } else {
     console.log(`- Temporary review artifacts are in ${options.outputDir}`);
-    console.log(`- After accepting the proposal, write it to the run directory and rerun: pnpm ai:review -- --run-dir ${options.runDir}${codexSessionSuffix(options.codexSession)}`);
+    console.log(`- After accepting the proposal, write it to the run directory and rerun: pnpm ai:review -- --run-dir ${options.runDir}${options.freshRelabel ? " --fresh-relabel" : ""}${codexSessionSuffix(options.codexSession)}`);
   }
 }
 

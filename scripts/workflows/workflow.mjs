@@ -53,7 +53,7 @@ const tasks = [
     handler: prepareAiRun,
     id: "ai-prepare",
     inputs: ["正式 Google Sheets albums / photos", "匯出正式資料時需要 GOOGLE_APPLICATION_CREDENTIALS 與讀取權限", "Flickr 圖片 URL"],
-    next: ["把 run 目錄中的 ai-labeling-prompt.md 與工作包交給模型；direct run 輸出 metadata-proposals.json 與 visual-inspection-audit.json。大型 run 先用 ai:shard:prepare / ai:shard:merge 把中間檔與 visual audits 放在 /tmp。若要做多模型或多輪品質比較，直接使用 eval:attempt。"],
+    next: ["把 run 目錄中的 ai-labeling-prompt.md 與工作包交給模型；direct run 先逐張寫 photo-artifacts/<photo_id>.json，再用 ai:artifacts:merge 產生 metadata-proposals.json、visual-inspection-audit.json 與 artifact-manifest.json。大型 run 先用 ai:shard:prepare / ai:shard:merge 把中間檔與 visual audits 放在 /tmp。若要做多模型或多輪品質比較，直接使用 eval:attempt。"],
     outputs: ["tmp/ai-runs/<run-id>/photos.json", "tmp/ai-runs/<run-id>/images/"],
     phase: "AI 標記",
     title: "準備 AI 搜尋級標記工作包",
@@ -219,7 +219,7 @@ function printWorkflowSummary() {
   console.log("2. 從 Flickr 相簿清單選一本相簿，產生 tmp/intake-runs/ 可審核匯入產物。");
   console.log("3. workflow 會記住剛產生的 intake run，通常可直接接續驗證與 Sheets dry-run。");
   console.log("4. 從 Sheets photos 建立 tmp/ai-runs/，把 ai-labeling-prompt.md 與工作包交給模型做搜尋級標記。");
-  console.log("5. direct run 輸出 metadata-proposals.json 與 visual-inspection-audit.json；大型 run 可用 ai:shard:prepare / ai:shard:merge 先在 /tmp 分片，worker 另需逐張 visual audit，再由工具驗證後產生 diff / update plan。");
+  console.log("5. direct run 先逐張輸出 photo-artifacts/<photo_id>.json，再用 ai:artifacts:merge 產生 metadata-proposals.json、visual-inspection-audit.json 與 artifact-manifest.json；大型 run 可用 ai:shard:prepare / ai:shard:merge 先在 /tmp 分片，worker 另需逐張 visual audit，再由工具驗證後產生 diff / update plan。");
   console.log("6. AI 候選值經人類確認後才寫回 Sheets；正式 reviewed 在 Sheets 中由志工協作完成。");
 }
 
@@ -353,7 +353,7 @@ async function showWorkflowOverview() {
   console.log("主要工作目錄：");
   console.log("- tmp/sheets-export/: 從正式 Google Sheets 匯出的本機工作快取，不 commit。");
   console.log("- tmp/intake-runs/: 單次相簿匯入的候選照片、相簿更新、批次紀錄與摘要。");
-  console.log("- tmp/ai-runs/: AI 搜尋級標記工作包，包含 photos.json、images/、metadata-proposals.json 與 visual-inspection-audit.json。大型分片中間檔在 /tmp/ai-labeling-shards/。");
+  console.log("- tmp/ai-runs/: AI 搜尋級標記工作包，包含 photos.json、images/、photo-artifacts/，合併後包含 metadata-proposals.json、visual-inspection-audit.json 與 artifact-manifest.json。大型分片中間檔在 /tmp/ai-labeling-shards/。");
   console.log("");
   console.log("常見起點：");
   console.log("- 第一次接手：選「檢查專案資料與 AI fixtures」。");
@@ -526,7 +526,7 @@ async function prepareAiRun(context = {}) {
 
   console.log("");
   console.log("下一步：");
-  console.log(`1. 複製下方 prompt 給模型或 agent；direct run 請在 ${runDir}/ 輸出 metadata-proposals.json 與 visual-inspection-audit.json。大型 run 請先用 ai:shard:prepare 把中間檔放在 /tmp。`);
+  console.log(`1. 複製下方 prompt 給模型或 agent；direct run 請在 ${runDir}/photo-artifacts/ 逐張輸出，再用 pnpm ai:artifacts:merge -- --run-dir ${runDir} 合併。大型 run 請先用 ai:shard:prepare 把中間檔放在 /tmp。`);
   console.log(`2. 模型輸出完成後，由操作者執行：pnpm workflow -- --task ai-review，並填入 ${runDir}`);
 
   const { prompt, promptPath } = writeAiLabelingPrompt(runDir);

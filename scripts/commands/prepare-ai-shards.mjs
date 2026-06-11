@@ -92,7 +92,7 @@ function withAbsoluteImagePath(photo, runDir) {
   };
 }
 
-function renderWorkerPrompt({ auditPath, inputPath, outputPath, runDir, shardCount, shardIndex }) {
+function renderWorkerPrompt({ auditPath, inputPath, outputPath, photoArtifactDir, runDir, shardCount, shardIndex }) {
   const shardName = `shard-${formatShardId(shardIndex)}`;
   return `# 搜尋級 AI 標記分片任務：${shardName}
 
@@ -101,6 +101,7 @@ function renderWorkerPrompt({ auditPath, inputPath, outputPath, runDir, shardCou
 - AI run 目錄：\`${runDir}\`
 - 本分片輸入：\`${inputPath}\`
 - 本分片輸出：\`${outputPath}\`
+- 本分片逐張 artifact 目錄：\`${photoArtifactDir}\`
 - 本分片逐張視覺稽核：\`${auditPath}\`
 - 分片序號：${shardIndex + 1} / ${shardCount}
 
@@ -113,6 +114,7 @@ function renderWorkerPrompt({ auditPath, inputPath, outputPath, runDir, shardCou
 - 仍必須逐張打開圖片。若 \`absolute_image_path\` 有值，優先使用它；否則依 run prompt 使用 \`local_image_path\` 或 \`image_download_url\`。
 - 禁止使用 contact sheet、montage、image grid、HTML gallery screenshot、縮圖拼貼或任何合成大圖作為判讀依據。縮圖總覽只能用於導航，不能用來決定欄位。
 - 每張照片都必須以單張原圖或單張下載圖進行判讀。若你無法確認某張照片是以單圖檢視，請不要為該 \`photo_id\` 輸出 proposal，並在最終回報中列出。
+- 看完每張照片後，先把該張結果寫成 \`${photoArtifactDir}/<photo_id>.json\`，再處理下一張。未寫入 artifact 的觀察視為不存在；不要把多張照片觀察累積在對話 context，等全部看完或 context compact 後再一次整理。
 - 分片輸出請寫成 JSON array，每個元素是正式 \`metadata-proposals.json\` 內的單一 \`items[]\` 物件，例如 \`[{ "photo_id": "...", "fields": { ... } }]\`。
 - 不要在本分片輸出中包 root object；root object 會由 merge 工具統一產生。
 - 同時必須寫出本分片逐張視覺稽核 JSON 到 \`${auditPath}\`。格式如下：
@@ -172,6 +174,7 @@ async function prepareAiShards(options) {
   const inputDir = join(outputDir, "inputs");
   const promptDir = join(outputDir, "worker-prompts");
   const proposalsDir = join(outputDir, "outputs");
+  const photoArtifactRoot = join(outputDir, "photo-artifacts");
   const visualAuditDir = join(outputDir, "visual-audits");
   const mergedProposalPath = join(outputDir, "metadata-proposals.json");
   const shardManifestPath = join(outputDir, "shard-manifest.json");
@@ -182,6 +185,7 @@ async function prepareAiShards(options) {
     rm(inputDir, { force: true, recursive: true }),
     rm(promptDir, { force: true, recursive: true }),
     rm(proposalsDir, { force: true, recursive: true }),
+    rm(photoArtifactRoot, { force: true, recursive: true }),
     rm(visualAuditDir, { force: true, recursive: true }),
     rm(mergedProposalPath, { force: true }),
     rm(shardManifestPath, { force: true }),
@@ -192,6 +196,7 @@ async function prepareAiShards(options) {
     mkdir(inputDir, { recursive: true }),
     mkdir(promptDir, { recursive: true }),
     mkdir(proposalsDir, { recursive: true }),
+    mkdir(photoArtifactRoot, { recursive: true }),
     mkdir(visualAuditDir, { recursive: true }),
   ]);
 
@@ -203,6 +208,7 @@ async function prepareAiShards(options) {
     const inputPath = join(inputDir, `shard-${shardId}-input.json`);
     const outputPath = join(proposalsDir, `shard-${shardId}-proposals.json`);
     const visualAuditPath = join(visualAuditDir, `shard-${shardId}-visual-audit.json`);
+    const photoArtifactDir = join(photoArtifactRoot, `shard-${shardId}`);
     const workerPromptPath = join(promptDir, `shard-${shardId}.md`);
     const items = photos.slice(start, end).map((photo) => withAbsoluteImagePath(photo, runDir));
 
@@ -210,6 +216,7 @@ async function prepareAiShards(options) {
       count: items.length,
       items,
       output_path: outputPath,
+      photo_artifact_dir: photoArtifactDir,
       run_dir: runDir,
       run_id: manifest.run_id,
       shard: index,
@@ -218,14 +225,16 @@ async function prepareAiShards(options) {
     };
 
     await Promise.all([
+      mkdir(photoArtifactDir, { recursive: true }),
       writeFile(inputPath, `${JSON.stringify(shardInput, null, 2)}\n`),
-      writeFile(workerPromptPath, renderWorkerPrompt({ auditPath: visualAuditPath, inputPath, outputPath, runDir, shardCount, shardIndex: index })),
+      writeFile(workerPromptPath, renderWorkerPrompt({ auditPath: visualAuditPath, inputPath, outputPath, photoArtifactDir, runDir, shardCount, shardIndex: index })),
     ]);
 
     shards.push({
       count: items.length,
       input_path: inputPath,
       output_path: outputPath,
+      photo_artifact_dir: photoArtifactDir,
       shard: index,
       visual_audit_path: visualAuditPath,
       worker_prompt_path: workerPromptPath,
@@ -263,6 +272,7 @@ async function prepareAiShards(options) {
       notes: "",
       output_item_count: null,
       output_path: shard.output_path,
+      photo_artifact_dir: shard.photo_artifact_dir,
       output_sha256: "",
       photo_count: shard.count,
       reasoning_effort: "",
@@ -284,6 +294,7 @@ async function prepareAiShards(options) {
     inputDir,
     outputDir,
     proposalsDir,
+    photoArtifactRoot,
     runId: manifest.run_id,
     shardCount,
     shardExecutionLogPath,
@@ -307,6 +318,7 @@ async function main() {
   console.log(`- shards: ${result.shardCount}`);
   console.log(`- inputs: ${result.inputDir}`);
   console.log(`- expected outputs: ${result.proposalsDir}`);
+  console.log(`- expected photo artifacts: ${result.photoArtifactRoot}`);
   console.log(`- expected visual audits: ${result.visualAuditDir}`);
   console.log(`- shard manifest: ${result.shardManifestPath}`);
   console.log(`- execution log: ${result.shardExecutionLogPath}`);

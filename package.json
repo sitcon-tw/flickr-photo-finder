@@ -36,6 +36,7 @@
     "ai:diff": "node scripts/commands/render-ai-diff.mjs",
     "ai:bulk:status": "node scripts/commands/status-ai-bulk-run.mjs",
     "ai:codex:meter": "node scripts/commands/meter-codex-ai-run.mjs",
+    "ai:artifacts:merge": "node scripts/commands/merge-ai-photo-artifacts.mjs",
     "ai:plan": "node scripts/commands/plan-ai-updates.mjs",
     "ai:prepare": "node scripts/commands/prepare-ai-run.mjs",
     "ai:report": "node scripts/commands/build-ai-report.mjs",

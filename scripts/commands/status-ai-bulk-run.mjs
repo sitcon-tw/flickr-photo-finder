@@ -101,6 +101,24 @@ async function listFilesIfExists(path) {
   }
 }
 
+async function countJsonFilesIfExists(path) {
+  try {
+    const entries = await readdir(path, { withFileTypes: true });
+    let count = 0;
+    for (const entry of entries) {
+      const fullPath = join(path, entry.name);
+      if (entry.isDirectory()) {
+        count += await countJsonFilesIfExists(fullPath);
+      } else if (entry.isFile() && entry.name.endsWith(".json")) {
+        count += 1;
+      }
+    }
+    return count;
+  } catch {
+    return 0;
+  }
+}
+
 function shardIdFromPath(path) {
   return basename(path).match(/shard-(\d+)/)?.[1] ?? "";
 }
@@ -171,6 +189,8 @@ async function inspectBulkStatus(options) {
   const expectedVisualAuditFiles = shardEntries.length > 0
     ? shardEntries.map((shard) => shard.visual_audit_path || join(shardDir, visualAuditDirName, `shard-${String(shard.shard).padStart(2, "0")}-visual-audit.json`)).filter(Boolean)
     : inputFiles.map((path) => join(shardDir, visualAuditDirName, `shard-${shardIdFromPath(path)}-visual-audit.json`));
+  const expectedPhotoArtifacts = shardEntries.reduce((sum, shard) => sum + Number(shard.count || 0), 0);
+  const existingPhotoArtifacts = await countJsonFilesIfExists(join(shardDir, "photo-artifacts"));
   const existingOutputFiles = [];
   for (const path of expectedOutputFiles) {
     if (await pathExists(path)) {
@@ -196,7 +216,9 @@ async function inspectBulkStatus(options) {
 
   return {
     expected_outputs: expectedOutputFiles.length,
+    expected_photo_artifacts: expectedPhotoArtifacts,
     expected_visual_audits: expectedVisualAuditFiles.length,
+    existing_photo_artifacts: existingPhotoArtifacts,
     existing_outputs: existingOutputFiles.length,
     existing_visual_audits: existingVisualAuditFiles.length,
     image_link_mode: manifest.image_link_mode ?? "",
@@ -250,6 +272,9 @@ function printStatus(status) {
   console.log(`- Codex token attribution: ${status.codex_metrics_health.status} (${status.codex_metrics_health.message})`);
   console.log(`- shard inputs: ${status.input_shards}`);
   console.log(`- shard outputs: ${status.existing_outputs}/${status.expected_outputs}`);
+  if (status.expected_photo_artifacts > 0 || status.existing_photo_artifacts > 0) {
+    console.log(`- shard photo artifacts: ${status.existing_photo_artifacts}/${status.expected_photo_artifacts}`);
+  }
   console.log(`- shard visual audits: ${status.existing_visual_audits}/${status.expected_visual_audits}`);
   console.log(`- merged shard proposal: ${status.shard_merged_proposal_exists ? `${status.shard_merged_proposal_items} item(s)` : "missing"}`);
   console.log(`- root proposal: ${status.root_proposal_exists ? `${status.root_proposal_items} item(s)` : "missing"}`);

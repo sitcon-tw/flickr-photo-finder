@@ -2,7 +2,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { csvEscape } from "../lib/core/csv-utils.mjs";
-import { aiFieldLayerName } from "../lib/core/photo-schema.mjs";
+import { aiFieldLayerName, aiOptionalFields } from "../lib/core/photo-schema.mjs";
 import { fieldLabel, formatDisplayValue, formatStoredValue } from "../lib/core/metadata-display.mjs";
 import { validateAiProposals } from "./validate-ai-proposals.mjs";
 
@@ -20,6 +20,7 @@ Options:
   --json-output <path>  JSON update plan path. Default: <run-dir>/metadata-update-plan.json.
   --csv-output <path>   CSV update plan path. Default: <run-dir>/metadata-update-plan.csv.
   --include-unchanged   Include proposals where current and proposed values are identical.
+  --fresh-relabel       Clear existing AI optional fields omitted by this proposal.
   --layers <list>       Comma-separated AI field layers to include: baseline,recall,optional.
                         Default: baseline,recall,optional.
   --help, -h            Show this help.
@@ -32,6 +33,7 @@ function parseArgs(argv) {
   const args = argv.slice(2).filter((arg) => arg !== "--");
   const options = {
     csvOutputPath: "",
+    freshRelabel: false,
     help: false,
     includeUnchanged: false,
     jsonOutputPath: "",
@@ -58,6 +60,8 @@ function parseArgs(argv) {
       index += 1;
     } else if (arg === "--include-unchanged") {
       options.includeUnchanged = true;
+    } else if (arg === "--fresh-relabel") {
+      options.freshRelabel = true;
     } else if (arg === "--layers") {
       options.layers = parseLayers(args[index + 1] ?? "");
       index += 1;
@@ -109,12 +113,15 @@ async function readJson(path) {
   }
 }
 
-function buildUpdates(photos, proposals, { includeUnchanged, layers = new Set(["baseline", "recall", "optional"]) }) {
+function buildUpdates(photos, proposals, { freshRelabel = false, includeUnchanged, layers = new Set(["baseline", "recall", "optional"]) }) {
   const photosById = new Map(photos.map((photo) => [photo.photo_id, photo]));
   const updates = [];
+  const proposalFieldsByPhotoId = new Map();
 
   for (const item of proposals.items) {
     const photo = photosById.get(item.photo_id) ?? {};
+    const proposalFieldSet = new Set(Object.keys(item.fields));
+    proposalFieldsByPhotoId.set(item.photo_id, proposalFieldSet);
     for (const [field, proposal] of Object.entries(item.fields)) {
       const fieldLayer = aiFieldLayerName(field);
       if (fieldLayer && !layers.has(fieldLayer)) {
@@ -138,6 +145,35 @@ function buildUpdates(photos, proposals, { includeUnchanged, layers = new Set(["
         proposed_value: proposedValue,
         reason: proposal.reason,
       });
+    }
+  }
+
+  if (freshRelabel && layers.has("optional")) {
+    const existingTargets = new Set(updates.map((update) => `${update.photo_id}\t${update.field}`));
+    for (const photo of photos) {
+      if (!proposalFieldsByPhotoId.has(photo.photo_id)) {
+        continue;
+      }
+      const proposalFieldSet = proposalFieldsByPhotoId.get(photo.photo_id) ?? new Set();
+      for (const field of aiOptionalFields) {
+        const targetKey = `${photo.photo_id}\t${field}`;
+        const currentValue = formatStoredValue(photo[field] ?? "");
+        if (!currentValue || proposalFieldSet.has(field) || existingTargets.has(targetKey)) {
+          continue;
+        }
+        updates.push({
+          changed: true,
+          confidence: null,
+          current_value: currentValue,
+          field,
+          field_layer: "optional",
+          photo_id: photo.photo_id,
+          photo_url: photo.photo_url ?? "",
+          proposed_value: "",
+          reason: "fresh relabel 模式：本輪 proposal 未對此 AI optional 欄位提出足夠可見證據，依覆蓋語意清空舊值。",
+        });
+        existingTargets.add(targetKey);
+      }
     }
   }
 
@@ -192,6 +228,7 @@ export async function buildPlan(options) {
   const plan = {
     created_at: new Date().toISOString(),
     csv_output: options.csvOutputPath,
+    fresh_relabel: Boolean(options.freshRelabel),
     include_unchanged: options.includeUnchanged,
     json_output: options.jsonOutputPath,
     layers: [...layers],

@@ -103,10 +103,20 @@ AI 產生候選欄位前，應讀取：
 
 ## 輸出位置
 
-AI 標記結果必須寫在同一個 run 目錄：
+AI 標記結果必須先以逐張 artifact 寫在同一個 run 目錄：
+
+```text
+tmp/ai-runs/<run-id>/photo-artifacts/<photo_id>.json
+```
+
+每張照片看完後應立即寫出自己的 artifact，再處理下一張。未寫入 artifact 的觀察視為不存在；不要把多張照片的觀察先留在對話 context，等全部看完或 context compact 後再整理。每張照片是獨立判讀單位，下一張照片不應依賴前一張照片的 context。
+
+逐張 artifact 由工具合併成正式 root 輸出：
 
 ```text
 tmp/ai-runs/<run-id>/metadata-proposals.json
+tmp/ai-runs/<run-id>/visual-inspection-audit.json
+tmp/ai-runs/<run-id>/artifact-manifest.json
 ```
 
 不要直接修改 `photos.json`、`input-photos.csv`、`tmp/sheets-export/photos.csv` 或正式 Google Sheets。
@@ -119,10 +129,29 @@ tmp/ai-runs/<run-id>/metadata-proposals.json
 
 分片輸出可以是正式 `items[]` 物件的 JSON array；它不是最終 proposal。最終仍必須由 merge 工具合併成下方 root object 格式，並在交給操作者正式 review 或 Sheets dry-run 前寫成單一 `metadata-proposals.json`。除非任務明確要求修補既有 proposal，模型或 agent 不應沿用舊 run、舊 attempt 或既有 `metadata-proposals.json`。
 
-模型或 agent 也必須寫出逐張視覺稽核檔，證明每張照片是以單張圖片檢視。小型 direct run 預設位置為：
+模型或 agent 也必須在逐張 artifact 中寫出視覺稽核資料，證明每張照片是以單張圖片檢視。小型 direct run 的 artifact 格式：
 
-```text
-tmp/ai-runs/<run-id>/visual-inspection-audit.json
+```json
+{
+  "artifact_version": 1,
+  "photo_id": "55200405673",
+  "inspection": {
+    "image_path": "images/55200405673.jpg",
+    "inspection_mode": "single-image",
+    "contact_sheet_used": false,
+    "visual_evidence": {
+      "subject": "主要主體與位置",
+      "people_count_basis": "人數估計依據",
+      "scene_basis": "場景標籤依據",
+      "search_details": ["可搜尋物件、動作、文字或空間關係"],
+      "design_basis": "留白與裁切依據"
+    }
+  },
+  "proposal_item": {
+    "photo_id": "55200405673",
+    "fields": {}
+  }
+}
 ```
 
 分片 worker 預設位置為：
@@ -131,7 +160,7 @@ tmp/ai-runs/<run-id>/visual-inspection-audit.json
 /tmp/ai-labeling-shards/<run-id>/visual-audits/shard-XX-visual-audit.json
 ```
 
-這份稽核檔用來證明模型或 worker 是以單張照片檢視，而不是用 contact sheet、montage、縮圖牆或多圖截圖批量判讀。格式可以是 root object 或 array；建議 root object：
+合併後的 `visual-inspection-audit.json` 用來證明模型或 worker 是以單張照片檢視，而不是用 contact sheet、montage、縮圖牆或多圖截圖批量判讀。格式可以是 root object 或 array；建議 root object：
 
 ```json
 {
@@ -156,7 +185,7 @@ tmp/ai-runs/<run-id>/visual-inspection-audit.json
 }
 ```
 
-小型 direct run 可省略 `shard` 欄位；分片 run 建議保留。缺少 visual audit、`contact_sheet_used` 不是 `false`、`inspection_mode` 不是 `single-image`，或 audit items 未涵蓋本次 input，都是 adoption blocker；不能直接寫回正式 Sheets。
+小型 direct run 可省略 `shard` 欄位；分片 run 建議保留。缺少 per-photo artifact manifest、缺少 visual audit、`contact_sheet_used` 不是 `false`、`inspection_mode` 不是 `single-image`，或 audit items 未涵蓋本次 input，都是 adoption blocker；不能直接寫回正式 Sheets。
 
 大型 run 的暫存 proposal 可以先用既有 validator/review CLI 檢查，不必先寫回 run 目錄：
 

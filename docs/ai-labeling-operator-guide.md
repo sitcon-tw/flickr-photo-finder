@@ -130,14 +130,21 @@ attempt 目錄仍包含 `photos.json`、`manifest.json`、`ai-labeling-prompt.md
 
 若模型或 agent 需要確認完整輸入/輸出格式，再補讀 `docs/ai-labeling-contract.md`。不需要把本文件、評估筆記或 Sheets 回寫文件整份交給只負責標記的模型。
 
-小型 direct run 的模型只能輸出：
+小型 direct run 的模型應先輸出逐張 artifacts：
 
 ```text
-tmp/ai-runs/<run-id>/metadata-proposals.json
-tmp/ai-runs/<run-id>/visual-inspection-audit.json
+tmp/ai-runs/<run-id>/photo-artifacts/<photo_id>.json
 ```
 
-`visual-inspection-audit.json` 必須逐張列出 `photo_id`、單張圖片路徑、`inspection_mode = single-image`、`contact_sheet_used = false`，以及本張照片的主體、人數依據、場景依據、可搜尋細節與設計判斷依據。無論照片數量多小，都不得先建立 contact sheet、montage、縮圖牆或多圖截圖來判斷欄位。
+每張照片看完後要立即寫出自己的 artifact，再處理下一張。`photo-artifacts/<photo_id>.json` 必須包含 `proposal_item` 與 `inspection`，其中 `inspection_mode = single-image`、`contact_sheet_used = false`，以及本張照片的主體、人數依據、場景依據、可搜尋細節與設計判斷依據。無論照片數量多小，都不得先建立 contact sheet、montage、縮圖牆或多圖截圖來判斷欄位。
+
+模型完成逐張 artifacts 後，由工具合併正式輸出：
+
+```bash
+pnpm ai:artifacts:merge -- --run-dir tmp/ai-runs/<run-id>
+```
+
+這會產生 `metadata-proposals.json`、`visual-inspection-audit.json` 與 `artifact-manifest.json`。`ai:review` 會檢查 artifact manifest 是否涵蓋所有輸入照片、是否由 merge 工具產生、root proposal hash 是否和 manifest 一致。缺少 direct-run artifact manifest 會成為 adoption blocker，避免把 compact 後一次性整理出的 root proposal 誤認為可靠逐張成果。
 
 若本次超過約 200 張照片，建議不要要求單一 agent 直接在 run 目錄中手動建立大量暫存檔。先準備 shard workspace：
 
@@ -261,6 +268,14 @@ pnpm ai:review -- --run-dir tmp/ai-runs/<run-id>
 - 產生 `metadata-review-summary.md`，整理欄位覆蓋率、常見值分布、批次層級警訊、優先抽查照片與下一步指令。
 
 `ai:review` summary 會顯示 `Adoption Readiness`、`Artifact Provenance`、`Layer Coverage`、`Scene QA`、`Visual Inspection Audit QA`、`Scene Review Packages`、`Balanced Review Sample` 與 `Confidence By Field`；大型或分片 run 另會顯示 `Shard Field Coverage QA`。`Adoption Readiness` 會把採用狀態分成 `blocked`、`needs-review` 與 `ready-with-warnings`；它不會讓 `ai:review` 直接失敗，而是讓操作者先看到回寫前是否有 blocker。`Artifact Provenance` 用來確認 final proposals 來源、hash、圖片連結模式、shard artifacts、execution log 摘要與 token attribution health；`Layer Coverage` 用 schema 分層看 baseline、recall、optional 覆蓋率；`Scene QA` 用整體、相簿與分片層級檢查 `scene_tags` 是否低召回、過度集中或平均過密；`Shard Field Coverage QA` 會針對 `scene_tags`、`mood_tags`、`recommended_uses`、`safe_crop` 與 `confidence` 找出 shard outlier；`Visual Inspection Audit QA` 會擋下缺少逐張稽核、稽核 item 沒涵蓋輸入照片、宣告使用 contact sheet 或 `inspection_mode` 不是 `single-image` 的 direct run 或 shard；`Scene Review Packages` 會把常見共現組合整理成抽查入口；`Balanced Review Sample` 會混合 review focus、shard 抽樣、主體邊界、主觀 optional 欄位與 deterministic random，避免只看工具已知警訊；`Confidence By Field` 用來檢查信心分數是否只集中在少數欄位。
+
+若本次是「完全重新標記」而不是補欄位，review 時加上 `--fresh-relabel`：
+
+```bash
+pnpm ai:review -- --run-dir tmp/ai-runs/<run-id> --fresh-relabel
+```
+
+fresh relabel 會在 update plan 中清空本輪 proposal 未提出的既有 AI optional 欄位，例如 `recommended_uses`、贊助欄位、`public_use_status`、`priority_level` 與 `collections`。這避免舊用途或贊助判斷殘留在正式 Sheets。
 
 每次 `ai:review` 都會顯示 `People Count QA` 與 `Reason Reuse QA`，不只限於大型 run。`People Count QA` 的分布摘要會列出 `people_count` 的平均、中位數、分位數與 top values；警訊列則只在達到門檻時產生：整批至少 200 張且 `3..10` 任一中段人數值佔比達 15%，或相簿 / shard 至少 20 張且最常見的 `3..10` 中段人數值佔比達 50%。只有這些警訊列會進入 Review Notes 與 Review Focus。這類警訊不代表該人數一定錯，而是提示模型可能把常見小組人數當成 fallback，應從 Review Focus 抽查。`Reason Reuse QA` 會列出各欄位 unique reason 數、最大 reason 重複群與最大 value+reason 重複群；若最大群偏大，代表可能有模板化或 archetype 套用，需要確認 reason 是否真的描述每張照片的可見證據。
 

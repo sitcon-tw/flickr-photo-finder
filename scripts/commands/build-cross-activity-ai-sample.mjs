@@ -360,7 +360,7 @@ async function main() {
   console.log(`- sample summary: ${summaryPath}`);
   console.log(`- selection manifest: ${selectionManifestPath}`);
   console.log(`- sample photos CSV: ${photosCsvPath}`);
-  console.log("- next: give each model ai-labeling-prompt.md and the run directory. Direct runs should write metadata-proposals.json and visual-inspection-audit.json; for large runs, use ai:shard:prepare / ai:shard:merge under /tmp before comparing results with ai:review and ai:report.");
+  console.log("- next: give each model ai-labeling-prompt.md and the run directory. Direct runs should write per-photo artifacts under photo-artifacts/ and merge with ai:artifacts:merge; for large runs, use ai:shard:prepare / ai:shard:merge under /tmp before comparing results with ai:review and ai:report.");
 }
 
 try {
