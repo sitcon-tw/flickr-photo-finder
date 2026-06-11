@@ -6,13 +6,13 @@ Accepted
 
 ## 背景
 
-SITCON Flickr 照片量大，AI 可以協助初步描述畫面、補齊場景標籤、找出可能用途與贊助相關線索。但照片是否已人工審核、是否適合對外推薦、是否能對應特定贊助品項或公開使用，仍牽涉組織語境、授權、肖像權、活動脈絡與資料品質責任。
+SITCON Flickr 照片量大，AI 可以協助描述畫面、補齊場景標籤、找出可能用途與贊助相關線索。這些候選值會直接影響 Finder 搜尋與後續取圖效率，因此應以搜尋級 metadata 為品質目標；但照片是否已人工審核、是否適合對外推薦、是否能對應特定贊助品項或公開使用，仍牽涉組織語境、授權、肖像權、活動脈絡與資料品質責任。
 
 若 AI 直接把資料標成 `reviewed` 或 `approved`，使用者容易把模型輸出誤認為已由人類確認。
 
 ## 決策
 
-AI 初標只產生人類可審核的候選 metadata：
+AI 標記只產生人類可審核的候選 metadata：
 
 - AI 輸出寫入 run 目錄的 `metadata-proposals.json`。
 - AI 不直接修改正式 Google Sheets、`photos.json`、`input-photos.csv` 或 Sheets export。
@@ -25,7 +25,7 @@ AI 初標只產生人類可審核的候選 metadata：
 
 優點：
 
-- 保留 AI 對大量照片的初篩與描述效率。
+- 保留 AI 對大量照片的搜尋級描述與標記效率。
 - 避免把模型推論誤包裝成人工審核事實。
 - 所有候選值可用 diff、report、update plan 與 dry-run 接受人類檢查。
 - `curation_status` 能清楚表達 `unreviewed`、`ai_labeled`、`reviewed` 的差異。
@@ -40,7 +40,7 @@ AI 初標只產生人類可審核的候選 metadata：
 
 - AI 直接寫入正式 Sheets 並標成 reviewed：速度快，但資料可信度與責任邊界錯誤。
 - AI 欄位與人工欄位完全拆表：可保留來源，但增加 Sheets 複雜度，對非工程整理者不友善。
-- 不使用 AI 初標：責任邊界最簡單，但大量照片整理成本過高。
+- 不使用 AI 標記：責任邊界最簡單，但大量照片整理成本過高。
 
 ## 重新評估條件
 

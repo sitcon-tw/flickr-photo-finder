@@ -13,7 +13,7 @@ const tasks = [
     handler: showWorkflowOverview,
     id: "overview",
     inputs: ["無"],
-    next: ["依你要做的事回到 workflow 選單，選擇檢查、相簿匯入、AI 初標或 Sheets 工具。"],
+    next: ["依你要做的事回到 workflow 選單，選擇檢查、相簿匯入、AI 搜尋級標記或 Sheets 工具。"],
     outputs: ["流程說明"],
     phase: "理解流程",
     title: "了解完整資料流",
@@ -23,7 +23,7 @@ const tasks = [
     handler: runProjectChecks,
     id: "check",
     inputs: ["repo 內 schema、taxonomy、fixtures 與 AI proposal examples"],
-    next: ["檢查通過後，可開始相簿匯入、AI 初標或前端開發。"],
+    next: ["檢查通過後，可開始相簿匯入、AI 搜尋級標記或前端開發。"],
     outputs: ["資料與 AI proposal 合約是否仍一致的檢查結果"],
     phase: "開始前檢查",
     title: "檢查專案資料與 AI fixtures",
@@ -49,24 +49,24 @@ const tasks = [
     title: "檢查或套用 intake run",
   },
   {
-    description: "從正式 Sheets 的 albums 選相簿，再依 photos 建立 AI 初標工作目錄。",
+    description: "從正式 Sheets 的 albums 選相簿，再依 photos 建立 AI 搜尋級標記工作目錄。",
     handler: prepareAiRun,
     id: "ai-prepare",
     inputs: ["正式 Google Sheets albums / photos", "匯出正式資料時需要 GOOGLE_APPLICATION_CREDENTIALS 與讀取權限", "Flickr 圖片 URL"],
-    next: ["把 run 目錄中的 ai-labeling-prompt.md 與工作包交給模型；模型只輸出 metadata-proposals.json。大型 run 先用 ai:shard:prepare / ai:shard:merge 把中間檔放在 /tmp。若要做多模型或多輪品質比較，直接使用 eval:attempt。"],
+    next: ["把 run 目錄中的 ai-labeling-prompt.md 與工作包交給模型；模型只輸出 metadata-proposals.json。大型 run 先用 ai:shard:prepare / ai:shard:merge 把中間檔與 visual audits 放在 /tmp。若要做多模型或多輪品質比較，直接使用 eval:attempt。"],
     outputs: ["tmp/ai-runs/<run-id>/photos.json", "tmp/ai-runs/<run-id>/images/"],
-    phase: "AI 初標",
-    title: "準備 AI 初標工作包",
+    phase: "AI 標記",
+    title: "準備 AI 搜尋級標記工作包",
   },
   {
     description: "針對數百張以上的大型 AI run，準備 shard workspace、檢查分片進度、合併暫存 proposal，並產生暫存 review。",
     handler: runBulkAiLabeling,
     id: "ai-bulk",
     inputs: ["既有或新建立的 tmp/ai-runs/<run-id>/", "大型 run 的分片輸出會放在 /tmp/ai-labeling-shards/<run-id>/"],
-    next: ["所有 shard 完成後先暫存 merge/review，人工確認後才 write-run 與 Sheets dry-run。"],
+    next: ["所有 shard 完成且逐張 visual audit 齊全後先暫存 merge/review，人工確認後才 write-run 與 Sheets dry-run。"],
     outputs: ["/tmp/ai-labeling-shards/<run-id>/", "/tmp/ai-review-runs/<run-id>/", "可選的 run root metadata-proposals.json"],
-    phase: "AI 初標",
-    title: "大型 AI 初標分片流程",
+    phase: "AI 標記",
+    title: "大型 AI 標記分片流程",
   },
   {
     description: "驗證 AI proposals，產生 diff、update plan 與檢視摘要。",
@@ -75,8 +75,8 @@ const tasks = [
     inputs: ["tmp/ai-runs/<run-id>/metadata-proposals.json"],
     next: ["人類看 metadata-review-summary.md、metadata-update-plan.csv、AI report 與 dry-run 結果後，再決定是否寫回 Sheets；正式 reviewed 仍在 Sheets 中完成。"],
     outputs: ["metadata-review-summary.md", "metadata-diff.md", "metadata-update-plan.json", "metadata-update-plan.csv", "可選的 Sheets dry-run 結果"],
-    phase: "AI 初標",
-    title: "檢查 AI 初標結果",
+    phase: "AI 標記",
+    title: "檢查 AI 標記結果",
   },
   {
     description: "產生單次檢視或多 run/attempt 比較用的唯讀 HTML 報表。",
@@ -85,7 +85,7 @@ const tasks = [
     inputs: ["tmp/ai-runs/<run-id-or-attempt>/"],
     next: ["閱讀報表後，必要時直接執行 eval:search 或 Sheets dry-run。"],
     outputs: ["tmp/ai-reports/<report-id>/"],
-    phase: "AI 初標",
+    phase: "AI 標記",
     title: "產生 AI report",
   },
   {
@@ -93,7 +93,7 @@ const tasks = [
     handler: runSheetsTools,
     id: "sheets",
     inputs: ["config/project.json", "正式 Google Sheets；部分操作需要 GOOGLE_APPLICATION_CREDENTIALS"],
-    next: ["初始化或遷移完成後，回到相簿匯入或 AI 初標流程。"],
+    next: ["初始化或遷移完成後，回到相簿匯入或 AI 標記流程。"],
     outputs: ["tmp/sheets-init/ 或 tmp/sheets-export/，或 Sheets dry-run 結果"],
     phase: "Google Sheets 維護",
     title: "Google Sheets 工具",
@@ -218,8 +218,8 @@ function printWorkflowSummary() {
   console.log("1. Google Sheets 是正式照片索引；多數寫入前流程會先把正式資料匯出成 tmp/sheets-export/ 工作快取。");
   console.log("2. 從 Flickr 相簿清單選一本相簿，產生 tmp/intake-runs/ 可審核匯入產物。");
   console.log("3. workflow 會記住剛產生的 intake run，通常可直接接續驗證與 Sheets dry-run。");
-  console.log("4. 從 Sheets photos 建立 tmp/ai-runs/，把 ai-labeling-prompt.md 與工作包交給模型初標。");
-  console.log("5. 模型只輸出 metadata-proposals.json；大型 run 可用 ai:shard:prepare / ai:shard:merge 先在 /tmp 分片，再由工具驗證後產生 diff / update plan。");
+  console.log("4. 從 Sheets photos 建立 tmp/ai-runs/，把 ai-labeling-prompt.md 與工作包交給模型做搜尋級標記。");
+  console.log("5. 模型只輸出 metadata-proposals.json；大型 run 可用 ai:shard:prepare / ai:shard:merge 先在 /tmp 分片，worker 另需逐張 visual audit，再由工具驗證後產生 diff / update plan。");
   console.log("6. AI 候選值經人類確認後才寫回 Sheets；正式 reviewed 在 Sheets 中由志工協作完成。");
 }
 
@@ -353,13 +353,13 @@ async function showWorkflowOverview() {
   console.log("主要工作目錄：");
   console.log("- tmp/sheets-export/: 從正式 Google Sheets 匯出的本機工作快取，不 commit。");
   console.log("- tmp/intake-runs/: 單次相簿匯入的候選照片、相簿更新、批次紀錄與摘要。");
-  console.log("- tmp/ai-runs/: AI 初標工作包，包含 photos.json、images/ 與 metadata-proposals.json。");
+  console.log("- tmp/ai-runs/: AI 搜尋級標記工作包，包含 photos.json、images/ 與 metadata-proposals.json。大型分片中間檔在 /tmp/ai-labeling-shards/。");
   console.log("");
   console.log("常見起點：");
   console.log("- 第一次接手：選「檢查專案資料與 AI fixtures」。");
   console.log("- 要匯入照片：選「處理一本 Flickr 相簿」。");
-  console.log("- 要做 AI 初標：先選「準備 AI 初標工作包」。");
-  console.log("- 要驗收 AI 結果：選「檢查 AI 初標結果」，再用 report 或 Sheets dry-run 輔助判斷。");
+  console.log("- 要做 AI 搜尋級標記：先選「準備 AI 搜尋級標記工作包」。");
+  console.log("- 要驗收 AI 結果：選「檢查 AI 標記結果」，再用 report 或 Sheets dry-run 輔助判斷。");
   console.log("- 要比較模型品質：直接使用 eval:sample、eval:attempt 或 eval:search；這些不是一般 workflow 主線。");
   console.log("- 要部署公開搜尋前端：選「建立 GitHub Pages artifact」。");
   console.log("- 要維護 Sheets：選「Google Sheets 工具」。");
@@ -467,9 +467,9 @@ async function reviewIntakeRun(initialRunDir = "", context = {}) {
 async function askContinueToAiPrepare({ albumId, wroteSheets }) {
   console.log("");
   if (!wroteSheets) {
-    console.log("提醒：尚未寫入 Sheets 時，AI 初標工作包不會包含這次 intake run 的新增照片。");
+    console.log("提醒：尚未寫入 Sheets 時，AI 標記工作包不會包含這次 intake run 的新增照片。");
   }
-  if (await askYesNo("要接著準備 AI 初標工作包嗎？", wroteSheets)) {
+  if (await askYesNo("要接著準備 AI 搜尋級標記工作包嗎？", wroteSheets)) {
     await prepareAiRun({ albumId });
     return;
   }
@@ -488,7 +488,7 @@ async function prepareAiRun(context = {}) {
   if (albumId) {
     console.log("");
     console.log(`沿用剛才的相簿：${albumId}`);
-  } else if (await askYesNo("要以相簿為單位準備 AI 初標工作包？", true)) {
+  } else if (await askYesNo("要以相簿為單位準備 AI 搜尋級標記工作包？", true)) {
     const query = await ask("搜尋相簿關鍵字，可留空");
     const albumLimit = await ask("顯示幾筆候選相簿", "20");
     const selectOptions = ["--format", "id", "--limit", albumLimit];
@@ -505,7 +505,7 @@ async function prepareAiRun(context = {}) {
     albumId = await ask("指定 album_id 篩選照片；可留空");
   }
 
-  const limit = await ask("這次最多準備幾張照片給 AI 初標；輸入 all 代表不設上限", context.bulk ? "all" : "50");
+  const limit = await ask("這次最多準備幾張照片給 AI 搜尋級標記；輸入 all 代表不設上限", context.bulk ? "all" : "50");
   const imageSize = await askImageSize();
   const status = await ask("curation_status 篩選；若要整本相簿所有狀態請輸入 all", "unreviewed");
   const photoIds = await ask("指定 photo_id，以逗號分隔；可留空");

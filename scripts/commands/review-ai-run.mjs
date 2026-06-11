@@ -21,6 +21,7 @@ import {
 const defaultProposalFile = "metadata-proposals.json";
 const defaultSummaryFile = "metadata-review-summary.md";
 const shardExecutionLogFile = "shard-execution-log.json";
+const visualAuditDirName = "visual-audits";
 
 const distributionFields = [
   "priority_level",
@@ -240,7 +241,7 @@ async function listFilesIfExists(dir) {
 }
 
 function formatShardNameFromFilename(filename) {
-  const match = filename.match(/^shard-(\d+)-(?:input|proposals)\.json$/);
+  const match = filename.match(/^shard-(\d+)-(?:input|proposals|visual-audit)\.json$/);
   return match ? `shard-${match[1]}` : "";
 }
 
@@ -720,17 +721,23 @@ async function inspectShardArtifacts(runDir, runId) {
   const executionLog = await readJsonIfExists(executionLogPath);
   const standardInputs = (await listFilesIfExists(join(standardDir, "inputs"))).filter((filename) => /^shard-\d+-input\.json$/.test(filename));
   const standardOutputs = (await listFilesIfExists(join(standardDir, "outputs"))).filter((filename) => /^shard-\d+-proposals\.json$/.test(filename));
+  const standardAudits = (await listFilesIfExists(join(standardDir, visualAuditDirName))).filter((filename) => /^shard-\d+-visual-audit\.json$/.test(filename));
   const runInputs = (await listFilesIfExists(runShardDir)).filter((filename) => /^shard-\d+-input\.json$/.test(filename));
   const runOutputs = (await listFilesIfExists(runShardDir)).filter((filename) => /^shard-\d+-proposals\.json$/.test(filename));
+  const visualAuditRows = await buildVisualAuditRows(standardDir, standardInputs);
 
   const rows = [
     ["standard /tmp workspace", standardInputs.length, standardOutputs.length, standardDir],
+    ["standard visual audits", standardInputs.length, standardAudits.length, join(standardDir, visualAuditDirName)],
     ["run proposal-shards", runInputs.length, runOutputs.length, runShardDir],
   ].filter(([, inputs, outputs]) => Number(inputs) > 0 || Number(outputs) > 0);
 
   const warnings = [];
   if (standardInputs.length > 0 && standardInputs.length !== standardOutputs.length) {
     warnings.push(`標準 shard workspace input/output 數不一致：${standardInputs.length} inputs, ${standardOutputs.length} outputs。`);
+  }
+  if (standardInputs.length > 0 && standardInputs.length !== standardAudits.length) {
+    warnings.push(`標準 shard workspace 缺少逐張視覺稽核：${standardInputs.length} inputs, ${standardAudits.length} visual audits。`);
   }
   if (runInputs.length > 0 && runInputs.length !== runOutputs.length) {
     warnings.push(`run 內 proposal-shards input/output 數不一致：${runInputs.length} inputs, ${runOutputs.length} outputs。正式 proposal 仍以 root metadata-proposals.json 為準。`);
@@ -747,7 +754,76 @@ async function inspectShardArtifacts(runDir, runId) {
       }
     : null;
 
-  return { executionSummary, rows, warnings };
+  return { executionSummary, rows, visualAuditRows, warnings };
+}
+
+function visualAuditItems(payload) {
+  if (Array.isArray(payload)) {
+    return payload;
+  }
+  if (payload && typeof payload === "object" && Array.isArray(payload.items)) {
+    return payload.items;
+  }
+  return [];
+}
+
+function visualAuditContactSheetUsed(payload, items) {
+  if (payload?.contact_sheet_used !== undefined && payload.contact_sheet_used !== false) {
+    return true;
+  }
+  return items.some((item) => item?.contact_sheet_used !== undefined && item.contact_sheet_used !== false);
+}
+
+function hasUsableVisualEvidence(item) {
+  const evidence = item?.visual_evidence;
+  if (typeof evidence === "string") {
+    return evidence.trim().length >= 20;
+  }
+  if (!evidence || typeof evidence !== "object" || Array.isArray(evidence)) {
+    return false;
+  }
+  const values = [
+    evidence.subject,
+    evidence.people_count_basis,
+    evidence.scene_basis,
+    evidence.design_basis,
+    ...(Array.isArray(evidence.search_details) ? evidence.search_details : []),
+  ].map((value) => String(value ?? "").trim()).filter(Boolean);
+  return values.join("").length >= 30;
+}
+
+async function buildVisualAuditRows(standardDir, standardInputFilenames) {
+  const rows = [];
+  for (const filename of standardInputFilenames.sort()) {
+    const shardName = formatShardNameFromFilename(filename);
+    const inputPath = join(standardDir, "inputs", filename);
+    const auditPath = join(standardDir, visualAuditDirName, filename.replace("-input.json", "-visual-audit.json"));
+    const input = await readJsonIfExists(inputPath);
+    const inputItems = Array.isArray(input?.items) ? input.items : [];
+    const audit = await readJsonIfExists(auditPath);
+    if (!audit) {
+      rows.push([shardName, inputItems.length, 0, 0, 0, auditPath, "blocker: 缺少逐張視覺稽核，無法證明 worker 逐張單圖判讀"]);
+      continue;
+    }
+    const auditItems = visualAuditItems(audit);
+    const auditByPhoto = new Map(auditItems.map((item) => [item?.photo_id, item]));
+    const missing = inputItems.filter((item) => !auditByPhoto.has(item.photo_id)).length;
+    const nonSingleImage = auditItems.filter((item) => item?.inspection_mode !== "single-image").length;
+    const weakEvidence = auditItems.filter((item) => !hasUsableVisualEvidence(item)).length;
+    const contactSheetUsed = visualAuditContactSheetUsed(audit, auditItems) ? 1 : 0;
+    let issue = "";
+    if (contactSheetUsed > 0) {
+      issue = "blocker: visual audit 表示使用 contact sheet 或合成圖判讀";
+    } else if (missing > 0 || auditItems.length !== inputItems.length) {
+      issue = `blocker: visual audit item 數與 shard input 不一致，audit ${auditItems.length}/${inputItems.length}，缺 ${missing} 張`;
+    } else if (nonSingleImage > 0) {
+      issue = `blocker: ${nonSingleImage} 張沒有標示 single-image 檢視`;
+    } else if (weakEvidence > 0) {
+      issue = `needs-review: ${weakEvidence} 張逐張證據過弱，建議抽查`;
+    }
+    rows.push([shardName, inputItems.length, auditItems.length, nonSingleImage, weakEvidence, auditPath, issue]);
+  }
+  return rows;
 }
 
 function isZeroPeopleContradiction(item) {
@@ -1333,7 +1409,7 @@ function visualDescriptionWarningCount(items, kind) {
   ).length;
 }
 
-export function buildAdoptionReadiness({ items = [], metricsHealth, reasonReuseQaRows = [], shardFieldCoverageRows = [], validationWarnings = [] } = {}) {
+export function buildAdoptionReadiness({ items = [], metricsHealth, reasonReuseQaRows = [], shardFieldCoverageRows = [], validationWarnings = [], visualAuditRows = [] } = {}) {
   const rows = [];
   const blockerRows = shardFieldCoverageRows.filter((row) => String(row[6]).startsWith("blocker:"));
   for (const row of blockerRows.slice(0, 12)) {
@@ -1342,6 +1418,18 @@ export function buildAdoptionReadiness({ items = [], metricsHealth, reasonReuseQ
       "shard scene_tags",
       `${row[0]} ${row[4]} (${row[3]}/${row[2]})；${String(row[6]).replace(/^blocker:\s*/, "")}`,
     ]);
+  }
+  const visualAuditBlockers = visualAuditRows.filter((row) => String(row[6]).startsWith("blocker:"));
+  for (const row of visualAuditBlockers.slice(0, 12)) {
+    rows.push([
+      "blocked",
+      "visual audit",
+      `${row[0]} ${row[2]}/${row[1]} audit item(s)；${String(row[6]).replace(/^blocker:\s*/, "")}`,
+    ]);
+  }
+  const visualAuditNeedsReview = visualAuditRows.filter((row) => String(row[6]).startsWith("needs-review:"));
+  if (visualAuditNeedsReview.length > 0) {
+    rows.push(["needs-review", "visual audit", `${visualAuditNeedsReview.length} 個 shard 的逐張視覺證據偏弱。`]);
   }
 
   const sponsorReportCount = sponsorMismatchCount(items, "贊助成果報告");
@@ -1379,7 +1467,7 @@ export function buildAdoptionReadiness({ items = [], metricsHealth, reasonReuseQ
     rows.push(["ready-with-warnings", "token metrics", metricsHealth.message]);
   }
 
-  const status = blockerRows.length > 0
+  const status = blockerRows.length > 0 || visualAuditBlockers.length > 0
     ? "blocked"
     : rows.some((row) => row[0] === "needs-review")
       ? "needs-review"
@@ -1412,7 +1500,7 @@ function buildPromptVersionNotes(manifest) {
   return [];
 }
 
-function renderSummary({ adoptionReadiness, artifactRows, codexSession, diffPath, layerRows, manifest, notes, outputDir, peopleCountQaRows, plan, proposals, reasonReuseQaRows, runDir, sample, scenePackageRows: scenePackageTableRows, sceneQaRows, shardFieldCoverageRows, shardMap, shardRows, summaryPath }) {
+function renderSummary({ adoptionReadiness, artifactRows, codexSession, diffPath, layerRows, manifest, notes, outputDir, peopleCountQaRows, plan, proposals, reasonReuseQaRows, runDir, sample, scenePackageRows: scenePackageTableRows, sceneQaRows, shardFieldCoverageRows, shardMap, shardRows, summaryPath, visualAuditRows }) {
   const items = proposals.items;
   const fieldCountRows = fieldCounts(items).map(({ field, count }) => [
     fieldLabel(field, { includeRaw: true }),
@@ -1516,6 +1604,12 @@ function renderSummary({ adoptionReadiness, artifactRows, codexSession, diffPath
     shardFieldCoverageRows.length > 0
       ? table(["shard", "field", "items", "with field", "coverage", "run coverage", "issue"], shardFieldCoverageRows)
       : "No shard field coverage outliers were generated.",
+    "",
+    "## Shard Visual Audit QA",
+    "",
+    visualAuditRows.length > 0
+      ? table(["shard", "input items", "audit items", "non-single-image", "weak evidence", "audit path", "issue"], visualAuditRows)
+      : "No shard visual audit rows were generated.",
     "",
     "## Scene Review Packages",
     "",
@@ -1655,6 +1749,7 @@ async function reviewAiRun(options) {
     reasonReuseQaRows,
     shardFieldCoverageRows,
     validationWarnings: validation.warnings,
+    visualAuditRows: shardInspection.visualAuditRows,
   });
   const artifactRows = [
     ["final proposals", options.proposalsPath],
@@ -1694,6 +1789,7 @@ async function reviewAiRun(options) {
     shardMap,
     shardRows: shardInspection.rows,
     summaryPath: options.summaryPath,
+    visualAuditRows: shardInspection.visualAuditRows,
   });
   await writeFile(options.summaryPath, summary);
 

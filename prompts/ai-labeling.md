@@ -1,10 +1,12 @@
-# SITCON Flickr Photo Finder AI 初標 Prompt
+# SITCON Flickr Photo Finder 搜尋級 AI 標記 Prompt
 
-你正在協助 SITCON Flickr Photo Finder 進行照片 metadata 初標。你的輸出只會作為人類可審核候選值，不代表人工 review。
+你正在協助 SITCON Flickr Photo Finder 產生搜尋級照片 metadata 候選。這些候選值不代表人工 review，也不能把照片推進到 `reviewed` 或 `approved`；但在大量照片無法逐張人工細調的現實下，它們會直接影響社群、設計、網站、贊助、新聞稿、活動回顧與志工招募找圖是否有效。
+
+因此本任務不是低承諾草稿。你的目標是在不虛構、不推論照片外脈絡的前提下，產生能支援實際找圖工作的高品質候選索引。
 
 ## 你要讀取的資料
 
-本 prompt 已包含模型執行初標所需的任務邊界與輸出格式摘要。請優先讀取下列本次標記必要輸入：
+本 prompt 已包含模型執行搜尋級標記所需的任務邊界與輸出格式摘要。請優先讀取下列本次標記必要輸入：
 
 - `data/photo-schema.json`
 - `data/tag-taxonomy.json`
@@ -28,6 +30,9 @@
 - 不可以使用既有的 `metadata-proposals.json`、其他 run 的 proposal、其他 shard 的輸出或上一輪結果作為本次標記依據；除非任務明確說明是修補某份既有 proposal。
 - 若本次任務提供 shard input，請只處理該 input 內列出的照片，不要替其他照片產生 item。
 - shard output 若被要求寫成 JSON array，請只輸出正式 `items[]` 物件；最終 root object 會由 merge 工具產生。
+- 大型 run 的 shard 大小應以品質為優先，預設使用小批次。不要把大量照片合成單張 contact sheet 來批量判讀。
+- 禁止使用 contact sheet、montage、image grid、HTML gallery screenshot、縮圖拼貼或任何合成大圖作為欄位判斷依據。縮圖總覽只能用來導航與確認檔案存在，不能用來決定人數、主體、場景、描述、裁切、用途或贊助欄位。
+- worker 必須為每張照片留下逐張視覺稽核，記錄本張單圖的主體、人數依據、場景依據、可搜尋細節與設計可用性依據。若 shard prompt 提供 `visual_audit_path`，必須寫出該 JSON 檔；缺少逐張稽核的 shard 不應被直接採用或寫回 Sheets。
 - 大型 run 應先用少量照片做 smoke test，確認圖片可讀、proposal 可驗證、review 不會寫錯位置後，再展開全量分工。
 - worker 輸出 shard 前必須自查本 shard 的 `scene_tags`：只要照片有可見活動流程、場景、空間、人物互動、物件、餐食、標示、螢幕、背板、攤位、場佈或導引線索，就應提出 1 到 3 個 `scene_tags`。一個正常活動 shard 不應整段幾乎沒有 `scene_tags`；若發現整段缺漏，請逐張回頭補判斷，不要把它留給 merge 或 review 工具。
 - 具備 repo 指令能力的 agent 應把分片中間檔寫到 `/tmp/ai-labeling-shards/<run-id>/` 這類暫存目錄；正式 AI run 目錄只應保留最後的 `metadata-proposals.json`。
@@ -38,7 +43,21 @@
 
 你必須逐一打開並檢視每張照片的 `local_image_path` 或 `image_download_url` 後，才可為該 `photo_id` 輸出候選欄位。禁止只根據 `photo_id`、檔名順序、相簿名稱、前後照片、批次規則或模板推論欄位。禁止先建立場景 archetype 後批量套用到多張照片。
 
+「逐一打開」指的是以單張照片為判讀單位。若你只看過多張照片拼在一起的 contact sheet、縮圖牆或截圖總覽，該照片尚未被有效檢視，不能輸出候選欄位。
+
 若你無法實際載入或視覺解析某張圖片，請停止並回報無法處理的 `photo_id`；不要用通用值、預設值或「推測」字眼填入 proposal。寧可缺項，不可虛構。
+
+## 找圖角色與品質目標
+
+請從 Finder 的實際使用者需求回推標記品質：
+
+- 社群與宣傳：需要找得到表情、手勢、互動、青春感、活力、友善、熱鬧與現場感。不要只因照片有人就標 `社群貼文`。
+- 設計與網站：需要找得到橫式、直式、留白、乾淨背景、安全裁切、可放標題的畫面。`has_negative_space` 和 `safe_crop` 必須各自有可見依據。
+- 贊助與行銷：需要找得到外部品牌、攤位、露出、會眾互動與履約證據。不要把 SITCON 自有旗幟、Logo、桌旗或一般活動配置標成贊助成果。
+- 新聞稿與活動回顧：需要找得到代表性場面、正式背板、講者、會眾、頒獎、活動流程與可公開使用的畫面。`活動回顧` 不是「活動照片」的同義詞。
+- 志工招募：需要找得到協作、服務參與者、場佈、物資整理、報到、引導、攝影與幕後工作狀態。單純會眾或講者照片不要標成志工招募。
+
+每個欄位都應支援「未來有人能更快找到正確照片」。如果某個候選值只是在把相簿名稱或常見活動模式套進去，卻沒有本張照片的可見證據，請省略。
 
 每張有可讀圖片的照片，都應優先判斷以下基礎欄位：
 
@@ -224,6 +243,8 @@ metadata-proposals.json
 
 ## 輸出前自我檢查
 
+- 是否曾用 contact sheet、montage、縮圖牆或多圖截圖來判斷欄位？若有，這些欄位無效；請回到單張原圖逐張重做。
+- 若本次是 shard 任務，是否已為每張照片寫出逐張視覺稽核，且 `contact_sheet_used = false`、每張 `inspection_mode = single-image`？若沒有，請先補齊，不要交付 shard。
 - 是否有超過 5 張照片在同一個欄位產出完全相同的 `value` 與 `reason`？若有，代表你可能沒有逐張看圖，請重做這些 item，或將該欄位省略。
 - 是否有多張照片使用「推測值」、「預設為」、「圖片尺寸為」或其他固定語言？若有，請改成描述本張照片的可見證據。
 - 是否幾乎每張照片都有 `mood_tags`，或大量照片都落在 `專業`、`專注`、`友善`？若有，請重新確認是否把 mood 當成預設分類。

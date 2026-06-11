@@ -67,7 +67,7 @@ SITCON Flickr 上的照片擁有者是 SITCON，但攝影師 credit 會放在 Fl
 
 `reviewed` 完整度由 `data/photo-schema.json` 的 `reviewed_required_fields` 定義，並由 `pnpm data:validate` 檢查。不要在這份指南另外維護欄位清單；若規則改變，請先更新 schema。`public_use_status = approved` 不會讓 `photographer` 或 `license` 變成必填，缺值時只代表實際對外使用前仍要回 Flickr 原頁確認來源脈絡。
 
-`scene_tags` 在 AI 初標階段是高召回候選，可能需要人類修正；在人工 `reviewed` 階段則是完成審核門檻，目的是讓已整理照片能被場景篩選找到。
+`scene_tags` 在 AI 標記階段是高召回候選，可能需要人類修正；在人工 `reviewed` 階段則是完成審核門檻，目的是讓已整理照片能被場景篩選找到。
 
 ## CSV 與多值格式
 
@@ -130,7 +130,7 @@ SITCON Flickr 照片本身已經是經同意釋出的公開來源；`public_use_
 `curation_status` 代表這筆資料整理到什麼程度，不是照片品質評分。
 
 - `unreviewed`: 只匯入 Flickr 基本資料，還沒人工判斷。
-- `ai_labeled`: 經過 AI 初標，但尚未人工確認。
+- `ai_labeled`: 經過 AI 標記，但尚未人工確認。
 - `reviewed`: 已由人確認到可以被搜尋與初步使用判斷。
 
 `reviewed` 不代表已經排好推薦優先度，也不代表每個使用提醒都已補齊。若沒有明確使用提醒，可先讓 `public_use_status` 留空；若沒有明確推薦排序判斷，`priority_level` 可以留空。

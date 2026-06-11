@@ -21,7 +21,7 @@
 | Apps Script 練習 target | 練習表的 Sheet-bound Apps Script ID 已記錄，且 target 需明確指定。 | `config/project.json` 的 `googleSheets.practiceAppsScriptId` | `pnpm apps-script:status -- --target practice`。 |
 | GA4 前端 measurement | Pages 前端使用的 measurement ID 已設定。 | `config/project.json` 的 `frontend.ga4MeasurementId` | 手動用 GA4 Realtime / DebugView 驗證事件；調整事件前讀 `docs/frontend-analytics-design.md`。 |
 | GA4 property / Admin API | GA4 property ID 已設定；service account 或操作者具備管理 custom dimensions 的權限。 | `config/project.json` 的 `frontend.ga4PropertyId`、`config/ga4-custom-dimensions.json` | 設定 `GOOGLE_APPLICATION_CREDENTIALS` 後跑 `pnpm analytics:dimensions:check`。 |
-| AI / external model access | 本 repo 不保存 AI API key；AI 初標只產生候選 metadata。 | `docs/ai-labeling-operator-guide.md`、`docs/ai-labeling-contract.md` | 以既有或 sample run 跑 `pnpm ai:validate` / `pnpm ai:review`；不要把模型輸出直接當 reviewed。 |
+| AI / external model access | 本 repo 不保存 AI API key；AI 標記只產生候選 metadata。 | `docs/ai-labeling-operator-guide.md`、`docs/ai-labeling-contract.md` | 以既有或 sample run 跑 `pnpm ai:validate` / `pnpm ai:review`；不要把模型輸出直接當 reviewed。 |
 
 ## 環境變數
 

@@ -225,7 +225,7 @@ pnpm sheets:report -- --source sheets
 
 建議使用時機：
 
-- 每次大量 `intake` 或 AI 初標回寫 dry-run / write 後，先看報表再安排人工整理。
+- 每次大量 `intake` 或 AI 標記回寫 dry-run / write 後，先看報表再安排人工整理。
 - 例行檢查正式表是否累積太多 `ai_labeled`、未處理相簿或使用提醒。
 - 準備公開素材、贊助提案、網站視覺或新聞稿前，先用 `WARNING` 項目決定要補哪些欄位。
 
@@ -416,9 +416,9 @@ pnpm data:validate -- --import-batches /tmp/import-batch.csv
 
 ## AI 輔助流程
 
-AI 可以協助初標，但不能取代人工確認。
+AI 可以協助產生搜尋級標記候選，但不能取代人工確認。
 
-本節的 `AI run` 指 `tmp/ai-runs/<run-id>/` 內的一次 AI 初標工作包；`attempt` 是從既有 AI run 派生的模型或輪次比較工作包。兩者都只產生候選 metadata 與 review artifact，不能直接代表人工 `reviewed`。
+本節的 `AI run` 指 `tmp/ai-runs/<run-id>/` 內的一次 AI 標記工作包；`attempt` 是從既有 AI run 派生的模型或輪次比較工作包。兩者都只產生候選 metadata 與 review artifact，不能直接代表人工 `reviewed` 或公開 `approved`；但這些候選會影響 Finder 搜尋，因此應以搜尋級 metadata 為品質目標。
 
 建議流程：
 
@@ -426,7 +426,7 @@ AI 可以協助初標，但不能取代人工確認。
 2. 用 `pnpm ai:prepare` 從 `tmp/sheets-export/photos.csv` 選出待整理照片，例如 `curation_status = unreviewed`。
 3. 工具建立 `tmp/ai-runs/<run-id>/`，輸出 `input-photos.csv`、`photos.json`、`manifest.json`、`ai-labeling-prompt.md`，並下載 AI 判讀用圖片到 `images/`。
 4. 若要讓不同模型或同一模型不同輪次使用同一批輸入，先用 `pnpm eval:attempt` 從既有 run 建立 attempt，不要手動複製整個工作包。
-5. 把 run 目錄中的 `ai-labeling-prompt.md` 與工作包交給模型。模型只應讀取 prompt 指定的必要輸入，例如 `photos.json`、`images/`、schema、taxonomy 與 sponsorship items，並只產生 `metadata-proposals.json` 候選欄位值。大型 run 可先用 `pnpm ai:shard:prepare` 把中間分片放到 `/tmp/ai-labeling-shards/<run-id>/`，再用 `pnpm ai:shard:merge` 合併。
+5. 把 run 目錄中的 `ai-labeling-prompt.md` 與工作包交給模型。模型只應讀取 prompt 指定的必要輸入，例如 `photos.json`、`images/`、schema、taxonomy 與 sponsorship items，並只產生 `metadata-proposals.json` 候選欄位值。大型 run 可先用 `pnpm ai:shard:prepare` 把中間分片放到 `/tmp/ai-labeling-shards/<run-id>/`，worker 另需寫出 `visual-audits/shard-XX-visual-audit.json`，再用 `pnpm ai:shard:merge` 合併。
 6. 操作者用 `pnpm ai:review -- --run-dir tmp/ai-runs/<run-id-or-attempt>` 檢查候選欄位格式、受控字彙與責任邊界，並產生審核摘要、diff 與更新計畫。若要先檢查 `/tmp` 的暫存合併結果，可加上 `--proposals <path> --output-dir <tmp-dir>`，避免 review artifacts 寫入正式 run 目錄。
 7. 用 `pnpm ai:report` 產生唯讀 HTML 報表；單一 run 用逐張檢視，多個 run/attempt 用並排比較。
 8. 若本次要評估 `visual_description` 對自然語言找圖是否有幫助，先用 `pnpm eval:search` 做 taxonomy-only baseline 與 taxonomy + description 的離線比較。
@@ -434,9 +434,9 @@ AI 可以協助初標，但不能取代人工確認。
 10. 人類確認後才加上 `--write` 寫入正式欄位。
 11. AI 協助後但尚未人工完整確認的列標成 `curation_status = ai_labeled`。
 
-AI 初標流程到 `ai_labeled` 就應停止。`curation_status = reviewed` 不應是本機 AI run 的收尾步驟，而是照片資料回到 Google Sheets 後，由具有 Sheets 編輯權限的志工們在同一份正式資料表中協作檢核、修正並補齊必要欄位後才更新。
+AI 標記流程到 `ai_labeled` 就應停止。`curation_status = reviewed` 不應是本機 AI run 的收尾步驟，而是照片資料回到 Google Sheets 後，由具有 Sheets 編輯權限的志工們在同一份正式資料表中協作檢核、修正並補齊必要欄位後才更新。
 
-準備一批 AI 初標輸入：
+準備一批 AI 標記輸入：
 
 ```bash
 pnpm ai:prepare -- --limit 50
@@ -456,9 +456,9 @@ pnpm ai:prepare -- --albums ALBUM_ID_1,ALBUM_ID_2 --limit all --status all --dow
 
 圖片下載通常是大型 AI run 的主要瓶頸。`ai:prepare` 預設平行下載 8 張圖片；若網路或 Flickr 回應不穩，請先降低 `--download-concurrency`，並保留 run artifact 供重試與檢查。
 
-日常操作可直接使用 `pnpm workflow` 的「準備 AI 初標工作包」。它會先從正式 Sheets 匯出的 `albums` 清單選相簿，再把選到的 album id 傳給 `ai:prepare`。工作包建立完成後，`ai:prepare` 會寫入該 run 目錄的 `ai-labeling-prompt.md`；workflow 也會印出同一份可直接複製給模型或 agent 的 prompt。這份 prompt 是模型任務入口；不要另外把 operator guide、評估筆記或 Sheets 回寫文件整份交給模型。
+日常操作可直接使用 `pnpm workflow` 的「準備 AI 搜尋級標記工作包」。它會先從正式 Sheets 匯出的 `albums` 清單選相簿，再把選到的 album id 傳給 `ai:prepare`。工作包建立完成後，`ai:prepare` 會寫入該 run 目錄的 `ai-labeling-prompt.md`；workflow 也會印出同一份可直接複製給模型或 agent 的 prompt。這份 prompt 是模型任務入口；不要另外把 operator guide、評估筆記或 Sheets 回寫文件整份交給模型。
 
-數百張以上的大型批次可使用 `pnpm workflow -- --task ai-bulk`。這個入口會沿用正式 Sheets 匯出的相簿清單，讓操作者挑選要處理的相簿，建立整批 AI run，接著引導分片準備、分片狀態檢查、合併、review、report 與 Sheets dry-run。若只想查看目前進度：
+數百張以上的大型批次可使用 `pnpm workflow -- --task ai-bulk`。這個入口會沿用正式 Sheets 匯出的相簿清單，讓操作者挑選要處理的相簿，建立整批 AI run，接著引導分片準備、分片狀態檢查、合併、review、report 與 Sheets dry-run。分片預設以 20 張為品質優先單位；worker 不得用 contact sheet、縮圖牆或多圖截圖判讀欄位，且每個 shard 必須有逐張 visual audit。若只想查看目前進度：
 
 ```bash
 pnpm ai:bulk:status -- --run-dir tmp/ai-runs/<run-id>
@@ -488,7 +488,7 @@ pnpm ai:prepare -- --album ALBUM_ID --limit all --status all
 pnpm ai:prepare -- --albums ALBUM_ID_1,ALBUM_ID_2 --limit all --status all
 ```
 
-`ai:prepare` 預設使用 `--image-size large-1024`，因為 AI 初標需要比前端縮圖更清楚的內容判讀素材。`image_preview_url` 仍是 Google Sheets 正式欄位中給前端預覽的小縮圖；AI 工作包會在 `photos.json` 另外記錄本次使用的 `image_download_url` 與 `image_size`，不需要把 AI 下載尺寸寫回 Sheets。
+`ai:prepare` 預設使用 `--image-size large-1024`，因為 AI 標記需要比前端縮圖更清楚的內容判讀素材。`image_preview_url` 仍是 Google Sheets 正式欄位中給前端預覽的小縮圖；AI 工作包會在 `photos.json` 另外記錄本次使用的 `image_download_url` 與 `image_size`，不需要把 AI 下載尺寸寫回 Sheets。
 
 可選尺寸：
 
@@ -548,11 +548,11 @@ pnpm ai:review -- --run-dir tmp/ai-runs/<run-id>
 - `metadata-diff.md`: 逐欄列出原值、AI 建議值、是否變更、信心與理由。
 - `metadata-update-plan.json` / `metadata-update-plan.csv`: 只列出實際會改變的欄位，供後續 dry-run Sheets 更新工具使用。
 
-`ai:review` 的 CLI `Next:` 與 `metadata-review-summary.md` 的 `## Next Commands` 是 AI 初標流程的主要交接介面。新增或調整後續檢視工具時，應同步更新這兩個地方，避免操作者跑完 review 後仍看不到調整後的建議流程。
+`ai:review` 的 CLI `Next:` 與 `metadata-review-summary.md` 的 `## Next Commands` 是 AI 標記流程的主要交接介面。新增或調整後續檢視工具時，應同步更新這兩個地方，避免操作者跑完 review 後仍看不到調整後的建議流程。
 
 日常操作建議從 `pnpm workflow -- --task ai-report` 或 `pnpm eval -- --task report` 進入報表流程。互動入口會掃描 `tmp/ai-runs/`，讓操作者直接選擇單一 run / attempt，或多選產生比較報表；下方低階指令仍保留給自動化、文件交接與精確重跑。
 
-檢視單次 AI 初標結果：
+檢視單次 AI 標記結果：
 
 ```bash
 pnpm ai:report -- --run tmp/ai-runs/<run-id-or-attempt>
@@ -575,7 +575,7 @@ pnpm eval:search -- --run-dir tmp/ai-runs/<run-id-or-attempt> --query "有留白
 
 這個 prototype 不呼叫 LLM、不抓圖片，也不寫入 Google Sheets；它只比較 taxonomy-only baseline 與 taxonomy + `visual_description` 的排序差異。
 
-AI 候選值只允許讀圖初標合理處理的欄位，正式 allowlist 由 `data/photo-schema.json` 的 `ai_field_layers` 定義。AI 候選值不能修改 Flickr 基本欄位、相簿/活動脈絡、攝影師、授權或人工備註；若建議 `curation_status`，只能是 `ai_labeled`；若建議 `public_use_status`，不能直接給 `approved`。`scene_tags` 屬於高召回欄位，低覆蓋會在 review report 中提示，但不會讓 proposal validation 失敗。
+AI 候選值只允許讀圖標記合理處理的欄位，正式 allowlist 由 `data/photo-schema.json` 的 `ai_field_layers` 定義。AI 候選值不能修改 Flickr 基本欄位、相簿/活動脈絡、攝影師、授權或人工備註；若建議 `curation_status`，只能是 `ai_labeled`；若建議 `public_use_status`，不能直接給 `approved`。`scene_tags` 屬於高召回欄位，低覆蓋會在 review report 中提示，但不會讓 proposal validation 失敗。
 
 若只想執行單一步驟，仍可使用底層指令：
 
@@ -629,7 +629,7 @@ pnpm sheets:apply-ai-updates -- --run-dir tmp/ai-runs/<run-id> --allow-current-m
 pnpm sheets:apply-ai-updates -- --run-dir tmp/ai-runs/<run-id> --allow-current-mismatch --summary-only --write
 ```
 
-這不應作為日常預設；它是給「確認要重跑並覆蓋既有 AI 初標」的操作使用。
+這不應作為日常預設；它是給「確認要重跑並覆蓋既有 AI 標記」的操作使用。
 
 若人類重新觸發 AI 調整欄位，工具仍應提供可審核 diff，不應靜默覆蓋人工整理內容。
 
@@ -685,7 +685,7 @@ https://developers.google.com/workspace/sheets/api/quickstart/nodejs
 - 寫入前的 preflight 與 dry-run 行為。
 - 寫入後如何讀回驗證。
 
-現階段 repo 已有 `pnpm sheets:apply-init` 可以用 SDK 套用初始化 CSV，`pnpm sheets:apply-intake` 可以 dry-run/write 已檢查的 intake run artifact，`pnpm sheets:apply-ai-updates` 可以 dry-run/write AI 初標候選 metadata 更新計畫。正式 Sheets `albums` 可透過 `pnpm sheets:export` 產生本機工作 CSV，也可由 `pnpm albums:list -- --source sheets` 或 `pnpm albums:select -- --source sheets` 直接讀取；`intake:run` 仍需要 `photos` 與 `albums` 工作輸入做重複檢查與相簿更新規劃。
+現階段 repo 已有 `pnpm sheets:apply-init` 可以用 SDK 套用初始化 CSV，`pnpm sheets:apply-intake` 可以 dry-run/write 已檢查的 intake run artifact，`pnpm sheets:apply-ai-updates` 可以 dry-run/write AI 標記候選 metadata 更新計畫。正式 Sheets `albums` 可透過 `pnpm sheets:export` 產生本機工作 CSV，也可由 `pnpm albums:list -- --source sheets` 或 `pnpm albums:select -- --source sheets` 直接讀取；`intake:run` 仍需要 `photos` 與 `albums` 工作輸入做重複檢查與相簿更新規劃。
 
 若未來需要 Google Drive 檔案備份、匯出檔搬運或組織既有檔案工作流，應視為 Sheets API SDK 之外的檔案維護工作，不作為 Sheets tab/range 寫入的主要流程。
 

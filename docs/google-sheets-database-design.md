@@ -39,7 +39,7 @@ pnpm sheets:init
 
 Google Sheets tab 名稱在 1.0 固定，不提供 `worksheetNames` 對照設定。其他組織 fork 時若要複用，應使用同樣 tab 名稱；未來若真的有改名需求，再加入對照設定。
 
-正式表也可以加入 `使用說明` 分頁，作為整理者進入試算表後的中文入口。這張分頁由 `pnpm sheets:sync-guide` 建立或更新，不是正式資料表，也不應被公開前端、AI 初標或 repo 匯入流程當成資料來源。
+正式表也可以加入 `使用說明` 分頁，作為整理者進入試算表後的中文入口。這張分頁由 `pnpm sheets:sync-guide` 建立或更新，不是正式資料表，也不應被公開前端、AI 標記或 repo 匯入流程當成資料來源。
 
 若需要教學或試驗編輯，應建立 SITCON 管理的固定練習用試算表，並把 ID 記在 `config/project.json` 的 `googleSheets.practiceSpreadsheetId`。練習表由維護者用 `pnpm sheets:practice:sync` 從正式匯出資料重置小樣本，再套用同樣的 schema、taxonomy、Apps Script 與 `使用說明`；它不是第二份正式照片索引，一般整理者也不需要為了練習操作 repo 指令。
 
@@ -126,7 +126,7 @@ schema 與同步狀態紀錄。這張表讓人類、Apps Script 與 agent 能確
 
 最近一次 Apps Script 驗證結果。這張表由 `檢查這張照片`、`檢查全部照片` 或 `檢查公開資料格式` 覆寫，方便維護者處理 alert 放不下的大量錯誤。
 
-`validation_report` 是維護輔助報表，不是正式資料表；公開前端、AI 初標與 repo 匯入流程不應把它當成資料來源。
+`validation_report` 是維護輔助報表，不是正式資料表；公開前端、AI 標記與 repo 匯入流程不應把它當成資料來源。
 
 欄位：
 
@@ -211,7 +211,7 @@ SITCON Flickr albums
   -> 產生 intake run artifact
   -> 人類檢查候選照片、相簿更新與批次紀錄
   -> 套用到 Google Sheets photos / albums / import_batches
-  -> AI 輔助初標後回到 Sheets 成為 ai_labeled
+  -> AI 輔助標記後回到 Sheets 成為 ai_labeled
   -> 志工在 Google Sheets 協作檢核、修正與標成 reviewed
   -> Apps Script 驗證與提示
   -> GitHub Pages 與外部 AI 讀取 photos 或同欄位公開匯出

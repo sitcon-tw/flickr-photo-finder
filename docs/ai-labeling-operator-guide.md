@@ -1,16 +1,16 @@
-# AI 初標操作指南
+# 搜尋級 AI 標記操作指南
 
 這份文件給執行 `prepare -> review -> report -> dry-run` 流程的人類操作者、技術志工與 repo 維護 agent 使用。它補足 `docs/ai-labeling-contract.md` 沒有寫的操作層細節。
 
-第一次接手專案時，請先讀 `docs/README.md` 的「先建立共同語言」與「整體資料生命週期」。本文件只展開其中的 AI 初標操作段落；Flickr 相簿匯入、正式 Sheets 初始化與 Apps Script 維護請回到 `docs/README.md` 選入口。
+第一次接手專案時，請先讀 `docs/README.md` 的「先建立共同語言」與「整體資料生命週期」。本文件只展開其中的 AI 標記操作段落；Flickr 相簿匯入、正式 Sheets 初始化與 Apps Script 維護請回到 `docs/README.md` 選入口。
 
-不要把本文件整份交給只負責照片初標的模型。模型真正需要的任務入口是 run 目錄中的 `ai-labeling-prompt.md`，再搭配 `docs/ai-labeling-contract.md`、schema、taxonomy、sponsorship items、`photos.json` 與圖片。
+不要把本文件整份交給只負責照片標記的模型。模型真正需要的任務入口是 run 目錄中的 `ai-labeling-prompt.md`，再搭配 `docs/ai-labeling-contract.md`、schema、taxonomy、sponsorship items、`photos.json` 與圖片。
 
 合約文件回答「模型輸入輸出格式是什麼」；本文件回答「操作者接手後應該怎麼準備工作包、檢查結果、看報表、處理錯誤與安排回寫前 dry-run」。
 
 ## 流程總覽
 
-AI 初標流程先建立工作包，再由模型產生候選 metadata；後續檢查、報表、搜尋評估與 Sheets dry-run 都是人類採用前的輔助。若本次目標是 prompt 或 schema 決策，請在 review/report/search 後進入 `eval:prompt-review`，不要直接修改 prompt 或回寫 Sheets。
+AI 標記流程先建立工作包，再由模型產生搜尋級候選 metadata；後續檢查、報表、搜尋評估與 Sheets dry-run 都是人類採用前的輔助。這些候選值尚未等於人工 `reviewed` 或公開 `approved`，但會直接影響 Finder 的社群宣傳、設計取圖、網站視覺、贊助證明、新聞稿、活動回顧與志工招募搜尋，因此不能用低承諾的「草稿」心態處理。若本次目標是 prompt 或 schema 決策，請在 review/report/search 後進入 `eval:prompt-review`，不要直接修改 prompt 或回寫 Sheets。
 
 ```mermaid
 flowchart TD
@@ -33,7 +33,7 @@ flowchart TD
 pnpm sheets:export
 ```
 
-這會把正式 Google Sheets 固定 tabs 匯出到 `tmp/sheets-export/`。AI 初標不應直接讀 repo fixture 當正式資料來源。
+這會把正式 Google Sheets 固定 tabs 匯出到 `tmp/sheets-export/`。AI 標記不應直接讀 repo fixture 當正式資料來源。
 
 ### 2. 建立 AI run
 
@@ -79,7 +79,7 @@ pnpm ai:prepare -- --photo-ids PHOTO_ID --image-size original
 pnpm ai:prepare -- --focus design-metadata --limit 50 --image-size large-1024
 ```
 
-這個 profile 會從 `tmp/sheets-export/photos.csv` 選出尚未有 `safe_crop`、且看起來可能有設計用途的照片；包含橫式照片、`has_negative_space = true`、既有用途或場景有網站/社群/講者/新聞/簡報線索，或 `visual_description` 有留白、牆面、背板、舞台、投影幕等版面詞彙的照片。若未指定 `--status`，此 profile 預設包含所有 `curation_status`，因為這類補強常發生在已 AI 初標但設計欄位不足的照片上。
+這個 profile 會從 `tmp/sheets-export/photos.csv` 選出尚未有 `safe_crop`、且看起來可能有設計用途的照片；包含橫式照片、`has_negative_space = true`、既有用途或場景有網站/社群/講者/新聞/簡報線索，或 `visual_description` 有留白、牆面、背板、舞台、投影幕等版面詞彙的照片。若未指定 `--status`，此 profile 預設包含所有 `curation_status`，因為這類補強常發生在已 AI 標記但設計欄位不足的照片上。
 
 `--limit all` 代表不設上限；若不指定，預設最多準備 50 張。`ai:prepare` 會輸出 `tmp/ai-runs/<run-id>/`，並在同一個目錄寫入 `ai-labeling-prompt.md`。正式輸入與最終輸出應以這個 run 目錄為準；若照片量很大，分片中間檔可以依下方大型 run 流程放在 `/tmp`。
 
@@ -89,7 +89,7 @@ pnpm ai:prepare -- --focus design-metadata --limit 50 --image-size large-1024
 pnpm eval:sample
 ```
 
-這會讀取 `data/ai-cross-activity-sample-plan.json`，從多本 SITCON Flickr 相簿依相簿順序等距抽樣，產生 `tmp/ai-samples/<run-id>/photos.csv`、`tmp/ai-samples/<run-id>/summary.json`、`tmp/ai-runs/<run-id>/selection-manifest.json` 與 `tmp/ai-runs/<run-id>/`。這份資料集只用於本機 AI 初標測試，不代表正式 Sheets 資料，也不會寫入 Google Sheets。`selection-manifest.json` 會保存 selection rule、plan hash、sample profile、seed/algorithm 與相簿分布，讓後續比較能知道樣本是 challenge sample 還是隨機代表樣本。
+這會讀取 `data/ai-cross-activity-sample-plan.json`，從多本 SITCON Flickr 相簿依相簿順序等距抽樣，產生 `tmp/ai-samples/<run-id>/photos.csv`、`tmp/ai-samples/<run-id>/summary.json`、`tmp/ai-runs/<run-id>/selection-manifest.json` 與 `tmp/ai-runs/<run-id>/`。這份資料集只用於本機 AI 標記測試，不代表正式 Sheets 資料，也不會寫入 Google Sheets。`selection-manifest.json` 會保存 selection rule、plan hash、sample profile、seed/algorithm 與相簿分布，讓後續比較能知道樣本是 challenge sample 還是隨機代表樣本。
 
 跨活動抽樣預設只用 `fixtures/photos.csv` 重用少量已知 metadata，其他照片 metadata 會即時從 Flickr 取得。若要刻意沿用正式 Sheets 匯出中的既有欄位值，可以加上 `--photos tmp/sheets-export/photos.csv`，但該檔案必須先和目前 schema 同步。
 
@@ -128,7 +128,7 @@ attempt 目錄仍包含 `photos.json`、`manifest.json`、`ai-labeling-prompt.md
 - `tmp/ai-runs/<run-id>/photos.json`
 - `tmp/ai-runs/<run-id>/images/`
 
-若模型或 agent 需要確認完整輸入/輸出格式，再補讀 `docs/ai-labeling-contract.md`。不需要把本文件、評估筆記或 Sheets 回寫文件整份交給只負責初標的模型。
+若模型或 agent 需要確認完整輸入/輸出格式，再補讀 `docs/ai-labeling-contract.md`。不需要把本文件、評估筆記或 Sheets 回寫文件整份交給只負責標記的模型。
 
 模型只能輸出：
 
@@ -142,14 +142,17 @@ tmp/ai-runs/<run-id>/metadata-proposals.json
 pnpm ai:shard:prepare -- --run-dir tmp/ai-runs/<run-id>
 ```
 
+`ai:shard:prepare` 預設每個 shard 只有 20 張照片，這是品質優先的保守預設；只有在已確認模型、介面與人工抽查都能承受時，才提高 `--max-photos-per-shard`。worker 不得把照片合成 contact sheet、montage、縮圖牆、HTML gallery screenshot 或多圖截圖後批量判讀；縮圖總覽只能用於導航或確認檔案存在，不能用來決定任何照片欄位。
+
 這會在 `/tmp/ai-labeling-shards/<run-id>/` 產生：
 
 - `inputs/shard-XX-input.json`: 每個 agent 的照片清單與圖片路徑。
 - `worker-prompts/shard-XX.md`: 可交給該 agent 的分片任務提示。
 - `outputs/shard-XX-proposals.json`: 該 agent 應寫入的分片 proposal array 目標位置。
+- `visual-audits/shard-XX-visual-audit.json`: 該 agent 必須寫入的逐張單圖檢視稽核，證明每張照片都是以單張原圖或下載圖判讀。
 - `shard-execution-log.json`: 每個 shard 的執行紀錄，初始包含 shard id、input/output path、photo count 與 pending 狀態。
 
-`ai:shard:prepare` 會清掉該 workspace 中前一次產生的 inputs、worker prompts、outputs、execution log 與暫存 merged proposal，避免誤用舊分片結果。
+`ai:shard:prepare` 會清掉該 workspace 中前一次產生的 inputs、worker prompts、outputs、visual audits、execution log 與暫存 merged proposal，避免誤用舊分片結果。
 
 若要比較平行化成效，worker 開始或完成時可更新 execution log：
 
@@ -162,7 +165,7 @@ pnpm ai:shard:log -- --run-dir tmp/ai-runs/<run-id> --shard 03 --reasoning-effor
 
 #### Codex eval / bulk labeling 紀錄 checklist
 
-若初標是由 Codex 操作者或 Codex worker 執行，請把 Codex session 視為可觀測但不乾淨的操作紀錄；重點是主動建立邊界，而不是事後把整串 token usage 當成本次 run 成本。
+若標記是由 Codex 操作者或 Codex worker 執行，請把 Codex session 視為可觀測但不乾淨的操作紀錄；重點是主動建立邊界，而不是事後把整串 token usage 當成本次 run 成本。
 
 開始前：
 
@@ -213,13 +216,13 @@ pnpm ai:codex:meter -- --run-dir tmp/ai-runs/<run-id> --summary
 pnpm ai:bulk:status -- --run-dir tmp/ai-runs/<run-id>
 ```
 
-它會檢查 root run、shard manifest、shard execution log、分片輸入、分片輸出、暫存合併 proposal、正式 root proposal 與 review summary 是否過期，並提示下一個低階指令。這個狀態檢查不修改檔案。
+它會檢查 root run、shard manifest、shard execution log、分片輸入、分片輸出、逐張視覺稽核、暫存合併 proposal、正式 root proposal 與 review summary 是否過期，並提示下一個低階指令。這個狀態檢查不修改檔案。
 
 分工前先挑 2 張照片走 smoke test：產生小 proposal、用 `pnpm ai:validate -- --run-dir <run-dir> --proposals <path>` 驗證、再用 `pnpm ai:review -- --run-dir <run-dir> --proposals <path> --output-dir <tmp-dir>` 確認 review artifacts 不會寫入正式 run 目錄。確認後再平行處理全部 shard。
 
 若操作者交給的是可建立 sub-agents、worker agents 或 parallel agent work 的 repo agent，smoke test 通過後應明確要求 parent agent 建立 worker batch，而不是讓 parent agent 繼續單線逐 shard 標記。建議第一批啟動 4 到 6 個 worker，依平台 thread/agent 上限調整；完成一個 worker 就補下一個 pending shard。不要一次啟動所有 shard，避免遇到 agent thread limit 後讓後續 shard 沒有被分派。
 
-每個 worker 的任務邊界應直接使用 `worker-prompts/shard-XX.md`：只讀取自己的 `inputs/shard-XX-input.json`，只寫自己的 `outputs/shard-XX-proposals.json`，不修改 root `metadata-proposals.json`、其他 shard output、`photos.json` 或 review artifacts。parent agent 保留分配、狀態檢查、合併、validate、review 與修補責任。若 agent 平台不支援建立 worker，parent agent 應回報這個限制，再由人類決定是否改成較小批次或單線處理。
+每個 worker 的任務邊界應直接使用 `worker-prompts/shard-XX.md`：只讀取自己的 `inputs/shard-XX-input.json`，只寫自己的 `outputs/shard-XX-proposals.json` 與 `visual-audits/shard-XX-visual-audit.json`，不修改 root `metadata-proposals.json`、其他 shard output、`photos.json` 或 review artifacts。parent agent 保留分配、狀態檢查、合併、validate、review 與修補責任。若 agent 平台不支援建立 worker，parent agent 應回報這個限制，再由人類決定是否改成較小批次或單線處理。
 
 全部 shard 完成後合併：
 
@@ -254,7 +257,7 @@ pnpm ai:review -- --run-dir tmp/ai-runs/<run-id>
 - 產生 `metadata-update-plan.json` 與 `metadata-update-plan.csv`，列出後續可能回寫的欄位值。
 - 產生 `metadata-review-summary.md`，整理欄位覆蓋率、常見值分布、批次層級警訊、優先抽查照片與下一步指令。
 
-大型或分片 run 的 summary 會額外顯示 `Adoption Readiness`、`Artifact Provenance`、`Layer Coverage`、`Scene QA`、`Shard Field Coverage QA`、`Scene Review Packages`、`Balanced Review Sample` 與 `Confidence By Field`。`Adoption Readiness` 會把採用狀態分成 `blocked`、`needs-review` 與 `ready-with-warnings`；它不會讓 `ai:review` 直接失敗，而是讓操作者先看到回寫前是否有 blocker。`Artifact Provenance` 用來確認 final proposals 來源、hash、圖片連結模式、shard artifacts、execution log 摘要與 token attribution health；`Layer Coverage` 用 schema 分層看 baseline、recall、optional 覆蓋率；`Scene QA` 用整體、相簿與分片層級檢查 `scene_tags` 是否低召回、過度集中或平均過密；`Shard Field Coverage QA` 會針對 `scene_tags`、`mood_tags`、`recommended_uses`、`safe_crop` 與 `confidence` 找出 shard outlier；`Scene Review Packages` 會把常見共現組合整理成抽查入口；`Balanced Review Sample` 會混合 review focus、shard 抽樣、主體邊界、主觀 optional 欄位與 deterministic random，避免只看工具已知警訊；`Confidence By Field` 用來檢查信心分數是否只集中在少數欄位。
+大型或分片 run 的 summary 會額外顯示 `Adoption Readiness`、`Artifact Provenance`、`Layer Coverage`、`Scene QA`、`Shard Field Coverage QA`、`Shard Visual Audit QA`、`Scene Review Packages`、`Balanced Review Sample` 與 `Confidence By Field`。`Adoption Readiness` 會把採用狀態分成 `blocked`、`needs-review` 與 `ready-with-warnings`；它不會讓 `ai:review` 直接失敗，而是讓操作者先看到回寫前是否有 blocker。`Artifact Provenance` 用來確認 final proposals 來源、hash、圖片連結模式、shard artifacts、execution log 摘要與 token attribution health；`Layer Coverage` 用 schema 分層看 baseline、recall、optional 覆蓋率；`Scene QA` 用整體、相簿與分片層級檢查 `scene_tags` 是否低召回、過度集中或平均過密；`Shard Field Coverage QA` 會針對 `scene_tags`、`mood_tags`、`recommended_uses`、`safe_crop` 與 `confidence` 找出 shard outlier；`Shard Visual Audit QA` 會擋下缺少逐張稽核、稽核 item 沒涵蓋輸入照片、宣告使用 contact sheet 或 `inspection_mode` 不是 `single-image` 的 shard；`Scene Review Packages` 會把常見共現組合整理成抽查入口；`Balanced Review Sample` 會混合 review focus、shard 抽樣、主體邊界、主觀 optional 欄位與 deterministic random，避免只看工具已知警訊；`Confidence By Field` 用來檢查信心分數是否只集中在少數欄位。
 
 每次 `ai:review` 都會顯示 `People Count QA` 與 `Reason Reuse QA`，不只限於大型 run。`People Count QA` 的分布摘要會列出 `people_count` 的平均、中位數、分位數與 top values；警訊列則只在達到門檻時產生：整批至少 200 張且 `3..10` 任一中段人數值佔比達 15%，或相簿 / shard 至少 20 張且最常見的 `3..10` 中段人數值佔比達 50%。只有這些警訊列會進入 Review Notes 與 Review Focus。這類警訊不代表該人數一定錯，而是提示模型可能把常見小組人數當成 fallback，應從 Review Focus 抽查。`Reason Reuse QA` 會列出各欄位 unique reason 數、最大 reason 重複群與最大 value+reason 重複群；若最大群偏大，代表可能有模板化或 archetype 套用，需要確認 reason 是否真的描述每張照片的可見證據。
 
@@ -264,7 +267,7 @@ pnpm ai:review -- --run-dir tmp/ai-runs/<run-id>
 - Sample quality：`Review Focus`、`Balanced Review Sample`、高互動照片或人工挑選樣本中的錯誤、混淆與風險。
 - Adoption outcome：只有已被人類套用、修改、拒絕，或已在 Sheets 中推進到 `reviewed` 的 subset，才能計算接受、修改或拒絕比例。
 
-缺少 adoption outcome 只代表該照片尚未被人工處理，不代表 proposal 被拒絕，也不代表整個 AI run 尚未完成。報表文案應避免把 subset 的接受率說成整批 AI 初標品質。
+缺少 adoption outcome 只代表該照片尚未被人工處理，不代表 proposal 被拒絕，也不代表整個 AI run 尚未完成。報表文案應避免把 subset 的接受率說成整批 AI 標記品質。
 
 `ai:review` 終端輸出的 `Next:` 與 `metadata-review-summary.md` 的 `## Next Commands` 是這段流程的主要交接提示。若新增報表、比較、搜尋實驗或回寫前檢查工具，應同步更新這兩個地方。
 
@@ -293,7 +296,7 @@ pnpm ai:review -- --run-dir tmp/ai-runs/<run-id>
 
 日常操作建議使用 `pnpm workflow -- --task ai-report` 或 `pnpm eval -- --task report`，從 `tmp/ai-runs/` 互動式選擇單一 run / attempt，或多選產生比較報表。下方低階指令仍保留給自動化、文件交接與精確重跑。
 
-若要閱讀單次 AI 初標結果：
+若要閱讀單次 AI 標記結果：
 
 ```bash
 pnpm ai:report -- --run tmp/ai-runs/<attempt-or-run>
@@ -374,7 +377,7 @@ pnpm sheets:apply-ai-updates -- --run-dir tmp/ai-runs/<run-id>
 
 這一步只檢查會更新哪些 cells，預設不寫入。若正式 Sheets 中已有其他志工修改同一欄，工具會因 current value 不一致而阻擋，避免覆蓋人工整理結果。
 
-若人類已明確決定以這次 AI 更新計畫覆蓋既有 AI 初標值，可在 dry-run 和 write 都加上 `--allow-current-mismatch`。大型批次建議同時加 `--summary-only`，避免終端輸出數萬筆 cell 明細：
+若人類已明確決定以這次 AI 更新計畫覆蓋既有 AI 標記值，可在 dry-run 和 write 都加上 `--allow-current-mismatch`。大型批次建議同時加 `--summary-only`，避免終端輸出數萬筆 cell 明細：
 
 ```bash
 pnpm sheets:apply-ai-updates -- --run-dir tmp/ai-runs/<run-id> --allow-current-mismatch --summary-only

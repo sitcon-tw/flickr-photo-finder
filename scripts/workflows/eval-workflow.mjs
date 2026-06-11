@@ -5,7 +5,7 @@ import { selectMultipleAiRuns, selectSingleAiRun } from "../lib/ai/ai-run-select
 
 const tasks = [
   {
-    description: "理解模型品質評估和一般 AI 初標流程的差異。",
+    description: "理解模型品質評估和一般 AI 標記流程的差異。",
     handler: showEvalOverview,
     id: "overview",
     inputs: ["無"],

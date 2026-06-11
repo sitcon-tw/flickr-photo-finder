@@ -129,6 +129,16 @@ function itemsFromShardPayload(payload, path) {
   throw new Error(`${path} must be a JSON array or an object with items[]`);
 }
 
+function itemsFromVisualAuditPayload(payload) {
+  if (Array.isArray(payload)) {
+    return payload;
+  }
+  if (isPlainObject(payload) && Array.isArray(payload.items)) {
+    return payload.items;
+  }
+  return [];
+}
+
 async function readShardItems(paths) {
   const items = [];
   for (const path of paths) {
@@ -159,6 +169,17 @@ async function updateExecutionLog({ outputPath, paths, shardDir }) {
     }
     entry.output_item_count = items.length;
     entry.output_sha256 = sha256Text(text);
+    if (entry.visual_audit_path) {
+      try {
+        const auditText = await readFile(entry.visual_audit_path, "utf8");
+        const auditPayload = JSON.parse(auditText);
+        entry.visual_audit_item_count = itemsFromVisualAuditPayload(auditPayload).length;
+        entry.visual_audit_sha256 = sha256Text(auditText);
+      } catch {
+        entry.visual_audit_item_count = null;
+        entry.visual_audit_sha256 = "";
+      }
+    }
     if (!entry.status || entry.status === "pending" || entry.status === "running") {
       entry.status = "completed";
     }

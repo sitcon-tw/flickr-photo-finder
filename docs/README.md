@@ -11,13 +11,13 @@
 | 正式 Sheets | Google Sheets 中的正式照片索引。`photos`、`albums`、`import_batches` 是正式 operational data；`taxonomy` 與 `sponsorship_items` 是由 repo source 同步到 Sheets 的輔助查閱表。 |
 | 本機工作快取 | `tmp/sheets-export/*.csv`，由 `pnpm sheets:export` 從正式 Sheets 匯出，供本機 validation、intake 與 AI 工具使用；可重建，不 commit。 |
 | intake run | `tmp/intake-runs/<run-id>/`，一次 Flickr 相簿匯入的可審核 artifact，包含候選照片、相簿更新、匯入批次與摘要；人類確認後才用 `sheets:apply-intake` dry-run/write。 |
-| AI run | `tmp/ai-runs/<run-id>/`，一次 AI 初標工作包，通常由 `ai:prepare` 或 `eval:sample` 建立，包含 `manifest.json`、`photos.json`、`images/`、`ai-labeling-prompt.md`，模型完成後才加入 `metadata-proposals.json`。AI run 不是人工 review 狀態。 |
+| AI run | `tmp/ai-runs/<run-id>/`，一次 AI 搜尋級標記工作包，通常由 `ai:prepare` 或 `eval:sample` 建立，包含 `manifest.json`、`photos.json`、`images/`、`ai-labeling-prompt.md`，模型完成後才加入 `metadata-proposals.json`。大型分片 run 另有 `/tmp/ai-labeling-shards/<run-id>/visual-audits/` 逐張檢視稽核。AI run 不是人工 review 狀態。 |
 | attempt | 從既有 AI run 派生的模型/輪次比較工作包，仍符合 AI run 目錄合約，用來比較不同模型、prompt 或 rounds。 |
 | prompt review 決策包 | `tmp/prompt-reviews/<review-id>/`，由 `eval:prompt-review` 產生，只彙整 evidence、角色 review 與 owner 決策，不自動呼叫外部 LLM、不自動分派審查者、不改 prompt/schema、不寫 Sheets。若需要獨立審查，操作者必須主動分派不同 agent 或不同可追溯執行 session，並記錄 review provenance。 |
 
 ## 整體資料生命週期
 
-端到端主線是：從 Flickr 盤點相簿與照片，產生可審核的 intake artifact，經 dry-run/write 寫入正式 Sheets；公開前端讀正式 Sheets 公開資料；AI 初標與 eval 只在正式 Sheets 匯出的工作快取或 sample 上產生候選與決策 artifact，最後仍要回到 Sheets dry-run/write 與人工 review 邊界。
+端到端主線是：從 Flickr 盤點相簿與照片，產生可審核的 intake artifact，經 dry-run/write 寫入正式 Sheets；公開前端讀正式 Sheets 公開資料；AI 標記與 eval 只在正式 Sheets 匯出的工作快取或 sample 上產生候選與決策 artifact，最後仍要回到 Sheets dry-run/write 與人工 review 邊界。
 
 ```mermaid
 flowchart TD
@@ -51,7 +51,7 @@ flowchart TD
 | 我第一次整理照片，想先練習 | Google Sheets `使用說明` | 從正式照片索引進入固定練習表，不要直接在正式資料試填；整理判斷補讀 `docs/data-entry-guide.md`。 |
 | 我要正式補照片欄位或檢查授權/用途 | [正式照片索引](https://docs.google.com/spreadsheets/d/1JM2QzJo5kpeILZPyTSE6gUK3z-FyRcaGhPJlYE-FMbs/edit) | 欄位速查看 `docs/photo-fields-reference.md`；欄位順序、reviewed 完整度與 approved 要求仍以 `data/photo-schema.json` 為準。 |
 | 我要匯入新 Flickr 相簿 | `pnpm workflow` | 從互動式流程選相簿、建立 intake run、接續 validation 與 Sheets dry-run；Sheets 同步邊界看 `docs/sheets-sync-workflow.md`。 |
-| 我要跑 AI 初標 | `pnpm workflow` | 從 AI prepare 流程建立 `tmp/ai-runs/` 工作包；模型輸出合約看 `docs/ai-labeling-contract.md`。 |
+| 我要跑 AI 搜尋級標記 | `pnpm workflow` | 從 AI prepare 流程建立 `tmp/ai-runs/` 工作包；模型輸出合約看 `docs/ai-labeling-contract.md`。大型分片 run 需要逐張 visual audit，不能用 contact sheet 或多圖截圖判讀。 |
 | 我要確認 AI 建議能不能採用 | `docs/ai-labeling-operator-guide.md` | 實際檢查候選值用 `pnpm ai:review -- --run-dir <dir>`；AI 候選值不等於 `reviewed`。 |
 | 我要比較模型、prompt 或搜尋增益 | `pnpm eval` | 這是評估入口，不是一般照片整理主線；需要多角色 prompt 決策包時用 `pnpm eval -- --task prompt-review` 或 `pnpm eval:prompt-review`。 |
 
@@ -95,7 +95,7 @@ flowchart TD
 | 讀者 | 主要閱讀入口 | 不應混用的脈絡 |
 | --- | --- | --- |
 | 人類操作者 | `docs/ai-labeling-operator-guide.md`、`docs/ai-labeling-contract.md` | AI 候選值不等於人工 `reviewed` 或公開 `approved`。 |
-| 只負責初標的 LLM / agent | run 目錄的 `ai-labeling-prompt.md`、`docs/ai-labeling-contract.md`、schema、taxonomy、sponsorship items、`photos.json` 與圖片 | 不要把 operator guide、Sheets 回寫文件或先前 proposal 當成照片內容依據。 |
+| 只負責搜尋級標記的 LLM / agent | run 目錄的 `ai-labeling-prompt.md`、`docs/ai-labeling-contract.md`、schema、taxonomy、sponsorship items、`photos.json` 與圖片 | 不要把 operator guide、Sheets 回寫文件或先前 proposal 當成照片內容依據；分片任務不得以 contact sheet、縮圖牆或多圖截圖作為欄位判斷依據。 |
 | repo 維護 agent | `AGENTS.md`、`docs/agent-maintenance-guide.md`、本文件 | 操作流程前先確認 source-of-truth 文件與 run artifact。 |
 | prompt review 角色 agent | `tmp/prompt-reviews/<review-id>/input-manifest.json`、`expert-prompts/`、run 的 `metadata-review-summary.md`、`docs/ai-labeling-prompt-expert-review.md` | 角色 review 只做唯讀分析；若要獨立 review，操作者必須主動分派不同 agent 或不同可追溯執行 session，並在 `expert-reviews/` 記錄 provenance；決策包不會自動套用建議。 |
 
@@ -149,12 +149,12 @@ flowchart TD
 | GA4 後台 property ID | `config/project.json` 的 `frontend.ga4PropertyId` | 給 GA4 Admin API 與 custom dimensions 管理工具使用；它不是 credential 或 secret。 |
 | Sheets 表格讀寫技術選擇 | `docs/sheets-sync-workflow.md` | repo CLI 應以官方 Google Sheets API SDK 為主要方向；Google Drive 檔案搬運不是 Sheets 寫入主流程。 |
 | Sheets 正式寫入身份 | `docs/sheets-sync-workflow.md` | 建議使用 SITCON 管理的 service account，並將 service account email 加入正式 Sheets 編輯者。 |
-| AI 初標輸入與輸出格式 | `docs/ai-labeling-contract.md` | 定義 `tmp/ai-runs/<run-id>/` 的輸入檔、圖片來源、`metadata-proposals.json` 格式與驗證流程。 |
-| AI 初標操作與 prompt | `docs/ai-labeling-operator-guide.md`、`prompts/ai-labeling.md` | 操作指南給人類操作者與 repo 維護 agent；prompt 是可交給模型使用的任務範本。 |
-| AI 初標 prompt 角色審查決策 | `docs/ai-labeling-prompt-expert-review.md` | 記錄多角色 prompt review 的角色、共識、owner 決策與後續切片；本機 review artifact 留在 `tmp/prompt-reviews/`。 |
+| AI 標記輸入與輸出格式 | `docs/ai-labeling-contract.md` | 定義 `tmp/ai-runs/<run-id>/` 的輸入檔、圖片來源、`metadata-proposals.json`、分片 visual audit 格式與驗證流程。 |
+| AI 標記操作與 prompt | `docs/ai-labeling-operator-guide.md`、`prompts/ai-labeling.md` | 操作指南給人類操作者與 repo 維護 agent；prompt 是可交給模型使用的任務範本。 |
+| AI 標記 prompt 角色審查決策 | `docs/ai-labeling-prompt-expert-review.md` | 記錄多角色 prompt review 的角色、共識、owner 決策與後續切片；本機 review artifact 留在 `tmp/prompt-reviews/`。 |
 | 跨活動 AI 測試抽樣計畫 | `data/ai-cross-activity-sample-plan.json` | 用於建立欄位、taxonomy、prompt 與 validator 評估工作包；不是正式照片資料。 |
 | AI proposal 範例 | `fixtures/ai-proposals/` | valid/invalid examples 應由 `pnpm eval:validate-fixtures` 驗證。 |
-| AI 初標 review 後續交接提示 | `scripts/commands/review-ai-run.mjs` | CLI `Next:` 與 `metadata-review-summary.md` 的 `## Next Commands` 應和目前報表、比較、dry-run 流程同步。 |
+| AI 標記 review 後續交接提示 | `scripts/commands/review-ai-run.mjs` | CLI `Next:` 與 `metadata-review-summary.md` 的 `## Next Commands` 應和目前報表、比較、dry-run 流程同步。 |
 | 正式照片索引資料 | Google Sheets `photos` | repo 內 `fixtures/photos.csv` 只是 sample、fixture 與匯出格式參考。 |
 | 正式相簿清單資料 | Google Sheets `albums` | repo 內 `fixtures/albums.csv` 只是 sample、fixture 與匯出格式參考。 |
 | 正式匯入批次資料 | Google Sheets `import_batches` | repo 內 `fixtures/import-batches.csv` 只是 sample、fixture 與匯出格式參考。 |
@@ -176,14 +176,14 @@ flowchart TD
 | 公開前端手機版代理研究 | `docs/research/public-frontend-mobile-research.md` | 針對 #5 手機版重設計的代理深訪與 owner 評估紀錄；不等同真人訪談或已完成 usability test。 |
 | 公開前端使用素養代理研究 | `docs/research/public-frontend-user-literacy-research.md` | 針對一般找圖者可能誤解索引完整性的代理訪談與 Pages 文案採納紀錄；長期信任邊界看 ADR 0007。 |
 | 公開前端重構需求簡報 | `docs/research/public-frontend-redesign-brief.md` | GitHub Pages 前端重構的歷史需求基準與驗收 baseline；目前已完成多數 P0/P1。 |
-| AI 初標品質評估 | `docs/ai-labeling-evaluation-notes.md` | 模型 run 觀察、常見失準欄位與工具化警訊候選；目前操作規則仍看 operator guide、contract 與 ADR 0003。 |
+| AI 標記品質評估 | `docs/ai-labeling-evaluation-notes.md` | 模型 run 觀察、常見失準欄位與工具化警訊候選；目前操作規則仍看 operator guide、contract 與 ADR 0003。 |
 
 ## AI 文件責任
 
 | 文件 | 責任 | 不是什麼 |
 | --- | --- | --- |
 | `docs/ai-labeling-contract.md` | AI run 輸入、輸出與 proposal 驗證合約。 | 不是操作者 runbook。 |
-| `docs/ai-labeling-operator-guide.md` | 人類操作者與維護 agent 的 prepare/review/report/write 流程。 | 不是模型初標 prompt。 |
+| `docs/ai-labeling-operator-guide.md` | 人類操作者與維護 agent 的 prepare/review/report/write 流程。 | 不是模型標記 prompt。 |
 | `docs/ai-labeling-evaluation-notes.md` | 歷史模型 run、prompt 調校與工具警訊的評估證據。 | 不是目前規則或模型永久能力排名。 |
 | `docs/ai-labeling-prompt-expert-review.md` | prompt review 的角色、owner 決策與後續切片紀錄。 | 不是 ADR，也不自動套用規則。 |
 | `docs/adr/0003-ai-candidate-only.md` | AI 只產生候選 metadata 的長期治理邊界。 | 不取代 contract 或 operator guide 的操作細節。 |
@@ -216,7 +216,7 @@ flowchart TD
 - 公開前端：本機預覽用 `pnpm finder:dev`、fixture 模式用 `pnpm finder:dev:fixture`、正式匯出快取模式用 `pnpm finder:dev:export`；部署 artifact 用 `pnpm finder:build` 與 `pnpm finder:check`；前端純邏輯回歸用 `pnpm finder:test`。
 - Sheets 與資料品質：公開讀取檢查用 `pnpm sheets:check`；正式工作快取用 `pnpm sheets:export`；正式資料健康度用 `pnpm sheets:report`；初始化、header 遷移、欄位值遷移、taxonomy、使用說明、練習表與 intake/AI 回寫流程都從 `docs/sheets-sync-workflow.md` 選正確 dry-run/write 路徑。
 - Flickr 相簿與 intake：相簿盤點、清單、選擇與同步由 `albums:*` 工具處理；正式匯入工作包由 `pnpm intake:run` 建立，`pnpm intake:validate` 檢查，再由 `pnpm sheets:apply-intake` dry-run/write 套用。
-- AI 初標與評估：AI run 準備、驗證、review、report、diff、plan、bulk/shard 狀態與 Sheets dry-run/write 由 `ai:*` 工具處理；模型/輪次 attempt、跨活動 sample、搜尋增益與 prompt review 決策包由 `eval:*` 工具處理。操作順序以 `docs/ai-labeling-operator-guide.md` 和 `docs/ai-labeling-contract.md` 為準。
+- AI 標記與評估：AI run 準備、驗證、review、report、diff、plan、bulk/shard 狀態與 Sheets dry-run/write 由 `ai:*` 工具處理；模型/輪次 attempt、跨活動 sample、搜尋增益與 prompt review 決策包由 `eval:*` 工具處理。操作順序以 `docs/ai-labeling-operator-guide.md` 和 `docs/ai-labeling-contract.md` 為準。
 - Apps Script：GeneratedConfig 由 `pnpm apps-script:build-config` 產生；clasp target、status、push、deployments 由 `apps-script:*` wrapper 依 `config/project.json` 解析，正式表是預設 target，練習表必須明確指定 `--target practice`。
 - GA4：事件設計先看 `docs/frontend-analytics-design.md`；custom dimensions 與後台權限操作看 `docs/ga4-operations.md`，repo 端檢查與同步由 `analytics:dimensions:*` / `ga4:dimensions:*` scripts 包裝。
 
@@ -237,7 +237,7 @@ flowchart TD
 | 技術志工 | `pnpm workflow`、`docs/project-architecture.md`、`docs/sheets-sync-workflow.md`、`docs/google-sheets-database-design.md` |
 | 維護 Apps Script 的人 | `docs/apps-script-maintenance-design.md`、`data/photo-schema.json`、`data/tag-taxonomy.json` |
 | 維護 GitHub Pages 前端的人 | `docs/public-frontend-architecture.md`、`docs/frontend-analytics-design.md`、`docs/ga4-operations.md`；需要理解重構背景時再讀 `docs/research/README.md`；處理搜尋信任邊界時先讀 `docs/adr/0007-finder-index-results-are-not-absence-proof.md` |
-| AI / agent | `AGENTS.md`、`docs/agent-maintenance-guide.md`；若只是產生初標 metadata，讀 run 目錄的 `ai-labeling-prompt.md` 與 `docs/ai-labeling-contract.md`；若要操作流程才讀 `docs/ai-labeling-operator-guide.md` |
+| AI / agent | `AGENTS.md`、`docs/agent-maintenance-guide.md`；若只是產生搜尋級標記 metadata，讀 run 目錄的 `ai-labeling-prompt.md` 與 `docs/ai-labeling-contract.md`；若要操作流程才讀 `docs/ai-labeling-operator-guide.md` |
 
 ## 文件分工
 
@@ -259,11 +259,11 @@ flowchart TD
 - `troubleshooting.md`: Pages、Sheets、Apps Script、AI run、clasp 與 GA4 常見事故的症狀分流、檢查命令與修復入口。
 - `shared-value-governance.md`: 欄位、taxonomy、filter、task mode、URL key 與跨介面 field set 的共用值治理分層。
 - `ai-readable-dataset.md`: AI 如何讀取照片索引資料。
-- `ai-labeling-operator-guide.md`: AI 初標操作者與 repo 維護 agent 的 prepare-to-review、報表檢視與回寫前檢查指南；不是模型初標任務的主要 prompt。
-- `ai-labeling-contract.md`: AI 初標工作包的輸入、輸出、限制與驗證合約。
-- `ai-labeling-evaluation-notes.md`: AI 初標品質評估紀錄、常見失準欄位與工具化警訊候選。
-- `ai-labeling-prompt-expert-review.md`: AI 初標 prompt 多角色審查、owner 決策與後續切片紀錄；不是模型初標任務 prompt，也不是自動套用規則。
-- `field-design-reflection.md`: 根據多輪真實 AI 初標結果回頭檢視欄位、taxonomy、prompt 設計，以及不導入人臉辨識與自動人名標註等產品邊界。
+- `ai-labeling-operator-guide.md`: AI 標記操作者與 repo 維護 agent 的 prepare-to-review、報表檢視與回寫前檢查指南；不是模型標記任務的主要 prompt。
+- `ai-labeling-contract.md`: AI 搜尋級標記工作包的輸入、輸出、限制與驗證合約。
+- `ai-labeling-evaluation-notes.md`: AI 標記品質評估紀錄、常見失準欄位與工具化警訊候選。
+- `ai-labeling-prompt-expert-review.md`: AI 標記 prompt 多角色審查、owner 決策與後續切片紀錄；不是模型標記任務 prompt，也不是自動套用規則。
+- `field-design-reflection.md`: 根據多輪真實 AI 標記結果回頭檢視欄位、taxonomy、prompt 設計，以及不導入人臉辨識與自動人名標註等產品邊界。
 - `data-entry-guide.md`: 人工整理照片資料的判斷流程。
 - `photo-fields-reference.md`: 欄位速查；欄位清單仍以 `data/photo-schema.json` 為準。
 - `database-collaboration-strategy.md`: Sheets-first 協作、公開資料邊界與長期維護方式。

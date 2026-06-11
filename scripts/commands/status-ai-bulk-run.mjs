@@ -13,6 +13,7 @@ const defaultProposalFile = "metadata-proposals.json";
 const defaultReviewSummaryFile = "metadata-review-summary.md";
 const defaultTempRoot = "/tmp/ai-labeling-shards";
 const executionLogFile = "shard-execution-log.json";
+const visualAuditDirName = "visual-audits";
 
 function printUsage() {
   console.log(`Usage:
@@ -167,14 +168,24 @@ async function inspectBulkStatus(options) {
   const expectedOutputFiles = shardEntries.length > 0
     ? shardEntries.map((shard) => shard.output_path).filter(Boolean)
     : inputFiles.map((path) => join(shardDir, "outputs", `shard-${shardIdFromPath(path)}-proposals.json`));
+  const expectedVisualAuditFiles = shardEntries.length > 0
+    ? shardEntries.map((shard) => shard.visual_audit_path || join(shardDir, visualAuditDirName, `shard-${String(shard.shard).padStart(2, "0")}-visual-audit.json`)).filter(Boolean)
+    : inputFiles.map((path) => join(shardDir, visualAuditDirName, `shard-${shardIdFromPath(path)}-visual-audit.json`));
   const existingOutputFiles = [];
   for (const path of expectedOutputFiles) {
     if (await pathExists(path)) {
       existingOutputFiles.push(path);
     }
   }
+  const existingVisualAuditFiles = [];
+  for (const path of expectedVisualAuditFiles) {
+    if (await pathExists(path)) {
+      existingVisualAuditFiles.push(path);
+    }
+  }
 
   const missingOutputFiles = expectedOutputFiles.filter((path) => !existingOutputFiles.includes(path));
+  const missingVisualAuditFiles = expectedVisualAuditFiles.filter((path) => !existingVisualAuditFiles.includes(path));
   const shardMergedProposalPath = join(shardDir, defaultProposalFile);
   const rootProposalPath = join(runDir, defaultProposalFile);
   const reviewSummaryPath = join(runDir, defaultReviewSummaryFile);
@@ -185,10 +196,13 @@ async function inspectBulkStatus(options) {
 
   return {
     expected_outputs: expectedOutputFiles.length,
+    expected_visual_audits: expectedVisualAuditFiles.length,
     existing_outputs: existingOutputFiles.length,
+    existing_visual_audits: existingVisualAuditFiles.length,
     image_link_mode: manifest.image_link_mode ?? "",
     input_shards: inputFiles.length,
     missing_outputs: missingOutputFiles,
+    missing_visual_audits: missingVisualAuditFiles,
     photo_count: Array.isArray(photos) ? photos.length : 0,
     review_summary_exists: await pathExists(reviewSummaryPath),
     review_summary_path: reviewSummaryPath,
@@ -236,6 +250,7 @@ function printStatus(status) {
   console.log(`- Codex token attribution: ${status.codex_metrics_health.status} (${status.codex_metrics_health.message})`);
   console.log(`- shard inputs: ${status.input_shards}`);
   console.log(`- shard outputs: ${status.existing_outputs}/${status.expected_outputs}`);
+  console.log(`- shard visual audits: ${status.existing_visual_audits}/${status.expected_visual_audits}`);
   console.log(`- merged shard proposal: ${status.shard_merged_proposal_exists ? `${status.shard_merged_proposal_items} item(s)` : "missing"}`);
   console.log(`- root proposal: ${status.root_proposal_exists ? `${status.root_proposal_items} item(s)` : "missing"}`);
   console.log(`- review summary: ${status.review_summary_exists ? (status.review_summary_stale ? "stale" : "present") : "missing"}`);
@@ -248,9 +263,22 @@ function printStatus(status) {
       console.log(`  - ... ${status.missing_outputs.length - 20} more`);
     }
   }
+  if (status.missing_visual_audits.length > 0) {
+    console.log("- missing shard visual audits:");
+    for (const path of status.missing_visual_audits.slice(0, 20)) {
+      console.log(`  - ${path}`);
+    }
+    if (status.missing_visual_audits.length > 20) {
+      console.log(`  - ... ${status.missing_visual_audits.length - 20} more`);
+    }
+  }
   console.log("");
   console.log("Next:");
-  if (status.root_proposal_exists && (!status.review_summary_exists || status.review_summary_stale)) {
+  if (status.existing_outputs < status.expected_outputs) {
+    console.log("- Finish the missing shard outputs before merging.");
+  } else if (status.existing_visual_audits < status.expected_visual_audits) {
+    console.log("- Finish the missing shard visual audits before review/writeback.");
+  } else if (status.root_proposal_exists && (!status.review_summary_exists || status.review_summary_stale)) {
     console.log(`- Rebuild review artifacts: pnpm ai:review -- --run-dir ${status.run_dir} --codex-session <parent-session-id>`);
   } else if (status.root_proposal_exists) {
     console.log("- Review artifacts are current. Continue with HTML report or Sheets dry-run.");
@@ -260,8 +288,6 @@ function printStatus(status) {
     }
   } else if (status.input_shards === 0) {
     console.log(`- Prepare shard workspace: pnpm ai:shard:prepare -- --run-dir ${status.run_dir}`);
-  } else if (status.existing_outputs < status.expected_outputs) {
-    console.log("- Finish the missing shard outputs before merging.");
   } else if (!status.shard_merged_proposal_exists) {
     console.log(`- Merge shards: pnpm ai:shard:merge -- --run-dir ${status.run_dir}`);
   } else if (!status.root_proposal_exists) {
