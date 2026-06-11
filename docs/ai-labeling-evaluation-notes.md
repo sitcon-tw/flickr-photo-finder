@@ -1679,6 +1679,58 @@ Reason reuse 也顯示 sharded workflow 有局部模板化：
 
 整體判斷：這輪證明 527-shard 的 Codex workers 可以處理 1.3 萬張級別照片，並產生比早期失敗 run 更可用的 `visual_description` 與基礎欄位。但 shard 層級漏標、reason 模板化、贊助用途過度推論、缺少 confidence 和 token delta 不可追溯，都是正式回寫前必須處理的品質與治理問題。
 
+## 2026-06-11 教育部青發署第三屆青志獎 r3 單本重標觀察
+
+本輪是相簿 `教育部青發署第三屆青志獎` 的 25 張全量 fresh relabel。正式工作包為：
+
+```bash
+tmp/ai-runs-local/ai-prepare-youth-volunteer-award-3-relabel-2026-06-11-r3
+```
+
+這輪的直接目標不是模型比較，而是把前一次標記流程中可能受到 contact sheet / 長 context 操作污染的結果完全重做。操作者重新從正式 Google Sheets export，建立 fresh r3 run，逐張打開 25 張單圖，不沿用 r2 proposal、review artifact 或既有 Sheets 欄位作為判斷依據。
+
+### 標記與回寫結果
+
+r3 最終產出：
+
+- `metadata-proposals.json`: 25 個 proposal items。
+- `visual-inspection-audit.json`: 25 個 audit items，宣告 `contact_sheet_used = false` 與 `inspection_mode = single-image`。
+- `pnpm ai:validate` 通過。
+- `pnpm ai:review` 結果為 `ready-with-warnings`，沒有 adoption blocker；重複 `visual_description` reason 的警訊經修正後，剩餘 warning 主要是本相簿多為講者、背板、頒獎與舞台畫面造成的分布警訊。
+- 產生覆蓋式 update plan，共 113 個 cell update；其中 89 筆來自 r3 proposal，另外 24 筆清空舊 `recommended_uses`，避免前一輪用途欄位殘留。
+- `sheets:apply-ai-updates --write` 寫入正式 Google Sheets 並由工具驗證 113 個 cell。
+- 重新 `sheets:export` 後讀回驗證通過：25/25 proposal 欄位吻合；`recommended_uses`、`sponsorship_items`、`sponsorship_tags`、`public_use_status`、`priority_level`、`collections` 全部為 0/25 非空。
+- `pnpm data:validate` 通過。
+
+因此，從資料結果看，r3 已完成「完全重新處理、覆蓋舊 AI optional 欄位」的本次任務；目前寫入正式 Sheets 的這 25 張資料不依賴 r2 標記結果。
+
+### 流程中暴露的問題
+
+這輪最重要的觀察不是單張欄位是否正確，而是 direct run 實際操作仍存在長 context 工作記憶風險。
+
+操作者確實逐張打開單圖，沒有再使用 contact sheet 作為判斷依據；但每張照片的觀察先寫在對話 context 中，並沒有在看完該張後立刻寫入 artifact。檢視過程中發生 context compact，之後才繼續看剩餘照片，最後再寫一支 `tmp/build-youth-volunteer-award-r3-proposals.mjs` 一次產生完整 `metadata-proposals.json` 與 `visual-inspection-audit.json`。
+
+這代表目前 direct run 的 `visual-inspection-audit.json` 可以證明最終交付宣告了 single-image audit，但不能證明每張照片的觀察在檢視當下已經可靠落盤。若 compact、摘要遺漏、或後段生成時的模型注意力漂移發生在產出 JSON 之前，圖片觀察仍可能遺失或被事後合理化。
+
+同一問題也讓「小型相簿不分片」的假設需要修正。25 張不需要 shard，但仍不代表可以把 25 張觀察放進同一段 conversation working memory。小型 direct run 也應該採用逐張 checkpoint，而不是最後一次性整理。
+
+本輪另有一個工具落差：`完全重新標記` 的覆蓋語意目前不是正式 CLI 模式，而是操作者臨時寫 overwrite plan script，將本輪沒有提出的 high-risk optional 欄位清空。這次結果正確，但流程不可重複，未來容易漏欄位或讓舊 `recommended_uses` / sponsorship / priority / collections 殘留。
+
+### 對工具與 prompt 的結論
+
+這輪修正了 contact sheet 問題，但暴露出下一層品質邊界：conversation context 不應被當成暫存資料庫。搜尋級標記需要 write-through workflow，而不是 read-all-then-write。
+
+後續應把 direct run 與 shard run 都改成 per-photo artifact 合約：
+
+- 每張照片看完後立即寫出獨立 artifact，例如 `photo-artifacts/<photo_id>.json`。
+- artifact 同時保存單張 visual evidence 與該張 proposal item。
+- root `metadata-proposals.json` 與 `visual-inspection-audit.json` 應由 repo 工具從 per-photo artifacts 合併產生，而不是由模型在長 context 後手寫。
+- `ai:review` 應增加 artifact checkpoint QA，檢查每張照片是否有獨立 artifact、root proposal 是否由 artifact merge 產生、是否仍有 contact sheet 或非 single-image 訊號。
+- `ai:plan` / `sheets:apply-ai-updates` 應支援 fresh relabel 模式，對本輪未提出的 AI optional 欄位產生清空更新；不要再靠臨時 script 達成覆蓋語意。
+- warning 接受理由應結構化記錄，例如哪些分布警訊已抽查、為何判定是相簿內容造成，而不是只在對話中口頭宣告。
+
+整體判斷：r3 是一個資料結果成功、流程治理仍需改進的案例。它證明目前 prompt 與 review gate 能擋下 contact sheet 宣告、格式錯誤與部分 reason 品質問題；但也證明「最後有 visual audit」不足以保證標記過程是 compact-safe。未來品質提升的主軸應從 prompt 自律轉向 artifact-driven workflow。
+
 ## 目前已知容易失準的欄位
 
 ### `safe_crop`
