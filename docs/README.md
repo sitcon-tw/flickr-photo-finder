@@ -51,7 +51,7 @@ flowchart TD
 | 我第一次整理照片，想先練習 | Google Sheets `使用說明` | 從正式照片索引進入固定練習表，不要直接在正式資料試填；整理判斷補讀 `docs/data-entry-guide.md`。 |
 | 我要正式補照片欄位或檢查授權/用途 | [正式照片索引](https://docs.google.com/spreadsheets/d/1JM2QzJo5kpeILZPyTSE6gUK3z-FyRcaGhPJlYE-FMbs/edit) | 欄位速查看 `docs/photo-fields-reference.md`；欄位順序、reviewed 完整度與 approved 要求仍以 `data/photo-schema.json` 為準。 |
 | 我要匯入新 Flickr 相簿 | `pnpm workflow` | 從互動式流程選相簿、建立 intake run、接續 validation 與 Sheets dry-run；Sheets 同步邊界看 `docs/sheets-sync-workflow.md`。 |
-| 我要跑 AI 搜尋級標記 | `pnpm workflow` | 從 AI prepare 流程建立 `tmp/ai-runs/` 工作包；模型輸出合約看 `docs/ai-labeling-contract.md`。大型分片 run 需要逐張 visual audit，不能用 contact sheet 或多圖截圖判讀。 |
+| 我要跑 AI 搜尋級標記 | `pnpm workflow` | 從 AI prepare 流程建立 `tmp/ai-runs/` 工作包；模型輸出合約看 `docs/ai-labeling-contract.md`。direct run 需要 `visual-inspection-audit.json`，大型分片 run 需要逐張 visual audit，不能用 contact sheet 或多圖截圖判讀。 |
 | 我要確認 AI 建議能不能採用 | `docs/ai-labeling-operator-guide.md` | 實際檢查候選值用 `pnpm ai:review -- --run-dir <dir>`；AI 候選值不等於 `reviewed`。 |
 | 我要比較模型、prompt 或搜尋增益 | `pnpm eval` | 這是評估入口，不是一般照片整理主線；需要多角色 prompt 決策包時用 `pnpm eval -- --task prompt-review` 或 `pnpm eval:prompt-review`。 |
 
@@ -80,7 +80,7 @@ flowchart TD
 ```mermaid
 flowchart TD
   A["正式 Sheets 匯出"] --> B["AI run 或 sample"]
-  B --> C["模型輸出 metadata-proposals.json"]
+  B --> C["模型輸出 proposals 與 visual audit"]
   C --> D["ai:review 檢查候選值"]
   D --> E["ai:report 閱讀照片與差異"]
   D --> F["eval:search 驗證找圖增益"]
@@ -95,7 +95,7 @@ flowchart TD
 | 讀者 | 主要閱讀入口 | 不應混用的脈絡 |
 | --- | --- | --- |
 | 人類操作者 | `docs/ai-labeling-operator-guide.md`、`docs/ai-labeling-contract.md` | AI 候選值不等於人工 `reviewed` 或公開 `approved`。 |
-| 只負責搜尋級標記的 LLM / agent | run 目錄的 `ai-labeling-prompt.md`、`docs/ai-labeling-contract.md`、schema、taxonomy、sponsorship items、`photos.json` 與圖片 | 不要把 operator guide、Sheets 回寫文件或先前 proposal 當成照片內容依據；分片任務不得以 contact sheet、縮圖牆或多圖截圖作為欄位判斷依據。 |
+| 只負責搜尋級標記的 LLM / agent | run 目錄的 `ai-labeling-prompt.md`、`docs/ai-labeling-contract.md`、schema、taxonomy、sponsorship items、`photos.json` 與圖片 | 不要把 operator guide、Sheets 回寫文件或先前 proposal 當成照片內容依據；direct run 必須輸出 `visual-inspection-audit.json`，所有任務都不得以 contact sheet、縮圖牆或多圖截圖作為欄位判斷依據。 |
 | repo 維護 agent | `AGENTS.md`、`docs/agent-maintenance-guide.md`、本文件 | 操作流程前先確認 source-of-truth 文件與 run artifact。 |
 | prompt review 角色 agent | `tmp/prompt-reviews/<review-id>/input-manifest.json`、`expert-prompts/`、run 的 `metadata-review-summary.md`、`docs/ai-labeling-prompt-expert-review.md` | 角色 review 只做唯讀分析；若要獨立 review，操作者必須主動分派不同 agent 或不同可追溯執行 session，並在 `expert-reviews/` 記錄 provenance；決策包不會自動套用建議。 |
 
@@ -149,7 +149,7 @@ flowchart TD
 | GA4 後台 property ID | `config/project.json` 的 `frontend.ga4PropertyId` | 給 GA4 Admin API 與 custom dimensions 管理工具使用；它不是 credential 或 secret。 |
 | Sheets 表格讀寫技術選擇 | `docs/sheets-sync-workflow.md` | repo CLI 應以官方 Google Sheets API SDK 為主要方向；Google Drive 檔案搬運不是 Sheets 寫入主流程。 |
 | Sheets 正式寫入身份 | `docs/sheets-sync-workflow.md` | 建議使用 SITCON 管理的 service account，並將 service account email 加入正式 Sheets 編輯者。 |
-| AI 標記輸入與輸出格式 | `docs/ai-labeling-contract.md` | 定義 `tmp/ai-runs/<run-id>/` 的輸入檔、圖片來源、`metadata-proposals.json`、分片 visual audit 格式與驗證流程。 |
+| AI 標記輸入與輸出格式 | `docs/ai-labeling-contract.md` | 定義 `tmp/ai-runs/<run-id>/` 的輸入檔、圖片來源、`metadata-proposals.json`、direct run `visual-inspection-audit.json`、分片 visual audit 格式與驗證流程。 |
 | AI 標記操作與 prompt | `docs/ai-labeling-operator-guide.md`、`prompts/ai-labeling.md` | 操作指南給人類操作者與 repo 維護 agent；prompt 是可交給模型使用的任務範本。 |
 | AI 標記 prompt 角色審查決策 | `docs/ai-labeling-prompt-expert-review.md` | 記錄多角色 prompt review 的角色、共識、owner 決策與後續切片；本機 review artifact 留在 `tmp/prompt-reviews/`。 |
 | 跨活動 AI 測試抽樣計畫 | `data/ai-cross-activity-sample-plan.json` | 用於建立欄位、taxonomy、prompt 與 validator 評估工作包；不是正式照片資料。 |

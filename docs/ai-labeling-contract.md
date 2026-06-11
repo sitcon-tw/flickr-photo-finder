@@ -119,13 +119,19 @@ tmp/ai-runs/<run-id>/metadata-proposals.json
 
 分片輸出可以是正式 `items[]` 物件的 JSON array；它不是最終 proposal。最終仍必須由 merge 工具合併成下方 root object 格式，並在交給操作者正式 review 或 Sheets dry-run 前寫成單一 `metadata-proposals.json`。除非任務明確要求修補既有 proposal，模型或 agent 不應沿用舊 run、舊 attempt 或既有 `metadata-proposals.json`。
 
-分片 worker 也必須寫出逐張視覺稽核檔，預設位置為：
+模型或 agent 也必須寫出逐張視覺稽核檔，證明每張照片是以單張圖片檢視。小型 direct run 預設位置為：
+
+```text
+tmp/ai-runs/<run-id>/visual-inspection-audit.json
+```
+
+分片 worker 預設位置為：
 
 ```text
 /tmp/ai-labeling-shards/<run-id>/visual-audits/shard-XX-visual-audit.json
 ```
 
-這份稽核檔用來證明 worker 是以單張照片檢視，而不是用 contact sheet、montage、縮圖牆或多圖截圖批量判讀。格式可以是 root object 或 array；建議 root object：
+這份稽核檔用來證明模型或 worker 是以單張照片檢視，而不是用 contact sheet、montage、縮圖牆或多圖截圖批量判讀。格式可以是 root object 或 array；建議 root object：
 
 ```json
 {
@@ -150,7 +156,7 @@ tmp/ai-runs/<run-id>/metadata-proposals.json
 }
 ```
 
-缺少 visual audit、`contact_sheet_used` 不是 `false`、`inspection_mode` 不是 `single-image`，或 audit items 未涵蓋 shard input，都是 adoption blocker；不能直接寫回正式 Sheets。
+小型 direct run 可省略 `shard` 欄位；分片 run 建議保留。缺少 visual audit、`contact_sheet_used` 不是 `false`、`inspection_mode` 不是 `single-image`，或 audit items 未涵蓋本次 input，都是 adoption blocker；不能直接寫回正式 Sheets。
 
 大型 run 的暫存 proposal 可以先用既有 validator/review CLI 檢查，不必先寫回 run 目錄：
 
@@ -297,7 +303,7 @@ AI 應遵守以下限制：
 
 產生 `metadata-proposals.json` 後，後續工具會驗證 proposal，並產生 `metadata-review-summary.md`、`metadata-diff.md`、`metadata-update-plan.json` 與 `metadata-update-plan.csv`。具體操作指令由操作者依 `docs/ai-labeling-operator-guide.md` 執行。
 
-驗證 warning 代表 proposal 格式和 AI 責任邊界可接受，但仍有批次品質疑慮需要人工判斷；warning 不等於一定要退回模型重跑。`ai:review` 可能產生 Adoption Readiness、Review Focus、Balanced Review Sample、confidence-by-field 摘要、設計 metadata、shard field coverage、shard visual audit 與場景組合抽查提示。若 Adoption Readiness 顯示 `blocked`，代表回寫前應先修補該 blocker；唯讀 HTML 報表、跨 attempt 分歧比較、`visual_description` 搜尋增益比較與 Sheets dry-run 都是操作者後續流程，不是模型標記任務的一部分。
+驗證 warning 代表 proposal 格式和 AI 責任邊界可接受，但仍有批次品質疑慮需要人工判斷；warning 不等於一定要退回模型重跑。`ai:review` 可能產生 Adoption Readiness、Review Focus、Balanced Review Sample、confidence-by-field 摘要、設計 metadata、shard field coverage、visual inspection audit 與場景組合抽查提示。若 Adoption Readiness 顯示 `blocked`，代表回寫前應先修補該 blocker；唯讀 HTML 報表、跨 attempt 分歧比較、`visual_description` 搜尋增益比較與 Sheets dry-run 都是操作者後續流程，不是模型標記任務的一部分。
 
 正式 review 不在 AI run 目錄中完成。AI run 最多把資料推進到 `ai_labeled`；`reviewed` 應回到 Google Sheets，由具有編輯權限的志工們協作檢查、修正並補齊必要欄位後再更新。
 

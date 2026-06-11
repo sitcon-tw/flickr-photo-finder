@@ -20,6 +20,7 @@ import {
 
 const defaultProposalFile = "metadata-proposals.json";
 const defaultSummaryFile = "metadata-review-summary.md";
+const directVisualAuditFile = "visual-inspection-audit.json";
 const shardExecutionLogFile = "shard-execution-log.json";
 const visualAuditDirName = "visual-audits";
 
@@ -801,29 +802,41 @@ async function buildVisualAuditRows(standardDir, standardInputFilenames) {
     const input = await readJsonIfExists(inputPath);
     const inputItems = Array.isArray(input?.items) ? input.items : [];
     const audit = await readJsonIfExists(auditPath);
-    if (!audit) {
-      rows.push([shardName, inputItems.length, 0, 0, 0, auditPath, "blocker: 缺少逐張視覺稽核，無法證明 worker 逐張單圖判讀"]);
-      continue;
-    }
-    const auditItems = visualAuditItems(audit);
-    const auditByPhoto = new Map(auditItems.map((item) => [item?.photo_id, item]));
-    const missing = inputItems.filter((item) => !auditByPhoto.has(item.photo_id)).length;
-    const nonSingleImage = auditItems.filter((item) => item?.inspection_mode !== "single-image").length;
-    const weakEvidence = auditItems.filter((item) => !hasUsableVisualEvidence(item)).length;
-    const contactSheetUsed = visualAuditContactSheetUsed(audit, auditItems) ? 1 : 0;
-    let issue = "";
-    if (contactSheetUsed > 0) {
-      issue = "blocker: visual audit 表示使用 contact sheet 或合成圖判讀";
-    } else if (missing > 0 || auditItems.length !== inputItems.length) {
-      issue = `blocker: visual audit item 數與 shard input 不一致，audit ${auditItems.length}/${inputItems.length}，缺 ${missing} 張`;
-    } else if (nonSingleImage > 0) {
-      issue = `blocker: ${nonSingleImage} 張沒有標示 single-image 檢視`;
-    } else if (weakEvidence > 0) {
-      issue = `needs-review: ${weakEvidence} 張逐張證據過弱，建議抽查`;
-    }
-    rows.push([shardName, inputItems.length, auditItems.length, nonSingleImage, weakEvidence, auditPath, issue]);
+    rows.push(visualAuditRowForItems(shardName, inputItems, audit, auditPath, "worker"));
   }
   return rows;
+}
+
+async function buildDirectVisualAuditRows(runDir, photos, shardVisualAuditRows) {
+  if (shardVisualAuditRows.length > 0) {
+    return [];
+  }
+  const auditPath = join(runDir, directVisualAuditFile);
+  const audit = await readJsonIfExists(auditPath);
+  return [visualAuditRowForItems("direct-run", Array.isArray(photos) ? photos : [], audit, auditPath, "agent")];
+}
+
+function visualAuditRowForItems(scopeName, inputItems, audit, auditPath, actorLabel) {
+  if (!audit) {
+    return [scopeName, inputItems.length, 0, 0, 0, auditPath, `blocker: 缺少逐張視覺稽核，無法證明 ${actorLabel} 逐張單圖判讀`];
+  }
+  const auditItems = visualAuditItems(audit);
+  const auditByPhoto = new Map(auditItems.map((item) => [item?.photo_id, item]));
+  const missing = inputItems.filter((item) => !auditByPhoto.has(item.photo_id)).length;
+  const nonSingleImage = auditItems.filter((item) => item?.inspection_mode !== "single-image").length;
+  const weakEvidence = auditItems.filter((item) => !hasUsableVisualEvidence(item)).length;
+  const contactSheetUsed = visualAuditContactSheetUsed(audit, auditItems) ? 1 : 0;
+  let issue = "";
+  if (contactSheetUsed > 0) {
+    issue = "blocker: visual audit 表示使用 contact sheet 或合成圖判讀";
+  } else if (missing > 0 || auditItems.length !== inputItems.length) {
+    issue = `blocker: visual audit item 數與輸入照片不一致，audit ${auditItems.length}/${inputItems.length}，缺 ${missing} 張`;
+  } else if (nonSingleImage > 0) {
+    issue = `blocker: ${nonSingleImage} 張沒有標示 single-image 檢視`;
+  } else if (weakEvidence > 0) {
+    issue = `needs-review: ${weakEvidence} 張逐張證據過弱，建議抽查`;
+  }
+  return [scopeName, inputItems.length, auditItems.length, nonSingleImage, weakEvidence, auditPath, issue];
 }
 
 function isZeroPeopleContradiction(item) {
@@ -1429,7 +1442,7 @@ export function buildAdoptionReadiness({ items = [], metricsHealth, reasonReuseQ
   }
   const visualAuditNeedsReview = visualAuditRows.filter((row) => String(row[6]).startsWith("needs-review:"));
   if (visualAuditNeedsReview.length > 0) {
-    rows.push(["needs-review", "visual audit", `${visualAuditNeedsReview.length} 個 shard 的逐張視覺證據偏弱。`]);
+    rows.push(["needs-review", "visual audit", `${visualAuditNeedsReview.length} 個 scope 的逐張視覺證據偏弱。`]);
   }
 
   const sponsorReportCount = sponsorMismatchCount(items, "贊助成果報告");
@@ -1605,11 +1618,11 @@ function renderSummary({ adoptionReadiness, artifactRows, codexSession, diffPath
       ? table(["shard", "field", "items", "with field", "coverage", "run coverage", "issue"], shardFieldCoverageRows)
       : "No shard field coverage outliers were generated.",
     "",
-    "## Shard Visual Audit QA",
+    "## Visual Inspection Audit QA",
     "",
     visualAuditRows.length > 0
-      ? table(["shard", "input items", "audit items", "non-single-image", "weak evidence", "audit path", "issue"], visualAuditRows)
-      : "No shard visual audit rows were generated.",
+      ? table(["scope", "input items", "audit items", "non-single-image", "weak evidence", "audit path", "issue"], visualAuditRows)
+      : "No visual inspection audit rows were generated.",
     "",
     "## Scene Review Packages",
     "",
@@ -1737,6 +1750,10 @@ async function reviewAiRun(options) {
   const metricsHealth = codexMetricsHealth(metrics);
   const shardMap = await buildShardMap(options.runDir, manifest.run_id);
   const shardInspection = await inspectShardArtifacts(options.runDir, manifest.run_id);
+  const visualAuditRows = [
+    ...shardInspection.visualAuditRows,
+    ...(await buildDirectVisualAuditRows(options.runDir, photos, shardInspection.visualAuditRows)),
+  ];
   const sceneQaRows = buildSceneQaRows(proposals.items, photos, shardMap);
   const shardFieldCoverageRows = buildShardFieldCoverageRows(proposals.items, shardMap);
   const packageRows = sceneReviewPackageRows(proposals.items);
@@ -1749,7 +1766,7 @@ async function reviewAiRun(options) {
     reasonReuseQaRows,
     shardFieldCoverageRows,
     validationWarnings: validation.warnings,
-    visualAuditRows: shardInspection.visualAuditRows,
+    visualAuditRows,
   });
   const artifactRows = [
     ["final proposals", options.proposalsPath],
@@ -1765,6 +1782,7 @@ async function reviewAiRun(options) {
   const notes = [
     ...buildPromptVersionNotes(manifest),
     ...shardInspection.warnings,
+    ...visualAuditRows.filter((row) => String(row[6]).trim()).map((row) => `${row[0]} visual audit: ${row[6]}`),
     ...validation.warnings,
     ...buildReviewNotes(proposals.items, { peopleCountQaRows, reasonReuseQaRows, sceneQaRows }),
   ];
@@ -1789,7 +1807,7 @@ async function reviewAiRun(options) {
     shardMap,
     shardRows: shardInspection.rows,
     summaryPath: options.summaryPath,
-    visualAuditRows: shardInspection.visualAuditRows,
+    visualAuditRows,
   });
   await writeFile(options.summaryPath, summary);
 

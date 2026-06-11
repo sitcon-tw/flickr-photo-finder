@@ -292,7 +292,7 @@ async function main() {
   console.log(`- attempt id: ${result.attemptId}`);
   console.log(`- images: ${result.imagesMode}`);
   console.log(`- prompt: ${result.promptPath}`);
-  console.log(`- next: give ai-labeling-prompt.md and this attempt directory to the model. The model should write metadata-proposals.json only; then run pnpm ai:review -- --run-dir ${result.attemptDir}`);
+  console.log(`- next: give ai-labeling-prompt.md and this attempt directory to the model. Direct attempts should write metadata-proposals.json and visual-inspection-audit.json; then run pnpm ai:review -- --run-dir ${result.attemptDir}`);
   console.log("- large attempts: use pnpm ai:shard:prepare and keep intermediate shard files under /tmp before the final merge.");
 }
 
