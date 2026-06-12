@@ -239,7 +239,7 @@ pnpm ai:report -- --runs tmp/ai-runs/<run-a> tmp/ai-runs/<run-b>
 ### 修復或升級路徑
 
 - 先重跑 `pnpm ai:review -- --run-dir <dir>` 讓 summary、diff 與 update plan 對齊目前 proposal。
-- 若是大型分片流程，先用 `pnpm ai:bulk:status` 確認 shard outputs、暫存合併 proposal 與 root proposal 的關係。
+- 若是大型分片流程，先用 `pnpm ai:bulk:status` 確認 shard photo artifacts、暫存合併 proposal、artifact manifest 與 root proposal 的關係。
 - stale review 不應作為品質比較或 Sheets dry-run 的依據。
 
 相關入口：`docs/ai-labeling-operator-guide.md`、`docs/ai-labeling-evaluation-notes.md`。

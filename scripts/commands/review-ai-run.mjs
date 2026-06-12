@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { access, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { getAiLabelingPromptMetadata } from "../lib/ai/ai-labeling-prompt.mjs";
 import {
@@ -821,16 +821,25 @@ async function buildDirectVisualAuditRows(runDir, photos, shardVisualAuditRows) 
   return [visualAuditRowForItems("direct-run", Array.isArray(photos) ? photos : [], audit, auditPath, "agent")];
 }
 
-export async function buildArtifactCheckpointRows({ photos, proposalText, proposalsPath, runDir, shardVisualAuditRows }) {
-  if (shardVisualAuditRows.length > 0) {
-    return [];
+export async function buildArtifactCheckpointRows({ photos, proposalText, proposalsPath, runDir }) {
+  const proposalDir = dirname(proposalsPath);
+  const candidateManifestPaths = [
+    join(proposalDir, artifactManifestFile),
+    join(runDir, artifactManifestFile),
+  ];
+  let manifestPath = candidateManifestPaths[0];
+  let manifest = null;
+  for (const candidate of candidateManifestPaths) {
+    manifest = await readJsonIfExists(candidate);
+    if (manifest) {
+      manifestPath = candidate;
+      break;
+    }
   }
-  const manifestPath = join(runDir, artifactManifestFile);
-  const manifest = await readJsonIfExists(manifestPath);
   const inputCount = Array.isArray(photos) ? photos.length : 0;
   if (!manifest) {
     return [[
-      "direct-run",
+      "run",
       inputCount,
       0,
       manifestPath,
@@ -860,7 +869,7 @@ export async function buildArtifactCheckpointRows({ photos, proposalText, propos
     issue = "needs-review: artifact manifest 記錄的 proposal path 不同於本次 review path";
   }
   return [[
-    "direct-run",
+    "run",
     inputCount,
     artifacts.length,
     manifestPath,
@@ -1831,7 +1840,6 @@ async function reviewAiRun(options) {
     proposalText,
     proposalsPath: options.proposalsPath,
     runDir: options.runDir,
-    shardVisualAuditRows: shardInspection.visualAuditRows,
   });
   const sceneQaRows = buildSceneQaRows(proposals.items, photos, shardMap);
   const shardFieldCoverageRows = buildShardFieldCoverageRows(proposals.items, shardMap);

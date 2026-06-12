@@ -42,9 +42,9 @@ pnpm ai:artifacts:merge -- --run-dir ${runDir}
 pnpm ai:review -- --run-dir ${runDir} --codex-session <parent-session-id>
 \`\`\`
 
-若本次照片數量很大，請先使用 repo 的 sharded 流程，把中間 shard 輸出寫在 \`/tmp/ai-labeling-shards/<run-id>/\`，合併後先用 \`--proposals\` 與 \`--output-dir\` 在暫存目錄執行 validate/review；確認後才把最後的 \`metadata-proposals.json\` 寫回 AI run 目錄。
+若本次照片數量很大，請先使用 repo 的 sharded 流程。worker 的唯一交付物仍是逐張 \`photo-artifacts/shard-XX/<photo_id>.json\`；不要把 \`outputs/shard-XX-proposals.json\` 這類 shard proposal array 當成可採用成果。合併後先用 \`--proposals\` 與 \`--output-dir\` 在暫存目錄執行 validate/review；確認後才把最後的 \`metadata-proposals.json\`、\`visual-inspection-audit.json\` 與 \`artifact-manifest.json\` 寫回 AI run 目錄。
 
-如果你是具備 repo 指令能力、且執行環境支援建立 sub-agents / worker agents / parallel agent work 的 parent agent，本任務明確要求你在 smoke test 通過後建立多個 worker agents 並行處理 shard。請把每個 worker 的寫入範圍限定在各自的 \`/tmp/ai-labeling-shards/<run-id>/outputs/shard-XX-proposals.json\`，parent agent 保留分配、合併、validate、review 與修補責任。若平台有 agent/thread 上限，請用 4 到 6 個 worker 的 queue 逐批補位，不要默默退回單一 parent agent 長時間逐 shard 標記。
+如果你是具備 repo 指令能力、且執行環境支援建立 sub-agents / worker agents / parallel agent work 的 parent agent，本任務明確要求你在 smoke test 通過後建立多個 worker agents 並行處理 shard。請把每個 worker 的寫入範圍限定在各自的 \`/tmp/ai-labeling-shards/<run-id>/photo-artifacts/shard-XX/\`，parent agent 保留分配、artifact 合併、validate、review 與修補責任。若平台有 agent/thread 上限，請用 4 到 6 個 worker 的 queue 逐批補位，不要默默退回單一 parent agent 長時間逐 shard 標記。
 
 ---
 

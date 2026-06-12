@@ -95,7 +95,7 @@ flowchart TD
 | 讀者 | 主要閱讀入口 | 不應混用的脈絡 |
 | --- | --- | --- |
 | 人類操作者 | `docs/ai-labeling-operator-guide.md`、`docs/ai-labeling-contract.md` | AI 候選值不等於人工 `reviewed` 或公開 `approved`。 |
-| 只負責搜尋級標記的 LLM / agent | run 目錄的 `ai-labeling-prompt.md`、`docs/ai-labeling-contract.md`、schema、taxonomy、sponsorship items、`photos.json` 與圖片 | 不要把 operator guide、Sheets 回寫文件或先前 proposal 當成照片內容依據；direct run 必須輸出 `visual-inspection-audit.json`，所有任務都不得以 contact sheet、縮圖牆或多圖截圖作為欄位判斷依據。 |
+| 只負責搜尋級標記的 LLM / agent | run 目錄的 `ai-labeling-prompt.md`、`docs/ai-labeling-contract.md`、schema、taxonomy、sponsorship items、`photos.json` 與圖片 | 不要把 operator guide、Sheets 回寫文件或先前 proposal 當成照片內容依據；每張照片必須先寫出逐張 `photo-artifacts/`，再由工具合併 root proposal 與 visual audit，所有任務都不得以 contact sheet、縮圖牆或多圖截圖作為欄位判斷依據。 |
 | repo 維護 agent | `AGENTS.md`、`docs/agent-maintenance-guide.md`、本文件 | 操作流程前先確認 source-of-truth 文件與 run artifact。 |
 | prompt review 角色 agent | `tmp/prompt-reviews/<review-id>/input-manifest.json`、`expert-prompts/`、run 的 `metadata-review-summary.md`、`docs/ai-labeling-prompt-expert-review.md` | 角色 review 只做唯讀分析；若要獨立 review，操作者必須主動分派不同 agent 或不同可追溯執行 session，並在 `expert-reviews/` 記錄 provenance；決策包不會自動套用建議。 |
 
@@ -149,7 +149,7 @@ flowchart TD
 | GA4 後台 property ID | `config/project.json` 的 `frontend.ga4PropertyId` | 給 GA4 Admin API 與 custom dimensions 管理工具使用；它不是 credential 或 secret。 |
 | Sheets 表格讀寫技術選擇 | `docs/sheets-sync-workflow.md` | repo CLI 應以官方 Google Sheets API SDK 為主要方向；Google Drive 檔案搬運不是 Sheets 寫入主流程。 |
 | Sheets 正式寫入身份 | `docs/sheets-sync-workflow.md` | 建議使用 SITCON 管理的 service account，並將 service account email 加入正式 Sheets 編輯者。 |
-| AI 標記輸入與輸出格式 | `docs/ai-labeling-contract.md` | 定義 `tmp/ai-runs/<run-id>/` 的輸入檔、圖片來源、`metadata-proposals.json`、direct run `visual-inspection-audit.json`、分片 visual audit 格式與驗證流程。 |
+| AI 標記輸入與輸出格式 | `docs/ai-labeling-contract.md` | 定義 `tmp/ai-runs/<run-id>/` 的輸入檔、圖片來源、逐張 `photo-artifacts/`、合併後 `metadata-proposals.json`、`visual-inspection-audit.json`、`artifact-manifest.json` 與驗證流程。 |
 | AI 標記操作與 prompt | `docs/ai-labeling-operator-guide.md`、`prompts/ai-labeling.md` | 操作指南給人類操作者與 repo 維護 agent；prompt 是可交給模型使用的任務範本。 |
 | AI 標記 prompt 角色審查決策 | `docs/ai-labeling-prompt-expert-review.md` | 記錄多角色 prompt review 的角色、共識、owner 決策與後續切片；本機 review artifact 留在 `tmp/prompt-reviews/`。 |
 | 跨活動 AI 測試抽樣計畫 | `data/ai-cross-activity-sample-plan.json` | 用於建立欄位、taxonomy、prompt 與 validator 評估工作包；不是正式照片資料。 |

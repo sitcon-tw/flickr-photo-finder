@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import { mergePhotoArtifacts } from "./merge-ai-photo-artifacts.mjs";
 
 const defaultProposalFile = "metadata-proposals.json";
 const defaultTempRoot = "/tmp/ai-labeling-shards";
@@ -17,12 +18,13 @@ Options:
   --output <path>          Merged proposal path. Default: <shard-dir>/metadata-proposals.json.
   --producer-name <name>   Producer name for merged root object. Default: sharded-ai-agents.
   --created-at <iso-date>  Proposal created_at. Default: current time.
-  --allow-missing          Allow photos without shard proposals.
-  --write-run              Also write <run-dir>/metadata-proposals.json.
+  --allow-missing          Allow photos without per-photo artifacts.
+  --write-run              Also write merged proposal, visual audit, and artifact manifest to <run-dir>.
   --help, -h               Show this help.
 
-This command merges shard proposal arrays into a formal metadata-proposals.json
-root object. By default it writes only to the shard workspace.`);
+This command merges shard per-photo artifacts into formal metadata-proposals.json,
+visual-inspection-audit.json, and artifact-manifest.json files. By default it
+writes only to the shard workspace.`);
 }
 
 function parseArgs(argv) {
@@ -119,6 +121,25 @@ async function shardOutputPaths(shardDir) {
     .map((filename) => join(outputDir, filename));
 }
 
+async function countJsonFilesIfExists(dir) {
+  let entries;
+  try {
+    entries = await readdir(dir, { withFileTypes: true });
+  } catch {
+    return 0;
+  }
+  let count = 0;
+  for (const entry of entries) {
+    const fullPath = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      count += await countJsonFilesIfExists(fullPath);
+    } else if (entry.isFile() && entry.name.endsWith(".json")) {
+      count += 1;
+    }
+  }
+  return count;
+}
+
 function itemsFromShardPayload(payload, path) {
   if (Array.isArray(payload)) {
     return payload;
@@ -193,6 +214,39 @@ async function updateExecutionLog({ outputPath, paths, shardDir }) {
   return { logPath, updated: true };
 }
 
+async function updateExecutionLogFromArtifacts({ artifactDir, manifestPath, outputPath, shardDir, visualAuditPath }) {
+  const logPath = join(shardDir, executionLogFile);
+  const log = await maybeReadJson(logPath);
+  if (!log || !Array.isArray(log.shards)) {
+    return { logPath: "", updated: false };
+  }
+
+  const outputText = await readFile(outputPath, "utf8");
+  const visualAuditText = await readFile(visualAuditPath, "utf8");
+  const manifestText = await readFile(manifestPath, "utf8");
+  const now = new Date().toISOString();
+  for (const entry of log.shards) {
+    if (!entry.photo_artifact_dir) {
+      continue;
+    }
+    const artifactCount = await countJsonFilesIfExists(entry.photo_artifact_dir);
+    entry.photo_artifact_count = artifactCount;
+    if (artifactCount === Number(entry.photo_count || 0) && (!entry.status || entry.status === "pending" || entry.status === "running")) {
+      entry.status = "completed";
+    }
+  }
+  log.artifact_manifest_path = manifestPath;
+  log.artifact_manifest_sha256 = sha256Text(manifestText);
+  log.merged_at = now;
+  log.merged_output_path = outputPath;
+  log.merged_output_sha256 = sha256Text(outputText);
+  log.merged_visual_audit_path = visualAuditPath;
+  log.merged_visual_audit_sha256 = sha256Text(visualAuditText);
+  log.updated_at = now;
+  await writeFile(logPath, `${JSON.stringify(log, null, 2)}\n`);
+  return { logPath, updated: true };
+}
+
 function validateMergedItems({ allowMissing, itemsWithSource, photos }) {
   const errors = [];
   const photoIds = new Set(photos.map((photo) => photo.photo_id).filter(Boolean));
@@ -230,7 +284,7 @@ function validateMergedItems({ allowMissing, itemsWithSource, photos }) {
   }
 }
 
-async function mergeAiShards(options) {
+export async function mergeAiShards(options) {
   const runDir = resolve(options.runDir);
   const [manifest, photos] = await Promise.all([
     readJson(join(runDir, "manifest.json")),
@@ -246,45 +300,70 @@ async function mergeAiShards(options) {
 
   const shardDir = resolve(options.shardDir || join(defaultTempRoot, manifest.run_id));
   const outputPath = resolve(options.outputPath || join(shardDir, defaultProposalFile));
-  const paths = await shardOutputPaths(shardDir);
-  if (paths.length === 0) {
-    throw new Error(`No shard proposal files found in ${join(shardDir, "outputs")}`);
+  const artifactDir = join(shardDir, "photo-artifacts");
+  const visualAuditPath = join(shardDir, "visual-inspection-audit.json");
+  const artifactManifestPath = join(shardDir, "artifact-manifest.json");
+  const shardManifest = await maybeReadJson(join(shardDir, "shard-manifest.json"));
+  const artifactCount = await countJsonFilesIfExists(artifactDir);
+  if (artifactCount === 0) {
+    throw new Error(`No per-photo artifacts found in ${artifactDir}. Re-run shard workers with checkpointed photo artifacts; legacy shard outputs are not adoptable.`);
   }
 
-  const itemsWithSource = await readShardItems(paths);
-  validateMergedItems({ allowMissing: options.allowMissing, itemsWithSource, photos });
-
-  const items = itemsWithSource.map(({ item }) => item);
-  const proposals = {
-    proposal_version: 1,
-    run_id: manifest.run_id,
-    created_at: options.createdAt || new Date().toISOString(),
-    producer: {
-      type: "ai",
-      name: options.producerName,
-    },
-    items,
-  };
-  const serialized = `${JSON.stringify(proposals, null, 2)}\n`;
-
-  await mkdir(dirname(outputPath), { recursive: true });
-  await writeFile(outputPath, serialized);
-  const executionLog = await updateExecutionLog({ outputPath, paths, shardDir });
+  await mergePhotoArtifacts({
+    allowMissing: options.allowMissing,
+    artifactDir,
+    createdAt: options.createdAt,
+    manifestPath: artifactManifestPath,
+    producerName: options.producerName,
+    proposalsPath: outputPath,
+    runDir,
+    visualAuditPath,
+  });
+  const mergedProposal = JSON.parse(await readFile(outputPath, "utf8"));
+  const executionLog = await updateExecutionLogFromArtifacts({
+    artifactDir,
+    manifestPath: artifactManifestPath,
+    outputPath,
+    shardDir,
+    visualAuditPath,
+  });
 
   let runOutputPath = "";
+  let runVisualAuditPath = "";
+  let runArtifactManifestPath = "";
   if (options.writeRun) {
     runOutputPath = join(runDir, defaultProposalFile);
-    await writeFile(runOutputPath, serialized);
+    runVisualAuditPath = join(runDir, "visual-inspection-audit.json");
+    runArtifactManifestPath = join(runDir, "artifact-manifest.json");
+    const [proposalText, visualAuditText, artifactManifest] = await Promise.all([
+      readFile(outputPath, "utf8"),
+      readFile(visualAuditPath, "utf8"),
+      readJson(artifactManifestPath),
+    ]);
+    const rootManifest = {
+      ...artifactManifest,
+      proposal_path: runOutputPath,
+      visual_audit_path: runVisualAuditPath,
+    };
+    await Promise.all([
+      writeFile(runOutputPath, proposalText),
+      writeFile(runVisualAuditPath, visualAuditText),
+      writeFile(runArtifactManifestPath, `${JSON.stringify(rootManifest, null, 2)}\n`),
+    ]);
   }
 
   return {
-    itemCount: items.length,
+    artifactCount,
+    itemCount: Array.isArray(mergedProposal.items) ? mergedProposal.items.length : 0,
     outputPath,
     runId: manifest.run_id,
+    runArtifactManifestPath,
     runOutputPath,
-    shardCount: paths.length,
+    runVisualAuditPath,
+    shardCount: Array.isArray(shardManifest?.shards) ? shardManifest.shards.length : 0,
     shardExecutionLogPath: executionLog.logPath,
     shardExecutionLogUpdated: executionLog.updated,
+    visualAuditPath,
   };
 }
 
@@ -296,12 +375,16 @@ async function main() {
   }
 
   const result = await mergeAiShards(options);
-  console.log(`AI shard proposals merged: ${result.outputPath}`);
+  console.log(`AI shard photo artifacts merged: ${result.outputPath}`);
   console.log(`- run: ${result.runId}`);
-  console.log(`- shard files: ${result.shardCount}`);
+  console.log(`- shards: ${result.shardCount}`);
+  console.log(`- photo artifacts: ${result.artifactCount}`);
   console.log(`- proposal items: ${result.itemCount}`);
+  console.log(`- visual audit: ${result.visualAuditPath}`);
   if (result.runOutputPath) {
     console.log(`- run proposal: ${result.runOutputPath}`);
+    console.log(`- run visual audit: ${result.runVisualAuditPath}`);
+    console.log(`- run artifact manifest: ${result.runArtifactManifestPath}`);
   }
   if (result.shardExecutionLogUpdated) {
     console.log(`- execution log updated: ${result.shardExecutionLogPath}`);

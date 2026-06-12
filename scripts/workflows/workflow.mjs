@@ -573,8 +573,8 @@ async function runBulkAiLabeling() {
   console.log("交給平行 agent 的主要入口：");
   console.log(`- shard prompts: ${shardDir}/worker-prompts/`);
   console.log(`- shard inputs: ${shardDir}/inputs/`);
-  console.log(`- shard outputs: ${shardDir}/outputs/`);
-  console.log("每個 agent 只處理自己的 shard input，輸出 JSON array 到對應 shard output。");
+  console.log(`- shard photo artifacts: ${shardDir}/photo-artifacts/`);
+  console.log("每個 agent 只處理自己的 shard input，看完一張就寫一個 per-photo artifact；舊 shard output 不能作為採用成果。");
 
   runPnpm("ai:bulk:status", pnpmArgsFromOptions(["--run-dir", runDir]));
 

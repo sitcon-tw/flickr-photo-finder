@@ -100,36 +100,32 @@ function renderWorkerPrompt({ auditPath, inputPath, outputPath, photoArtifactDir
 
 - AI run 目錄：\`${runDir}\`
 - 本分片輸入：\`${inputPath}\`
-- 本分片輸出：\`${outputPath}\`
 - 本分片逐張 artifact 目錄：\`${photoArtifactDir}\`
-- 本分片逐張視覺稽核：\`${auditPath}\`
+- 診斷用 shard output 路徑：\`${outputPath}\`（不要作為本次交付使用）
+- 診斷用視覺稽核路徑：\`${auditPath}\`（不要作為本次交付使用）
 - 分片序號：${shardIndex + 1} / ${shardCount}
 
 重要限制：
 
-- 你不是獨自操作整個 run；其他 worker 可能同時處理不同 shard。請把本 worker 的寫入範圍限制在本分片輸出，不要修改其他 shard output、root \`metadata-proposals.json\`、\`photos.json\` 或 run 目錄中的 review artifacts。
-- 本 worker 只擁有 \`${outputPath}\`。若看到其他 worker 已產生或正在產生的檔案，不要覆蓋、修補或移除；需要協調時回報 parent agent。
+- 你不是獨自操作整個 run；其他 worker 可能同時處理不同 shard。請把本 worker 的寫入範圍限制在本分片逐張 artifact 目錄，不要修改其他 shard artifact、root \`metadata-proposals.json\`、\`photos.json\` 或 run 目錄中的 review artifacts。
+- 本 worker 只擁有 \`${photoArtifactDir}\`。若看到其他 worker 已產生或正在產生的檔案，不要覆蓋、修補或移除；需要協調時回報 parent agent。
 - 不可以使用既有的 \`metadata-proposals.json\`、其他 run 的 proposal 或其他分片輸出作為本次標記依據。
 - 只處理本分片輸入中的 \`items\`，不要替其他照片產生 proposal。
 - 仍必須逐張打開圖片。若 \`absolute_image_path\` 有值，優先使用它；否則依 run prompt 使用 \`local_image_path\` 或 \`image_download_url\`。
 - 禁止使用 contact sheet、montage、image grid、HTML gallery screenshot、縮圖拼貼或任何合成大圖作為判讀依據。縮圖總覽只能用於導航，不能用來決定欄位。
 - 每張照片都必須以單張原圖或單張下載圖進行判讀。若你無法確認某張照片是以單圖檢視，請不要為該 \`photo_id\` 輸出 proposal，並在最終回報中列出。
 - 看完每張照片後，先把該張結果寫成 \`${photoArtifactDir}/<photo_id>.json\`，再處理下一張。未寫入 artifact 的觀察視為不存在；不要把多張照片觀察累積在對話 context，等全部看完或 context compact 後再一次整理。
-- 分片輸出請寫成 JSON array，每個元素是正式 \`metadata-proposals.json\` 內的單一 \`items[]\` 物件，例如 \`[{ "photo_id": "...", "fields": { ... } }]\`。
-- 不要在本分片輸出中包 root object；root object 會由 merge 工具統一產生。
-- 同時必須寫出本分片逐張視覺稽核 JSON 到 \`${auditPath}\`。格式如下：
+- 本次 shard 的唯一交付物是 per-photo artifact。不要手寫 \`${outputPath}\`，也不要手寫 \`${auditPath}\`；parent agent 會用 \`pnpm ai:shard:merge\` 從 artifacts 合併正式 proposal、visual audit 與 artifact manifest。
+- 每個逐張 artifact 格式如下：
 
 \`\`\`json
 {
-  "audit_version": 1,
-  "shard": "${formatShardId(shardIndex)}",
-  "inspection_policy": "single-image-only",
-  "contact_sheet_used": false,
-  "items": [
-    {
-      "photo_id": "...",
+  "artifact_version": 1,
+  "photo_id": "...",
+  "inspection": {
       "image_path": "...",
       "inspection_mode": "single-image",
+      "contact_sheet_used": false,
       "visual_evidence": {
         "subject": "本張主要主體與位置",
         "people_count_basis": "人數估計依據，無人也要寫無人依據",
@@ -137,12 +133,20 @@ function renderWorkerPrompt({ auditPath, inputPath, outputPath, photoArtifactDir
         "search_details": ["可搜尋物件、動作、文字或空間關係"],
         "design_basis": "留白與裁切判斷依據，沒有也要寫為何沒有"
       }
+  },
+  "proposal_item": {
+    "photo_id": "...",
+    "fields": {
+      "people_count": {
+        "value": 1,
+        "reason": "本張照片的人數依據。"
+      }
     }
-  ]
+  }
 }
 \`\`\`
 
-稽核檔不是正式 Sheets 欄位，但 review 會用它判斷 worker 是否逐張看圖。若缺少稽核檔、\`contact_sheet_used\` 不是 \`false\`、\`inspection_mode\` 不是 \`single-image\`，或稽核 item 數與 shard input 不一致，parent agent 應視為不可直接採用。
+artifact 不是正式 Sheets 欄位，但 review 會用它判斷 worker 是否逐張看圖。若缺少 artifact、\`contact_sheet_used\` 不是 \`false\`、\`inspection_mode\` 不是 \`single-image\`，或 artifact 數與 shard input 不一致，parent agent 應視為不可直接採用。
 
 若你是 Codex worker，開始與完成時請更新 shard execution log，並填入實際 session、model 與 reasoning effort：
 
@@ -317,9 +321,9 @@ async function main() {
   console.log(`- photos: ${result.sourcePhotoCount}`);
   console.log(`- shards: ${result.shardCount}`);
   console.log(`- inputs: ${result.inputDir}`);
-  console.log(`- expected outputs: ${result.proposalsDir}`);
+  console.log(`- diagnostic outputs: ${result.proposalsDir}`);
   console.log(`- expected photo artifacts: ${result.photoArtifactRoot}`);
-  console.log(`- expected visual audits: ${result.visualAuditDir}`);
+  console.log(`- diagnostic visual audits: ${result.visualAuditDir}`);
   console.log(`- shard manifest: ${result.shardManifestPath}`);
   console.log(`- execution log: ${result.shardExecutionLogPath}`);
 }

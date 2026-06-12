@@ -165,7 +165,7 @@ function formatDurationMs(value) {
   return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
 }
 
-async function inspectBulkStatus(options) {
+export async function inspectBulkStatus(options) {
   const runDir = resolve(options.runDir);
   const [manifest, photos] = await Promise.all([
     readJson(join(runDir, "manifest.json")),
@@ -189,7 +189,9 @@ async function inspectBulkStatus(options) {
   const expectedVisualAuditFiles = shardEntries.length > 0
     ? shardEntries.map((shard) => shard.visual_audit_path || join(shardDir, visualAuditDirName, `shard-${String(shard.shard).padStart(2, "0")}-visual-audit.json`)).filter(Boolean)
     : inputFiles.map((path) => join(shardDir, visualAuditDirName, `shard-${shardIdFromPath(path)}-visual-audit.json`));
-  const expectedPhotoArtifacts = shardEntries.reduce((sum, shard) => sum + Number(shard.count || 0), 0);
+  const expectedPhotoArtifacts = shardEntries.length > 0
+    ? shardEntries.reduce((sum, shard) => sum + Number(shard.count || 0), 0)
+    : (inputFiles.length > 0 && Array.isArray(photos) ? photos.length : 0);
   const existingPhotoArtifacts = await countJsonFilesIfExists(join(shardDir, "photo-artifacts"));
   const existingOutputFiles = [];
   for (const path of expectedOutputFiles) {
@@ -206,6 +208,7 @@ async function inspectBulkStatus(options) {
 
   const missingOutputFiles = expectedOutputFiles.filter((path) => !existingOutputFiles.includes(path));
   const missingVisualAuditFiles = expectedVisualAuditFiles.filter((path) => !existingVisualAuditFiles.includes(path));
+  const missingPhotoArtifacts = Math.max(0, expectedPhotoArtifacts - existingPhotoArtifacts);
   const shardMergedProposalPath = join(shardDir, defaultProposalFile);
   const rootProposalPath = join(runDir, defaultProposalFile);
   const reviewSummaryPath = join(runDir, defaultReviewSummaryFile);
@@ -224,6 +227,7 @@ async function inspectBulkStatus(options) {
     image_link_mode: manifest.image_link_mode ?? "",
     input_shards: inputFiles.length,
     missing_outputs: missingOutputFiles,
+    missing_photo_artifacts: missingPhotoArtifacts,
     missing_visual_audits: missingVisualAuditFiles,
     photo_count: Array.isArray(photos) ? photos.length : 0,
     review_summary_exists: await pathExists(reviewSummaryPath),
@@ -271,38 +275,21 @@ function printStatus(status) {
   console.log(`- Codex run metrics: ${status.codex_metrics_exists ? `${status.codex_metrics_summary.completed_phases} completed phase(s), ${status.codex_metrics_summary.token_completed_phases} token phase(s), ${formatCodexUsage(status.codex_metrics_summary.total_usage_delta)}` : "missing"}`);
   console.log(`- Codex token attribution: ${status.codex_metrics_health.status} (${status.codex_metrics_health.message})`);
   console.log(`- shard inputs: ${status.input_shards}`);
-  console.log(`- shard outputs: ${status.existing_outputs}/${status.expected_outputs}`);
+  console.log(`- legacy shard outputs: ${status.existing_outputs}/${status.expected_outputs}`);
   if (status.expected_photo_artifacts > 0 || status.existing_photo_artifacts > 0) {
     console.log(`- shard photo artifacts: ${status.existing_photo_artifacts}/${status.expected_photo_artifacts}`);
   }
-  console.log(`- shard visual audits: ${status.existing_visual_audits}/${status.expected_visual_audits}`);
+  console.log(`- legacy shard visual audits: ${status.existing_visual_audits}/${status.expected_visual_audits}`);
   console.log(`- merged shard proposal: ${status.shard_merged_proposal_exists ? `${status.shard_merged_proposal_items} item(s)` : "missing"}`);
   console.log(`- root proposal: ${status.root_proposal_exists ? `${status.root_proposal_items} item(s)` : "missing"}`);
   console.log(`- review summary: ${status.review_summary_exists ? (status.review_summary_stale ? "stale" : "present") : "missing"}`);
-  if (status.missing_outputs.length > 0) {
-    console.log("- missing shard outputs:");
-    for (const path of status.missing_outputs.slice(0, 20)) {
-      console.log(`  - ${path}`);
-    }
-    if (status.missing_outputs.length > 20) {
-      console.log(`  - ... ${status.missing_outputs.length - 20} more`);
-    }
-  }
-  if (status.missing_visual_audits.length > 0) {
-    console.log("- missing shard visual audits:");
-    for (const path of status.missing_visual_audits.slice(0, 20)) {
-      console.log(`  - ${path}`);
-    }
-    if (status.missing_visual_audits.length > 20) {
-      console.log(`  - ... ${status.missing_visual_audits.length - 20} more`);
-    }
+  if (status.missing_photo_artifacts > 0) {
+    console.log(`- missing shard photo artifacts: ${status.missing_photo_artifacts}`);
   }
   console.log("");
   console.log("Next:");
-  if (status.existing_outputs < status.expected_outputs) {
-    console.log("- Finish the missing shard outputs before merging.");
-  } else if (status.existing_visual_audits < status.expected_visual_audits) {
-    console.log("- Finish the missing shard visual audits before review/writeback.");
+  if (status.input_shards > 0 && status.existing_photo_artifacts < status.expected_photo_artifacts) {
+    console.log("- Finish the missing shard photo artifacts before merging. Legacy shard outputs or visual audits are not adoptable without per-photo checkpoints.");
   } else if (status.root_proposal_exists && (!status.review_summary_exists || status.review_summary_stale)) {
     console.log(`- Rebuild review artifacts: pnpm ai:review -- --run-dir ${status.run_dir} --codex-session <parent-session-id>`);
   } else if (status.root_proposal_exists) {
@@ -314,7 +301,7 @@ function printStatus(status) {
   } else if (status.input_shards === 0) {
     console.log(`- Prepare shard workspace: pnpm ai:shard:prepare -- --run-dir ${status.run_dir}`);
   } else if (!status.shard_merged_proposal_exists) {
-    console.log(`- Merge shards: pnpm ai:shard:merge -- --run-dir ${status.run_dir}`);
+    console.log(`- Merge shard photo artifacts: pnpm ai:shard:merge -- --run-dir ${status.run_dir}`);
   } else if (!status.root_proposal_exists) {
     console.log(`- Temporarily review merged proposal: pnpm ai:review -- --run-dir ${status.run_dir} --proposals ${status.shard_merged_proposal_path} --output-dir /tmp/ai-review-runs/${status.run_id} --codex-session <parent-session-id>`);
     console.log(`- Write accepted proposal: pnpm ai:shard:merge -- --run-dir ${status.run_dir} --write-run`);

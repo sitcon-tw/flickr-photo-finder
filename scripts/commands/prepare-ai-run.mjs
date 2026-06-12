@@ -648,8 +648,8 @@ async function main() {
   console.log(`- selected photos: ${result.manifest.selected_photo_count}`);
   console.log(`- downloaded images: ${result.manifest.downloaded_photo_count}`);
   console.log(`- prompt: ${result.promptPath}`);
-  console.log("- next: give ai-labeling-prompt.md and this run directory to the model. Direct runs should write metadata-proposals.json and visual-inspection-audit.json; then an operator runs ai:review.");
-  console.log("- large runs: use pnpm ai:shard:prepare -- --run-dir <dir> and keep intermediate shard files under /tmp before the final merge.");
+  console.log("- next: give ai-labeling-prompt.md and this run directory to the model. Direct runs should write per-photo artifacts under photo-artifacts/, then run pnpm ai:artifacts:merge -- --run-dir <dir> and pnpm ai:review -- --run-dir <dir>.");
+  console.log("- large runs: use pnpm ai:shard:prepare -- --run-dir <dir>; workers must write per-photo artifacts under /tmp/ai-labeling-shards/<run-id>/photo-artifacts/ before merge/review.");
 }
 
 try {

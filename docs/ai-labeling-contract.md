@@ -127,7 +127,7 @@ tmp/ai-runs/<run-id>/artifact-manifest.json
 /tmp/ai-labeling-shards/<run-id>/
 ```
 
-分片輸出可以是正式 `items[]` 物件的 JSON array；它不是最終 proposal。最終仍必須由 merge 工具合併成下方 root object 格式，並在交給操作者正式 review 或 Sheets dry-run 前寫成單一 `metadata-proposals.json`。除非任務明確要求修補既有 proposal，模型或 agent 不應沿用舊 run、舊 attempt 或既有 `metadata-proposals.json`。
+分片 worker 的交付物也是逐張 artifact，不是 `outputs/shard-XX-proposals.json` 這種 shard proposal array。最終仍必須由 merge 工具從 per-photo artifacts 合併成下方 root object 格式，並在交給操作者正式 review 或 Sheets dry-run 前寫成單一 `metadata-proposals.json`。除非任務明確要求修補既有 proposal，模型或 agent 不應沿用舊 run、舊 attempt 或既有 `metadata-proposals.json`。
 
 模型或 agent 也必須在逐張 artifact 中寫出視覺稽核資料，證明每張照片是以單張圖片檢視。小型 direct run 的 artifact 格式：
 
@@ -157,10 +157,10 @@ tmp/ai-runs/<run-id>/artifact-manifest.json
 分片 worker 預設位置為：
 
 ```text
-/tmp/ai-labeling-shards/<run-id>/visual-audits/shard-XX-visual-audit.json
+/tmp/ai-labeling-shards/<run-id>/photo-artifacts/shard-XX/<photo_id>.json
 ```
 
-合併後的 `visual-inspection-audit.json` 用來證明模型或 worker 是以單張照片檢視，而不是用 contact sheet、montage、縮圖牆或多圖截圖批量判讀。格式可以是 root object 或 array；建議 root object：
+合併後的 `visual-inspection-audit.json` 用來證明模型或 worker 是以單張照片檢視，而不是用 contact sheet、montage、縮圖牆或多圖截圖批量判讀。這份檔案應由 artifact merge 工具產生，不能取代 per-photo artifacts。格式可以是 root object 或 array；建議 root object：
 
 ```json
 {
@@ -185,7 +185,7 @@ tmp/ai-runs/<run-id>/artifact-manifest.json
 }
 ```
 
-小型 direct run 可省略 `shard` 欄位；分片 run 建議保留。缺少 per-photo artifact manifest、缺少 visual audit、`contact_sheet_used` 不是 `false`、`inspection_mode` 不是 `single-image`，或 audit items 未涵蓋本次 input，都是 adoption blocker；不能直接寫回正式 Sheets。
+小型 direct run 可省略 `shard` 欄位；分片 run 建議保留。缺少 per-photo artifacts、缺少 artifact manifest、缺少 visual audit、`contact_sheet_used` 不是 `false`、`inspection_mode` 不是 `single-image`，或 artifact / audit items 未涵蓋本次 input，都是 adoption blocker；不能直接寫回正式 Sheets。
 
 大型 run 的暫存 proposal 可以先用既有 validator/review CLI 檢查，不必先寫回 run 目錄：
 

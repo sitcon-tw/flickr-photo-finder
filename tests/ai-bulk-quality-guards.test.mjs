@@ -14,9 +14,10 @@ import {
   sceneReviewPackageRows,
 } from "../scripts/commands/review-ai-run.mjs";
 import { mergePhotoArtifacts } from "../scripts/commands/merge-ai-photo-artifacts.mjs";
+import { mergeAiShards } from "../scripts/commands/merge-ai-shards.mjs";
 import { buildPlan } from "../scripts/commands/plan-ai-updates.mjs";
 import { updateShardLog } from "../scripts/commands/log-ai-shard.mjs";
-import { summarizeExecutionLog } from "../scripts/commands/status-ai-bulk-run.mjs";
+import { inspectBulkStatus, summarizeExecutionLog } from "../scripts/commands/status-ai-bulk-run.mjs";
 import {
   designMetadataQualityWarningsForItem,
   validateAiProposals,
@@ -226,6 +227,27 @@ describe("AI bulk quality guards", () => {
     assert.deepEqual(summary.reasoning_effort_counts, { medium: 1, xhigh: 1 });
   });
 
+  it("treats shard inputs without manifests or artifacts as missing checkpoints", async () => {
+    const root = await mkdtemp(join(tmpdir(), "ai-bulk-status-missing-artifacts-"));
+    const runDir = join(root, "run");
+    const shardDir = join(root, "shards");
+    await mkdir(join(shardDir, "inputs"), { recursive: true });
+    await mkdir(runDir, { recursive: true });
+    await writeFile(join(runDir, "manifest.json"), `${JSON.stringify({ run_id: "missing-artifacts-status-test" })}\n`);
+    await writeFile(join(runDir, "photos.json"), `${JSON.stringify([
+      { photo_id: "status-1" },
+      { photo_id: "status-2" },
+    ])}\n`);
+    await writeFile(join(shardDir, "inputs", "shard-00-input.json"), `${JSON.stringify({ count: 2, items: [] })}\n`);
+
+    const status = await inspectBulkStatus({ runDir, shardDir });
+
+    assert.equal(status.shard_manifest_exists, false);
+    assert.equal(status.input_shards, 1);
+    assert.equal(status.expected_photo_artifacts, 2);
+    assert.equal(status.missing_photo_artifacts, 2);
+  });
+
   it("writes shard reasoning effort into the execution log", async () => {
     const root = await mkdtemp(join(tmpdir(), "ai-shard-log-"));
     const runDir = join(root, "run");
@@ -398,6 +420,114 @@ describe("AI bulk quality guards", () => {
 
     assert.match(checkpointRows[0][4], /^blocker:/);
     assert.equal(readiness.status, "blocked");
+  });
+
+  it("blocks sharded proposals without per-photo checkpoint manifest", async () => {
+    const root = await mkdtemp(join(tmpdir(), "ai-shard-missing-artifact-manifest-"));
+    const runDir = join(root, "run");
+    const shardDir = join(root, "shards");
+    await mkdir(runDir, { recursive: true });
+    await mkdir(join(shardDir, "visual-audits"), { recursive: true });
+    const photos = [{ photo_id: "missing-shard-checkpoint" }];
+    const proposalText = `${JSON.stringify({
+      created_at: "2026-06-12T00:00:00.000Z",
+      items: [{ fields: { people_count: { reason: "畫面中可辨識一人。", value: 1 } }, photo_id: "missing-shard-checkpoint" }],
+      producer: { name: "test", type: "ai" },
+      proposal_version: 1,
+      run_id: "missing-shard-checkpoint-test",
+    })}\n`;
+    await writeFile(join(runDir, "manifest.json"), `${JSON.stringify({ run_id: "missing-shard-checkpoint-test" })}\n`);
+    await writeFile(join(runDir, "photos.json"), `${JSON.stringify(photos)}\n`);
+    await writeFile(join(shardDir, "metadata-proposals.json"), proposalText);
+
+    const checkpointRows = await buildArtifactCheckpointRows({
+      photos,
+      proposalText,
+      proposalsPath: join(shardDir, "metadata-proposals.json"),
+      runDir,
+    });
+    const readiness = buildAdoptionReadiness({ artifactCheckpointRows: checkpointRows });
+
+    assert.match(checkpointRows[0][4], /^blocker:/);
+    assert.equal(readiness.status, "blocked");
+  });
+
+  it("merges sharded per-photo artifacts instead of legacy shard outputs", async () => {
+    const root = await mkdtemp(join(tmpdir(), "ai-shard-photo-artifacts-"));
+    const runDir = join(root, "run");
+    const shardDir = join(root, "shards");
+    const artifactDir = join(shardDir, "photo-artifacts", "shard-00");
+    await mkdir(runDir, { recursive: true });
+    await mkdir(artifactDir, { recursive: true });
+    const photos = [{ photo_id: "shard-artifact-1" }];
+    await writeFile(join(runDir, "manifest.json"), `${JSON.stringify({ image_size: "large-1024", run_id: "shard-artifact-test" })}\n`);
+    await writeFile(join(runDir, "photos.json"), `${JSON.stringify(photos)}\n`);
+    await writeFile(join(shardDir, "shard-manifest.json"), `${JSON.stringify({
+      run_id: "shard-artifact-test",
+      shards: [
+        {
+          count: 1,
+          input_path: join(shardDir, "inputs", "shard-00-input.json"),
+          output_path: join(shardDir, "outputs", "shard-00-proposals.json"),
+          photo_artifact_dir: artifactDir,
+          shard: 0,
+          visual_audit_path: join(shardDir, "visual-audits", "shard-00-visual-audit.json"),
+        },
+      ],
+    })}\n`);
+    await writeFile(join(artifactDir, "shard-artifact-1.json"), `${JSON.stringify({
+      artifact_version: 1,
+      photo_id: "shard-artifact-1",
+      inspection: {
+        contact_sheet_used: false,
+        image_path: "images/shard-artifact-1.jpg",
+        inspection_mode: "single-image",
+        visual_evidence: {
+          design_basis: "人物位於中央，沒有乾淨留白。",
+          people_count_basis: "畫面中央可辨識一人。",
+          scene_basis: "單人站在舞台旁，符合講者線索。",
+          search_details: ["舞台", "麥克風"],
+          subject: "主要主體是中央人物。",
+        },
+      },
+      proposal_item: {
+        photo_id: "shard-artifact-1",
+        fields: {
+          people_count: {
+            reason: "畫面中央可辨識一人。",
+            value: 1,
+          },
+          subject_type: {
+            reason: "主要主體是中央人物。",
+            value: "people",
+          },
+          orientation: {
+            reason: "照片為橫式構圖。",
+            value: "landscape",
+          },
+          has_negative_space: {
+            reason: "人物和背景元素填滿畫面，沒有乾淨可放字區。",
+            value: false,
+          },
+          visual_description: {
+            reason: "描述本張照片的舞台與人物線索。",
+            value: "中央人物站在舞台旁拿著麥克風，背景可見活動牆面 shard artifact",
+          },
+          curation_status: {
+            reason: "本張照片已完成單張 artifact 標記。",
+            value: "ai_labeled",
+          },
+        },
+      },
+    }, null, 2)}\n`);
+
+    const result = await mergeAiShards({ runDir, shardDir });
+    const merged = JSON.parse(await readFile(join(shardDir, "metadata-proposals.json"), "utf8"));
+    const manifest = JSON.parse(await readFile(join(shardDir, "artifact-manifest.json"), "utf8"));
+
+    assert.equal(result.artifactCount, 1);
+    assert.equal(merged.items.length, 1);
+    assert.equal(manifest.generated_by, "ai:artifacts:merge");
   });
 
   it("clears omitted optional fields in fresh relabel plans", async () => {

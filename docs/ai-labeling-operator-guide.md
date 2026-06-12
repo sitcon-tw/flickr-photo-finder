@@ -158,11 +158,11 @@ pnpm ai:shard:prepare -- --run-dir tmp/ai-runs/<run-id>
 
 - `inputs/shard-XX-input.json`: 每個 agent 的照片清單與圖片路徑。
 - `worker-prompts/shard-XX.md`: 可交給該 agent 的分片任務提示。
-- `outputs/shard-XX-proposals.json`: 該 agent 應寫入的分片 proposal array 目標位置。
-- `visual-audits/shard-XX-visual-audit.json`: 該 agent 必須寫入的逐張單圖檢視稽核，證明每張照片都是以單張原圖或下載圖判讀。
+- `photo-artifacts/shard-XX/<photo_id>.json`: 該 agent 應逐張寫入的唯一交付物。
+- `outputs/shard-XX-proposals.json`、`visual-audits/shard-XX-visual-audit.json`: 診斷路徑；不能取代 per-photo artifacts，也不能單獨採用。
 - `shard-execution-log.json`: 每個 shard 的執行紀錄，初始包含 shard id、input/output path、photo count 與 pending 狀態。
 
-`ai:shard:prepare` 會清掉該 workspace 中前一次產生的 inputs、worker prompts、outputs、visual audits、execution log 與暫存 merged proposal，避免誤用舊分片結果。
+`ai:shard:prepare` 會清掉該 workspace 中前一次產生的 inputs、worker prompts、photo artifacts、outputs、visual audits、execution log 與暫存 merged proposal，避免誤用舊分片結果。
 
 若要比較平行化成效，worker 開始或完成時可更新 execution log：
 
@@ -187,7 +187,7 @@ pnpm ai:shard:log -- --run-dir tmp/ai-runs/<run-id> --shard 03 --reasoning-effor
 執行中：
 
 - 每個 Codex worker 開始 shard 時，用 `ai:shard:log --codex-session ... --reasoning-effort ... --mark-started`。
-- worker 完成 shard output 後，用 `ai:shard:log --codex-session ... --reasoning-effort ... --mark-completed`。
+- worker 完成 shard photo artifacts 後，用 `ai:shard:log --codex-session ... --reasoning-effort ... --mark-completed`。
 - parent session 負責分片、合併、validate、review、修補時，視需要用不同 `--phase` 標出 `orchestration`、`validate`、`review` 或 `repair`。
 
 完成時：
@@ -232,7 +232,7 @@ pnpm ai:bulk:status -- --run-dir tmp/ai-runs/<run-id>
 
 若操作者交給的是可建立 sub-agents、worker agents 或 parallel agent work 的 repo agent，smoke test 通過後應明確要求 parent agent 建立 worker batch，而不是讓 parent agent 繼續單線逐 shard 標記。建議第一批啟動 4 到 6 個 worker，依平台 thread/agent 上限調整；完成一個 worker 就補下一個 pending shard。不要一次啟動所有 shard，避免遇到 agent thread limit 後讓後續 shard 沒有被分派。
 
-每個 worker 的任務邊界應直接使用 `worker-prompts/shard-XX.md`：只讀取自己的 `inputs/shard-XX-input.json`，只寫自己的 `outputs/shard-XX-proposals.json` 與 `visual-audits/shard-XX-visual-audit.json`，不修改 root `metadata-proposals.json`、其他 shard output、`photos.json` 或 review artifacts。parent agent 保留分配、狀態檢查、合併、validate、review 與修補責任。若 agent 平台不支援建立 worker，parent agent 應回報這個限制，再由人類決定是否改成較小批次或單線處理。
+每個 worker 的任務邊界應直接使用 `worker-prompts/shard-XX.md`：只讀取自己的 `inputs/shard-XX-input.json`，只寫自己的 `photo-artifacts/shard-XX/<photo_id>.json`，不修改 root `metadata-proposals.json`、其他 shard artifact、`photos.json` 或 review artifacts。parent agent 保留分配、狀態檢查、artifact 合併、validate、review 與修補責任。若 agent 平台不支援建立 worker，parent agent 應回報這個限制，再由人類決定是否改成較小批次或單線處理。
 
 全部 shard 完成後合併：
 
