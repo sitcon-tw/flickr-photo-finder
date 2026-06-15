@@ -20,8 +20,6 @@ Checks documentation governance rules that should stay automated:
   - local Markdown links resolve
   - docs/README.md mentions every top-level docs/*.md file
   - docs/adr/README.md mentions every ADR file
-  - docs/research/README.md mentions every research Markdown file
-  - research Markdown files state their status and current rule source
   - research/brief files stay out of top-level docs/ and docs/README.md source-of-truth
   - documented pnpm script references point to package.json scripts
 
@@ -176,55 +174,17 @@ async function checkResearchDocsGovernance() {
       type: "top-level-research-doc",
       file: `docs/${entry.name}`,
       line: 1,
-      message: "research and brief documents should live under docs/research/ and be indexed there",
+      message: "research and brief documents should not be top-level docs; durable decisions belong in docs/adr/",
     });
   }
 
-  if (!existsSync("docs/research/README.md")) {
+  if (existsSync("docs/research")) {
     findings.push({
-      type: "missing-research-index",
-      file: "docs/research/README.md",
+      type: "research-docs-directory",
+      file: "docs/research",
       line: 1,
-      message: "docs/research/README.md is required to index research documents",
+      message: "docs/research is no longer a maintained documentation area; durable decisions belong in docs/adr/",
     });
-    return findings;
-  }
-
-  const researchIndex = await readFile("docs/research/README.md", "utf8");
-  const researchEntries = await readdir("docs/research", { withFileTypes: true });
-  const researchDocs = researchEntries
-    .filter((entry) => entry.isFile() && entry.name.endsWith(".md") && entry.name !== "README.md")
-    .map((entry) => entry.name)
-    .sort();
-
-  for (const fileName of researchDocs) {
-    if (!researchIndex.includes(fileName)) {
-      findings.push({
-        type: "missing-research-index-entry",
-        file: "docs/research/README.md",
-        line: 1,
-        message: `docs/research/${fileName} is not mentioned in docs/research/README.md`,
-      });
-    }
-
-    const file = `docs/research/${fileName}`;
-    const text = await readFile(file, "utf8");
-    if (!/^## (文件狀態|狀態)\s*$/m.test(text)) {
-      findings.push({
-        type: "missing-research-status-section",
-        file,
-        line: 1,
-        message: "research documents must include a status section",
-      });
-    }
-    if (!/(目前規則來源|現況以|目前.*以 `docs\/|長期.*以 `docs\/|歷史.*baseline)/s.test(text)) {
-      findings.push({
-        type: "missing-research-current-rule-source",
-        file,
-        line: 1,
-        message: "research documents must point to the current rule source or clearly mark historical baseline status",
-      });
-    }
   }
 
   const docsIndex = await readFile("docs/README.md", "utf8");
