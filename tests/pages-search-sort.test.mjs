@@ -730,7 +730,7 @@ describe("Pages search/sort pure logic", () => {
       ],
     });
 
-    assert.match(text, /探索更多排序/);
+    assert.match(text, /亂序探索排序/);
     assert.match(text, /目前命中的照片/);
     assert.match(text, /有些標籤尚未人工確認/);
     assert.match(text, /已套用：場景 交流/);
