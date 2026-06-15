@@ -54,5 +54,4 @@ Accepted
 - `data/sponsorship-items.json`
 - `data/tag-taxonomy.json`
 - `docs/google-sheets-database-design.md`
-- `docs/mvp-implementation-plan.md`
-- `docs/photo-finder-mvp.md`
+- `docs/adr/0009-photo-metadata-field-boundaries.md`

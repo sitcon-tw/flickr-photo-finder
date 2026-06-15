@@ -25,3 +25,6 @@
 | [0005](0005-no-drive-file-transfer-for-sheets-tables.md) | Accepted | repo CLI 不用 Google Drive file transfer 表達 Sheets table semantics。 |
 | [0006](0006-dependabot-version-updates.md) | Accepted | 使用 Dependabot 追蹤 pnpm 專案的 Node dependency 與 GitHub Actions 版本更新。 |
 | [0007](0007-finder-index-results-are-not-absence-proof.md) | Accepted | Finder 搜尋結果不可作為 Flickr 照片不存在的判定。 |
+| [0008](0008-photo-index-product-boundary.md) | Accepted | Photo Finder 是任務導向照片索引，不是 Flickr 替代品、原圖保存庫或人物身份索引。 |
+| [0009](0009-photo-metadata-field-boundaries.md) | Accepted | 照片 metadata 欄位維持清楚分工，避免場景、用途、贊助與使用提醒混用。 |
+| [0010](0010-ai-prompt-review-governance.md) | Accepted | AI prompt review 採 evidence 與 owner 決策 gate，不自動套用模型或工具建議。 |

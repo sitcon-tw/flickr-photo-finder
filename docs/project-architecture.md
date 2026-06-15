@@ -10,6 +10,8 @@ SITCON Flickr Photo Finder 是 Flickr 之上的照片索引層，不是相簿替
 
 第一次接手專案時，請先讀 `docs/README.md` 的「先建立共同語言」與「整體資料生命週期」。本文件說明穩定架構與責任邊界；目前可用指令、工具入口與文件分流仍以 `docs/README.md` 為準。
 
+產品定位的長期邊界記錄在 `docs/adr/0008-photo-index-product-boundary.md`：Photo Finder 是任務導向照片索引，不是 Flickr 替代品、原圖保存庫或人物身份索引。欄位語意分工與 AI 可協助到哪一層，則看 `docs/adr/0009-photo-metadata-field-boundaries.md`、`data/photo-schema.json` 與 `docs/ai-labeling-contract.md`。
+
 ## 使用者與需求
 
 | 使用者 | 主要需求 | 主要入口 |

@@ -88,14 +88,14 @@ AI 只能作為資料匯入與整理輔助。AI 候選值不等於人工 `review
 | --- | --- | --- |
 | 只產生搜尋級標記 metadata | run 目錄的 `ai-labeling-prompt.md`、`docs/ai-labeling-contract.md`、schema、taxonomy、sponsorship items、`photos.json` 與圖片 | operator guide、Sheets 回寫文件、既有 proposals；不得用 contact sheet 或縮圖牆判讀 |
 | 操作 AI run 或建立 attempt | `docs/ai-labeling-operator-guide.md`、`docs/ai-labeling-contract.md` | 不要把工具流程文件交給只負責標註的模型 |
-| 評估 prompt / 搜尋增益 | `docs/ai-labeling-evaluation-notes.md`、`docs/ai-labeling-prompt-expert-review.md` | 不要把單次 search lift 當成品質保證 |
+| 評估 prompt / 搜尋增益 | `docs/adr/0010-ai-prompt-review-governance.md`、`docs/ai-labeling-operator-guide.md` | 不要把單次 search lift 當成品質保證 |
 | 維護 repo 流程 | `AGENTS.md`、本文件、`docs/README.md` | 不要跳過 source-of-truth 文件與 run artifact |
 
 若任務是操作 repo 流程來準備 AI 工作包、建立 attempt、檢查模型輸出、產生報表或安排 Sheets dry-run，請先讀 `docs/ai-labeling-operator-guide.md` 與 `docs/ai-labeling-contract.md`。前者是操作者 runbook，後者是 AI 標記階段的輸入、圖片來源、逐張 `photo-artifacts/`、`metadata-proposals.json`、direct run `visual-inspection-audit.json`、分片 visual audit 輸出格式與驗證命令的合約。
 
 若任務只是替 `tmp/ai-runs/<run-id>/` 或 attempt 目錄裡的照片產生搜尋級標記 metadata，模型或 agent 的主要入口應是該 run 目錄的 `ai-labeling-prompt.md`，再讀 `docs/ai-labeling-contract.md`、schema、taxonomy、sponsorship items、`photos.json` 與圖片；不需要整份讀完 operator guide。
 
-若任務是評估模型輸出品質、調整 prompt 或判斷 `visual_description` 是否有搜尋增益，請再讀 `docs/ai-labeling-evaluation-notes.md`。若要統整多專家 prompt 建議或 owner 決策，請讀 `docs/ai-labeling-prompt-expert-review.md`，並用 `pnpm eval:prompt-review` 只產生 review artifact。
+若任務是評估模型輸出品質、調整 prompt 或判斷 `visual_description` 是否有搜尋增益，請依 `docs/adr/0010-ai-prompt-review-governance.md` 先建立 evidence 與 owner 決策 gate。若要統整多專家 prompt 建議或 owner 決策，請用 `pnpm eval:prompt-review` 只產生 review artifact。
 
 建議流程：
 
@@ -177,12 +177,12 @@ pnpm finder:check
 
 - 資料庫與協作：`docs/database-collaboration-strategy.md`、`docs/google-sheets-database-design.md`
 - 相簿匯入與同步：`docs/sheets-sync-workflow.md`
-- 外部 AI 或 metadata 輔助：先依任務判斷讀者角色；模型標記以 run 目錄的 `ai-labeling-prompt.md` 與 `docs/ai-labeling-contract.md` 為主，操作者流程再讀 `docs/ai-labeling-operator-guide.md`，品質評估再讀 `docs/ai-labeling-evaluation-notes.md`，公開資料取用再讀 `docs/ai-readable-dataset.md`
+- 外部 AI 或 metadata 輔助：先依任務判斷讀者角色；模型標記以 run 目錄的 `ai-labeling-prompt.md` 與 `docs/ai-labeling-contract.md` 為主，操作者流程再讀 `docs/ai-labeling-operator-guide.md`，prompt 或 schema 決策再讀 `docs/adr/0010-ai-prompt-review-governance.md`，公開資料取用再讀 `docs/ai-readable-dataset.md`
 - Apps Script：`docs/apps-script-maintenance-design.md`
 - 共用值治理：`docs/shared-value-governance.md`
 - 人工填寫欄位：`docs/data-entry-guide.md`、`docs/photo-fields-reference.md`
 - 維運交接與事故分流：`docs/operations-handoff-checklist.md`、`docs/troubleshooting.md`
-- 產品背景與 MVP 取捨：`docs/photo-finder-mvp.md`、`docs/mvp-implementation-plan.md`
+- 產品定位與欄位邊界：`docs/adr/0008-photo-index-product-boundary.md`、`docs/adr/0009-photo-metadata-field-boundaries.md`
 
 如果文件互相矛盾，以 Google Sheets-first 架構為準，並優先修正文件矛盾。
 

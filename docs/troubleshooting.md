@@ -242,7 +242,7 @@ pnpm ai:report -- --runs tmp/ai-runs/<run-a> tmp/ai-runs/<run-b>
 - 若是大型分片流程，先用 `pnpm ai:bulk:status` 確認 shard photo artifacts、暫存合併 proposal、artifact manifest 與 root proposal 的關係。
 - stale review 不應作為品質比較或 Sheets dry-run 的依據。
 
-相關入口：`docs/ai-labeling-operator-guide.md`、`docs/ai-labeling-evaluation-notes.md`。
+相關入口：`docs/ai-labeling-operator-guide.md`、`docs/adr/0010-ai-prompt-review-governance.md`。
 
 ## clasp target 或本機 binding 錯誤
 

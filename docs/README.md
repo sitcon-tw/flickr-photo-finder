@@ -71,7 +71,7 @@ flowchart TD
 | 我要交接維運權限與資產 | `docs/operations-handoff-checklist.md` | 不保存 credential；列出正式 Sheets、service account、Apps Script、GitHub Pages、GA4 與 dry-run 驗證方式。 |
 | 我要定位常見維運事故 | `docs/troubleshooting.md` | 從症狀分流到 Pages artifact、Sheets public CSV、Apps Script、AI run、clasp 或 GA4 的檢查命令與 runbook。 |
 | 我要理解架構決策背景與維護邊界 | `docs/adr/README.md` | ADR 只記錄決策脈絡、取捨與維護邊界；目前架構總覽仍看 `docs/project-architecture.md`。 |
-| 我要理解研究、代理訪談或歷史 brief | `docs/research/README.md` | 研究文件只保存證據、限制與當時判斷；目前規則仍回到 ADR、architecture 或 runbook。 |
+| 我要理解決策背景與歷史取捨 | `docs/adr/README.md` | ADR 保存會影響目前規劃的決策歷史；純歷史脈絡回到 git history 或本機 artifact。 |
 
 ## AI 評估與決策子流程
 
@@ -97,7 +97,7 @@ flowchart TD
 | 人類操作者 | `docs/ai-labeling-operator-guide.md`、`docs/ai-labeling-contract.md` | AI 候選值不等於人工 `reviewed` 或公開 `approved`。 |
 | 只負責搜尋級標記的 LLM / agent | run 目錄的 `ai-labeling-prompt.md`、`docs/ai-labeling-contract.md`、schema、taxonomy、sponsorship items、`photos.json` 與圖片 | 不要把 operator guide、Sheets 回寫文件或先前 proposal 當成照片內容依據；每張照片必須先寫出逐張 `photo-artifacts/`，再由工具合併 root proposal 與 visual audit，所有任務都不得以 contact sheet、縮圖牆或多圖截圖作為欄位判斷依據。 |
 | repo 維護 agent | `AGENTS.md`、`docs/agent-maintenance-guide.md`、本文件 | 操作流程前先確認 source-of-truth 文件與 run artifact。 |
-| prompt review 角色 agent | `tmp/prompt-reviews/<review-id>/input-manifest.json`、`expert-prompts/`、run 的 `metadata-review-summary.md`、`docs/ai-labeling-prompt-expert-review.md` | 角色 review 只做唯讀分析；若要獨立 review，操作者必須主動分派不同 agent 或不同可追溯執行 session，並在 `expert-reviews/` 記錄 provenance；決策包不會自動套用建議。 |
+| prompt review 角色 agent | `tmp/prompt-reviews/<review-id>/input-manifest.json`、`expert-prompts/`、run 的 `metadata-review-summary.md`、`docs/adr/0010-ai-prompt-review-governance.md` | 角色 review 只做唯讀分析；若要獨立 review，操作者必須主動分派不同 agent 或不同可追溯執行 session，並在 `expert-reviews/` 記錄 provenance；決策包不會自動套用建議。 |
 
 ## 文件類型與撰寫規則
 
@@ -107,14 +107,12 @@ flowchart TD
 | --- | --- | --- |
 | 真理來源 | `data/*.json`、`config/project.json`、正式 Google Sheets、architecture/runbook | 定義目前欄位、資料、部署、操作與公開介面規則。 |
 | ADR | `docs/adr/` | 記錄已採用的長期決策、背景、取捨、替代方案與重新評估條件。 |
-| 研究與歷史 brief | `docs/research/` | 保存觀察、方法限制、代理訪談、owner 評估與歷史驗收 baseline；不直接承載目前規則。 |
 | Runbook / architecture | `docs/*.md` | 說明目前怎麼操作、怎麼維護，以及系統現在如何運作。 |
-| 評估證據 | `docs/*evaluation*.md` 或具體評估文件 | 保存模型、工具或流程評估依據；可提出調校方向，但目前規則仍要回到 contract、runbook、ADR 或 source data。 |
 
 撰寫原則：
 
 - 若研究結論變成長期維護邊界，新增或更新 ADR，再讓 architecture/runbook 引用 ADR。
-- 研究文件可以保留當時推測與被否決的方向，但要標明文件狀態與目前規則來源。
+- 純歷史、研究快照、MVP brief 與一次性評估不作為長期文件保存；需要追溯時回到 git history 或本機 artifact。
 - `docs/README.md` 只做入口、狀態與 source-of-truth map，不重複維護完整 artifact inventory。
 - 欄位、受控值、顯示文字與共用 UI policy 不在文件複製清單，應引用 `data/photo-schema.json`、`data/tag-taxonomy.json` 或 `data/interface-registry.json`。
 
@@ -123,10 +121,9 @@ flowchart TD
 | 變更情境 | 主要修改位置 | 檢查 |
 | --- | --- | --- |
 | 新增長期決策、取捨或維護邊界 | `docs/adr/`，再由 architecture/runbook 引用 | `pnpm docs:check`、`pnpm language:check` |
-| 新增研究、代理訪談、歷史 brief 或 owner 評估證據 | `docs/research/`，並更新 `docs/research/README.md` | `pnpm docs:check`、`pnpm language:check` |
 | 更新目前操作流程或系統現況 | 對應的 architecture/runbook，必要時同步 `docs/README.md` 入口 | `pnpm docs:check`、相關 workflow check |
 | 更新欄位、受控值、顯示文字或跨介面 policy | `data/photo-schema.json`、`data/tag-taxonomy.json`、`data/interface-registry.json` | `pnpm data:validate`、`pnpm shared-values:check` |
-| 新增模型、prompt、搜尋或工具評估紀錄 | 評估文件或 `tmp/` artifact 摘要；若形成長期規則，再升格到 ADR/runbook/contract | `pnpm docs:check`、相關 eval / AI check |
+| 新增模型、prompt、搜尋或工具決策 | `tmp/` artifact 保存 evidence；若形成長期規則，再升格到 ADR、runbook 或 contract | `pnpm docs:check`、相關 eval / AI check |
 
 ## 真理來源
 
@@ -142,6 +139,8 @@ flowchart TD
 | 公開 Google Sheets ID | `config/project.json` 的 `googleSheets.spreadsheetId` | 這份 Sheets 預期可公開讀取；寫入權限由 Google Drive/Sheets 管理。 |
 | GitHub Pages 前端資料流、本機資料來源與部署 artifact | `docs/public-frontend-architecture.md` | 前端現況 runbook；`pnpm finder:dev`、`pnpm finder:dev:fixture`、`pnpm finder:dev:export` 的差異以這份為準。 |
 | 公開前端索引與空結果信任邊界 | `docs/adr/0007-finder-index-results-are-not-absence-proof.md` | Finder 是 Flickr 上方的索引輔助；搜尋、篩選與空結果不可作為 Flickr 照片不存在的判定。 |
+| 產品定位與人物身份索引邊界 | `docs/adr/0008-photo-index-product-boundary.md` | Photo Finder 是任務導向照片索引，不是 Flickr 替代品、原圖保存庫或人物身份索引。 |
+| 照片 metadata 欄位語意邊界 | `docs/adr/0009-photo-metadata-field-boundaries.md` | 欄位 source of truth 仍在 `data/photo-schema.json` / `data/tag-taxonomy.json`；ADR 記錄欄位分工與取捨。 |
 | 前端使用行為分析設計 | `docs/frontend-analytics-design.md` | 導入 GA4 或分析前，先確認目前前端狀態、事件邊界、隱私限制與後續分析流程。 |
 | GA4 後台操作與 service account 權限 | `docs/ga4-operations.md` | 管理 GA4 權限、service account 加入 property、custom dimensions 與 BigQuery 延後策略。 |
 | GA4 custom dimensions 註冊清單 | `config/ga4-custom-dimensions.json` | 低基數 event-scoped custom dimensions 的 repo source of truth；不要加入 `photo_id`、`content_id`、`search_term`、`result_rank`。 |
@@ -151,7 +150,7 @@ flowchart TD
 | Sheets 正式寫入身份 | `docs/sheets-sync-workflow.md` | 建議使用 SITCON 管理的 service account，並將 service account email 加入正式 Sheets 編輯者。 |
 | AI 標記輸入與輸出格式 | `docs/ai-labeling-contract.md` | 定義 `tmp/ai-runs/<run-id>/` 的輸入檔、圖片來源、逐張 `photo-artifacts/`、合併後 `metadata-proposals.json`、`visual-inspection-audit.json`、`artifact-manifest.json` 與驗證流程。 |
 | AI 標記操作與 prompt | `docs/ai-labeling-operator-guide.md`、`prompts/ai-labeling.md` | 操作指南給人類操作者與 repo 維護 agent；prompt 是可交給模型使用的任務範本。 |
-| AI 標記 prompt 角色審查決策 | `docs/ai-labeling-prompt-expert-review.md` | 記錄多角色 prompt review 的角色、共識、owner 決策與後續切片；本機 review artifact 留在 `tmp/prompt-reviews/`。 |
+| AI prompt review 決策 gate | `docs/adr/0010-ai-prompt-review-governance.md` | `eval:prompt-review` 只產生本機 review artifact；長期治理邊界記錄在 ADR。 |
 | 跨活動 AI 測試抽樣計畫 | `data/ai-cross-activity-sample-plan.json` | 用於建立欄位、taxonomy、prompt 與 validator 評估工作包；不是正式照片資料。 |
 | AI proposal 範例 | `fixtures/ai-proposals/` | valid/invalid examples 應由 `pnpm eval:validate-fixtures` 驗證。 |
 | AI 標記 review 後續交接提示 | `scripts/commands/review-ai-run.mjs` | CLI `Next:` 與 `metadata-review-summary.md` 的 `## Next Commands` 應和目前報表、比較、dry-run 流程同步。 |
@@ -166,27 +165,14 @@ flowchart TD
 | 專案角色與資料流 | `docs/project-architecture.md` | 若架構改變，先更新架構總覽，再同步相關文件。 |
 | 架構決策脈絡與維護邊界 | `docs/adr/README.md` | ADR 不取代架構總覽或 runbook；用來理解已採用決策的背景、取捨與長期維護方式。 |
 
-## 背景研究與決策證據
-
-這些文件保留研究過程、代理推測、owner 評估或歷史 brief。它們能協助理解某些 UI 或文件決策從何而來，但不取代 ADR、architecture 或資料 source of truth。
-
-| 資訊 | 文件 | 備註 |
-| --- | --- | --- |
-| 公開前端代理使用者研究 | `docs/research/public-frontend-agent-research.md` | 重構前的多角色代理研究快照；不等同真人訪談，也不是目前缺口清單。 |
-| 公開前端手機版代理研究 | `docs/research/public-frontend-mobile-research.md` | 針對 #5 手機版重設計的代理深訪與 owner 評估紀錄；不等同真人訪談或已完成 usability test。 |
-| 公開前端使用素養代理研究 | `docs/research/public-frontend-user-literacy-research.md` | 針對一般找圖者可能誤解索引完整性的代理訪談與 Pages 文案採納紀錄；長期信任邊界看 ADR 0007。 |
-| 公開前端重構需求簡報 | `docs/research/public-frontend-redesign-brief.md` | GitHub Pages 前端重構的歷史需求基準與驗收 baseline；目前已完成多數 P0/P1。 |
-| AI 標記品質評估 | `docs/ai-labeling-evaluation-notes.md` | 模型 run 觀察、常見失準欄位與工具化警訊候選；目前操作規則仍看 operator guide、contract 與 ADR 0003。 |
-
 ## AI 文件責任
 
 | 文件 | 責任 | 不是什麼 |
 | --- | --- | --- |
 | `docs/ai-labeling-contract.md` | AI run 輸入、輸出與 proposal 驗證合約。 | 不是操作者 runbook。 |
 | `docs/ai-labeling-operator-guide.md` | 人類操作者與維護 agent 的 prepare/review/report/write 流程。 | 不是模型標記 prompt。 |
-| `docs/ai-labeling-evaluation-notes.md` | 歷史模型 run、prompt 調校與工具警訊的評估證據。 | 不是目前規則或模型永久能力排名。 |
-| `docs/ai-labeling-prompt-expert-review.md` | prompt review 的角色、owner 決策與後續切片紀錄。 | 不是 ADR，也不自動套用規則。 |
 | `docs/adr/0003-ai-candidate-only.md` | AI 只產生候選 metadata 的長期治理邊界。 | 不取代 contract 或 operator guide 的操作細節。 |
+| `docs/adr/0010-ai-prompt-review-governance.md` | prompt、validator、search 或 schema 調整前的 evidence 與 owner 決策 gate。 | 不是模型標記 prompt，也不保存每次評估細節。 |
 
 ## 共用字串歸屬
 
@@ -232,27 +218,20 @@ flowchart TD
 
 | 角色 | 建議閱讀 |
 | --- | --- |
-| 第一次理解專案的人 | `README.md`、`docs/project-architecture.md`、`docs/photo-finder-mvp.md` |
+| 第一次理解專案的人 | `README.md`、本文件、`docs/project-architecture.md` |
 | 整理照片的志工 | `README.md`、Google Sheets `使用說明`、`docs/data-entry-guide.md`、`docs/photo-fields-reference.md` |
 | 技術志工 | `pnpm workflow`、`docs/project-architecture.md`、`docs/sheets-sync-workflow.md`、`docs/google-sheets-database-design.md` |
 | 維護 Apps Script 的人 | `docs/apps-script-maintenance-design.md`、`data/photo-schema.json`、`data/tag-taxonomy.json` |
-| 維護 GitHub Pages 前端的人 | `docs/public-frontend-architecture.md`、`docs/frontend-analytics-design.md`、`docs/ga4-operations.md`；需要理解重構背景時再讀 `docs/research/README.md`；處理搜尋信任邊界時先讀 `docs/adr/0007-finder-index-results-are-not-absence-proof.md` |
+| 維護 GitHub Pages 前端的人 | `docs/public-frontend-architecture.md`、`docs/frontend-analytics-design.md`、`docs/ga4-operations.md`；處理搜尋信任邊界時先讀 `docs/adr/0007-finder-index-results-are-not-absence-proof.md` |
 | AI / agent | `AGENTS.md`、`docs/agent-maintenance-guide.md`；若只是產生搜尋級標記 metadata，讀 run 目錄的 `ai-labeling-prompt.md` 與 `docs/ai-labeling-contract.md`；若要操作流程才讀 `docs/ai-labeling-operator-guide.md` |
 
 ## 文件分工
 
-- `photo-finder-mvp.md`: 產品判斷與欄位取捨脈絡。
-- `mvp-implementation-plan.md`: MVP 實作方向與驗證方式。
 - `project-architecture.md`: 端到端架構與資料流。
 - `google-sheets-database-design.md`: Google Sheets 表格設計。
 - `sheets-sync-workflow.md`: Sheets 與 repo 工具同步流程。
 - `apps-script-maintenance-design.md`: Apps Script 維護輔助與 `clasp` 部署原則。
 - `public-frontend-architecture.md`: GitHub Pages 唯讀前端資料流、本機開發資料來源與部署 artifact runbook。
-- `research/README.md`: 研究紀錄索引與撰寫規則；研究文件只保存證據與歷史脈絡，不承載目前規則。
-- `research/public-frontend-agent-research.md`: 重構前的多角色代理使用者研究快照，整理任務脈絡、痛點、確認事實與推測；不是目前缺口清單。
-- `research/public-frontend-mobile-research.md`: #5 手機版重設計的代理深訪、owner 評估表、P0 範圍與驗收建議；不是真人訪談結果。
-- `research/public-frontend-user-literacy-research.md`: 只看 Pages 入口的一般找圖者，對索引完整性、待人工確認與空結果可能誤解的代理研究紀錄。
-- `research/public-frontend-redesign-brief.md`: GitHub Pages 前端重構的歷史需求基準與驗收標準；後續回歸或 P2 規劃可用來比對。
 - `frontend-analytics-design.md`: 前端使用行為分析目的、GA4 事件設計、實作前檢查與後續分析流程。
 - `ga4-operations.md`: GA4 後台操作、service account 權限、custom dimensions 與 BigQuery 延後策略。
 - `operations-handoff-checklist.md`: 不含 credential 的維運交接清單，列出正式 Sheets、service account、Apps Script、GitHub Pages、GA4 與 dry-run 驗證方式。
@@ -261,9 +240,6 @@ flowchart TD
 - `ai-readable-dataset.md`: AI 如何讀取照片索引資料。
 - `ai-labeling-operator-guide.md`: AI 標記操作者與 repo 維護 agent 的 prepare-to-review、報表檢視與回寫前檢查指南；不是模型標記任務的主要 prompt。
 - `ai-labeling-contract.md`: AI 搜尋級標記工作包的輸入、輸出、限制與驗證合約。
-- `ai-labeling-evaluation-notes.md`: AI 標記品質評估紀錄、常見失準欄位與工具化警訊候選。
-- `ai-labeling-prompt-expert-review.md`: AI 標記 prompt 多角色審查、owner 決策與後續切片紀錄；不是模型標記任務 prompt，也不是自動套用規則。
-- `field-design-reflection.md`: 根據多輪真實 AI 標記結果回頭檢視欄位、taxonomy、prompt 設計，以及不導入人臉辨識與自動人名標註等產品邊界。
 - `data-entry-guide.md`: 人工整理照片資料的判斷流程。
 - `photo-fields-reference.md`: 欄位速查；欄位清單仍以 `data/photo-schema.json` 為準。
 - `database-collaboration-strategy.md`: Sheets-first 協作、公開資料邊界與長期維護方式。
