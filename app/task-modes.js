@@ -19,7 +19,7 @@ export let taskModes = [
   {
     id: "all",
     label: "全部照片",
-    description: "不套任務權重",
+    description: "維持通用推薦排序",
   },
   {
     id: "social",

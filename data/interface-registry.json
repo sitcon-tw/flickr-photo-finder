@@ -37,7 +37,7 @@
       { "label": "21 人以上", "value": "21+", "min": 21 }
     ],
     "taskModes": [
-      { "id": "all", "label": "全部照片", "description": "不套任務權重" },
+      { "id": "all", "label": "全部照片", "description": "維持通用推薦排序" },
       { "id": "social", "label": "社群貼文", "description": "友善、交流、可裁切", "primaryFilters": ["use", "scene", "orientation", "safeCrop", "negativeSpace", "mood"], "recommendedUses": ["社群貼文", "社群介紹", "活動回顧"], "moods": ["友善", "交流感", "青春感", "活力", "熱鬧"], "scenes": ["會眾", "交流", "工作人員"], "safeCrops": ["1:1", "16:9", "9:16"], "prefersNegativeSpace": true },
       { "id": "hero", "label": "網站橫幅", "description": "橫式、留白、可放標題", "primaryFilters": ["orientation", "negativeSpace", "safeCrop", "scene", "mood"], "recommendedUses": ["網站橫幅", "社群介紹"], "moods": ["專業", "青春感", "友善"], "scenes": ["舞台", "會眾", "交流", "場地", "背板"], "orientations": ["landscape"], "safeCrops": ["16:9"], "prefersNegativeSpace": true },
       { "id": "visual", "label": "設計素材", "description": "版面背景、簡報與延伸素材", "primaryFilters": ["orientation", "negativeSpace", "safeCrop", "scene", "mood"], "recommendedUses": ["網站橫幅", "社群貼文", "簡報"], "moods": ["專業", "青春感", "活力", "安靜"], "scenes": ["場地", "背板", "舞台", "交流"], "orientations": ["landscape", "square"], "safeCrops": ["16:9", "1:1", "9:16"], "prefersNegativeSpace": true },

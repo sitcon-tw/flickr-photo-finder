@@ -739,7 +739,7 @@ export function selectedOptionText(select) {
 export function activeFilterEntries({ state, controls, activeTask }) {
   const entries = [];
   if (state.taskMode !== "all") {
-    entries.push(["task", "任務", activeTask.label]);
+    entries.push(["task", "優先檢視", activeTask.label]);
   }
   if (controls.search.value.trim()) {
     entries.push(["search", "搜尋", sanitizeSearchTerm(controls.search.value)]);

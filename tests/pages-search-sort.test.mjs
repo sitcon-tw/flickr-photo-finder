@@ -172,7 +172,7 @@ describe("Pages search/sort pure logic", () => {
     assert.ok(results.some((item) => item.photo_id === "ai"));
   });
 
-  it("uses task mode matches in recommended sorting", () => {
+  it("uses preferred matches in recommended sorting", () => {
     const taskMatch = withSearchText(
       photo({
         photo_id: "task-match",
@@ -336,7 +336,7 @@ describe("Pages search/sort pure logic", () => {
       taskLabel: "網站橫幅",
       searchValue: "有留白的講者",
       filterEntries: [
-        ["task", "任務", "網站橫幅"],
+        ["task", "優先檢視", "網站橫幅"],
         ["orientation", "方向", "橫式"],
       ],
     });
@@ -691,7 +691,7 @@ describe("Pages search/sort pure logic", () => {
     });
 
     assert.deepEqual(entries, [
-      ["task", "任務", "社群貼文"],
+      ["task", "優先檢視", "社群貼文"],
       ["search", "搜尋", "講者"],
       ["album", "活動/相簿", "SITCON 2026", "id:1"],
       ["scene", "場景", "交流", "交流"],
@@ -725,7 +725,7 @@ describe("Pages search/sort pure logic", () => {
       controls: { sort: { value: "discover" } },
       activeTask: () => socialTask,
       activeFilterEntries: () => [
-        ["task", "任務", "社群貼文"],
+        ["task", "優先檢視", "社群貼文"],
         ["scene", "場景", "交流"],
       ],
     });
@@ -742,7 +742,7 @@ describe("Pages search/sort pure logic", () => {
       filtered: [],
       controls: { sort: { value: "recommended" } },
       activeTask: () => socialTask,
-      activeFilterEntries: () => [["task", "任務", "社群貼文"]],
+      activeFilterEntries: () => [["task", "優先檢視", "社群貼文"]],
     });
 
     assert.match(text, /沒找到不一定代表沒有照片/);

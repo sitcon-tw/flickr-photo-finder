@@ -19,7 +19,7 @@
 
 欄位、taxonomy value、boolean value、狀態與人類審核報表文字不要在各介面各自翻譯。欄位顯示文字回到 `data/photo-schema.json`，taxonomy / boolean 顯示文字回到 `data/tag-taxonomy.json` 的 `option_labels`，Node 端人類輸出使用 `scripts/lib/core/metadata-display.mjs`。只有單一畫面專屬的操作文案，例如按鈕、空狀態與局部提示，才留在該畫面程式中。
 
-跨介面 filter、task mode、URL key、狀態排序、people count bucket、Apps Script field set 等 interface policy 回到 `data/interface-registry.json`。不要為了單一 Pages、Apps Script 或 CLI 改動另寫一份欄位 mapping；需要短 label 或介面排序時，先更新 registry，再執行 `pnpm apps-script:build-config` 與 `pnpm shared-values:check`。
+跨介面 filter、優先檢視控制項、URL key、狀態排序、people count bucket、Apps Script field set 等 interface policy 回到 `data/interface-registry.json`。不要為了單一 Pages、Apps Script 或 CLI 改動另寫一份欄位 mapping；需要短 label 或介面排序時，先更新 registry，再執行 `pnpm apps-script:build-config` 與 `pnpm shared-values:check`。
 
 描述版本或狀態時不要使用含糊的相對版本詞。改用具體日期、prompt hash、schema version、header shape、target name 或「目前 repo source」；例如比較 AI prompt 時寫出 `prompt_template_sha256`，說明 Sheets 格式時寫出實際 header。文件與人類可見輸出也應使用台灣使用者習慣的繁體中文技術詞彙，例如寫「介面、欄位、預設、軟體、連結、執行、唯讀」。`pnpm language:check` 會阻擋這類含糊或不精確用詞再次進入 repo。
 

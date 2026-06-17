@@ -269,7 +269,7 @@ function absoluteMetadataUrl(siteUrl, path) {
 function renderMetadataHtml() {
   const title = String(projectConfig.frontend?.appTitle ?? "Flickr Photo Finder").trim();
   const metadata = projectConfig.frontend?.metadata ?? {};
-  const description = String(metadata.description ?? "SITCON 公開照片索引，依任務、內容與整理狀態快速找圖。").trim();
+  const description = String(metadata.description ?? "SITCON 公開照片索引，依工作需求、內容與整理狀態快速找圖。").trim();
   const siteUrl = normalizeSiteUrl(metadata.siteUrl);
   const imageUrl = absoluteMetadataUrl(siteUrl, metadata.imagePath ?? "./assets/og-image.png");
   const imageAlt = String(metadata.imageAlt ?? `${title} 分享預覽圖`).trim();

@@ -29,8 +29,8 @@ export function resultContextText({ photos, filtered, controls, activeTask, acti
   }
 
   const task = activeTask();
-  const taskPrefix = task.id === "all" ? "全部照片" : `「${task.label}」情境`;
-  let sortText = task.id === "all" ? "以推薦排序" : `以「${task.label}」情境推薦排序`;
+  const taskPrefix = task.id === "all" ? "全部照片" : `優先檢視「${task.label}」`;
+  let sortText = task.id === "all" ? "以推薦排序" : `優先檢視適合「${task.label}」的照片`;
   if (controls.sort.value === "discover") {
     sortText = `以${taskPrefix}亂序探索排序，分散年份、活動、相簿與素材包來源`;
   } else if (controls.sort.value === "newest") {
