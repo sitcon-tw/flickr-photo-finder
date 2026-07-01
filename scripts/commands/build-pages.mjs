@@ -135,19 +135,13 @@ function uniqueSortedUrls(urls) {
   return [...new Set(urls)].sort();
 }
 
-function buildPrecacheUrls({ dataMode, jsFiles }) {
+function buildFinderDataUrls(dataMode) {
   const urls = [
-    "./",
-    "./index.html",
-    "./styles.css",
-    "./config.js",
-    "./assets/og-image.png",
     "./config/project.json",
     "./data/interface-registry.json",
     "./data/photo-schema.json",
     "./data/search-aliases.json",
     "./data/tag-taxonomy.json",
-    ...jsFiles.map(artifactUrl),
   ];
 
   if (dataMode === "static-sharded") {
@@ -157,6 +151,20 @@ function buildPrecacheUrls({ dataMode, jsFiles }) {
       `./${defaultFinderDataDir}/photos-index.json`,
     );
   }
+
+  return uniqueSortedUrls(urls);
+}
+
+function buildPrecacheUrls({ dataMode, jsFiles }) {
+  const urls = [
+    "./",
+    "./index.html",
+    "./styles.css",
+    "./config.js",
+    "./assets/og-image.png",
+    ...buildFinderDataUrls(dataMode),
+    ...jsFiles.map(artifactUrl),
+  ];
 
   return uniqueSortedUrls(urls);
 }
@@ -175,10 +183,12 @@ function pwaCacheVersion({ dataMode, dataSource, precacheUrls, staticManifest })
 
 async function writeServiceWorker(outputDir, { dataMode, dataSource, jsFiles, staticManifest }) {
   const precacheUrls = buildPrecacheUrls({ dataMode, jsFiles });
+  const finderDataUrls = buildFinderDataUrls(dataMode);
   const cacheVersion = pwaCacheVersion({ dataMode, dataSource, precacheUrls, staticManifest });
   const source = await readFile("app/service-worker.js", "utf8");
   const header = [
     `self.__SITCON_PHOTO_FINDER_PRECACHE_URLS__ = ${JSON.stringify(precacheUrls)};`,
+    `self.__SITCON_PHOTO_FINDER_DATA_URLS__ = ${JSON.stringify(finderDataUrls)};`,
     `self.__SITCON_PHOTO_FINDER_CACHE_VERSION__ = ${JSON.stringify(cacheVersion)};`,
     "",
   ].join("\n");

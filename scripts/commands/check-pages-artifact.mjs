@@ -231,7 +231,7 @@ async function main() {
     "self.__SITCON_PHOTO_FINDER_PRECACHE_URLS__ = [",
     "PWA precache list",
   );
-  if (!serviceWorker.includes("data/finder-data/manifest.json") || !serviceWorker.includes("sitcon-photo-finder-cache-fallback")) {
+  if (!serviceWorker.includes("self.__SITCON_PHOTO_FINDER_DATA_URLS__ = [") || !serviceWorker.includes("sitcon-photo-finder-cache-fallback")) {
     throw new Error("service-worker.js must cache finder data and report cache fallback usage");
   }
   const requiredMetadata = [

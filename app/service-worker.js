@@ -1,4 +1,5 @@
 const PRECACHE_URLS = self.__SITCON_PHOTO_FINDER_PRECACHE_URLS__ || ["./"];
+const FINDER_DATA_URLS = self.__SITCON_PHOTO_FINDER_DATA_URLS__ || [];
 const CACHE_VERSION = self.__SITCON_PHOTO_FINDER_CACHE_VERSION__ || "dev";
 const APP_CACHE = `sitcon-photo-finder-app-${CACHE_VERSION}`;
 const DATA_CACHE = `sitcon-photo-finder-data-${CACHE_VERSION}`;
@@ -18,16 +19,10 @@ function normalizedPath(url) {
   return relative || "index.html";
 }
 
+const FINDER_DATA_PATHS = new Set(FINDER_DATA_URLS.map((url) => normalizedPath(new URL(url, self.registration.scope))));
+
 function isFinderDataPath(url) {
-  const path = normalizedPath(url);
-  return path === "data/finder-data/manifest.json" ||
-    path === "data/finder-data/albums.json" ||
-    path === "data/finder-data/photos-index.json" ||
-    path === "data/interface-registry.json" ||
-    path === "data/photo-schema.json" ||
-    path === "data/search-aliases.json" ||
-    path === "data/tag-taxonomy.json" ||
-    path === "config/project.json";
+  return FINDER_DATA_PATHS.has(normalizedPath(url));
 }
 
 function isDetailShardPath(url) {
