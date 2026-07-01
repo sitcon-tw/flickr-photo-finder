@@ -1,6 +1,7 @@
 import { parseCsv } from "../lib/core/csv-utils.mjs";
 import { googleSheetsSpreadsheetId } from "../lib/core/project-config.mjs";
 import { expectedSheetHeaders, fixedSheetNames } from "../lib/sheets/sheets-format.mjs";
+import { parseArgs as parseNodeArgs } from "node:util";
 
 function printUsage() {
   console.log(`Usage:
@@ -13,23 +14,17 @@ This command only reads public Google Sheets CSV exports. It does not write data
 }
 
 function parseArgs(argv) {
-  const args = argv.slice(2).filter((arg) => arg !== "--");
+  const { values } = parseNodeArgs({
+    args: argv.slice(2),
+    options: {
+      "spreadsheet-id": { type: "string" },
+      help: { type: "boolean", short: "h" },
+    },
+  });
   const options = {
-    help: false,
-    spreadsheetId: googleSheetsSpreadsheetId,
+    help: values.help ?? false,
+    spreadsheetId: values["spreadsheet-id"] ?? googleSheetsSpreadsheetId,
   };
-
-  for (let index = 0; index < args.length; index += 1) {
-    const arg = args[index];
-    if (arg === "--help" || arg === "-h") {
-      options.help = true;
-    } else if (arg === "--spreadsheet-id") {
-      options.spreadsheetId = args[index + 1] ?? "";
-      index += 1;
-    } else {
-      throw new Error(`Unknown option: ${arg}`);
-    }
-  }
 
   if (!options.help && !options.spreadsheetId) {
     throw new Error("Set googleSheets.spreadsheetId in config/project.json or pass --spreadsheet-id");

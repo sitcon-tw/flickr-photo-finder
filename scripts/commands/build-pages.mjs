@@ -1,6 +1,7 @@
 import { copyFile, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { parseArgs as parseNodeArgs } from "node:util";
 import { googleSheetsSpreadsheetId, projectConfig } from "../lib/core/project-config.mjs";
 import { collectRelativeJavaScriptImportGraph } from "../lib/pages/js-import-graph.mjs";
 import {
@@ -37,47 +38,29 @@ at build time so production Pages does not fetch Google Sheets at runtime.`);
 }
 
 function parseArgs(argv) {
-  const args = argv.slice(2).filter((arg) => arg !== "--");
+  const { values } = parseNodeArgs({
+    args: argv.slice(2),
+    options: {
+      "output-dir": { type: "string" },
+      "spreadsheet-id": { type: "string" },
+      "albums-csv-url": { type: "string" },
+      "photos-csv-url": { type: "string" },
+      "data-mode": { type: "string" },
+      "data-source": { type: "string" },
+      "shard-size": { type: "string" },
+      help: { type: "boolean", short: "h" },
+    },
+  });
   const options = {
-    help: false,
-    outputDir: defaultOutputDir,
-    albumsCsvUrl: "",
-    dataMode: "static-sharded",
-    dataSource: "public-csv",
-    photosCsvUrl: "",
-    shardSize: defaultShardSize,
-    spreadsheetId: googleSheetsSpreadsheetId,
+    help: values.help ?? false,
+    outputDir: values["output-dir"] ?? defaultOutputDir,
+    albumsCsvUrl: values["albums-csv-url"] ?? "",
+    dataMode: values["data-mode"] ?? "static-sharded",
+    dataSource: values["data-source"] ?? "public-csv",
+    photosCsvUrl: values["photos-csv-url"] ?? "",
+    shardSize: values["shard-size"] === undefined ? defaultShardSize : Number(values["shard-size"]),
+    spreadsheetId: values["spreadsheet-id"] ?? googleSheetsSpreadsheetId,
   };
-
-  for (let index = 0; index < args.length; index += 1) {
-    const arg = args[index];
-    if (arg === "--help" || arg === "-h") {
-      options.help = true;
-    } else if (arg === "--output-dir") {
-      options.outputDir = args[index + 1] ?? "";
-      index += 1;
-    } else if (arg === "--spreadsheet-id") {
-      options.spreadsheetId = args[index + 1] ?? "";
-      index += 1;
-    } else if (arg === "--albums-csv-url") {
-      options.albumsCsvUrl = args[index + 1] ?? "";
-      index += 1;
-    } else if (arg === "--photos-csv-url") {
-      options.photosCsvUrl = args[index + 1] ?? "";
-      index += 1;
-    } else if (arg === "--data-mode") {
-      options.dataMode = args[index + 1] ?? "";
-      index += 1;
-    } else if (arg === "--data-source") {
-      options.dataSource = args[index + 1] ?? "";
-      index += 1;
-    } else if (arg === "--shard-size") {
-      options.shardSize = Number(args[index + 1] ?? "");
-      index += 1;
-    } else {
-      throw new Error(`Unknown option: ${arg}`);
-    }
-  }
 
   if (!options.help) {
     if (!options.outputDir) {

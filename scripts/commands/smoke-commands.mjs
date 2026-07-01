@@ -71,6 +71,7 @@ function supportsHelpOption(content) {
     /\bcommand\s*===\s*["']--help["']/,
     /\bargs\.includes\(["']--help["']\)/,
     /\bprocess\.argv\.includes\(["']--help["']\)/,
+    /\bhelp:\s*\{\s*type:\s*["']boolean["']/,
   ].some((pattern) => pattern.test(content));
 }
 

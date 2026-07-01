@@ -1,5 +1,6 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { parseArgs as parseNodeArgs } from "node:util";
 import { csvEscape } from "../lib/core/csv-utils.mjs";
 import { createSheetsService, explainGoogleSheetsError } from "../lib/sheets/google-sheets-client.mjs";
 import { googleSheetsSpreadsheetId } from "../lib/core/project-config.mjs";
@@ -25,34 +26,23 @@ local CSV files.`);
 }
 
 function parseArgs(argv) {
-  const args = argv.slice(2).filter((arg) => arg !== "--");
+  const { values } = parseNodeArgs({
+    args: argv.slice(2),
+    options: {
+      "output-dir": { type: "string" },
+      "spreadsheet-id": { type: "string" },
+      sheets: { type: "string" },
+      help: { type: "boolean", short: "h" },
+    },
+  });
   const options = {
-    help: false,
-    outputDir: defaultOutputDir,
-    sheetNames: fixedSheetNames,
-    spreadsheetId: googleSheetsSpreadsheetId,
+    help: values.help ?? false,
+    outputDir: values["output-dir"] ?? defaultOutputDir,
+    sheetNames: values.sheets
+      ? values.sheets.split(",").map((value) => value.trim()).filter(Boolean)
+      : fixedSheetNames,
+    spreadsheetId: values["spreadsheet-id"] ?? googleSheetsSpreadsheetId,
   };
-
-  for (let index = 0; index < args.length; index += 1) {
-    const arg = args[index];
-    if (arg === "--help" || arg === "-h") {
-      options.help = true;
-    } else if (arg === "--output-dir") {
-      options.outputDir = args[index + 1] ?? "";
-      index += 1;
-    } else if (arg === "--spreadsheet-id") {
-      options.spreadsheetId = args[index + 1] ?? "";
-      index += 1;
-    } else if (arg === "--sheets") {
-      options.sheetNames = (args[index + 1] ?? "")
-        .split(",")
-        .map((value) => value.trim())
-        .filter(Boolean);
-      index += 1;
-    } else {
-      throw new Error(`Unknown option: ${arg}`);
-    }
-  }
 
   if (!options.help) {
     if (!options.outputDir) {

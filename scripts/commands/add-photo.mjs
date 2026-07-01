@@ -8,6 +8,7 @@ import {
   photosPath,
   validateData,
 } from "../lib/flickr/flickr-intake.mjs";
+import { parseArgs as parseNodeArgs } from "node:util";
 
 function printUsage() {
   console.log(`Usage:
@@ -23,12 +24,19 @@ human review.`);
 }
 
 function parseArgs(argv) {
-  const args = argv.slice(2).filter((arg) => arg !== "--");
-  const append = args.includes("--append");
-  const help = args.includes("--help") || args.includes("-h");
-  const photoUrls = args.filter((arg) => !arg.startsWith("--"));
-
-  return { append, help, photoUrls };
+  const { values, positionals } = parseNodeArgs({
+    allowPositionals: true,
+    args: argv.slice(2),
+    options: {
+      append: { type: "boolean" },
+      help: { type: "boolean", short: "h" },
+    },
+  });
+  return {
+    append: values.append ?? false,
+    help: values.help ?? false,
+    photoUrls: positionals,
+  };
 }
 
 async function main() {

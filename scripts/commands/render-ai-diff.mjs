@@ -1,6 +1,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
+import { parseArgs as parseNodeArgs } from "node:util";
 import { fieldLabel, formatDisplayValue, formatStoredValue } from "../lib/core/metadata-display.mjs";
 import { validateAiProposals } from "./validate-ai-proposals.mjs";
 
@@ -22,31 +23,21 @@ human-readable Markdown diff. It does not write Google Sheets.`);
 }
 
 function parseArgs(argv) {
-  const args = argv.slice(2).filter((arg) => arg !== "--");
+  const { values } = parseNodeArgs({
+    args: argv.slice(2),
+    options: {
+      "run-dir": { type: "string" },
+      proposals: { type: "string" },
+      output: { type: "string" },
+      help: { type: "boolean", short: "h" },
+    },
+  });
   const options = {
-    help: false,
-    outputPath: "",
-    proposalsPath: "",
-    runDir: "",
+    help: values.help ?? false,
+    outputPath: values.output ?? "",
+    proposalsPath: values.proposals ?? "",
+    runDir: values["run-dir"] ?? "",
   };
-
-  for (let index = 0; index < args.length; index += 1) {
-    const arg = args[index];
-    if (arg === "--help" || arg === "-h") {
-      options.help = true;
-    } else if (arg === "--run-dir") {
-      options.runDir = args[index + 1] ?? "";
-      index += 1;
-    } else if (arg === "--proposals") {
-      options.proposalsPath = args[index + 1] ?? "";
-      index += 1;
-    } else if (arg === "--output") {
-      options.outputPath = args[index + 1] ?? "";
-      index += 1;
-    } else {
-      throw new Error(`Unknown option: ${arg}`);
-    }
-  }
 
   if (!options.help) {
     if (!options.runDir) {

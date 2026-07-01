@@ -1,5 +1,6 @@
 import { copyFile, mkdir, stat } from "node:fs/promises";
 import { join } from "node:path";
+import { parseArgs as parseNodeArgs } from "node:util";
 import { buildPagesArtifact } from "./build-pages.mjs";
 import { appTitle } from "../lib/core/project-config.mjs";
 import { startStaticServer } from "../lib/finder/serve.mjs";
@@ -30,47 +31,23 @@ Environment:
 }
 
 function parseArgs(argv) {
-  const args = argv.slice(2).filter((arg) => arg !== "--");
+  const { values } = parseNodeArgs({
+    args: argv.slice(2),
+    options: {
+      source: { type: "string" },
+      "output-dir": { type: "string" },
+      "albums-csv-url": { type: "string" },
+      "photos-csv-url": { type: "string" },
+      help: { type: "boolean", short: "h" },
+    },
+  });
   const options = {
-    help: false,
-    albumsCsvUrl: "",
-    outputDir: "",
-    photosCsvUrl: "",
-    source: "sheets",
+    help: values.help ?? false,
+    albumsCsvUrl: values["albums-csv-url"] ?? "",
+    outputDir: values["output-dir"] ?? "",
+    photosCsvUrl: values["photos-csv-url"] ?? "",
+    source: values.source ?? "sheets",
   };
-
-  for (let index = 0; index < args.length; index += 1) {
-    const arg = args[index];
-    if (arg === "--help" || arg === "-h") {
-      options.help = true;
-    } else if (arg === "--source") {
-      options.source = args[index + 1] ?? "";
-      if (!options.source || options.source.startsWith("--")) {
-        throw new Error("--source requires a value");
-      }
-      index += 1;
-    } else if (arg === "--output-dir") {
-      options.outputDir = args[index + 1] ?? "";
-      if (!options.outputDir || options.outputDir.startsWith("--")) {
-        throw new Error("--output-dir requires a path");
-      }
-      index += 1;
-    } else if (arg === "--albums-csv-url") {
-      options.albumsCsvUrl = args[index + 1] ?? "";
-      if (!options.albumsCsvUrl || options.albumsCsvUrl.startsWith("--")) {
-        throw new Error("--albums-csv-url requires a URL");
-      }
-      index += 1;
-    } else if (arg === "--photos-csv-url") {
-      options.photosCsvUrl = args[index + 1] ?? "";
-      if (!options.photosCsvUrl || options.photosCsvUrl.startsWith("--")) {
-        throw new Error("--photos-csv-url requires a URL");
-      }
-      index += 1;
-    } else {
-      throw new Error(`Unknown option: ${arg}`);
-    }
-  }
 
   if (!options.help) {
     if (!sourceChoices.has(options.source)) {
