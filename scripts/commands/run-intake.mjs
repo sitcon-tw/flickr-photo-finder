@@ -1,6 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { parseArgs as parseNodeArgs } from "node:util";
 import {
   readAlbumCatalog,
   resolveAlbumInput,
@@ -34,54 +35,33 @@ Each run writes:
 }
 
 function parseArgs(argv) {
-  const args = argv.slice(2).filter((arg) => arg !== "--");
+  const { values } = parseNodeArgs({
+    args: argv.slice(2),
+    options: {
+      album: { type: "string" },
+      albums: { type: "string" },
+      "photos-export": { type: "string" },
+      input: { type: "string" },
+      "runs-dir": { type: "string" },
+      "run-id": { type: "string" },
+      "imported-at": { type: "string" },
+      operator: { type: "string" },
+      "no-validate": { type: "boolean" },
+      help: { type: "boolean", short: "h" },
+    },
+  });
   const options = {
-    album: "",
-    albums: sheetsExportAlbumsPath,
-    help: false,
-    importedAt: "",
-    input: "",
-    operator: "",
-    photosExport: sheetsExportPhotosPath,
-    runId: "",
-    runsDir: defaultRunsDir,
-    validate: true,
+    album: values.album ?? "",
+    albums: values.albums ?? sheetsExportAlbumsPath,
+    help: values.help ?? false,
+    importedAt: values["imported-at"] ?? "",
+    input: values.input ?? "",
+    operator: values.operator ?? "",
+    photosExport: values["photos-export"] ?? sheetsExportPhotosPath,
+    runId: values["run-id"] ?? "",
+    runsDir: values["runs-dir"] ?? defaultRunsDir,
+    validate: !(values["no-validate"] ?? false),
   };
-
-  for (let index = 0; index < args.length; index += 1) {
-    const arg = args[index];
-    if (arg === "--help" || arg === "-h") {
-      options.help = true;
-    } else if (arg === "--album") {
-      options.album = args[index + 1] ?? "";
-      index += 1;
-    } else if (arg === "--albums") {
-      options.albums = args[index + 1] ?? "";
-      index += 1;
-    } else if (arg === "--photos-export") {
-      options.photosExport = args[index + 1] ?? "";
-      index += 1;
-    } else if (arg === "--input") {
-      options.input = args[index + 1] ?? "";
-      index += 1;
-    } else if (arg === "--runs-dir") {
-      options.runsDir = args[index + 1] ?? "";
-      index += 1;
-    } else if (arg === "--run-id") {
-      options.runId = args[index + 1] ?? "";
-      index += 1;
-    } else if (arg === "--imported-at") {
-      options.importedAt = args[index + 1] ?? "";
-      index += 1;
-    } else if (arg === "--operator") {
-      options.operator = args[index + 1] ?? "";
-      index += 1;
-    } else if (arg === "--no-validate") {
-      options.validate = false;
-    } else {
-      throw new Error(`Unknown option: ${arg}`);
-    }
-  }
 
   if (!options.help) {
     if (!options.album) {

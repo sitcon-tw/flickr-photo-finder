@@ -1,5 +1,6 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
+import { parseArgs as parseNodeArgs } from "node:util";
 import { parseCsv, toCsvLine } from "../lib/core/csv-utils.mjs";
 import { albumsPath } from "../lib/flickr/album-catalog.mjs";
 import { albumHeaders } from "../lib/core/photo-schema.mjs";
@@ -22,34 +23,23 @@ the discovered album catalog: album_id, album_url, album_title, and photo_count.
 }
 
 function parseArgs(argv) {
-  const args = argv.slice(2).filter((arg) => arg !== "--");
+  const { values } = parseNodeArgs({
+    args: argv.slice(2),
+    options: {
+      discovered: { type: "string" },
+      "sheets-export": { type: "string" },
+      output: { type: "string" },
+      "no-validate": { type: "boolean" },
+      help: { type: "boolean", short: "h" },
+    },
+  });
   const options = {
-    discovered: albumsPath,
-    help: false,
-    output: "",
-    sheetsExport: "",
-    validate: true,
+    discovered: values.discovered ?? albumsPath,
+    help: values.help ?? false,
+    output: values.output ?? "",
+    sheetsExport: values["sheets-export"] ?? "",
+    validate: !(values["no-validate"] ?? false),
   };
-
-  for (let index = 0; index < args.length; index += 1) {
-    const arg = args[index];
-    if (arg === "--help" || arg === "-h") {
-      options.help = true;
-    } else if (arg === "--discovered") {
-      options.discovered = args[index + 1] ?? "";
-      index += 1;
-    } else if (arg === "--sheets-export") {
-      options.sheetsExport = args[index + 1] ?? "";
-      index += 1;
-    } else if (arg === "--output") {
-      options.output = args[index + 1] ?? "";
-      index += 1;
-    } else if (arg === "--no-validate") {
-      options.validate = false;
-    } else {
-      throw new Error(`Unknown option: ${arg}`);
-    }
-  }
 
   if (!options.discovered) {
     throw new Error("--discovered requires a path");

@@ -1,5 +1,6 @@
 import readline from "node:readline/promises";
 import { stdin as input, stderr as output } from "node:process";
+import { parseArgs as parseNodeArgs } from "node:util";
 import { readAlbumCatalog } from "../lib/flickr/album-catalog.mjs";
 import {
   defaultAlbumsPath,
@@ -40,54 +41,33 @@ preserve the Flickr album catalog order from discovery.`);
 }
 
 function parseArgs(argv) {
-  const args = argv.slice(2).filter((arg) => arg !== "--");
+  const { values } = parseNodeArgs({
+    args: argv.slice(2),
+    options: {
+      albums: { type: "string" },
+      source: { type: "string" },
+      "spreadsheet-id": { type: "string" },
+      "photos-export": { type: "string" },
+      query: { type: "string" },
+      unprocessed: { type: "boolean" },
+      limit: { type: "string" },
+      choice: { type: "string" },
+      format: { type: "string" },
+      help: { type: "boolean", short: "h" },
+    },
+  });
   const options = {
-    albums: defaultAlbumsPath,
-    choice: undefined,
-    format: "command",
-    help: false,
-    limit: 20,
-    photosExport: defaultPhotosExportPath,
-    query: "",
-    source: "csv",
-    spreadsheetId: googleSheetsSpreadsheetId,
-    unprocessed: false,
+    albums: values.albums ?? defaultAlbumsPath,
+    choice: values.choice === undefined ? undefined : Number(values.choice),
+    format: values.format ?? "command",
+    help: values.help ?? false,
+    limit: values.limit === undefined ? 20 : Number(values.limit),
+    photosExport: values["photos-export"] ?? defaultPhotosExportPath,
+    query: values.query ?? "",
+    source: values.source ?? "csv",
+    spreadsheetId: values["spreadsheet-id"] ?? googleSheetsSpreadsheetId,
+    unprocessed: values.unprocessed ?? false,
   };
-
-  for (let index = 0; index < args.length; index += 1) {
-    const arg = args[index];
-    if (arg === "--help" || arg === "-h") {
-      options.help = true;
-    } else if (arg === "--albums") {
-      options.albums = args[index + 1] ?? "";
-      index += 1;
-    } else if (arg === "--source") {
-      options.source = args[index + 1] ?? "";
-      index += 1;
-    } else if (arg === "--spreadsheet-id") {
-      options.spreadsheetId = args[index + 1] ?? "";
-      index += 1;
-    } else if (arg === "--photos-export") {
-      options.photosExport = args[index + 1] ?? "";
-      index += 1;
-    } else if (arg === "--query") {
-      options.query = args[index + 1] ?? "";
-      index += 1;
-    } else if (arg === "--unprocessed") {
-      options.unprocessed = true;
-    } else if (arg === "--limit") {
-      options.limit = Number(args[index + 1] ?? "");
-      index += 1;
-    } else if (arg === "--choice") {
-      options.choice = Number(args[index + 1] ?? "");
-      index += 1;
-    } else if (arg === "--format") {
-      options.format = args[index + 1] ?? "";
-      index += 1;
-    } else {
-      throw new Error(`Unknown option: ${arg}`);
-    }
-  }
 
   if (!options.help) {
     if (!options.albums) {
