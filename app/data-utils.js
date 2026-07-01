@@ -56,3 +56,15 @@ export function parseList(value) {
     .map((item) => item.trim())
     .filter(Boolean);
 }
+
+export function csvEscape(value) {
+  const text = String(value ?? "");
+  if (/[",\r\n]/.test(text)) {
+    return `"${text.replaceAll('"', '""')}"`;
+  }
+  return text;
+}
+
+export function toCsvLine(headers, record) {
+  return headers.map((header) => csvEscape(record[header] ?? "")).join(",");
+}
