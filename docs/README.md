@@ -204,7 +204,7 @@ flowchart TD
 - Flickr 相簿與 intake：相簿盤點、清單、選擇與同步由 `albums:*` 工具處理；正式匯入工作包由 `pnpm intake:run` 建立，`pnpm intake:validate` 檢查，再由 `pnpm sheets:apply-intake` dry-run/write 套用。
 - AI 標記與評估：AI run 準備、驗證、review、report、diff、plan、bulk/shard 狀態與 Sheets dry-run/write 由 `ai:*` 工具處理；模型/輪次 attempt、跨活動 sample、搜尋增益與 prompt review 決策包由 `eval:*` 工具處理。操作順序以 `docs/ai-labeling-operator-guide.md` 和 `docs/ai-labeling-contract.md` 為準。
 - Apps Script：GeneratedConfig 由 `pnpm apps-script:build-config` 產生；clasp target、status、push、deployments 由 `apps-script:*` wrapper 依 `config/project.json` 解析，正式表是預設 target，練習表必須明確指定 `--target practice`。
-- GA4：事件設計先看 `docs/frontend-analytics-design.md`；custom dimensions 與後台權限操作看 `docs/ga4-operations.md`，repo 端檢查與同步由 `analytics:dimensions:*` / `ga4:dimensions:*` scripts 包裝。
+- GA4：事件設計先看 `docs/frontend-analytics-design.md`；custom dimensions 與後台權限操作看 `docs/ga4-operations.md`，repo 端檢查與同步由 `analytics:dimensions:*` scripts 包裝。
 
 ### 可用狀態與維運提醒
 
