@@ -1,5 +1,6 @@
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
+import { parseArgs as parseNodeArgs } from "node:util";
 import { validateAiProposals } from "./validate-ai-proposals.mjs";
 
 const defaultFixturesDir = "fixtures/ai-proposals";
@@ -20,23 +21,17 @@ warnings, and invalid- must fail.`);
 }
 
 function parseArgs(argv) {
-  const args = argv.slice(2).filter((arg) => arg !== "--");
+  const { values } = parseNodeArgs({
+    args: argv.slice(2),
+    options: {
+      "fixtures-dir": { type: "string" },
+      help: { type: "boolean", short: "h" },
+    },
+  });
   const options = {
-    fixturesDir: defaultFixturesDir,
-    help: false,
+    fixturesDir: values["fixtures-dir"] ?? defaultFixturesDir,
+    help: values.help ?? false,
   };
-
-  for (let index = 0; index < args.length; index += 1) {
-    const arg = args[index];
-    if (arg === "--help" || arg === "-h") {
-      options.help = true;
-    } else if (arg === "--fixtures-dir") {
-      options.fixturesDir = args[index + 1] ?? "";
-      index += 1;
-    } else {
-      throw new Error(`Unknown option: ${arg}`);
-    }
-  }
 
   if (!options.help && !options.fixturesDir) {
     throw new Error("--fixtures-dir requires a path");

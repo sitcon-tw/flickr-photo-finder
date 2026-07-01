@@ -1,4 +1,5 @@
 import { pathToFileURL } from "node:url";
+import { parseArgs as parseNodeArgs } from "node:util";
 import {
   codexMetricsHealth,
   formatCodexUsage,
@@ -29,71 +30,39 @@ photos, validate proposals, write shards, or update Google Sheets.`);
 }
 
 function parseArgs(argv) {
-  const args = argv.slice(2).filter((arg) => arg !== "--");
+  const { values } = parseNodeArgs({
+    args: argv.slice(2),
+    options: {
+      "run-dir": { type: "string" },
+      session: { type: "string" },
+      phase: { type: "string" },
+      role: { type: "string" },
+      label: { type: "string" },
+      "mark-start": { type: "boolean" },
+      "mark-end": { type: "boolean" },
+      "started-at": { type: "string" },
+      "completed-at": { type: "string" },
+      "codex-home": { type: "string" },
+      summary: { type: "boolean" },
+      json: { type: "boolean" },
+      help: { type: "boolean", short: "h" },
+    },
+  });
   const options = {
-    codexHome: "",
-    completedAt: "",
-    help: false,
-    json: false,
-    label: "",
-    markEnd: false,
-    markStart: false,
-    phase: "parent",
-    role: "parent",
-    runDir: "",
-    sessionId: "",
-    startedAt: "",
-    summary: false,
+    codexHome: values["codex-home"] ?? "",
+    completedAt: values["completed-at"] ?? "",
+    help: values.help ?? false,
+    json: values.json ?? false,
+    label: values.label ?? "",
+    markEnd: values["mark-end"] ?? false,
+    markStart: values["mark-start"] ?? false,
+    phase: values.phase ?? "parent",
+    role: values.role ?? "parent",
+    runDir: values["run-dir"] ?? "",
+    sessionId: values.session ?? "",
+    startedAt: values["started-at"] ?? "",
+    summary: values.summary ?? false,
   };
-
-  function nextValue(index, optionName) {
-    const value = args[index + 1] ?? "";
-    if (!value || value.startsWith("--")) {
-      throw new Error(`${optionName} requires a value`);
-    }
-    return value;
-  }
-
-  for (let index = 0; index < args.length; index += 1) {
-    const arg = args[index];
-    if (arg === "--help" || arg === "-h") {
-      options.help = true;
-    } else if (arg === "--run-dir") {
-      options.runDir = nextValue(index, arg);
-      index += 1;
-    } else if (arg === "--session") {
-      options.sessionId = nextValue(index, arg);
-      index += 1;
-    } else if (arg === "--phase") {
-      options.phase = nextValue(index, arg);
-      index += 1;
-    } else if (arg === "--role") {
-      options.role = nextValue(index, arg);
-      index += 1;
-    } else if (arg === "--label") {
-      options.label = nextValue(index, arg);
-      index += 1;
-    } else if (arg === "--mark-start") {
-      options.markStart = true;
-    } else if (arg === "--mark-end") {
-      options.markEnd = true;
-    } else if (arg === "--started-at") {
-      options.startedAt = nextValue(index, arg);
-      index += 1;
-    } else if (arg === "--completed-at") {
-      options.completedAt = nextValue(index, arg);
-      index += 1;
-    } else if (arg === "--codex-home") {
-      options.codexHome = nextValue(index, arg);
-      index += 1;
-    } else if (arg === "--summary") {
-      options.summary = true;
-    } else if (arg === "--json") {
-      options.json = true;
-    } else {
-      throw new Error(`Unknown option: ${arg}`);
-    }
-  }
 
   if (!options.help) {
     if (!options.runDir) {

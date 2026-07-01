@@ -3,6 +3,7 @@ import { closeSync, mkdtempSync, openSync, readFileSync, rmSync } from "node:fs"
 import { readdir, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { parseArgs as parseNodeArgs } from "node:util";
 
 const smokeRoots = [
   "scripts/commands",
@@ -115,26 +116,19 @@ function runHelp(file, { verbose }) {
 }
 
 function parseArgs(argv) {
-  const options = {
-    list: false,
-    verbose: false,
+  const { values } = parseNodeArgs({
+    args: argv,
+    options: {
+      list: { type: "boolean" },
+      verbose: { type: "boolean" },
+      help: { type: "boolean", short: "h" },
+    },
+  });
+  return {
+    help: values.help ?? false,
+    list: values.list ?? false,
+    verbose: values.verbose ?? false,
   };
-
-  for (const arg of argv) {
-    if (arg === "--") {
-      continue;
-    } else if (arg === "--help" || arg === "-h") {
-      options.help = true;
-    } else if (arg === "--list") {
-      options.list = true;
-    } else if (arg === "--verbose") {
-      options.verbose = true;
-    } else {
-      throw new Error(`Unknown command smoke option: ${arg}`);
-    }
-  }
-
-  return options;
 }
 
 async function main() {

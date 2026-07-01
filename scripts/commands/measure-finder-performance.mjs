@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { gzipSync, brotliCompressSync, constants } from "node:zlib";
 import { join } from "node:path";
+import { parseArgs as parseNodeArgs } from "node:util";
 import { csvEscape, parseCsv } from "../lib/core/csv-utils.mjs";
 import { buildOptionLabelMaps, createSearchTokenBuilder, normalizeAlbumRows, normalizePhotoRows } from "../../app/data-loader.js";
 import { albumFilterOptions } from "../../app/controls.js";
@@ -27,46 +28,30 @@ under tmp/ and does not modify repo data or Google Sheets.`);
 }
 
 function parseArgs(argv) {
-  const args = argv.slice(2).filter((arg) => arg !== "--");
+  const { values } = parseNodeArgs({
+    args: argv.slice(2),
+    options: {
+      source: { type: "string" },
+      photos: { type: "string" },
+      albums: { type: "string" },
+      scale: { type: "string" },
+      "output-dir": { type: "string" },
+      "shard-size": { type: "string" },
+      help: { type: "boolean", short: "h" },
+    },
+  });
   const options = {
     albumsPath: "tmp/sheets-export/albums.csv",
-    help: false,
-    outputDir: defaultOutputDir,
-    photosPath: "tmp/sheets-export/photos.csv",
-    scale: [],
-    shardSize: defaultShardSize,
-    source: "export",
+    help: values.help ?? false,
+    outputDir: values["output-dir"] ?? defaultOutputDir,
+    photosPath: values.photos ?? "tmp/sheets-export/photos.csv",
+    scale: values.scale
+      ? values.scale.split(",").map((value) => Number(value.trim())).filter((value) => Number.isInteger(value) && value > 0)
+      : [],
+    shardSize: values["shard-size"] === undefined ? defaultShardSize : Number(values["shard-size"]),
+    source: values.source ?? "export",
   };
-
-  for (let index = 0; index < args.length; index += 1) {
-    const arg = args[index];
-    if (arg === "--help" || arg === "-h") {
-      options.help = true;
-    } else if (arg === "--source") {
-      options.source = args[index + 1] ?? "";
-      index += 1;
-    } else if (arg === "--photos") {
-      options.photosPath = args[index + 1] ?? "";
-      index += 1;
-    } else if (arg === "--albums") {
-      options.albumsPath = args[index + 1] ?? "";
-      index += 1;
-    } else if (arg === "--scale") {
-      options.scale = (args[index + 1] ?? "")
-        .split(",")
-        .map((value) => Number(value.trim()))
-        .filter((value) => Number.isInteger(value) && value > 0);
-      index += 1;
-    } else if (arg === "--output-dir") {
-      options.outputDir = args[index + 1] ?? "";
-      index += 1;
-    } else if (arg === "--shard-size") {
-      options.shardSize = Number(args[index + 1] ?? "");
-      index += 1;
-    } else {
-      throw new Error(`Unknown option: ${arg}`);
-    }
-  }
+  options.albumsPath = values.albums ?? options.albumsPath;
 
   if (!options.help) {
     if (options.source !== "export") {

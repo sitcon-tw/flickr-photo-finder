@@ -1,6 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import { basename, join } from "node:path";
+import { parseArgs as parseNodeArgs } from "node:util";
 import { parseCsv } from "../lib/core/csv-utils.mjs";
 import { albumHeaders, importBatchHeaders, photoHeaders } from "../lib/core/photo-schema.mjs";
 
@@ -20,23 +21,17 @@ Options:
 }
 
 function parseArgs(argv) {
-  const args = argv.slice(2).filter((arg) => arg !== "--");
+  const { values } = parseNodeArgs({
+    args: argv.slice(2),
+    options: {
+      "run-dir": { type: "string" },
+      help: { type: "boolean", short: "h" },
+    },
+  });
   const options = {
-    help: false,
-    runDir: "",
+    help: values.help ?? false,
+    runDir: values["run-dir"] ?? "",
   };
-
-  for (let index = 0; index < args.length; index += 1) {
-    const arg = args[index];
-    if (arg === "--help" || arg === "-h") {
-      options.help = true;
-    } else if (arg === "--run-dir") {
-      options.runDir = args[index + 1] ?? "";
-      index += 1;
-    } else {
-      throw new Error(`Unknown option: ${arg}`);
-    }
-  }
 
   if (!options.help && !options.runDir) {
     throw new Error("--run-dir requires a path");

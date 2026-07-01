@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+import { parseArgs as parseNodeArgs } from "node:util";
 import { createAnalyticsAdminService, explainGoogleAnalyticsError } from "../lib/analytics/google-analytics-client.mjs";
 import { ga4PropertyId } from "../lib/core/project-config.mjs";
 
@@ -21,27 +22,20 @@ See docs/ga4-operations.md for service account access setup.`);
 }
 
 function parseArgs(argv) {
-  const args = argv.slice(2).filter((arg) => arg !== "--");
+  const { values } = parseNodeArgs({
+    args: argv.slice(2),
+    options: {
+      property: { type: "string" },
+      write: { type: "boolean" },
+      help: { type: "boolean", short: "h" },
+    },
+  });
   const options = {
     command: process.env.npm_lifecycle_event ?? "",
-    help: false,
-    propertyId: process.env.GA4_PROPERTY_ID || ga4PropertyId,
-    write: false,
+    help: values.help ?? false,
+    propertyId: values.property ?? (process.env.GA4_PROPERTY_ID || ga4PropertyId),
+    write: values.write ?? false,
   };
-
-  for (let index = 0; index < args.length; index += 1) {
-    const arg = args[index];
-    if (arg === "--help" || arg === "-h") {
-      options.help = true;
-    } else if (arg === "--property") {
-      options.propertyId = args[index + 1] ?? "";
-      index += 1;
-    } else if (arg === "--write") {
-      options.write = true;
-    } else {
-      throw new Error(`Unknown option: ${arg}`);
-    }
-  }
 
   if (!options.help) {
     if (options.command === "analytics:dimensions:check" && options.write) {
