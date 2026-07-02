@@ -3,6 +3,7 @@ import { readdir, readFile, stat } from "node:fs/promises";
 import { parseArgs as parseNodeArgs } from "node:util";
 import { collectRelativeJavaScriptImportGraph } from "../lib/pages/js-import-graph.mjs";
 import { defaultFinderDataDir } from "../lib/pages/static-finder-data.mjs";
+import { buildFinderDataUrls } from "./build-pages.mjs";
 
 const defaultArtifactDir = "tmp/pages";
 
@@ -133,6 +134,10 @@ function extractConfigString(config, key) {
   return match?.[1] ?? "";
 }
 
+function artifactPathFromUrl(url) {
+  return url.replace(/^\.\//, "");
+}
+
 async function assertJson(path) {
   return JSON.parse(await readFile(path, "utf8"));
 }
@@ -196,11 +201,6 @@ async function main() {
   const requiredFiles = [
     ".nojekyll",
     "assets/og-image.png",
-    "config/project.json",
-    "data/interface-registry.json",
-    "data/photo-schema.json",
-    "data/search-aliases.json",
-    "data/tag-taxonomy.json",
     "index.html",
     "main.js",
     "pwa.js",
@@ -279,11 +279,9 @@ async function main() {
     throw new Error(`config.js has unknown data source mode: ${dataMode}`);
   }
 
-  await assertJson(join(options.artifactDir, "config/project.json"));
-  await assertJson(join(options.artifactDir, "data/interface-registry.json"));
-  await assertJson(join(options.artifactDir, "data/photo-schema.json"));
-  await assertJson(join(options.artifactDir, "data/search-aliases.json"));
-  await assertJson(join(options.artifactDir, "data/tag-taxonomy.json"));
+  for (const url of buildFinderDataUrls(dataMode)) {
+    await assertJson(join(options.artifactDir, artifactPathFromUrl(url)));
+  }
 
   console.log(`GitHub Pages artifact looks valid: ${options.artifactDir}`);
 }

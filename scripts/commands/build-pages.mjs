@@ -118,7 +118,7 @@ function uniqueSortedUrls(urls) {
   return [...new Set(urls)].sort();
 }
 
-function buildFinderDataUrls(dataMode) {
+export function buildFinderDataUrls(dataMode) {
   const urls = [
     "./config/project.json",
     "./data/interface-registry.json",
