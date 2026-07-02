@@ -47,6 +47,7 @@ function sendText(response, status, text) {
 export function startStaticServer({
   rootDir = ".",
   host = process.env.HOST ?? "127.0.0.1",
+  onListen,
   port = Number(process.env.PORT ?? 4173),
   title = appTitle,
   serveAppRoot = false,
@@ -94,6 +95,10 @@ export function startStaticServer({
   });
 
   server.listen(port, host, () => {
+    if (onListen) {
+      onListen({ host, port, title });
+      return;
+    }
     console.log(`${title} is running at http://${host}:${port}/`);
   });
 

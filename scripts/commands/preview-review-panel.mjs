@@ -1,23 +1,13 @@
-import { createReadStream } from "node:fs";
-import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
-import { createServer } from "node:http";
-import { extname, join, resolve } from "node:path";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { parseCsv } from "../lib/core/csv-utils.mjs";
 import { photoHeaders, photoTableSchema } from "../lib/core/photo-schema.mjs";
+import { startStaticServer } from "../lib/finder/serve.mjs";
 
 const outputDir = "tmp/review-panel-preview";
 const outputPath = `${outputDir}/index.html`;
 const port = Number(process.env.PORT ?? 4174);
 const host = process.env.HOST ?? "127.0.0.1";
 const sidebarWidth = Number(process.env.SIDEBAR_WIDTH ?? 300);
-
-const mimeTypes = {
-  ".html": "text/html; charset=utf-8",
-  ".jpg": "image/jpeg",
-  ".js": "text/javascript; charset=utf-8",
-  ".json": "application/json; charset=utf-8",
-  ".png": "image/png",
-};
 
 function printUsage() {
   console.log(`Usage:
@@ -220,55 +210,20 @@ async function writePreviewHtml() {
   await writeFile(outputPath, html);
 }
 
-function sendText(response, status, text) {
-  response.writeHead(status, { "content-type": "text/plain; charset=utf-8" });
-  response.end(text);
-}
-
-function startServer() {
-  const root = resolve(outputDir);
-  const server = createServer(async (request, response) => {
-    const urlPath = decodeURIComponent((request.url ?? "/").split("?")[0]);
-    const relativePath = urlPath === "/" ? "index.html" : urlPath.replace(/^\/+/, "");
-    const filePath = resolve(root, relativePath);
-    if (!filePath.startsWith(root)) {
-      sendText(response, 403, "Forbidden");
-      return;
-    }
-
-    try {
-      let targetPath = filePath;
-      const fileStat = await stat(targetPath);
-      if (!fileStat.isFile()) {
-        sendText(response, 404, "Not found");
-        return;
-      }
-      response.writeHead(200, {
-        "content-length": fileStat.size,
-        "content-type": mimeTypes[extname(targetPath)] ?? "application/octet-stream",
-      });
-      createReadStream(targetPath).pipe(response);
-    } catch {
-      sendText(response, 404, "Not found");
-    }
-  });
-
-  server.on("error", (error) => {
-    console.error(`Could not start review panel preview on http://${host}:${port}/: ${error.message}`);
-    process.exitCode = 1;
-  });
-
-  server.listen(port, host, () => {
-    console.log(`Review panel preview written to ${outputPath}`);
-    console.log(`Mock sidebar width: ${sidebarWidth}px`);
-    console.log(`Review panel preview is running at http://${host}:${port}/`);
-  });
-}
-
 try {
   parseArgs(process.argv);
   await writePreviewHtml();
-  startServer();
+  startStaticServer({
+    host,
+    port,
+    rootDir: outputDir,
+    title: "Review panel preview",
+    onListen({ host: listeningHost, port: listeningPort }) {
+      console.log(`Review panel preview written to ${outputPath}`);
+      console.log(`Mock sidebar width: ${sidebarWidth}px`);
+      console.log(`Review panel preview is running at http://${listeningHost}:${listeningPort}/`);
+    },
+  });
 } catch (error) {
   console.error(`Could not start review panel preview: ${error.message}`);
   process.exitCode = 1;
