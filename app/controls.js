@@ -100,6 +100,7 @@ export function queryElements() {
     previewMeta: document.querySelector("#previewMeta"),
     previewStatuses: document.querySelector("#previewStatuses"),
     previewReference: document.querySelector("#previewReference"),
+    previewImageFrame: document.querySelector(".preview-image-frame"),
     previewImage: document.querySelector("#previewImage"),
     previewDetails: document.querySelector("#previewDetails"),
     previewLargeButton: document.querySelector("#previewLargeButton"),
