@@ -1,6 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { parseCsv } from "../lib/core/csv-utils.mjs";
 import { createSheetsService, explainGoogleSheetsError, quoteSheetName } from "../lib/sheets/google-sheets-client.mjs";
 import { googleSheetsSpreadsheetId } from "../lib/core/project-config.mjs";
@@ -23,8 +24,8 @@ Options:
   --write                Apply changes. Without this flag the command only performs a dry-run.
   --help, -h             Show this help.
 
-This command appends new photos, updates albums.last_processed_at for the
-selected album, and appends one import_batches row. It refuses to write if
+This command appends new photos, appends a missing album or updates its
+last_processed_at, and appends one import_batches row. It refuses to write if
 target headers do not match the repo schema or duplicate photo_id / batch_id
 values are detected. The process environment must set
 GOOGLE_APPLICATION_CREDENTIALS to a service account credential with access to
@@ -182,7 +183,7 @@ function collectColumnValues(rows, headers, headerName) {
   return new Set(rows.slice(1).map((row) => row[index] ?? "").filter(Boolean));
 }
 
-async function buildPlan(sheets, spreadsheetId, artifacts) {
+export async function buildPlan(sheets, spreadsheetId, artifacts) {
   const [photosRows, albumsRows, importBatchRows] = await Promise.all([
     readSheetRows(sheets, spreadsheetId, "photos", photoHeaders),
     readSheetRows(sheets, spreadsheetId, "albums", albumHeaders),
@@ -210,10 +211,6 @@ async function buildPlan(sheets, spreadsheetId, artifacts) {
   if (duplicateBatchId) {
     blockers.push(`duplicate batch_id: ${artifacts.importBatchRecord.batch_id}`);
   }
-  if (albumRowNumber < 0) {
-    blockers.push(`album_id ${artifacts.summary.album_id} not found in albums`);
-  }
-
   return {
     albumLastProcessedAt: artifacts.albumRecord.last_processed_at,
     albumLastProcessedRange:
@@ -223,6 +220,10 @@ async function buildPlan(sheets, spreadsheetId, artifacts) {
     albumRowNumber,
     blockers,
     importBatchRowsToAppend: [artifacts.importBatchRow],
+    newAlbumRowsToAppend:
+      albumRowNumber < 0
+        ? [albumHeaders.map((header) => artifacts.albumRecord[header] ?? "")]
+        : [],
     newPhotoRowsToAppend: artifacts.photoRows,
     summary: artifacts.summary,
   };
@@ -232,8 +233,13 @@ function printPlan(plan, { write }) {
   console.log(`Mode: ${write ? "write" : "dry-run"}`);
   console.log(`Run: ${plan.summary.run_id}`);
   console.log(`Album: ${plan.summary.album_id} (${plan.summary.album_title ?? ""})`);
+  console.log(`- append albums: ${plan.newAlbumRowsToAppend.length}`);
   console.log(`- append photos: ${plan.newPhotoRowsToAppend.length}`);
-  console.log(`- update albums.last_processed_at: ${plan.albumLastProcessedAt || "(empty)"} at ${plan.albumLastProcessedRange || "not found"}`);
+  console.log(
+    plan.albumLastProcessedRange
+      ? `- update albums.last_processed_at: ${plan.albumLastProcessedAt || "(empty)"} at ${plan.albumLastProcessedRange}`
+      : "- update albums.last_processed_at: included in appended album row",
+  );
   console.log(`- append import_batches: ${plan.importBatchRowsToAppend.length}`);
   if (plan.blockers.length > 0) {
     console.log(`Blocked: ${plan.blockers.join("; ")}`);
@@ -321,6 +327,7 @@ async function main() {
     return;
   }
 
+  await appendRows(sheets, options.spreadsheetId, "albums", plan.newAlbumRowsToAppend);
   await appendRows(sheets, options.spreadsheetId, "photos", plan.newPhotoRowsToAppend);
   await updateAlbumLastProcessedAt(sheets, options.spreadsheetId, plan);
   await appendRows(sheets, options.spreadsheetId, "import_batches", plan.importBatchRowsToAppend);
@@ -328,9 +335,11 @@ async function main() {
   console.log("Intake run applied and verified.");
 }
 
-try {
-  await main();
-} catch (error) {
-  console.error(`Could not apply intake run: ${explainGoogleSheetsError(error)}`);
-  process.exitCode = 1;
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+  try {
+    await main();
+  } catch (error) {
+    console.error(`Could not apply intake run: ${explainGoogleSheetsError(error)}`);
+    process.exitCode = 1;
+  }
 }

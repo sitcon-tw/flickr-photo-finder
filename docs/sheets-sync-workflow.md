@@ -356,7 +356,7 @@ pnpm sheets:apply-intake -- --run-dir tmp/intake-runs/RUN_ID --write
 `sheets:apply-intake` 只做三件事：
 
 1. 將 `photos-to-append.csv` 的資料列追加到 `photos`。
-2. 只更新 `albums` 中該相簿的 `last_processed_at` 欄位。
+2. 若 `albums` 尚無該相簿就追加 artifact 中的相簿列；若已存在則只更新 `last_processed_at`。
 3. 將 `import-batch.csv` 的單列追加到 `import_batches`。
 
 它不會用 `albums-updated.csv` 覆蓋整張 `albums` 表，以避免蓋掉人類在正式 Sheets 上新增或修正的相簿欄位。
@@ -794,7 +794,7 @@ service account key 是敏感 credential，不能 commit，也不應放在 `tmp/
 | 同步 `使用說明` 分頁 | 需要 `GOOGLE_APPLICATION_CREDENTIALS` 與目標 Sheets 編輯權限 | 正式表用 `pnpm sheets:sync-guide`；練習表用 `pnpm sheets:sync-guide -- --target practice` 或由 `pnpm sheets:practice:sync` 帶出。加上 `--write` 才會寫入，寫入後讀回驗證通過 | 這是人類入口分頁，不是資料來源；正式表會連到固定練習表，練習表會連回正式表。 |
 | 產生練習用試算表資料包 | 需要已匯出的正式 Sheets 工作快取，不需要 Google 授權 | `pnpm sheets:practice:build` 產生 `tmp/sheets-practice/` 並通過 validation | 代表練習資料包可用；它只供維護者重置固定練習表，不會建立 Google Drive 檔案，也不是正式資料庫。 |
 | 重置固定練習用試算表 | 需要 `GOOGLE_APPLICATION_CREDENTIALS` 與練習表編輯權限 | `pnpm sheets:practice:sync` dry-run 通過，人工確認後執行 `pnpm sheets:practice:sync -- --write`，寫入後讀回驗證通過 | 會重寫練習表固定資料 tabs 與 `使用說明`；工具會拒絕把正式表當成練習表。 |
-| 套用 intake run artifact | 需要 `GOOGLE_APPLICATION_CREDENTIALS` 與目標 Sheets 編輯權限 | `pnpm sheets:apply-intake -- --run-dir <dir>` dry-run 通過，人工確認後加上 `--write`，寫入後讀回驗證通過 | 可能是環境變數未傳入、credential scope、Sheets 權限、tab/header、重複 `photo_id`、重複 `batch_id` 或找不到相簿列。 |
+| 套用 intake run artifact | 需要 `GOOGLE_APPLICATION_CREDENTIALS` 與目標 Sheets 編輯權限 | `pnpm sheets:apply-intake -- --run-dir <dir>` dry-run 通過，人工確認後加上 `--write`，寫入後讀回驗證通過 | 可能是環境變數未傳入、credential scope、Sheets 權限、tab/header、重複 `photo_id` 或重複 `batch_id`。 |
 | 透過官方 SDK 寫入 Sheets | 需要 `GOOGLE_APPLICATION_CREDENTIALS` 與目標 Sheets 編輯權限 | SDK 寫入工具的 preflight、dry-run、confirmed write 與寫入後讀回驗證都通過 | 可能是環境變數未傳入、credential scope、Sheets 權限、tab/header 或資料格式問題，應依工具錯誤分類處理。 |
 | 驗證正式資料格式 | 不需要寫入權限；需要能取得 Sheets 匯出的 CSV | `pnpm data:validate -- --photos <csv> --albums <csv> --import-batches <csv>` | 代表匯出資料和 repo schema 不一致，或匯出檔不是預期格式。 |
 | 檢查 intake run artifact | 不需要 Google 授權 | `pnpm intake:validate -- --run-dir <dir>` | 代表本次匯入產物內部不一致，套用前應先修正。 |
