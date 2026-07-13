@@ -3,6 +3,7 @@ import { basename, extname, join, relative } from "node:path";
 import { getAiLabelingPromptMetadata, writeAiLabelingPrompt } from "../lib/ai/ai-labeling-prompt.mjs";
 import { parseCsv, parseSemicolonList, toCsvLine } from "../lib/core/csv-utils.mjs";
 import { photoHeaders } from "../lib/core/photo-schema.mjs";
+import { createProgressThrottle } from "../lib/core/progress.mjs";
 import { aiRunsDir, sheetsExportPhotosPath } from "../lib/core/workflow-paths.mjs";
 
 const defaultLimit = 50;
@@ -10,7 +11,6 @@ const defaultImageSize = "large-1024";
 const defaultStatus = "unreviewed";
 const defaultFocus = "none";
 const defaultDownloadConcurrency = 8;
-const imageProgressIntervalMs = 5000;
 const focusOptions = [defaultFocus, "design-metadata"];
 const imageSizeSuffixes = new Map([
   ["medium-640", "z"],
@@ -528,22 +528,15 @@ async function prepareRun(options) {
   let downloadedCount = 0;
   let cacheReusedCount = 0;
   let completedImageInputCount = 0;
-  let lastImageProgressAt = Date.now();
-  let lastReportedImageInputCount = 0;
+  const shouldPrintImageProgress = createProgressThrottle();
   const errors = [];
 
   function printImageProgress({ force = false } = {}) {
-    const now = Date.now();
-    if (!force && now - lastImageProgressAt < imageProgressIntervalMs) {
-      return;
-    }
-    if (completedImageInputCount === lastReportedImageInputCount) {
+    if (!shouldPrintImageProgress(completedImageInputCount, { force })) {
       return;
     }
 
     console.error(`Progress: image inputs ${completedImageInputCount}/${selectedPhotos.length} complete (downloaded ${downloadedCount}, cache reused ${cacheReusedCount}, failed ${errors.length}).`);
-    lastImageProgressAt = now;
-    lastReportedImageInputCount = completedImageInputCount;
   }
 
   console.error(`Progress: preparing image inputs with concurrency ${options.downloadConcurrency}.`);
