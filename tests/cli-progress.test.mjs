@@ -1,9 +1,13 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import {
+  buildImageInputErrorsArtifact,
+  formatImageInputErrorSummary,
+} from "../scripts/lib/ai/image-input-errors.mjs";
 import { buildCsvRows } from "../scripts/lib/flickr/flickr-intake.mjs";
 import { createProgressThrottle, progressIntervalMs } from "../scripts/lib/core/progress.mjs";
 
-describe("CLI progress throttle", () => {
+describe("CLI progress output", () => {
   it("reports changed completion counts at the interval or when forced", () => {
     let currentTime = 100;
     const shouldReport = createProgressThrottle({ now: () => currentTime });
@@ -47,5 +51,29 @@ describe("CLI progress throttle", () => {
     );
 
     assert.deepEqual(progress, [{ current: 1, photoId: "1", total: 2 }]);
+  });
+
+  it("keeps full image input errors in an artifact and caps terminal examples", () => {
+    const errors = Array.from({ length: 7 }, (_, index) => ({
+      message: `fetch failed ${index + 1}`,
+      photo_id: String(index + 1),
+    }));
+    const artifact = buildImageInputErrorsArtifact({
+      createdAt: "2026-07-13T00:00:00.000Z",
+      downloadEnabled: true,
+      errors,
+      imageSize: "large-1024",
+      photosSource: "photos.csv",
+      runId: "test-run",
+      selectedPhotoCount: 7,
+    });
+    const summary = formatImageInputErrorSummary(errors, "run/image-input-errors.json");
+
+    assert.equal(artifact.error_count, 7);
+    assert.deepEqual(artifact.errors, errors);
+    assert.match(summary, /Failed to prepare 7 image input\(s\)/);
+    assert.match(summary, /run\/image-input-errors\.json/);
+    assert.match(summary, /5: fetch failed 5; \+2 more/);
+    assert.doesNotMatch(summary, /6: fetch failed 6/);
   });
 });

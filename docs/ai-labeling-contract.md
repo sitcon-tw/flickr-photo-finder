@@ -40,6 +40,8 @@ ai-labeling-prompt.md
 images/
 ```
 
+若 `ai:prepare` 在圖片下載或 URL 解析階段失敗，run 目錄可能另有 `image-input-errors.json`。這是失敗診斷 artifact，不代表工作包已準備完成，也不應交給模型作為標記輸入。檔案包含 `artifact_version`、`created_at`、`run_id`、圖片準備選項、失敗總數，以及完整的 `errors[]`；每筆 error 記錄 `photo_id` 與 `message`。修正原因並使用相同 run ID 重跑時，工具會先移除較早的失敗 artifact。
+
 attempt 目錄會額外包含 `attempt.json`，記錄 `base_run_id`、`model`、`round`、`label` 與來源 run。這份檔案供人類與比較報表辨識執行輪次；AI 標記仍以 `manifest.json`、`photos.json` 與圖片為主要輸入。
 
 AI 或 agent 應以 `photos.json` 作為主要機器可讀輸入；`input-photos.csv` 只供人類檢查或除錯使用。

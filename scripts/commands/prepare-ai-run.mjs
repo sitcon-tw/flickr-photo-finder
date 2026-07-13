@@ -1,6 +1,11 @@
-import { copyFile, link, mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
+import { copyFile, link, mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { basename, extname, join, relative } from "node:path";
 import { getAiLabelingPromptMetadata, writeAiLabelingPrompt } from "../lib/ai/ai-labeling-prompt.mjs";
+import {
+  buildImageInputErrorsArtifact,
+  formatImageInputErrorSummary,
+  imageInputErrorsFilename,
+} from "../lib/ai/image-input-errors.mjs";
 import { parseCsv, parseSemicolonList, toCsvLine } from "../lib/core/csv-utils.mjs";
 import { photoHeaders } from "../lib/core/photo-schema.mjs";
 import { createProgressThrottle } from "../lib/core/progress.mjs";
@@ -508,9 +513,11 @@ async function prepareRun(options) {
   const runId = options.runId || defaultRunId();
   const runDir = join(options.outputDir, runId);
   const imagesDir = join(runDir, "images");
+  const imageInputErrorsPath = join(runDir, imageInputErrorsFilename);
 
   console.error(`Progress: creating AI run directory ${runDir}.`);
   await mkdir(runDir, { recursive: true });
+  await rm(imageInputErrorsPath, { force: true });
   if (options.download) {
     await mkdir(imagesDir, { recursive: true });
   }
@@ -588,7 +595,17 @@ async function prepareRun(options) {
   printImageProgress({ force: true });
 
   if (errors.length > 0) {
-    throw new Error(`Failed to download ${errors.length} image(s): ${errors.map((error) => `${error.photo_id}: ${error.message}`).join("; ")}`);
+    const artifact = buildImageInputErrorsArtifact({
+      createdAt: new Date().toISOString(),
+      downloadEnabled: options.download,
+      errors,
+      imageSize: options.imageSize,
+      photosSource: options.photosPath,
+      runId,
+      selectedPhotoCount: selectedPhotos.length,
+    });
+    await writeFile(imageInputErrorsPath, `${JSON.stringify(artifact, null, 2)}\n`);
+    throw new Error(formatImageInputErrorSummary(errors, imageInputErrorsPath));
   }
 
   const createdAt = new Date().toISOString();
