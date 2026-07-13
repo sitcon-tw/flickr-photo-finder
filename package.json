@@ -44,6 +44,8 @@
     "ai:validate": "node scripts/commands/validate-ai-proposals.mjs",
     "eval:attempt": "node scripts/commands/create-ai-attempt.mjs",
     "eval:prompt-review": "node scripts/commands/build-prompt-review-package.mjs",
+    "eval:finder-scenarios": "node scripts/commands/evaluate-finder-scenarios.mjs",
+    "eval:finder-candidates": "node scripts/commands/rank-finder-task-candidates.mjs",
     "eval:sample": "node scripts/commands/build-cross-activity-ai-sample.mjs",
     "eval:search": "node scripts/commands/search-experimental.mjs",
     "eval:validate-fixtures": "node scripts/commands/validate-ai-fixtures.mjs",

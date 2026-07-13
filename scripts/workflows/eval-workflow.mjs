@@ -65,6 +65,16 @@ const tasks = [
     title: "執行 visual_description 搜尋評估",
   },
   {
+    description: "用真實工作情境檢查需求文字是否能找出 metadata 符合的候選。",
+    handler: runFinderScenarioEvaluation,
+    id: "finder-scenarios",
+    inputs: ["tmp/sheets-export/photos.csv", "tmp/sheets-export/albums.csv", "data/finder-real-world-eval-scenarios.json", "可選的基準 photos CSV"],
+    next: ["閱讀 summary.md；需要判斷照片是否真的可交付時，再逐張看原圖並由需求提出者驗收。"],
+    outputs: ["tmp/finder-evals/<run-id>/results.json", "tmp/finder-evals/<run-id>/summary.md"],
+    phase: "搜尋增益評估",
+    title: "執行真實找圖 metadata 基準評估",
+  },
+  {
     description: "準備 AI prompt 多專家審查證據包，讓專家意見與 owner 決策可追溯。",
     handler: buildPromptReviewPackage,
     id: "prompt-review",
@@ -177,6 +187,7 @@ function printEvalSummary() {
   console.log("3. eval:attempt 讓不同模型或輪次共用同一批輸入，並記錄 prompt_template_sha256，方便確認是否能公平比較。");
   console.log("4. 模型輸出仍用 ai:review 驗證，並可用 ai:report 產生單次或多模型報表；大型 run 可先用 /tmp sharded 流程，兩者都會提示 prompt 版本差異。");
   console.log("5. eval:search 用來檢查 visual_description 是否真的改善工作情境找圖。");
+  console.log("6. eval:finder-scenarios 用真實需求檢查 metadata 可檢索性；自動結果不等同人工看圖驗收。");
 }
 
 function printTaskContext(task) {
@@ -281,6 +292,7 @@ async function showEvalOverview() {
   console.log("- 模型跑完後：選「檢查模型輸出」。");
   console.log("- 要比較模型輸出：選「產生評估報表」。");
   console.log("- 要驗證 visual_description 搜尋價值：選「執行 visual_description 搜尋評估」。");
+  console.log("- 要重跑真實找圖需求：選「執行真實找圖 metadata 基準評估」。");
 }
 
 async function buildCrossActivitySample() {
@@ -393,6 +405,27 @@ async function runSearchEvaluation() {
   }
 
   runPnpm("eval:search", pnpmArgsFromOptions(options));
+}
+
+async function runFinderScenarioEvaluation() {
+  const photos = await ask("目前 photos CSV", "tmp/sheets-export/photos.csv");
+  const albums = await ask("albums CSV", "tmp/sheets-export/albums.csv");
+  const scenarios = await ask("情境題庫", "data/finder-real-world-eval-scenarios.json");
+  const baseline = await ask("可選的基準 photos CSV；留空不比較");
+  const processedAfter = await ask("覆寫相簿處理日期下限；留空使用題庫設定");
+  const top = await ask("每個情境保留候選數", "8");
+  const outputDir = await ask("輸出目錄；留空自動產生");
+  const options = ["--photos", photos, "--albums", albums, "--scenarios", scenarios, "--top", top];
+  if (baseline) {
+    options.push("--baseline-photos", baseline);
+  }
+  if (processedAfter) {
+    options.push("--processed-after", processedAfter);
+  }
+  if (outputDir) {
+    options.push("--output", outputDir);
+  }
+  runPnpm("eval:finder-scenarios", pnpmArgsFromOptions(options));
 }
 
 async function buildPromptReviewPackage() {

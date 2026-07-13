@@ -1,0 +1,741 @@
+{
+  "version": 1,
+  "title": "SITCON 真實找圖情境評估題庫",
+  "evaluation_kind": "metadata-retrieval",
+  "description": "以 SITCON 籌備、宣傳、設計、贊助與教育推廣的實際工作需求建立 requester / finder / judge 角色題目。候選排序只使用 request 與 query_terms，acceptance_criteria 和 reject_criteria 只用於自動 metadata 判定。",
+  "processed_after": "2026-06-11",
+  "source_urls": [
+    "https://sitcon.org/2026/",
+    "https://sitcon.org/2026/cfs/",
+    "https://sitcon.camp/",
+    "https://hackathon.sitcon.org/"
+  ],
+  "scenarios": [
+    {
+      "id": "sponsor-booth-interaction-proof",
+      "requester_agent": {
+        "id": "partnership-marketing-requester",
+        "role": "行銷組贊助夥伴窗口"
+      },
+      "finder_agent": {
+        "id": "metadata-search-finder",
+        "role": "只使用照片索引 metadata 找候選照片"
+      },
+      "judge_agent": {
+        "id": "partnership-marketing-judge",
+        "role": "原始贊助需求提出者"
+      },
+      "request": "贊助成果報告需要一張能證明會眾實際到攤位互動的照片，最好可放在提案或成果頁。",
+      "real_world_reason": "SITCON 2026 贊助徵求書把會場攤位、品牌曝光、會眾互動與贊助成果佐證列為合作價值。",
+      "query_terms": [
+        "贊助成果 攤位 會眾互動",
+        "品牌露出 實體導流",
+        "贊助提案 會眾"
+      ],
+      "acceptance_criteria": [
+        {
+          "field": "recommended_uses",
+          "op": "includes_any",
+          "value": ["贊助成果報告", "贊助提案"],
+          "required": true,
+          "reason": "用途必須能服務贊助提案或成果報告。"
+        },
+        {
+          "field": "scene_tags",
+          "op": "includes_any",
+          "value": ["攤位"],
+          "required": true,
+          "reason": "畫面必須可見攤位或攤位情境。"
+        },
+        {
+          "field": "scene_tags",
+          "op": "includes_any",
+          "value": ["會眾", "交流"],
+          "required": true,
+          "reason": "需要能看出參與者互動。"
+        },
+        {
+          "field": "sponsorship_tags",
+          "op": "includes_any",
+          "value": ["攤位曝光", "會眾互動", "贊助成果佐證"],
+          "required": false,
+          "reason": "贊助價值欄位應能直接佐證合作成果。"
+        },
+        {
+          "field": "people_count",
+          "op": "number_at_least",
+          "value": 2,
+          "required": true,
+          "reason": "至少要有兩人，才像互動而不是空攤位。"
+        }
+      ],
+      "reject_criteria": [
+        {
+          "field": "public_use_status",
+          "op": "equals_any",
+          "value": ["avoid"],
+          "reason": "不建議使用的照片不應交付給贊助成果素材。"
+        }
+      ]
+    },
+    {
+      "id": "sponsor-main-stage-exposure",
+      "requester_agent": {
+        "id": "partnership-deck-requester",
+        "role": "贊助提案簡報整理者"
+      },
+      "finder_agent": {
+        "id": "metadata-search-finder",
+        "role": "只使用照片索引 metadata 找候選照片"
+      },
+      "judge_agent": {
+        "id": "partnership-deck-judge",
+        "role": "原始贊助提案需求提出者"
+      },
+      "request": "提案簡報需要一張主舞台或開閉幕情境，能呈現 SITCON 的規模、儀式感與品牌信任。",
+      "real_world_reason": "SITCON 官網與贊助徵求書都把年會現場、舞台、開閉幕口播與合作夥伴曝光放在核心敘事。",
+      "query_terms": [
+        "主舞台 儀式感 贊助提案",
+        "開幕 閉幕 舞台 品牌露出",
+        "年會規模"
+      ],
+      "acceptance_criteria": [
+        {
+          "field": "scene_tags",
+          "op": "includes_any",
+          "value": ["舞台", "背板"],
+          "required": true,
+          "reason": "需要舞台或背板作為大會規模視覺。"
+        },
+        {
+          "field": "recommended_uses",
+          "op": "includes_any",
+          "value": ["贊助提案", "簡報", "新聞稿"],
+          "required": true,
+          "reason": "需要適合正式提案或對外材料。"
+        },
+        {
+          "field": "mood_tags",
+          "op": "includes_any",
+          "value": ["儀式感", "專業", "成就感"],
+          "required": false,
+          "reason": "提案需要正式感與可信度。"
+        },
+        {
+          "field": "sponsorship_tags",
+          "op": "includes_any",
+          "value": ["主舞台曝光", "品牌露出", "合作夥伴形象"],
+          "required": false,
+          "reason": "能直接映射到 CFS 贊助價值更好。"
+        }
+      ],
+      "reject_criteria": [
+        {
+          "field": "public_use_status",
+          "op": "equals_any",
+          "value": ["avoid"],
+          "reason": "提案素材不得預設使用 avoid。"
+        }
+      ]
+    },
+    {
+      "id": "website-hero-negative-space",
+      "requester_agent": {
+        "id": "website-design-requester",
+        "role": "網站與視覺設計組"
+      },
+      "finder_agent": {
+        "id": "metadata-search-finder",
+        "role": "只使用照片索引 metadata 找候選照片"
+      },
+      "judge_agent": {
+        "id": "website-design-judge",
+        "role": "原始網站視覺需求提出者"
+      },
+      "request": "網站首頁橫幅需要一張橫式照片，右側或上方有留白可以放標題，畫面要看得出 SITCON 現場感。",
+      "real_world_reason": "SITCON 官網首頁大量使用活動現場照片作為第一視覺，Photo Finder 的設計欄位必須支援這類工作。",
+      "query_terms": [
+        "網站橫幅 留白 16:9",
+        "現場感 橫式",
+        "舞台 場地 交流"
+      ],
+      "acceptance_criteria": [
+        {
+          "field": "recommended_uses",
+          "op": "includes_any",
+          "value": ["網站橫幅"],
+          "required": true,
+          "reason": "必須被標成網站橫幅候選。"
+        },
+        {
+          "field": "orientation",
+          "op": "equals_any",
+          "value": ["landscape"],
+          "required": true,
+          "reason": "首頁 hero 需要橫式素材。"
+        },
+        {
+          "field": "has_negative_space",
+          "op": "equals_any",
+          "value": ["true"],
+          "required": true,
+          "reason": "需有留白可放文字。"
+        },
+        {
+          "field": "safe_crop",
+          "op": "includes_any",
+          "value": ["16:9"],
+          "required": true,
+          "reason": "需能安全裁成網站常用比例。"
+        },
+        {
+          "field": "scene_tags",
+          "op": "includes_any",
+          "value": ["舞台", "場地", "交流", "會眾"],
+          "required": false,
+          "reason": "希望第一眼能看出活動現場。"
+        }
+      ],
+      "reject_criteria": [
+        {
+          "field": "public_use_status",
+          "op": "equals_any",
+          "value": ["avoid"],
+          "reason": "網站首頁不應使用 avoid。"
+        }
+      ]
+    },
+    {
+      "id": "ticket-social-energy",
+      "requester_agent": {
+        "id": "social-ticketing-requester",
+        "role": "社群與報名宣傳夥伴"
+      },
+      "finder_agent": {
+        "id": "metadata-search-finder",
+        "role": "只使用照片索引 metadata 找候選照片"
+      },
+      "judge_agent": {
+        "id": "social-ticketing-judge",
+        "role": "原始社群宣傳需求提出者"
+      },
+      "request": "索票或報名宣傳貼文需要一張熱鬧、有學生參與感的照片，讓人想加入現場。",
+      "real_world_reason": "SITCON 2026 官網有索票、邀請朋友與社群媒體入口，宣傳素材需要能呈現現場參與感。",
+      "query_terms": [
+        "報名宣傳 熱鬧 青春感",
+        "社群貼文 學生 會眾",
+        "排隊 報到 活力"
+      ],
+      "acceptance_criteria": [
+        {
+          "field": "recommended_uses",
+          "op": "includes_any",
+          "value": ["報名宣傳", "社群貼文"],
+          "required": true,
+          "reason": "用途必須適合社群或報名宣傳。"
+        },
+        {
+          "field": "mood_tags",
+          "op": "includes_any",
+          "value": ["熱鬧", "活力", "青春感", "友善"],
+          "required": true,
+          "reason": "宣傳貼文需要正向參與感。"
+        },
+        {
+          "field": "scene_tags",
+          "op": "includes_any",
+          "value": ["會眾", "排隊", "報到", "交流"],
+          "required": true,
+          "reason": "畫面要能看出參與者。"
+        },
+        {
+          "field": "people_count",
+          "op": "number_at_least",
+          "value": 3,
+          "required": false,
+          "reason": "多人畫面更像活動宣傳。"
+        }
+      ],
+      "reject_criteria": [
+        {
+          "field": "public_use_status",
+          "op": "equals_any",
+          "value": ["avoid"],
+          "reason": "社群宣傳不應預設使用 avoid。"
+        }
+      ]
+    },
+    {
+      "id": "volunteer-recruitment-backstage",
+      "requester_agent": {
+        "id": "volunteer-recruitment-requester",
+        "role": "志工招募夥伴"
+      },
+      "finder_agent": {
+        "id": "metadata-search-finder",
+        "role": "只使用照片索引 metadata 找候選照片"
+      },
+      "judge_agent": {
+        "id": "volunteer-recruitment-judge",
+        "role": "原始志工招募需求提出者"
+      },
+      "request": "志工招募頁需要一張工作人員一起處理現場任務的照片，要有幕後感但不要太混亂。",
+      "real_world_reason": "SITCON 由學生自發籌辦，志工與團隊是組織敘事核心，招募素材需要呈現協作與友善氛圍。",
+      "query_terms": [
+        "志工招募 工作人員 幕後感",
+        "場佈 報到 攝影",
+        "友善 協作"
+      ],
+      "acceptance_criteria": [
+        {
+          "field": "recommended_uses",
+          "op": "includes_any",
+          "value": ["志工招募"],
+          "required": true,
+          "reason": "必須適合志工招募。"
+        },
+        {
+          "field": "scene_tags",
+          "op": "includes_any",
+          "value": ["工作人員", "場佈", "報到", "攝影"],
+          "required": true,
+          "reason": "畫面要看得出志工工作情境。"
+        },
+        {
+          "field": "mood_tags",
+          "op": "includes_any",
+          "value": ["幕後感", "友善", "活力", "專注"],
+          "required": true,
+          "reason": "招募素材要呈現可加入的團隊氛圍。"
+        },
+        {
+          "field": "people_count",
+          "op": "number_at_least",
+          "value": 2,
+          "required": false,
+          "reason": "多人協作比單人工作更符合招募。"
+        }
+      ],
+      "reject_criteria": [
+        {
+          "field": "public_use_status",
+          "op": "equals_any",
+          "value": ["avoid"],
+          "reason": "招募素材不應預設使用 avoid。"
+        }
+      ]
+    },
+    {
+      "id": "press-keynote-stage",
+      "requester_agent": {
+        "id": "press-release-requester",
+        "role": "新聞稿與公關夥伴"
+      },
+      "finder_agent": {
+        "id": "metadata-search-finder",
+        "role": "只使用照片索引 metadata 找候選照片"
+      },
+      "judge_agent": {
+        "id": "press-release-judge",
+        "role": "原始新聞稿需求提出者"
+      },
+      "request": "新聞稿首圖需要一張講者在舞台或螢幕前演講的照片，畫面清楚、正式，能代表年會內容。",
+      "real_world_reason": "SITCON 官網以 keynote、論壇與議程作為主要內容入口，新聞稿需要清楚的演講或舞台照片。",
+      "query_terms": [
+        "新聞稿 講者 舞台",
+        "keynote 螢幕 專業",
+        "年會內容 演講"
+      ],
+      "acceptance_criteria": [
+        {
+          "field": "recommended_uses",
+          "op": "includes_any",
+          "value": ["新聞稿"],
+          "required": true,
+          "reason": "需要可作為新聞稿素材。"
+        },
+        {
+          "field": "scene_tags",
+          "op": "includes_any",
+          "value": ["講者", "舞台", "螢幕"],
+          "required": true,
+          "reason": "畫面要能代表議程或演講內容。"
+        },
+        {
+          "field": "subject_type",
+          "op": "equals_any",
+          "value": ["people"],
+          "required": false,
+          "reason": "新聞稿首圖通常需要明確人物主體。"
+        },
+        {
+          "field": "mood_tags",
+          "op": "includes_any",
+          "value": ["專業", "專注", "儀式感"],
+          "required": false,
+          "reason": "正式對外材料需偏專業。"
+        }
+      ],
+      "reject_criteria": [
+        {
+          "field": "public_use_status",
+          "op": "equals_any",
+          "value": ["avoid"],
+          "reason": "新聞稿首圖不應預設使用 avoid。"
+        }
+      ]
+    },
+    {
+      "id": "speaker-promo-card",
+      "requester_agent": {
+        "id": "program-speaker-requester",
+        "role": "議程與講者宣傳夥伴"
+      },
+      "finder_agent": {
+        "id": "metadata-search-finder",
+        "role": "只使用照片索引 metadata 找候選照片"
+      },
+      "judge_agent": {
+        "id": "program-speaker-judge",
+        "role": "原始講者宣傳需求提出者"
+      },
+      "request": "講者宣傳卡需要一張單人或少人講者照，能安全裁成 1:1 或 16:9，不要是遠景群眾。",
+      "real_world_reason": "SITCON 官網會展示議程與邀請講者，講者宣傳需要可裁切且主體清楚的照片。",
+      "query_terms": [
+        "講者宣傳 單人 少人",
+        "講者 1:1 16:9",
+        "社群貼文"
+      ],
+      "acceptance_criteria": [
+        {
+          "field": "recommended_uses",
+          "op": "includes_any",
+          "value": ["講者宣傳", "社群貼文"],
+          "required": true,
+          "reason": "用途需支援講者宣傳或社群卡。"
+        },
+        {
+          "field": "scene_tags",
+          "op": "includes_any",
+          "value": ["講者"],
+          "required": true,
+          "reason": "畫面要明確是講者。"
+        },
+        {
+          "field": "people_count",
+          "op": "number_between",
+          "value": [1, 3],
+          "required": true,
+          "reason": "講者卡需要單人或少人，不要大群眾。"
+        },
+        {
+          "field": "safe_crop",
+          "op": "includes_any",
+          "value": ["1:1", "16:9"],
+          "required": true,
+          "reason": "需要能裁成社群或網站常用比例。"
+        }
+      ],
+      "reject_criteria": [
+        {
+          "field": "public_use_status",
+          "op": "equals_any",
+          "value": ["avoid"],
+          "reason": "講者宣傳不應預設使用 avoid。"
+        }
+      ]
+    },
+    {
+      "id": "education-camp-hoc-recap",
+      "requester_agent": {
+        "id": "education-outreach-requester",
+        "role": "Camp / Hour of Code 教育推廣夥伴"
+      },
+      "finder_agent": {
+        "id": "metadata-search-finder",
+        "role": "只使用照片索引 metadata 找候選照片"
+      },
+      "judge_agent": {
+        "id": "education-outreach-judge",
+        "role": "原始教育推廣需求提出者"
+      },
+      "request": "教育推廣簡報需要一張 Camp 或 Hour of Code 中學生正在工作坊、手作或討論的照片。",
+      "real_world_reason": "SITCON 長期舉辦夏令營與 Hour of Code，教育推廣素材需要呈現學習、交流與入門友善。",
+      "query_terms": [
+        "Camp Hour of Code 工作坊",
+        "教育推廣 學生 手作",
+        "專注 友善 溫暖"
+      ],
+      "acceptance_criteria": [
+        {
+          "field": "recommended_uses",
+          "op": "includes_any",
+          "value": ["活動回顧", "社群介紹", "簡報"],
+          "required": true,
+          "reason": "需要可放在回顧或教育推廣簡報。"
+        },
+        {
+          "field": "scene_tags",
+          "op": "includes_any",
+          "value": ["工作坊", "手作", "兒童", "會眾", "交流"],
+          "required": true,
+          "reason": "畫面要看得出學習或互動。"
+        },
+        {
+          "field": "album_title",
+          "op": "text_contains_any",
+          "value": ["Camp", "Hour of Code", "HOC"],
+          "required": true,
+          "reason": "需求指定 Camp 或 Hour of Code 脈絡。"
+        },
+        {
+          "field": "mood_tags",
+          "op": "includes_any",
+          "value": ["專注", "友善", "溫暖", "青春感"],
+          "required": false,
+          "reason": "教育推廣需要正向學習氛圍。"
+        }
+      ],
+      "reject_criteria": [
+        {
+          "field": "public_use_status",
+          "op": "equals_any",
+          "value": ["avoid"],
+          "reason": "教育推廣素材不應預設使用 avoid。"
+        }
+      ]
+    },
+    {
+      "id": "sponsor-food-touchpoint",
+      "requester_agent": {
+        "id": "sponsor-fulfillment-requester",
+        "role": "贊助履約與成果整理夥伴"
+      },
+      "finder_agent": {
+        "id": "metadata-search-finder",
+        "role": "只使用照片索引 metadata 找候選照片"
+      },
+      "judge_agent": {
+        "id": "sponsor-fulfillment-judge",
+        "role": "原始贊助履約需求提出者"
+      },
+      "request": "成果報告需要一張餐點、茶點或點心旗相關照片，證明參與者體驗與品牌露出。",
+      "real_world_reason": "SITCON 2026 CFS 包含午餐旗、點心旗等參與者體驗與品牌曝光品項。",
+      "query_terms": [
+        "午餐旗 點心旗 茶點",
+        "贊助成果 參與者體驗",
+        "品牌露出 餐點"
+      ],
+      "acceptance_criteria": [
+        {
+          "field": "recommended_uses",
+          "op": "includes_any",
+          "value": ["贊助成果報告", "贊助提案"],
+          "required": true,
+          "reason": "需要能放進贊助成果或提案。"
+        },
+        {
+          "field": "scene_tags",
+          "op": "includes_any",
+          "value": ["茶點"],
+          "required": true,
+          "reason": "畫面要包含餐點或茶點。"
+        },
+        {
+          "field": "sponsorship_items",
+          "op": "includes_any",
+          "value": ["午餐旗、點心旗"],
+          "required": false,
+          "reason": "若能直接標到 CFS 品項，履約佐證更強。"
+        },
+        {
+          "field": "sponsorship_tags",
+          "op": "includes_any",
+          "value": ["參與者體驗", "品牌露出", "贊助成果佐證"],
+          "required": false,
+          "reason": "需要能表達贊助價值。"
+        }
+      ],
+      "reject_criteria": [
+        {
+          "field": "public_use_status",
+          "op": "equals_any",
+          "value": ["avoid"],
+          "reason": "贊助履約素材不應預設使用 avoid。"
+        }
+      ]
+    },
+    {
+      "id": "demo-project-showcase",
+      "requester_agent": {
+        "id": "program-demo-requester",
+        "role": "Demo 展與投稿宣傳夥伴"
+      },
+      "finder_agent": {
+        "id": "metadata-search-finder",
+        "role": "只使用照片索引 metadata 找候選照片"
+      },
+      "judge_agent": {
+        "id": "program-demo-judge",
+        "role": "原始 Demo 展需求提出者"
+      },
+      "request": "Demo 展或投稿宣傳需要一張學生展示作品、螢幕、手作或互動應用的照片，能呈現成就感。",
+      "real_world_reason": "SITCON 2026 官網新增 Demo 展，描述現場專案演示、互動應用、機器人、海報與短影音。",
+      "query_terms": [
+        "Demo 展 投稿宣傳",
+        "學生專案 螢幕 手作",
+        "互動 成就感"
+      ],
+      "acceptance_criteria": [
+        {
+          "field": "recommended_uses",
+          "op": "includes_any",
+          "value": ["投稿宣傳", "活動回顧", "社群貼文"],
+          "required": true,
+          "reason": "需能作為投稿或活動宣傳。"
+        },
+        {
+          "field": "scene_tags",
+          "op": "includes_any",
+          "value": ["攤位", "手作", "工作坊", "螢幕", "交流"],
+          "required": true,
+          "reason": "需呈現展示、作品或互動場景。"
+        },
+        {
+          "field": "mood_tags",
+          "op": "includes_any",
+          "value": ["成就感", "專注", "交流感", "活力"],
+          "required": false,
+          "reason": "Demo 展素材需要有作品完成或互動氛圍。"
+        }
+      ],
+      "reject_criteria": [
+        {
+          "field": "public_use_status",
+          "op": "equals_any",
+          "value": ["avoid"],
+          "reason": "宣傳素材不應預設使用 avoid。"
+        }
+      ]
+    },
+    {
+      "id": "community-intro-friendly-crowd",
+      "requester_agent": {
+        "id": "community-intro-requester",
+        "role": "社群介紹與簡報夥伴"
+      },
+      "finder_agent": {
+        "id": "metadata-search-finder",
+        "role": "只使用照片索引 metadata 找候選照片"
+      },
+      "judge_agent": {
+        "id": "community-intro-judge",
+        "role": "原始社群介紹需求提出者"
+      },
+      "request": "對外介紹 SITCON 需要一張多人互動、友善、有學生社群感的照片，不要只是空場地。",
+      "real_world_reason": "SITCON 官網與 CFS 都強調學生社群、交流、夥伴關係與長期教育推廣。",
+      "query_terms": [
+        "社群介紹 多人互動",
+        "學生社群 友善 交流感",
+        "合照 會眾"
+      ],
+      "acceptance_criteria": [
+        {
+          "field": "recommended_uses",
+          "op": "includes_any",
+          "value": ["社群介紹", "簡報", "活動回顧"],
+          "required": true,
+          "reason": "需要能用於對外社群介紹。"
+        },
+        {
+          "field": "scene_tags",
+          "op": "includes_any",
+          "value": ["交流", "會眾", "合照"],
+          "required": true,
+          "reason": "畫面要有人與人互動或社群集合。"
+        },
+        {
+          "field": "mood_tags",
+          "op": "includes_any",
+          "value": ["友善", "交流感", "青春感", "溫暖"],
+          "required": true,
+          "reason": "社群介紹需要友善與學生感。"
+        },
+        {
+          "field": "people_count",
+          "op": "number_at_least",
+          "value": 4,
+          "required": false,
+          "reason": "多人畫面更能代表社群。"
+        }
+      ],
+      "reject_criteria": [
+        {
+          "field": "subject_type",
+          "op": "equals_any",
+          "value": ["space"],
+          "reason": "空場地不符合社群介紹需求。"
+        },
+        {
+          "field": "public_use_status",
+          "op": "equals_any",
+          "value": ["avoid"],
+          "reason": "對外介紹素材不應預設使用 avoid。"
+        }
+      ]
+    },
+    {
+      "id": "venue-navigation-signage",
+      "requester_agent": {
+        "id": "operations-recap-requester",
+        "role": "場務與活動回顧夥伴"
+      },
+      "finder_agent": {
+        "id": "metadata-search-finder",
+        "role": "只使用照片索引 metadata 找候選照片"
+      },
+      "judge_agent": {
+        "id": "operations-recap-judge",
+        "role": "原始場務回顧需求提出者"
+      },
+      "request": "活動回顧或場務簡報需要一張清楚的指標、報到處、排隊或場地照片，能說明現場動線。",
+      "real_world_reason": "SITCON 官網提供會場地圖、索票與現場資訊，內部回顧也常需要場務動線素材。",
+      "query_terms": [
+        "場務 指標 報到",
+        "排隊 場地 動線",
+        "活動回顧"
+      ],
+      "acceptance_criteria": [
+        {
+          "field": "recommended_uses",
+          "op": "includes_any",
+          "value": ["活動回顧", "簡報"],
+          "required": true,
+          "reason": "需要能用於回顧或內部簡報。"
+        },
+        {
+          "field": "scene_tags",
+          "op": "includes_any",
+          "value": ["指標", "報到", "排隊", "場地", "背板"],
+          "required": true,
+          "reason": "畫面要能說明現場動線或場地配置。"
+        },
+        {
+          "field": "subject_type",
+          "op": "equals_any",
+          "value": ["text_signage", "space", "people"],
+          "required": false,
+          "reason": "指標、空間或排隊人潮都可接受。"
+        }
+      ],
+      "reject_criteria": [
+        {
+          "field": "public_use_status",
+          "op": "equals_any",
+          "value": ["avoid"],
+          "reason": "回顧素材不應預設使用 avoid。"
+        }
+      ]
+    }
+  ]
+}

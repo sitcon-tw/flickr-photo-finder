@@ -180,6 +180,7 @@ pnpm finder:check
 - 外部 AI 或 metadata 輔助：先依任務判斷讀者角色；模型標記以 run 目錄的 `ai-labeling-prompt.md` 與 `docs/ai-labeling-contract.md` 為主，操作者流程再讀 `docs/ai-labeling-operator-guide.md`，prompt 或 schema 決策再讀 `docs/adr/0010-ai-prompt-review-governance.md`，公開資料取用再讀 `docs/ai-readable-dataset.md`
 - Apps Script：`docs/apps-script-maintenance-design.md`
 - 共用值治理：`docs/shared-value-governance.md`
+- 真實找圖 metadata 評估：`docs/finder-evaluation.md`
 - 人工填寫欄位：`docs/data-entry-guide.md`、`docs/photo-fields-reference.md`
 - 維運交接與事故分流：`docs/operations-handoff-checklist.md`、`docs/troubleshooting.md`
 - 產品定位與欄位邊界：`docs/adr/0008-photo-index-product-boundary.md`、`docs/adr/0009-photo-metadata-field-boundaries.md`

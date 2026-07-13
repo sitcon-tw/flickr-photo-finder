@@ -54,6 +54,7 @@ flowchart TD
 | 我要跑 AI 搜尋級標記 | `pnpm workflow` | 從 AI prepare 流程建立 `tmp/ai-runs/` 工作包；模型輸出合約看 `docs/ai-labeling-contract.md`。direct run 需要逐張 `photo-artifacts/` 並由 `ai:artifacts:merge` 合併，不能用 contact sheet 或多圖截圖判讀。 |
 | 我要確認 AI 建議能不能採用 | `docs/ai-labeling-operator-guide.md` | 實際檢查候選值用 `pnpm ai:review -- --run-dir <dir>`；AI 候選值不等於 `reviewed`。 |
 | 我要比較模型、prompt 或搜尋增益 | `pnpm eval` | 這是評估入口，不是一般照片整理主線；需要多角色 prompt 決策包時用 `pnpm eval -- --task prompt-review` 或 `pnpm eval:prompt-review`。 |
+| 我要驗證真實找圖需求的 metadata 可檢索性 | `pnpm eval -- --task finder-scenarios` | 先讀 `docs/finder-evaluation.md`；自動判定不看原圖，也不等同公開 Finder 排序或人工可用性驗收。 |
 
 ### 維護與開發
 
@@ -202,7 +203,7 @@ flowchart TD
 - 公開前端：本機預覽用 `pnpm finder:dev`、fixture 模式用 `pnpm finder:dev:fixture`、正式匯出快取模式用 `pnpm finder:dev:export`；部署 artifact 用 `pnpm finder:build` 與 `pnpm finder:check`；前端純邏輯回歸用 `pnpm finder:test`。
 - Sheets 與資料品質：公開讀取檢查用 `pnpm sheets:check`；正式工作快取用 `pnpm sheets:export`；正式資料健康度用 `pnpm sheets:report`；初始化、header 遷移、欄位值遷移、taxonomy、使用說明、練習表與 intake/AI 回寫流程都從 `docs/sheets-sync-workflow.md` 選正確 dry-run/write 路徑。
 - Flickr 相簿與 intake：相簿盤點、清單、選擇與同步由 `albums:*` 工具處理；正式匯入工作包由 `pnpm intake:run` 建立，`pnpm intake:validate` 檢查，再由 `pnpm sheets:apply-intake` dry-run/write 套用。
-- AI 標記與評估：AI run 準備、驗證、review、report、diff、plan、bulk/shard 狀態與 Sheets dry-run/write 由 `ai:*` 工具處理；模型/輪次 attempt、跨活動 sample、搜尋增益與 prompt review 決策包由 `eval:*` 工具處理。操作順序以 `docs/ai-labeling-operator-guide.md` 和 `docs/ai-labeling-contract.md` 為準。
+- AI 標記與評估：AI run 準備、驗證、review、report、diff、plan、bulk/shard 狀態與 Sheets dry-run/write 由 `ai:*` 工具處理；模型/輪次 attempt、跨活動 sample、搜尋增益、真實找圖 metadata 基準評估與 prompt review 決策包由 `eval:*` 工具處理。AI 標記操作以 `docs/ai-labeling-operator-guide.md` 和 `docs/ai-labeling-contract.md` 為準；找圖評估以 `docs/finder-evaluation.md` 為準。
 - Apps Script：GeneratedConfig 由 `pnpm apps-script:build-config` 產生；clasp target、status、push、deployments 由 `apps-script:*` wrapper 依 `config/project.json` 解析，正式表是預設 target，練習表必須明確指定 `--target practice`。
 - GA4：事件設計先看 `docs/frontend-analytics-design.md`；custom dimensions 與後台權限操作看 `docs/ga4-operations.md`，repo 端檢查與同步由 `analytics:dimensions:*` scripts 包裝。
 
@@ -233,6 +234,7 @@ flowchart TD
 - `apps-script-maintenance-design.md`: Apps Script 維護輔助與 `clasp` 部署原則。
 - `public-frontend-architecture.md`: GitHub Pages 唯讀前端資料流、本機開發資料來源與部署 artifact runbook。
 - `frontend-analytics-design.md`: 前端使用行為分析目的、GA4 事件設計、實作前檢查與後續分析流程。
+- `finder-evaluation.md`: 真實找圖 metadata 基準評估、候選產生、輸入 provenance 與人工看圖驗收邊界。
 - `ga4-operations.md`: GA4 後台操作、service account 權限、custom dimensions 與 BigQuery 延後策略。
 - `operations-handoff-checklist.md`: 不含 credential 的維運交接清單，列出正式 Sheets、service account、Apps Script、GitHub Pages、GA4 與 dry-run 驗證方式。
 - `troubleshooting.md`: Pages、Sheets、Apps Script、AI run、clasp 與 GA4 常見事故的症狀分流、檢查命令與修復入口。
