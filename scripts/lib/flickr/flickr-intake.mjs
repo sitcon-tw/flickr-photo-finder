@@ -108,11 +108,6 @@ export function filterNewPhotos(normalizedPhotos, existingIds) {
 export async function buildCsvRows(normalizedPhotos, defaults = {}, options = {}) {
   const rows = [];
   for (const [index, { photoId, photoUrl }] of normalizedPhotos.entries()) {
-    options.onProgress?.({
-      current: index + 1,
-      photoId,
-      total: normalizedPhotos.length,
-    });
     const oembed = await fetchOEmbed(photoUrl);
     assertRequiredOEmbedData(oembed);
     const flickrTitle = oembed.title ?? "";
@@ -130,6 +125,11 @@ export async function buildCsvRows(normalizedPhotos, defaults = {}, options = {}
       curation_status: "unreviewed",
     };
     rows.push(toCsvRow(photo));
+    options.onProgress?.({
+      current: index + 1,
+      photoId,
+      total: normalizedPhotos.length,
+    });
   }
   return rows;
 }

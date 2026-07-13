@@ -13,6 +13,7 @@ import {
 } from "../lib/flickr/flickr-intake.mjs";
 import { toCsvLine } from "../lib/core/csv-utils.mjs";
 import { albumHeaders, importBatchHeaders, photoHeaders } from "../lib/core/photo-schema.mjs";
+import { createProgressThrottle } from "../lib/core/progress.mjs";
 import { sheetsExportAlbumsPath, sheetsExportPhotosPath } from "../lib/core/workflow-paths.mjs";
 
 function printUsage() {
@@ -243,16 +244,30 @@ async function main() {
   console.error(`Progress: ${missingPhotos.length} new photo(s), ${existingCount} already indexed.`);
 
   console.error(`Progress: fetching Flickr metadata for ${missingPhotos.length} new photo(s).`);
+  let completedMetadataCount = 0;
+  let lastMetadataPhotoId = "";
+  const shouldPrintMetadataProgress = createProgressThrottle();
+
+  function printMetadataProgress({ force = false } = {}) {
+    if (!shouldPrintMetadataProgress(completedMetadataCount, { force })) {
+      return;
+    }
+    console.error(`Progress: photo metadata ${completedMetadataCount}/${missingPhotos.length} complete (${lastMetadataPhotoId}).`);
+  }
+
   const rows = await buildCsvRows(missingPhotos, {
     album_title: album.album_title ?? "",
     album_ids: albumId,
     event_name: album.event_name ?? "",
     event_year: album.event_year ?? "",
   }, {
-    onProgress: ({ current, photoId, total }) => {
-      console.error(`Progress: photo metadata ${current}/${total} (${photoId}).`);
+    onProgress: ({ current, photoId }) => {
+      completedMetadataCount = current;
+      lastMetadataPhotoId = photoId;
+      printMetadataProgress();
     },
   });
+  printMetadataProgress({ force: true });
   const csv = toPhotoCsv(rows);
 
   if (options.output) {
