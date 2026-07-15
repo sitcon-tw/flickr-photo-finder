@@ -14,10 +14,11 @@ const defaultRunsDir = "tmp/intake-runs";
 
 function printUsage() {
   console.log(`Usage:
-  pnpm intake:run -- --album <album-id> [options]
+  pnpm intake:run -- (--album <album-id> | --all-albums) [options]
 
 Options:
   --album <value>         Album ID from the albums CSV. Flickr album URLs are accepted for debugging.
+  --all-albums            Build a complete ordered membership baseline for every catalog album.
   --albums <path>         Google Sheets albums CSV export or local fixture. Default: tmp/sheets-export/albums.csv.
   --photos-export <path>  Current Google Sheets photos CSV export for duplicate detection. Default: tmp/sheets-export/photos.csv.
   --input <html-file>     Read saved Flickr album HTML instead of fetching the album page.
@@ -31,6 +32,7 @@ Each run writes:
   photos-to-append.csv
   albums-updated.csv
   import-batch.csv
+  reconciliation.json
   summary.json`);
 }
 
@@ -39,6 +41,7 @@ function parseArgs(argv) {
     args: argv.slice(2),
     options: {
       album: { type: "string" },
+      "all-albums": { type: "boolean" },
       albums: { type: "string" },
       "photos-export": { type: "string" },
       input: { type: "string" },
@@ -52,6 +55,7 @@ function parseArgs(argv) {
   });
   const options = {
     album: values.album ?? "",
+    allAlbums: values["all-albums"] ?? false,
     albums: values.albums ?? sheetsExportAlbumsPath,
     help: values.help ?? false,
     importedAt: values["imported-at"] ?? "",
@@ -64,8 +68,8 @@ function parseArgs(argv) {
   };
 
   if (!options.help) {
-    if (!options.album) {
-      throw new Error("--album requires an album ID or Flickr album URL");
+    if (Boolean(options.album) === options.allAlbums) {
+      throw new Error("Pass exactly one of --album or --all-albums");
     }
     if (!options.albums) {
       throw new Error("--albums requires a path");
@@ -94,7 +98,7 @@ function getCell(record, header) {
   return index >= 0 ? record[index] ?? "" : "";
 }
 
-async function readImportBatch(path) {
+async function readImportBatches(path) {
   const csv = await readFile(path, "utf8");
   const [headers, ...rows] = parseCsv(csv);
   if (!headers) {
@@ -103,10 +107,7 @@ async function readImportBatch(path) {
   if (headers.join(",") !== importBatchHeaders.join(",")) {
     throw new Error(`${path} headers do not match import_batches schema`);
   }
-  if (rows.length !== 1) {
-    throw new Error(`${path} should contain exactly one import batch row`);
-  }
-  return rows[0];
+  return rows;
 }
 
 function runPhotoImport(args) {
@@ -132,8 +133,11 @@ async function main() {
   }
 
   const createdAt = options.importedAt || new Date().toISOString();
-  console.error(`Progress: resolving album ${options.album}.`);
-  const { albumId, albumUrl } = await resolveAlbumInput(options.album, options.albums);
+  console.error(`Progress: resolving ${options.allAlbums ? "complete album catalog" : `album ${options.album}`}.`);
+  const resolved = options.allAlbums
+    ? { albumId: "catalog", albumUrl: "" }
+    : await resolveAlbumInput(options.album, options.albums);
+  const { albumId, albumUrl } = resolved;
   console.error(`Progress: reading album catalog from ${options.albums}.`);
   const albums = await readAlbumCatalog(options.albums);
   const album = albums.find((item) => item.album_id === albumId) ?? {};
@@ -142,6 +146,7 @@ async function main() {
   const photosOutput = join(runDir, "photos-to-append.csv");
   const albumsOutput = join(runDir, "albums-updated.csv");
   const batchOutput = join(runDir, "import-batch.csv");
+  const reconciliationOutput = join(runDir, "reconciliation.json");
   const summaryOutput = join(runDir, "summary.json");
 
   console.error(`Progress: creating intake run directory ${runDir}.`);
@@ -149,8 +154,7 @@ async function main() {
   await mkdir(runDir);
 
   const photoImportArgs = [
-    "--album",
-    albumId,
+    ...(options.allAlbums ? ["--all-albums"] : ["--album", albumId]),
     "--albums",
     options.albums,
     "--photos-export",
@@ -161,6 +165,8 @@ async function main() {
     albumsOutput,
     "--batch-output",
     batchOutput,
+    "--reconciliation-output",
+    reconciliationOutput,
     "--imported-at",
     createdAt,
     "--source-tool",
@@ -179,23 +185,35 @@ async function main() {
 
   runPhotoImport(photoImportArgs);
 
-  console.error(`Progress: reading generated import batch from ${batchOutput}.`);
-  const batch = await readImportBatch(batchOutput);
+  console.error(`Progress: reading generated reconciliation artifacts.`);
+  const [batches, reconciliation] = await Promise.all([
+    readImportBatches(batchOutput),
+    readFile(reconciliationOutput, "utf8").then(JSON.parse),
+  ]);
+  const batch = batches[0] ?? [];
+  const foundPhotoCount = options.allAlbums
+    ? reconciliation.desired_photo_ids.length
+    : Number(getCell(batch, "found_photo_count"));
   const summary = {
     run_id: runId,
     created_at: createdAt,
-    album_id: albumId,
+    scope: reconciliation.scope,
+    album_id: options.allAlbums ? "" : albumId,
     album_url: albumUrl,
     album_title: album.album_title ?? "",
     operator: options.operator,
     source_tool: "pnpm intake:run",
-    found_photo_count: Number(getCell(batch, "found_photo_count")),
-    new_photo_count: Number(getCell(batch, "new_photo_count")),
-    skipped_photo_count: Number(getCell(batch, "skipped_photo_count")),
+    found_photo_count: foundPhotoCount,
+    new_photo_count: reconciliation.counts.new,
+    skipped_photo_count: foundPhotoCount - reconciliation.counts.new,
+    membership_update_count: reconciliation.counts.membership_updated,
+    deleted_photo_count: reconciliation.counts.deleted,
+    reordered_photo_count: reconciliation.counts.reordered,
     outputs: {
       photos_to_append: photosOutput,
       albums_updated: albumsOutput,
       import_batch: batchOutput,
+      reconciliation: reconciliationOutput,
       summary: summaryOutput,
     },
   };

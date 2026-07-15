@@ -1,6 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import { basename, join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { parseArgs as parseNodeArgs } from "node:util";
 import { parseCsv } from "../lib/core/csv-utils.mjs";
 import { albumHeaders, importBatchHeaders, photoHeaders } from "../lib/core/photo-schema.mjs";
@@ -9,6 +10,7 @@ const expectedOutputs = {
   photos_to_append: "photos-to-append.csv",
   albums_updated: "albums-updated.csv",
   import_batch: "import-batch.csv",
+  reconciliation: "reconciliation.json",
   summary: "summary.json",
 };
 
@@ -81,10 +83,13 @@ async function readCsvRows(path, expectedHeaders) {
 
 async function readSummary(path) {
   const summary = JSON.parse(await readFile(path, "utf8"));
-  for (const field of ["run_id", "created_at", "album_id", "album_url", "source_tool", "outputs"]) {
+  for (const field of ["run_id", "created_at", "scope", "source_tool", "outputs"]) {
     if (!summary[field]) {
       throw new Error(`${path} is missing ${field}`);
     }
+  }
+  if (summary.scope === "album" && (!summary.album_id || !summary.album_url)) {
+    throw new Error(`${path} album scope requires album_id and album_url`);
   }
 
   for (const [key, expectedFile] of Object.entries(expectedOutputs)) {
@@ -100,6 +105,30 @@ async function readSummary(path) {
   return summary;
 }
 
+async function readReconciliation(path) {
+  const reconciliation = JSON.parse(await readFile(path, "utf8"));
+  if (reconciliation.artifact_version !== 1) {
+    throw new Error(`${path} has unsupported artifact_version`);
+  }
+  if (!["album", "catalog"].includes(reconciliation.scope)) {
+    throw new Error(`${path} has invalid scope`);
+  }
+  for (const field of ["album_order", "album_photos", "desired_photo_ids", "membership_updates", "deleted_photo_ids", "new_photo_ids"]) {
+    if (!Array.isArray(reconciliation[field])) {
+      throw new Error(`${path} ${field} should be an array`);
+    }
+  }
+  if (!/^[0-9a-f]{64}$/.test(reconciliation.source_state_sha256 ?? "")) {
+    throw new Error(`${path} source_state_sha256 is invalid`);
+  }
+  for (const field of ["desired_photo_ids", "deleted_photo_ids", "new_photo_ids"]) {
+    if (new Set(reconciliation[field]).size !== reconciliation[field].length) {
+      throw new Error(`${path} ${field} contains duplicate photo IDs`);
+    }
+  }
+  return reconciliation;
+}
+
 function toRecord(headers, row) {
   return Object.fromEntries(headers.map((header, index) => [header, row[index] ?? ""]));
 }
@@ -110,79 +139,85 @@ function assertNumberEquals(label, actual, expected) {
   }
 }
 
-async function main() {
-  const options = parseArgs(process.argv);
-  if (options.help) {
-    printUsage();
-    return;
-  }
-
+export async function validateIntakeRun(runDir, { validateCsv = true } = {}) {
   const paths = {
-    photos: join(options.runDir, expectedOutputs.photos_to_append),
-    albums: join(options.runDir, expectedOutputs.albums_updated),
-    importBatches: join(options.runDir, expectedOutputs.import_batch),
-    summary: join(options.runDir, expectedOutputs.summary),
+    photos: join(runDir, expectedOutputs.photos_to_append),
+    albums: join(runDir, expectedOutputs.albums_updated),
+    importBatches: join(runDir, expectedOutputs.import_batch),
+    reconciliation: join(runDir, expectedOutputs.reconciliation),
+    summary: join(runDir, expectedOutputs.summary),
   };
 
-  validateData({
-    photosPath: paths.photos,
-    albumsPath: paths.albums,
-    importBatchesPath: paths.importBatches,
-  });
+  if (validateCsv) {
+    validateData({
+      photosPath: paths.photos,
+      albumsPath: paths.albums,
+      importBatchesPath: paths.importBatches,
+    });
+  }
 
-  const [photoRows, albumRows, importBatchRows, summary] = await Promise.all([
+  const [photoRows, albumRows, importBatchRows, reconciliation, summary] = await Promise.all([
     readCsvRows(paths.photos, photoHeaders),
     readCsvRows(paths.albums, albumHeaders),
     readCsvRows(paths.importBatches, importBatchHeaders),
+    readReconciliation(paths.reconciliation),
     readSummary(paths.summary),
   ]);
 
-  if (importBatchRows.length !== 1) {
-    throw new Error(`${paths.importBatches} should contain exactly one import batch row`);
+  if (summary.scope !== reconciliation.scope) {
+    throw new Error(`summary scope does not match reconciliation scope`);
+  }
+  const expectedBatchCount = reconciliation.scope === "album" ? 1 : reconciliation.album_photos.length;
+  if (importBatchRows.length !== expectedBatchCount) {
+    throw new Error(`${paths.importBatches} should contain ${expectedBatchCount} import batch row(s)`);
   }
 
-  const batch = toRecord(importBatchHeaders, importBatchRows[0]);
-  const updatedAlbum = albumRows
-    .map((row) => toRecord(albumHeaders, row))
-    .find((album) => album.album_id === summary.album_id);
-
-  if (!updatedAlbum) {
-    throw new Error(`${paths.albums} does not contain album_id ${summary.album_id}`);
+  const batches = importBatchRows.map((row) => toRecord(importBatchHeaders, row));
+  const albums = albumRows.map((row) => toRecord(albumHeaders, row));
+  for (const inventory of reconciliation.album_photos) {
+    const batch = batches.find((item) => item.album_id === inventory.album_id);
+    const updatedAlbum = albums.find((item) => item.album_id === inventory.album_id);
+    if (!batch || !updatedAlbum) {
+      throw new Error(`Missing album or import batch for ${inventory.album_id}`);
+    }
+    if (batch.imported_at !== summary.created_at || updatedAlbum.last_processed_at !== summary.created_at) {
+      throw new Error(`Reconciliation timestamp mismatch for ${inventory.album_id}`);
+    }
+    assertNumberEquals(`${inventory.album_id} found_photo_count`, batch.found_photo_count, inventory.photo_ids.length);
+    assertNumberEquals(`${inventory.album_id} photo_count`, updatedAlbum.photo_count, inventory.photo_ids.length);
   }
 
-  if (batch.album_id !== summary.album_id) {
-    throw new Error(`summary album_id ${summary.album_id} does not match import batch ${batch.album_id}`);
+  const appendedPhotoIds = photoRows.map((row) => toRecord(photoHeaders, row).photo_id);
+  if (appendedPhotoIds.join(",") !== reconciliation.new_photo_ids.join(",")) {
+    throw new Error(`photos-to-append photo IDs do not match reconciliation.new_photo_ids`);
   }
-  if (batch.album_url !== summary.album_url) {
-    throw new Error(`summary album_url does not match import batch album_url`);
-  }
-  if (batch.imported_at !== summary.created_at) {
-    throw new Error(`summary created_at does not match import batch imported_at`);
-  }
-  if (updatedAlbum.last_processed_at !== summary.created_at) {
-    throw new Error(`albums-updated last_processed_at does not match summary created_at`);
-  }
-
   assertNumberEquals("summary.new_photo_count", summary.new_photo_count, photoRows.length);
-  assertNumberEquals("batch.new_photo_count", batch.new_photo_count, photoRows.length);
-  assertNumberEquals("summary.found_photo_count", summary.found_photo_count, batch.found_photo_count);
-  assertNumberEquals("summary.skipped_photo_count", summary.skipped_photo_count, batch.skipped_photo_count);
+  assertNumberEquals("summary.membership_update_count", summary.membership_update_count, reconciliation.counts.membership_updated);
+  assertNumberEquals("summary.deleted_photo_count", summary.deleted_photo_count, reconciliation.counts.deleted);
+  assertNumberEquals("summary.reordered_photo_count", summary.reordered_photo_count, reconciliation.counts.reordered);
 
-  const foundCount = Number(batch.found_photo_count);
-  const newCount = Number(batch.new_photo_count);
-  const skippedCount = Number(batch.skipped_photo_count);
-  if (foundCount !== newCount + skippedCount) {
-    throw new Error(`found_photo_count should equal new_photo_count + skipped_photo_count`);
+  for (const batch of batches) {
+    if (Number(batch.found_photo_count) !== Number(batch.new_photo_count) + Number(batch.skipped_photo_count)) {
+      throw new Error(`${batch.album_id} found_photo_count should equal new_photo_count + skipped_photo_count`);
+    }
   }
 
   console.log(
-    `Intake run ${summary.run_id} is valid (${newCount} new, ${skippedCount} skipped, ${foundCount} found).`,
+    `Intake run ${summary.run_id} is valid (${summary.new_photo_count} new, ${summary.membership_update_count} membership update(s), ${summary.deleted_photo_count} deleted, ${summary.reordered_photo_count} reordered).`,
   );
+  return { reconciliation, summary };
 }
 
-try {
-  await main();
-} catch (error) {
-  console.error(`Could not validate intake run: ${error.message}`);
-  process.exitCode = 1;
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+  try {
+    const options = parseArgs(process.argv);
+    if (options.help) {
+      printUsage();
+    } else {
+      await validateIntakeRun(options.runDir);
+    }
+  } catch (error) {
+    console.error(`Could not validate intake run: ${error.message}`);
+    process.exitCode = 1;
+  }
 }
