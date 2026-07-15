@@ -3,7 +3,7 @@
   "private": true,
   "license": "Apache-2.0",
   "type": "module",
-  "packageManager": "pnpm@10.18.0",
+  "packageManager": "pnpm@11.13.0",
   "scripts": {
     "preinstall": "node scripts/commands/ensure-pnpm.mjs",
     "start": "pnpm workflow",
