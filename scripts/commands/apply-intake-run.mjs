@@ -24,10 +24,10 @@ Options:
   --write                Apply changes. Without this flag the command only performs a dry-run.
   --help, -h             Show this help.
 
-This command appends new photos, appends a missing album or updates its
-last_processed_at, and appends one import_batches row. It refuses to write if
-target headers do not match the repo schema or duplicate photo_id / batch_id
-values are detected. The process environment must set
+This command appends new photos, adds a missing album in Flickr catalog order
+or updates its last_processed_at, and appends one import_batches row. It
+refuses to write if target headers do not match the repo schema or duplicate
+photo_id / batch_id values are detected. The process environment must set
 GOOGLE_APPLICATION_CREDENTIALS to a service account credential with access to
 the target spreadsheet.`);
 }
@@ -131,6 +131,7 @@ async function readRunArtifacts(runDir) {
 
   return {
     albumRecord: toRecord(albumHeaders, updatedAlbumRow),
+    albumRows,
     importBatchRow: importBatchRows[0],
     importBatchRecord: toRecord(importBatchHeaders, importBatchRows[0]),
     paths,
@@ -183,6 +184,19 @@ function collectColumnValues(rows, headers, headerName) {
   return new Set(rows.slice(1).map((row) => row[index] ?? "").filter(Boolean));
 }
 
+function planNewAlbumRowMove(currentAlbumIds, artifactAlbumIds, albumId) {
+  const artifactIndex = artifactAlbumIds.indexOf(albumId);
+  const currentAlbumIdSet = new Set(currentAlbumIds);
+  const destinationIndex = artifactAlbumIds
+    .slice(0, artifactIndex)
+    .filter((id) => currentAlbumIdSet.has(id)).length + 1;
+  const sourceIndex = currentAlbumIds.length + 1;
+
+  return sourceIndex === destinationIndex
+    ? null
+    : { albumId, destinationIndex, sourceIndex };
+}
+
 export async function buildPlan(sheets, spreadsheetId, artifacts) {
   const [photosRows, albumsRows, importBatchRows] = await Promise.all([
     readSheetRows(sheets, spreadsheetId, "photos", photoHeaders),
@@ -199,6 +213,8 @@ export async function buildPlan(sheets, spreadsheetId, artifacts) {
   const duplicateBatchId = existingBatchIds.has(artifacts.importBatchRecord.batch_id);
 
   const albumRowNumber = findRowById(albumsRows, albumHeaders, "album_id", artifacts.summary.album_id);
+  const currentAlbumIds = albumsRows.slice(1).map((row) => toRecord(albumHeaders, row).album_id);
+  const artifactAlbumIds = artifacts.albumRows.map((row) => toRecord(albumHeaders, row).album_id);
   const lastProcessedColumn = albumHeaders.indexOf("last_processed_at");
   if (lastProcessedColumn < 0) {
     throw new Error("albums schema is missing last_processed_at");
@@ -211,6 +227,10 @@ export async function buildPlan(sheets, spreadsheetId, artifacts) {
   if (duplicateBatchId) {
     blockers.push(`duplicate batch_id: ${artifacts.importBatchRecord.batch_id}`);
   }
+  const newAlbumRowMove = albumRowNumber < 0
+    ? planNewAlbumRowMove(currentAlbumIds, artifactAlbumIds, artifacts.summary.album_id)
+    : null;
+
   return {
     albumLastProcessedAt: artifacts.albumRecord.last_processed_at,
     albumLastProcessedRange:
@@ -224,6 +244,11 @@ export async function buildPlan(sheets, spreadsheetId, artifacts) {
       albumRowNumber < 0
         ? [albumHeaders.map((header) => artifacts.albumRecord[header] ?? "")]
         : [],
+    newAlbumDestinationIndex:
+      albumRowNumber < 0
+        ? newAlbumRowMove?.destinationIndex ?? currentAlbumIds.length + 1
+        : -1,
+    newAlbumRowMove,
     newPhotoRowsToAppend: artifacts.photoRows,
     summary: artifacts.summary,
   };
@@ -233,7 +258,8 @@ function printPlan(plan, { write }) {
   console.log(`Mode: ${write ? "write" : "dry-run"}`);
   console.log(`Run: ${plan.summary.run_id}`);
   console.log(`Album: ${plan.summary.album_id} (${plan.summary.album_title ?? ""})`);
-  console.log(`- append albums: ${plan.newAlbumRowsToAppend.length}`);
+  console.log(`- add albums: ${plan.newAlbumRowsToAppend.length}`);
+  console.log(`- position new album to match Flickr: ${plan.newAlbumRowMove ? 1 : 0} row move(s)`);
   console.log(`- append photos: ${plan.newPhotoRowsToAppend.length}`);
   console.log(
     plan.albumLastProcessedRange
@@ -275,7 +301,41 @@ async function updateAlbumLastProcessedAt(sheets, spreadsheetId, plan) {
   });
 }
 
-async function verifyApplied(sheets, spreadsheetId, artifacts) {
+async function positionNewAlbumRow(sheets, spreadsheetId, move) {
+  if (!move) {
+    return;
+  }
+
+  const response = await sheets.spreadsheets.get({
+    spreadsheetId,
+    fields: "sheets.properties(sheetId,title)",
+  });
+  const sheetId = response.data.sheets
+    ?.find((sheet) => sheet.properties?.title === "albums")
+    ?.properties?.sheetId;
+  if (sheetId === undefined) {
+    throw new Error("albums sheet was not found");
+  }
+
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId,
+    requestBody: {
+      requests: [{
+        moveDimension: {
+          source: {
+            sheetId,
+            dimension: "ROWS",
+            startIndex: move.sourceIndex,
+            endIndex: move.sourceIndex + 1,
+          },
+          destinationIndex: move.destinationIndex,
+        },
+      }],
+    },
+  });
+}
+
+async function verifyApplied(sheets, spreadsheetId, artifacts, plan) {
   const [photosRows, albumsRows, importBatchRows] = await Promise.all([
     readSheetRows(sheets, spreadsheetId, "photos", photoHeaders),
     readSheetRows(sheets, spreadsheetId, "albums", albumHeaders),
@@ -300,6 +360,10 @@ async function verifyApplied(sheets, spreadsheetId, artifacts) {
   const albumRow = albumsRows[albumRowNumber - 1] ?? [];
   if ((albumRow[lastProcessedColumn] ?? "") !== artifacts.albumRecord.last_processed_at) {
     throw new Error(`write verification failed; albums.last_processed_at was not updated`);
+  }
+
+  if (plan.newAlbumDestinationIndex >= 0 && albumRowNumber !== plan.newAlbumDestinationIndex + 1) {
+    throw new Error("write verification failed; new album is not in Flickr catalog order");
   }
 }
 
@@ -328,10 +392,11 @@ async function main() {
   }
 
   await appendRows(sheets, options.spreadsheetId, "albums", plan.newAlbumRowsToAppend);
-  await appendRows(sheets, options.spreadsheetId, "photos", plan.newPhotoRowsToAppend);
   await updateAlbumLastProcessedAt(sheets, options.spreadsheetId, plan);
+  await positionNewAlbumRow(sheets, options.spreadsheetId, plan.newAlbumRowMove);
+  await appendRows(sheets, options.spreadsheetId, "photos", plan.newPhotoRowsToAppend);
   await appendRows(sheets, options.spreadsheetId, "import_batches", plan.importBatchRowsToAppend);
-  await verifyApplied(sheets, options.spreadsheetId, artifacts);
+  await verifyApplied(sheets, options.spreadsheetId, artifacts, plan);
   console.log("Intake run applied and verified.");
 }
 

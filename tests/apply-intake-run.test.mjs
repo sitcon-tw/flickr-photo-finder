@@ -36,6 +36,7 @@ const albumRecord = {
 
 const artifacts = {
   albumRecord,
+  albumRows: [row(albumHeaders, albumRecord)],
   importBatchRecord: { batch_id: "batch-1" },
   importBatchRow: row(importBatchHeaders, { batch_id: "batch-1" }),
   photoRows: [row(photoHeaders, { photo_id: "photo-1" })],
@@ -43,11 +44,20 @@ const artifacts = {
 };
 
 describe("intake Sheets plan", () => {
-  it("appends the intake album when it is missing from Sheets", async () => {
-    const plan = await buildPlan(fakeSheets(), "spreadsheet-1", artifacts);
+  it("adds the intake album in Flickr order when it is missing from Sheets", async () => {
+    const existingAlbum = row(albumHeaders, { album_id: "album-2", album_title: "Older album" });
+    const plan = await buildPlan(fakeSheets({ albums: [existingAlbum] }), "spreadsheet-1", {
+      ...artifacts,
+      albumRows: [row(albumHeaders, albumRecord), existingAlbum],
+    });
 
     assert.deepEqual(plan.blockers, []);
     assert.deepEqual(plan.newAlbumRowsToAppend, [row(albumHeaders, albumRecord)]);
+    assert.deepEqual(plan.newAlbumRowMove, {
+      albumId: "album-1",
+      destinationIndex: 1,
+      sourceIndex: 2,
+    });
     assert.equal(plan.albumLastProcessedRange, "");
   });
 
@@ -59,6 +69,7 @@ describe("intake Sheets plan", () => {
     );
 
     assert.deepEqual(plan.newAlbumRowsToAppend, []);
+    assert.equal(plan.newAlbumRowMove, null);
     assert.equal(plan.albumLastProcessedRange, "'albums'!G2");
   });
 });

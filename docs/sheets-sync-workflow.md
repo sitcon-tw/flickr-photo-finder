@@ -356,10 +356,10 @@ pnpm sheets:apply-intake -- --run-dir tmp/intake-runs/RUN_ID --write
 `sheets:apply-intake` 只做三件事：
 
 1. 將 `photos-to-append.csv` 的資料列追加到 `photos`。
-2. 若 `albums` 尚無該相簿就追加 artifact 中的相簿列；若已存在則只更新 `last_processed_at`。
+2. 若 `albums` 尚無該相簿就加入 artifact 中的相簿列，並依 `albums-updated.csv` 保留的 Flickr 盤點順序把新列移到應在的位置；若已存在則只更新 `last_processed_at`。
 3. 將 `import-batch.csv` 的單列追加到 `import_batches`。
 
-它不會用 `albums-updated.csv` 覆蓋整張 `albums` 表，以避免蓋掉人類在正式 Sheets 上新增或修正的相簿欄位。
+它不會用 `albums-updated.csv` 覆蓋整張 `albums` 表；只有本次新增的相簿列會被移動，既有資料列與人類新增或修正的相簿欄位都會保留。
 
 `intake:validate` 會確認：
 
