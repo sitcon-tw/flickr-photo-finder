@@ -78,10 +78,10 @@ flowchart LR
 維護流程從 SITCON Flickr 相簿開始：
 
 1. 專案工具盤點 SITCON Flickr 相簿清單，更新 Google Sheets `albums`。
-2. 使用者從 `albums` 選擇本次要處理的相簿。
-3. 技術志工或 agent 掃描選定相簿，比對 Google Sheets `photos` 既有 `photo_id`。
-4. 工具產生一次 intake run artifact，包含缺少照片的最低必要欄位、更新後的 `albums.last_processed_at`、`import_batches` 與摘要。
-5. 人類檢查 run artifact 後，透過官方 Google Sheets API SDK 寫入工具套用到 Google Sheets；新照片可以直接由志工在 Google Sheets 補資料，也可以先由 AI 產生候選 metadata。
+2. 日常由使用者從 `albums` 選擇一本相簿同步；第一次建立基線時掃描目錄中的全部相簿。
+3. 技術志工或 agent 取得具順序的 Flickr 相簿照片 inventory，比對 Google Sheets `photos` 的 `photo_id`、`album_ids` 與列順序。
+4. 工具產生一次 intake run artifact，包含新照片最低必要欄位、可審核的成員更新／刪除／排序計畫、更新後的相簿統計、`import_batches` 與摘要。
+5. 人類檢查 run artifact 後，透過官方 Google Sheets API SDK 以單次 batch request 套用到 Google Sheets 並讀回驗證；新照片可以直接由志工在 Google Sheets 補資料，也可以先由 AI 產生候選 metadata。
 6. AI 候選值必須先經過 `ai:review`、`ai:report` 或必要的搜尋實驗檢視，以 diff / report 形式給人類確認，確認後才回寫。
 7. Apps Script 在 Sheets 內提供即時提示；必要時匯出資料並執行專案 validation。
 
@@ -138,12 +138,12 @@ flowchart LR
 
 1. 技術志工或 agent 能從 SITCON Flickr 盤點目前有哪些相簿。
 2. 使用者能從已盤點的相簿清單選擇本次要處理哪一本。
-3. 技術志工或 agent 能掃描選定相簿並匯入缺少照片。
+3. 技術志工或 agent 能同步單一或全部相簿，讓 `photos` 反映 Flickr 的新增、移除、成員關係與順序。
 4. 非技術志工能在 Google Sheets 補 metadata。
 5. Apps Script 能用 repo 規則提供即時驗證與提示。
 6. GitHub Pages 和外部 AI 能讀同一份公開照片索引。
 7. 真實使用者能用工作需求找到照片，並回饋標籤或欄位是否足夠。
 
-目前專案已支援相簿盤點、相簿選擇、intake run 產生、Sheets 初始化與匯入 dry-run/write、AI 標記 prepare/review/report/apply、公開搜尋前端 artifact build/check，以及 Apps Script 維護輔助 source。GitHub Pages 部署已走 GitHub Actions artifact；Apps Script source 可透過 `clasp` 部署到 Sheet-bound script，但實際綁定與部署仍需由有目標 Sheet / Apps Script 權限的維護者執行。目前可用指令、低階工具與改善項目請以 `docs/README.md` 的「目前狀態」為準。
+目前專案已支援相簿盤點、單本日常同步、全部相簿完整基線、intake run 產生、Sheets 初始化與相片同步 dry-run/write、AI 標記 prepare/review/report/apply、公開搜尋前端 artifact build/check，以及 Apps Script 維護輔助 source。GitHub Pages 部署已走 GitHub Actions artifact；Apps Script source 可透過 `clasp` 部署到 Sheet-bound script，但實際綁定與部署仍需由有目標 Sheet / Apps Script 權限的維護者執行。目前可用指令、低階工具與改善項目請以 `docs/README.md` 的「目前狀態」為準。
 
 未來發展仍應延伸這個架構：改善公開搜尋體驗、Sheets 內維護輔助、AI 標記審核與資料品質檢查。若資料量或搜尋體驗帶來壓力，應優先改善公開前端的載入、索引、分片、快取與排序策略，正式資料權威仍維持在 Google Sheets。

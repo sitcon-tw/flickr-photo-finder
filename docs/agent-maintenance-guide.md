@@ -176,7 +176,7 @@ pnpm finder:check
 再依任務擴展閱讀：
 
 - 資料庫與協作：`docs/database-collaboration-strategy.md`、`docs/google-sheets-database-design.md`
-- 相簿匯入與同步：`docs/sheets-sync-workflow.md`
+- Flickr 相片同步：`docs/sheets-sync-workflow.md`
 - 外部 AI 或 metadata 輔助：先依任務判斷讀者角色；模型標記以 run 目錄的 `ai-labeling-prompt.md` 與 `docs/ai-labeling-contract.md` 為主，操作者流程再讀 `docs/ai-labeling-operator-guide.md`，prompt 或 schema 決策再讀 `docs/adr/0010-ai-prompt-review-governance.md`，公開資料取用再讀 `docs/ai-readable-dataset.md`
 - Apps Script：`docs/apps-script-maintenance-design.md`
 - 共用值治理：`docs/shared-value-governance.md`

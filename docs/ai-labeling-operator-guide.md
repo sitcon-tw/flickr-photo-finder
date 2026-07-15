@@ -2,7 +2,7 @@
 
 這份文件給執行 `prepare -> review -> report -> dry-run` 流程的人類操作者、技術志工與 repo 維護 agent 使用。它補足 `docs/ai-labeling-contract.md` 沒有寫的操作層細節。
 
-第一次接手專案時，請先讀 `docs/README.md` 的「先建立共同語言」與「整體資料生命週期」。本文件只展開其中的 AI 標記操作段落；Flickr 相簿匯入、正式 Sheets 初始化與 Apps Script 維護請回到 `docs/README.md` 選入口。
+第一次接手專案時，請先讀 `docs/README.md` 的「先建立共同語言」與「整體資料生命週期」。本文件只展開其中的 AI 標記操作段落；Flickr 相片同步、正式 Sheets 初始化與 Apps Script 維護請回到 `docs/README.md` 選入口。
 
 不要把本文件整份交給只負責照片標記的模型。模型真正需要的任務入口是 run 目錄中的 `ai-labeling-prompt.md`，再搭配 `docs/ai-labeling-contract.md`、schema、taxonomy、sponsorship items、`photos.json` 與圖片。
 

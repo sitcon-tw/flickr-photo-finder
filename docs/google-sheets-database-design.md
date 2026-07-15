@@ -6,7 +6,7 @@
 
 此專案的正式照片資料不放在 repo 內。repo 負責保存 schema、taxonomy、驗證規則、匯入工具、同步流程、Apps Script 來源與 AI/agent 維護文件；Google Sheets 則是志工實際共同維護照片索引的地方。
 
-第一次接手專案時，請先讀 `docs/README.md` 的「先建立共同語言」與「整體資料生命週期」。本文件只定義正式 Sheets 的 tab shape 與表格責任，不是完整操作 runbook；相簿匯入、intake run、AI run 與 dry-run/write 操作請看 `docs/sheets-sync-workflow.md`。
+第一次接手專案時，請先讀 `docs/README.md` 的「先建立共同語言」與「整體資料生命週期」。本文件只定義正式 Sheets 的 tab shape 與表格責任，不是完整操作 runbook；Flickr 相片同步、intake run、AI run 與 dry-run/write 操作請看 `docs/sheets-sync-workflow.md`。
 
 ## 核心決策
 
@@ -15,7 +15,7 @@
 - `data/tag-taxonomy.json` 是受控字彙與列舉值來源。
 - `data/sponsorship-items.json` 是 SITCON 2026 CFS 贊助品項固定版本資料。
 - `photos` 主表本身就是公開照片索引。索引的目標是為照片加註 metadata，方便人類、前端與 AI 挑選，而不是另外做一層篩選資料表。
-- 資料語意必須存在欄位值，不依賴顏色、註解、篩選、排序或合併儲存格。
+- 照片身分、相簿成員與 metadata 語意必須存在欄位值，不依賴顏色、註解、篩選或合併儲存格。`photos` 列順序可作為 Flickr 相簿內順序的顯示投影，但不能取代 `album_ids` 成員關係。
 
 ## 建議工作表
 
@@ -68,7 +68,7 @@ pnpm sheets:apply-init -- --write
 
 欄位應以 `data/photo-schema.json` 的 `photos.fields` 為準。這張表可以包含尚未人工整理完成的照片，因為 SITCON Flickr 照片量很大，要求所有照片先完成人工 review 才能被搜尋會讓工具失去價值。
 
-`album_ids` 記錄照片和 Flickr 相簿的來源關係。它是多值欄位，因為同一張 Flickr 照片可能出現在多本相簿中；這個欄位應由匯入工具維護，人類通常不需要手動填寫。匯入批次 ID 不放在 `photos` 主表，批次層級的執行紀錄留在 `import_batches`，避免把照片主表變成操作 log。
+`album_ids` 記錄照片和 Flickr 相簿的來源關係。它是多值欄位，因為同一張 Flickr 照片可能出現在多本相簿中；這個欄位應由同步工具維護，人類通常不需要手動填寫。ID 依 `albums` 目錄順序儲存，最前面的相簿是該照片的 canonical group。`photos` 列則依 canonical group 與 Flickr 相簿內照片順序排列，讓 Finder 在同一年份內沿用來源順序；照片身分與成員關係仍分別以 `photo_id`、`album_ids` 為準。匯入批次 ID 不放在 `photos` 主表，批次層級的執行紀錄留在 `import_batches`，避免把照片主表變成操作 log。
 
 `curation_status`、`public_use_status`、`priority_level` 與 `collections` 應用來協助排序、提醒與推薦，而不是把未 review 的照片完全排除。
 
@@ -97,11 +97,11 @@ Apps Script 可以使用 repo 產生的設定同步這張表，也可以使用 `
 
 SITCON Flickr 相簿清單與處理紀錄。這張表應由工具盤點 SITCON Flickr 公開相簿後更新，讓使用者從既有相簿清單中選擇本次要處理哪一本，而不是手動提供相簿 URL。
 
-欄位應以 `data/photo-schema.json` 的 `albums.fields` 為準。工具盤點時應優先填入 `album_id`、`album_url`、`album_title` 與可取得的 `photo_count`；`event_name`、`event_year`、`last_processed_at` 與 `notes` 可由同步或匯入流程後續補上。
+欄位應以 `data/photo-schema.json` 的 `albums.fields` 為準。相簿列順序是跨相簿 canonical group 的排序來源；工具盤點時應優先填入 `album_id`、`album_url`、`album_title` 與可取得的 `photo_count`，同步時以 Flickr API 本次回報更新 `photo_count`；`event_name`、`event_year`、`last_processed_at` 與 `notes` 可由後續流程補上。
 
 ### import_batches
 
-匯入批次紀錄。這張表用來讓技術志工與 agent 回頭理解某次相簿匯入發生了什麼。
+同步批次紀錄。這張表用來讓技術志工與 agent 回頭理解某次相簿掃描與套用發生了什麼。
 
 欄位應以 `data/photo-schema.json` 的 `import_batches.fields` 為準。工具應填入本次處理的相簿、執行時間、來源工具，以及找到、新增、略過的照片數。
 
@@ -206,10 +206,10 @@ https://docs.google.com/spreadsheets/d/<spreadsheetId>/gviz/tq?tqx=out:csv&sheet
 ```text
 SITCON Flickr albums
   -> repo CLI 盤點相簿清單
-  -> 使用者選擇要處理的相簿
-  -> repo CLI 掃描選定相簿
+  -> 使用者選擇單本日常同步或全部相簿完整基線
+  -> repo CLI 取得具順序的 Flickr 相簿照片 inventory
   -> 產生 intake run artifact
-  -> 人類檢查候選照片、相簿更新與批次紀錄
+  -> 人類檢查新增、成員更新、刪除、排序、相簿更新與批次紀錄
   -> 套用到 Google Sheets photos / albums / import_batches
   -> AI 輔助標記後回到 Sheets 成為 ai_labeled
   -> 志工在 Google Sheets 協作檢核、修正與標成 reviewed

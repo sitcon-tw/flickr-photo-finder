@@ -237,16 +237,16 @@ pnpm sheets:report -- --source sheets
 
 ## 相簿工作流程
 
-本節的 `intake run` 指 `tmp/intake-runs/<run-id>/` 內的一次相簿匯入 artifact。它是寫入正式 Sheets 前的人機協作介面，不是第二份正式資料庫；人類確認後才進入 `sheets:apply-intake` dry-run/write。
+本節的 `intake run` 指 `tmp/intake-runs/<run-id>/` 內的一次 Flickr 相片同步 artifact。它是寫入正式 Sheets 前的人機協作介面，不是第二份正式資料庫；人類確認後才進入 `sheets:apply-intake` dry-run/write。
 
 建議流程：
 
 1. 技術志工或 agent 使用 repo 工具盤點 SITCON Flickr 相簿清單。
 2. 工具將 `album_id`、`album_url`、`album_title`、照片數等資訊同步到 Google Sheets `albums`。
 3. 使用者從 `albums` 清單中選擇本次要處理的相簿。
-4. 工具掃描被選定相簿中的照片 ID、照片 URL、縮圖 URL、相簿名稱與可用的 Flickr metadata。
-5. 工具和 Google Sheets `photos` 既有 `photo_id` 比對，避免重複匯入。
-6. 工具產生一次 intake run artifact，讓人類檢查候選 `photos`、更新後 `albums` 與 `import_batches`。
+4. 工具依 Flickr API 回傳順序掃描被選定相簿中的完整照片 ID 清單。
+5. 工具和 Google Sheets `photos` 既有 `photo_id`、`album_ids` 與列順序比對，產生新增、相簿成員更新、刪除與重新排序計畫。
+6. 工具產生一次 intake run artifact，讓人類檢查候選 `photos`、`reconciliation.json`、更新後 `albums` 與 `import_batches`。
 7. 人類確認後再套用到 Google Sheets。
 8. 新增照片預設 `curation_status = unreviewed`。
 
@@ -254,7 +254,9 @@ pnpm sheets:report -- --source sheets
 
 現有低階工具仍可接受 Flickr 相簿 URL 作為開發與除錯入口；但正式使用流程應以「盤點 SITCON Flickr 相簿清單，再選擇要處理的相簿」為主。
 
-新匯入的照片列會填入 `album_ids`。這是多值欄位，因為同一張照片可能出現在多本 Flickr 相簿中。現階段 intake 只會替新追加照片寫入本次相簿 ID；若照片已存在於 `photos` 而本次只是在另一個相簿再次被看到，工具會先略過，不會自動合併 `album_ids`。要支援這件事時，應新增可審核的 `photos-to-update` artifact 與對應 Sheets 更新工具，不應靜默覆蓋既有列。
+`album_ids` 是多值欄位，因為同一張照片可能出現在多本 Flickr 相簿中。同步流程會維護既有列的成員關係：新出現在相簿時加入 ID，從本次相簿移除時刪除該 ID；只有確認照片已不屬於任何 `albums` 目錄管理的 Flickr 相簿時，才從 `photos` 刪除整列。所有變更都先寫入 `reconciliation.json`，不會靜默覆蓋既有列。
+
+`photos` 列順序是 Finder 顯示 Flickr 相簿順序的輕量投影。若照片同時屬於多本相簿，以 `albums` 目錄中最前面的相簿作為 canonical group，並依該相簿的 Flickr 照片順序排列；`album_ids` 也依相同相簿目錄順序儲存。這不增加新的 Sheets 欄位或關聯表。
 
 目前可用的本機盤點指令：
 
@@ -310,7 +312,7 @@ pnpm albums:select -- --source sheets --unprocessed
 
 `albums:select` 會把候選清單印到 stderr，讓 stdout 保持為選定相簿的輸出結果。預設輸出可直接執行的 `intake:run` 指令，也可用 `--format id` 或 `--format json` 調整；若要在非互動環境測試或自動化，可加上 `--choice <number>` 選擇畫面上的第 N 筆。
 
-若要產生一次可審核的相簿匯入產物，請使用目前正式 Sheets 匯出的 `photos` 與 `albums`：
+若要產生一次可審核的單一相簿同步產物，請使用目前正式 Sheets 匯出的 `photos` 與 `albums`：
 
 ```bash
 pnpm intake:run -- --album ALBUM_ID
@@ -318,18 +320,29 @@ pnpm intake:run -- --album ALBUM_ID
 
 日常操作建議從 `pnpm workflow -- --task album-intake` 進入。workflow 會完成 Sheets 匯出、相簿選擇與 `intake:run`，並在產生 artifact 後記住本次 run 目錄，預設可直接接續 `intake:validate` 與 `sheets:apply-intake` dry-run，不需要再複製貼上 `tmp/intake-runs/<run-id>/`。
 
+第一次啟用本規則，或需要重新建立所有成員與列順序基線時，應掃描 `albums` 目錄中的全部相簿：
+
+```bash
+pnpm workflow -- --task album-baseline
+# 或低階執行
+pnpm intake:run -- --all-albums
+```
+
+完整基線會以所有相簿 inventory 重建受管理的 Flickr 成員關係，並移除不再屬於任何受管理相簿的 `photos` 列。完成一次完整基線後，日常只需同步實際有變動的單一本相簿。
+
 `intake:run` 會建立 `tmp/intake-runs/<run-id>/`，並產生：
 
 ```text
 photos-to-append.csv
 albums-updated.csv
 import-batch.csv
+reconciliation.json
 summary.json
 ```
 
-這是目前建議的人機協作介面。`photos-to-append.csv` 是缺少照片的候選列，並會帶入本次來源相簿的 `album_ids`；`albums-updated.csv` 是更新 `last_processed_at` 與本次可確認 `photo_count` 後的完整 albums CSV，`import-batch.csv` 是本次操作紀錄，`summary.json` 則讓人類、agent 或未來 Apps Script 先確認本次 run 的範圍與統計。
+這是目前建議的人機協作介面。`photos-to-append.csv` 是缺少照片的候選列；`reconciliation.json` 記錄來源 `photos` 狀態 hash、目標 photo ID 順序、`album_ids` 更新與刪除清單；`albums-updated.csv` 是更新 `last_processed_at` 與 API 實際 `photo_count` 後的完整 albums CSV；`import-batch.csv` 是本次操作紀錄；`summary.json` 則讓人類或 agent 先確認本次 run 的範圍與統計。
 
-相簿照片清單會優先透過 Flickr API 取得完整 `photosets.getPhotos` 結果，初始 HTML 解析只作為 fallback。若 `albums` 匯出檔中已有 `photo_count`，但本次實際取得的照片數不同，工具會拒絕產生 intake artifact，避免把只含 Flickr 初始頁面部分照片的不完整 run 寫入正式索引。
+相簿照片清單會透過 Flickr API 取得完整 `photosets.getPhotos` 結果，並確認所有分頁累計數符合 API 本次回報的 total；HTML 解析只作為不具寫回資格的診斷 fallback。`albums.photo_count` 可能已過期，因此不作為阻擋條件，而是在 artifact 中更新成 API 本次實際數量。
 
 `intake:run` 預設使用 `tmp/sheets-export/albums.csv` 與 `tmp/sheets-export/photos.csv`。若要使用 repo fixture 做本機測試，請明確指定 `--albums fixtures/albums.csv --photos-export fixtures/photos.csv`，避免正式流程誤用 sample data。
 
@@ -353,30 +366,31 @@ pnpm sheets:apply-intake -- --run-dir tmp/intake-runs/RUN_ID
 pnpm sheets:apply-intake -- --run-dir tmp/intake-runs/RUN_ID --write
 ```
 
-`sheets:apply-intake` 只做三件事：
+`sheets:apply-intake` 只套用 artifact 已明列的差異：
 
-1. 將 `photos-to-append.csv` 的資料列追加到 `photos`。
-2. 若 `albums` 尚無該相簿就加入 artifact 中的相簿列，並依 `albums-updated.csv` 保留的 Flickr 盤點順序把新列移到應在的位置；若已存在則只更新 `last_processed_at`。
-3. 將 `import-batch.csv` 的單列追加到 `import_batches`。
+1. 將 `photos-to-append.csv` 的新資料列追加到 `photos`。
+2. 更新 `reconciliation.json` 指定的既有 `album_ids`，刪除已不屬於任何受管理相簿的列，再依目標 photo ID 順序重排。
+3. 若 `albums` 尚無 artifact 中的相簿就依相簿目錄順序加入；既有相簿只更新本次可確認的 `photo_count` 與 `last_processed_at`。
+4. 將 `import-batch.csv` 的一或多列追加到 `import_batches`。
 
-它不會用 `albums-updated.csv` 覆蓋整張 `albums` 表；只有本次新增的相簿列會被移動，既有資料列與人類新增或修正的相簿欄位都會保留。
+工具會先驗證正式 `photos` 的 `photo_id`／`album_ids` 狀態 hash 和 artifact 建立時相同，避免 stale run 覆蓋新修改；寫入使用單次 Sheets batch request，並在寫入後讀回驗證完整 photo ID 順序、成員關係、刪除、相簿統計與批次紀錄。它不會用 `albums-updated.csv` 覆蓋整張 `albums` 表，既有的人工作業欄位會保留。
 
 `intake:validate` 會確認：
 
 - 三個 CSV 的欄位符合 `data/photo-schema.json`。
-- `summary.json` 存在並包含必要欄位。
-- `summary.json`、`import-batch.csv` 與 `albums-updated.csv` 的相簿、時間與統計數字一致。
-- `photos-to-append.csv` 的資料列數等於本次新增照片數。
+- `summary.json` 與 `reconciliation.json` 存在並包含必要欄位。
+- `summary.json`、`reconciliation.json`、`import-batch.csv` 與 `albums-updated.csv` 的範圍、相簿、時間與統計數字一致。
+- `photos-to-append.csv` 的 photo ID 與 reconciliation 新增清單一致。
 
-人工套用到 Google Sheets 時，建議順序是：
+審核並套用到 Google Sheets 時，建議順序是：
 
-1. 看 `summary.json`，確認相簿、時間、找到/新增/略過照片數符合預期。
-2. 檢查 `photos-to-append.csv`，確認候選列沒有明顯錯誤；這份檔案只追加到 `photos`，不要覆蓋整張表。
-3. 用 `albums-updated.csv` 更新 `albums`，或至少把該相簿的 `last_processed_at` 更新成 `summary.json` 的 `created_at`。
-4. 將 `import-batch.csv` 的單列追加到 `import_batches`。
-5. 套用後再從 Sheets 匯出相關 CSV，用 `pnpm data:validate` 檢查正式資料。
+1. 看 `summary.json`，確認範圍與新增、成員更新、刪除、重新排序數符合預期。
+2. 檢查 `reconciliation.json` 與 `photos-to-append.csv`，特別確認刪除清單與可能跨相簿的 `album_ids` 更新。
+3. 執行 `sheets:apply-intake` dry-run；不要用手動貼 CSV 取代成員更新、刪除與排序計畫。
+4. 確認 dry-run 後才加 `--write`，讓工具以同一批 request 套用並讀回驗證。
+5. 套用後再用 `pnpm sheets:export` 與 `pnpm sheets:report` 檢查正式資料。
 
-若只需要低階輸出，可以直接指定各 CSV 路徑：
+若只需要除錯新增候選列，可以直接指定各 CSV 路徑；這條低階入口沒有 `reconciliation.json` 時不應拿來寫回正式 Sheets：
 
 ```bash
 pnpm photos:import -- --album ALBUM_ID --output /tmp/photos-to-append.csv --albums-output /tmp/albums-updated.csv --batch-output /tmp/import-batch.csv

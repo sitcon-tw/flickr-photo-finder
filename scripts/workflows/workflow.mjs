@@ -13,7 +13,7 @@ const tasks = [
     handler: showWorkflowOverview,
     id: "overview",
     inputs: ["無"],
-    next: ["依你要做的事回到 workflow 選單，選擇檢查、相簿匯入、AI 搜尋級標記或 Sheets 工具。"],
+    next: ["依你要做的事回到 workflow 選單，選擇檢查、Flickr 相片同步、AI 搜尋級標記或 Sheets 工具。"],
     outputs: ["流程說明"],
     phase: "理解流程",
     title: "了解完整資料流",
@@ -23,29 +23,39 @@ const tasks = [
     handler: runProjectChecks,
     id: "check",
     inputs: ["repo 內 schema、taxonomy、fixtures 與 AI proposal examples"],
-    next: ["檢查通過後，可開始相簿匯入、AI 搜尋級標記或前端開發。"],
+    next: ["檢查通過後，可開始 Flickr 相片同步、AI 搜尋級標記或前端開發。"],
     outputs: ["資料與 AI proposal 合約是否仍一致的檢查結果"],
     phase: "開始前檢查",
     title: "檢查專案資料與 AI fixtures",
   },
   {
-    description: "匯出正式 Sheets 工作快取、選擇相簿，產生 intake run artifact，並可直接接續檢查與 dry-run。",
+    description: "匯出正式 Sheets 工作快取、選擇相簿，產生單一相簿同步 artifact，並可直接接續檢查與 dry-run。",
     handler: runAlbumIntake,
     id: "album-intake",
     inputs: ["正式 Google Sheets", "匯出正式資料時需要 GOOGLE_APPLICATION_CREDENTIALS 與讀取權限", "Flickr 相簿清單"],
     next: ["通常可直接接著檢查 intake run 並 dry-run；若要人工細看，也可保留 run artifact 稍後再套用。"],
     outputs: ["tmp/intake-runs/<run-id>/", "可選的 intake validation 與 Sheets dry-run 結果"],
-    phase: "相簿匯入",
-    title: "處理一本 Flickr 相簿",
+    phase: "Flickr 相片同步",
+    title: "同步一本 Flickr 相簿",
+  },
+  {
+    description: "掃描 albums 目錄中的所有 Flickr 相簿，建立 photos 相簿成員、刪除與列順序的完整基線。",
+    handler: runAlbumBaseline,
+    id: "album-baseline",
+    inputs: ["正式 Google Sheets", "匯出正式資料時需要 GOOGLE_APPLICATION_CREDENTIALS 與讀取權限", "Flickr API"],
+    next: ["檢查完整基線的 reconciliation artifact，再 dry-run 確認將套用的成員關係、刪除與排序。"],
+    outputs: ["tmp/intake-runs/<run-id>/", "可選的 intake validation 與 Sheets dry-run 結果"],
+    phase: "Flickr 相片同步",
+    title: "建立 Flickr 相簿完整基線",
   },
   {
     description: "驗證 intake run，dry-run 檢查套用內容，並可選擇寫入 Sheets。",
     handler: reviewIntakeRun,
     id: "review-intake",
     inputs: ["tmp/intake-runs/<run-id>/", "dry-run 或寫入 Sheets 時需要 GOOGLE_APPLICATION_CREDENTIALS；寫入還需要編輯權限"],
-    next: ["寫入成功後，新增照片會回到 Google Sheets 進行整理；若未寫入，可保留 run artifact 稍後再套用。"],
+    next: ["寫入成功後，photos 會反映 Flickr 相簿成員與排序；若未寫入，可保留 run artifact 稍後再套用。"],
     outputs: ["intake validation 結果", "Sheets dry-run 結果", "可選的 Sheets 寫入與驗證結果"],
-    phase: "相簿匯入",
+    phase: "Flickr 相片同步",
     title: "檢查或套用 intake run",
   },
   {
@@ -93,7 +103,7 @@ const tasks = [
     handler: runSheetsTools,
     id: "sheets",
     inputs: ["config/project.json", "正式 Google Sheets；部分操作需要 GOOGLE_APPLICATION_CREDENTIALS"],
-    next: ["初始化或遷移完成後，回到相簿匯入或 AI 標記流程。"],
+    next: ["初始化或遷移完成後，回到 Flickr 相片同步或 AI 標記流程。"],
     outputs: ["tmp/sheets-init/ 或 tmp/sheets-export/，或 Sheets dry-run 結果"],
     phase: "Google Sheets 維護",
     title: "Google Sheets 工具",
@@ -216,8 +226,8 @@ function groupTasksByPhase() {
 function printWorkflowSummary() {
   console.log("主流程：");
   console.log("1. Google Sheets 是正式照片索引；多數寫入前流程會先把正式資料匯出成 tmp/sheets-export/ 工作快取。");
-  console.log("2. 從 Flickr 相簿清單選一本相簿，產生 tmp/intake-runs/ 可審核匯入產物。");
-  console.log("3. workflow 會記住剛產生的 intake run，通常可直接接續驗證與 Sheets dry-run。");
+  console.log("2. 日常可同步一本 Flickr 相簿；第一次建立基線時可掃描 albums 目錄中的所有相簿。");
+  console.log("3. 同步會產生 tmp/intake-runs/ 可審核 artifact，通常可直接接續驗證與 Sheets dry-run。");
   console.log("4. 從 Sheets photos 建立 tmp/ai-runs/，把 ai-labeling-prompt.md 與工作包交給模型做搜尋級標記。");
   console.log("5. direct run 先逐張輸出 photo-artifacts/<photo_id>.json，再用 ai:artifacts:merge 產生 metadata-proposals.json、visual-inspection-audit.json 與 artifact-manifest.json；大型 run 可用 ai:shard:prepare / ai:shard:merge 先在 /tmp 分片，worker 另需逐張 visual audit，再由工具驗證後產生 diff / update plan。");
   console.log("6. AI 候選值經人類確認後才寫回 Sheets；正式 reviewed 在 Sheets 中由志工協作完成。");
@@ -352,12 +362,13 @@ async function showWorkflowOverview() {
   console.log("");
   console.log("主要工作目錄：");
   console.log("- tmp/sheets-export/: 從正式 Google Sheets 匯出的本機工作快取，不 commit。");
-  console.log("- tmp/intake-runs/: 單次相簿匯入的候選照片、相簿更新、批次紀錄與摘要。");
+  console.log("- tmp/intake-runs/: Flickr 相簿同步的候選照片、成員/刪除/排序計畫、相簿更新、批次紀錄與摘要。");
   console.log("- tmp/ai-runs/: AI 搜尋級標記工作包，包含 photos.json、images/、photo-artifacts/，合併後包含 metadata-proposals.json、visual-inspection-audit.json 與 artifact-manifest.json。大型分片中間檔在 /tmp/ai-labeling-shards/。");
   console.log("");
   console.log("常見起點：");
   console.log("- 第一次接手：選「檢查專案資料與 AI fixtures」。");
-  console.log("- 要匯入照片：選「處理一本 Flickr 相簿」。");
+  console.log("- 日常同步 Flickr 相片：選「同步一本 Flickr 相簿」。");
+  console.log("- 第一次建立完整成員與排序基線：選「建立 Flickr 相簿完整基線」。");
   console.log("- 要做 AI 搜尋級標記：先選「準備 AI 搜尋級標記工作包」。");
   console.log("- 要驗收 AI 結果：選「檢查 AI 標記結果」，再用 report 或 Sheets dry-run 輔助判斷。");
   console.log("- 要比較模型品質：直接使用 eval:sample、eval:attempt 或 eval:search；這些不是一般 workflow 主線。");
@@ -418,6 +429,37 @@ async function runAlbumIntake() {
   }
 }
 
+async function runAlbumBaseline() {
+  if (await askYesNo("先重新匯出正式 Google Sheets 工作快取？", true)) {
+    runPnpm("sheets:export");
+  }
+
+  closeReadline();
+  const stdout = runPnpm("intake:run", pnpmArgsFromOptions(["--all-albums"]), {
+    captureStdout: true,
+    printCapturedStdout: true,
+  });
+  const runDir = parseIntakeRunDir(stdout);
+
+  if (!runDir) {
+    console.log("");
+    console.log("下一步：");
+    console.log("無法從輸出判斷 intake run 目錄，請看上方 `Intake run directory:` 或 `summary.json` 路徑後手動執行：");
+    console.log("pnpm workflow -- --task review-intake");
+    return;
+  }
+
+  console.log("");
+  console.log(`已建立完整基線 intake run：${runDir}`);
+  if (await askYesNo("直接檢查完整基線並 dry-run 套用到 Google Sheets？", true)) {
+    await reviewIntakeRun(runDir);
+  } else {
+    console.log("");
+    console.log("已保留完整基線 intake run，尚未檢查或 dry-run。");
+    console.log(`稍後可執行：pnpm workflow -- --task review-intake，並填入 ${runDir}`);
+  }
+}
+
 async function readIntakeRunAlbumId(runDir) {
   try {
     const summary = JSON.parse(await readFile(join(runDir, "summary.json"), "utf8"));
@@ -445,7 +487,9 @@ async function reviewIntakeRun(initialRunDir = "", context = {}) {
     console.log("");
     console.log("已完成 intake validation，尚未檢查或寫入 Google Sheets。");
     console.log(`稍後可執行：pnpm sheets:apply-intake -- --run-dir ${runDir}`);
-    await askContinueToAiPrepare({ albumId, wroteSheets: false });
+    if (albumId) {
+      await askContinueToAiPrepare({ albumId, wroteSheets: false });
+    }
     return;
   }
 
@@ -461,7 +505,9 @@ async function reviewIntakeRun(initialRunDir = "", context = {}) {
     console.log(`確認後可執行：pnpm sheets:apply-intake -- --run-dir ${runDir} --write`);
   }
 
-  await askContinueToAiPrepare({ albumId, wroteSheets });
+  if (albumId) {
+    await askContinueToAiPrepare({ albumId, wroteSheets });
+  }
 }
 
 async function askContinueToAiPrepare({ albumId, wroteSheets }) {

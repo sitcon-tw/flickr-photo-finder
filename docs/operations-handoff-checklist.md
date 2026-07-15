@@ -83,7 +83,7 @@ pnpm project:check
 | 操作 | 先做 | 確認後才做 | 注意事項 |
 | --- | --- | --- | --- |
 | 初始化或遷移正式 Sheets | `pnpm sheets:apply-init`、`pnpm sheets:migrate-headers` | 加上 `--write` | 寫入後工具應讀回驗證；不要用手動貼 CSV 當標準流程。 |
-| 套用 intake run | `pnpm intake:validate -- --run-dir <dir>`、`pnpm sheets:apply-intake -- --run-dir <dir>` | `pnpm sheets:apply-intake -- --run-dir <dir> --write` | 先確認候選照片、相簿更新與 batch artifact。 |
+| 套用 intake run | `pnpm intake:validate -- --run-dir <dir>`、`pnpm sheets:apply-intake -- --run-dir <dir>` | `pnpm sheets:apply-intake -- --run-dir <dir> --write` | 先確認候選照片、`reconciliation.json` 的成員更新／刪除／排序、相簿更新與 batch artifact。 |
 | 套用 AI 候選 metadata | `pnpm ai:validate`、`pnpm ai:review`、`pnpm sheets:apply-ai-updates -- --run-dir <dir>` | `pnpm sheets:apply-ai-updates -- --run-dir <dir> --write` | AI 候選值不等於人工 reviewed；若 summary stale，先重跑 review。 |
 | 重置固定練習表 | `pnpm sheets:practice:sync` | `pnpm sheets:practice:sync -- --write` | 工具應拒絕把正式表當成練習表；若防護失效，先修工具。 |
 | 同步 taxonomy | `pnpm sheets:sync-taxonomy` | `pnpm sheets:sync-taxonomy -- --write` | 寫入後 `label_zh` 不應空白；不要手動維護另一套翻譯。 |

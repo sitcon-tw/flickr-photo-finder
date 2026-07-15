@@ -10,7 +10,7 @@
 | --- | --- |
 | 正式 Sheets | Google Sheets 中的正式照片索引。`photos`、`albums`、`import_batches` 是正式 operational data；`taxonomy` 與 `sponsorship_items` 是由 repo source 同步到 Sheets 的輔助查閱表。 |
 | 本機工作快取 | `tmp/sheets-export/*.csv`，由 `pnpm sheets:export` 從正式 Sheets 匯出，供本機 validation、intake 與 AI 工具使用；可重建，不 commit。 |
-| intake run | `tmp/intake-runs/<run-id>/`，一次 Flickr 相簿匯入的可審核 artifact，包含候選照片、相簿更新、匯入批次與摘要；人類確認後才用 `sheets:apply-intake` dry-run/write。 |
+| intake run | `tmp/intake-runs/<run-id>/`，一次 Flickr 相片同步的可審核 artifact，包含候選照片、`reconciliation.json` 成員/刪除/排序計畫、相簿更新、批次與摘要；人類確認後才用 `sheets:apply-intake` dry-run/write。 |
 | AI run | `tmp/ai-runs/<run-id>/`，一次 AI 搜尋級標記工作包，通常由 `ai:prepare` 或 `eval:sample` 建立，包含 `manifest.json`、`photos.json`、`images/`、`ai-labeling-prompt.md`。模型應先逐張寫入 `photo-artifacts/<photo_id>.json`，再由 `ai:artifacts:merge` 產生 `metadata-proposals.json`、`visual-inspection-audit.json` 與 `artifact-manifest.json`。大型分片 run 另有 `/tmp/ai-labeling-shards/<run-id>/visual-audits/` 逐張檢視稽核。AI run 不是人工 review 狀態。 |
 | attempt | 從既有 AI run 派生的模型/輪次比較工作包，仍符合 AI run 目錄合約，用來比較不同模型、prompt 或 rounds。 |
 | prompt review 決策包 | `tmp/prompt-reviews/<review-id>/`，由 `eval:prompt-review` 產生，只彙整 evidence、角色 review 與 owner 決策，不自動呼叫外部 LLM、不自動分派審查者、不改 prompt/schema、不寫 Sheets。若需要獨立審查，操作者必須主動分派不同 agent 或不同可追溯執行 session，並記錄 review provenance。 |
@@ -23,8 +23,8 @@
 flowchart TD
   F["SITCON Flickr 相簿 / 照片"] --> A["albums:discover / albums:list 盤點相簿"]
   A --> B["pnpm workflow 或 albums:select 選相簿"]
-  B --> C["intake:run 建立 intake run"]
-  C --> D["intake:validate 檢查匯入 artifact"]
+  B --> C["intake:run 建立相片同步 run"]
+  C --> D["intake:validate 檢查同步 artifact"]
   D --> E["sheets:apply-intake dry-run / --write"]
   E --> S["正式 Google Sheets photo index"]
   S --> X["sheets:export 建立本機工作快取"]
@@ -50,7 +50,7 @@ flowchart TD
 | 我要找社群、回顧、贊助或新聞稿可用照片 | [公開搜尋前端](https://sitcon.org/flickr-photo-finder/) | 正式找圖入口讀取 Google Sheets 公開資料；本機前端預覽才用 `pnpm finder:dev`，資料流看 `docs/public-frontend-architecture.md`。 |
 | 我第一次整理照片，想先練習 | Google Sheets `使用說明` | 從正式照片索引進入固定練習表，不要直接在正式資料試填；整理判斷補讀 `docs/data-entry-guide.md`。 |
 | 我要正式補照片欄位或檢查授權/用途 | [正式照片索引](https://docs.google.com/spreadsheets/d/1JM2QzJo5kpeILZPyTSE6gUK3z-FyRcaGhPJlYE-FMbs/edit) | 欄位速查看 `docs/photo-fields-reference.md`；欄位順序、reviewed 完整度與 approved 要求仍以 `data/photo-schema.json` 為準。 |
-| 我要匯入新 Flickr 相簿 | `pnpm workflow` | 從互動式流程選相簿、建立 intake run、接續 validation 與 Sheets dry-run；Sheets 同步邊界看 `docs/sheets-sync-workflow.md`。 |
+| 我要讓 photos 跟上 Flickr 相簿增刪與排序 | `pnpm workflow` | 日常選「同步一本 Flickr 相簿」；第一次建立完整基線選「建立 Flickr 相簿完整基線」。兩者都會建立 intake run，再接續 validation 與 Sheets dry-run；同步邊界看 `docs/sheets-sync-workflow.md`。 |
 | 我要跑 AI 搜尋級標記 | `pnpm workflow` | 從 AI prepare 流程建立 `tmp/ai-runs/` 工作包；模型輸出合約看 `docs/ai-labeling-contract.md`。direct run 需要逐張 `photo-artifacts/` 並由 `ai:artifacts:merge` 合併，不能用 contact sheet 或多圖截圖判讀。 |
 | 我要確認 AI 建議能不能採用 | `docs/ai-labeling-operator-guide.md` | 實際檢查候選值用 `pnpm ai:review -- --run-dir <dir>`；AI 候選值不等於 `reviewed`。 |
 | 我要比較模型、prompt 或搜尋增益 | `pnpm eval` | 這是評估入口，不是一般照片整理主線；需要多角色 prompt 決策包時用 `pnpm eval -- --task prompt-review` 或 `pnpm eval:prompt-review`。 |
@@ -197,12 +197,12 @@ flowchart TD
 
 本節只列日常入口與能力分組，不維護逐項 command inventory。可執行 script 名稱以 `package.json` 的 `scripts` 為準；CLI 使用方式以各 command 的 `--help` 為準。新增、改名或移除 command 時，請執行 `pnpm docs:check` 與 `pnpm command:smoke`，避免文件中的指令名稱和實際 package script 漂移。
 
-- 日常操作主線：`pnpm workflow` 會先說明完整資料流，再引導相簿匯入、AI prepare/review/report、大型 AI 分片流程、Sheets 維護與公開搜尋前端 artifact build/check。`pnpm eval` 是模型品質、prompt、taxonomy、跨活動樣本與 `visual_description` 搜尋增益評估入口，不是一般照片整理主線。
+- 日常操作主線：`pnpm workflow` 會先說明完整資料流，再引導 Flickr 相片同步、AI prepare/review/report、大型 AI 分片流程、Sheets 維護與公開搜尋前端 artifact build/check。`pnpm eval` 是模型品質、prompt、taxonomy、跨活動樣本與 `visual_description` 搜尋增益評估入口，不是一般照片整理主線。
 - 無 credential 健康檢查：`pnpm project:check` 是本機與 CI 的主要 gate，涵蓋 language/docs/shared-value governance、JavaScript syntax、command smoke、Apps Script generated config、data validation、AI fixture validation、finder tests、Pages build/check。手機篩選 UI 變更另跑 `pnpm finder:mobile-filter-smoke`。
 - 文件與治理檢查：`pnpm docs:check` 檢查本機 Markdown link、docs index 覆蓋與文件中的 package script reference 是否存在；`pnpm language:check` 檢查含糊版本或狀態詞與台灣繁中技術詞彙；`pnpm shared-values:check` 檢查跨介面 registry；`pnpm command:smoke` 檢查無 credential 的 `--help` path。
 - 公開前端：本機預覽用 `pnpm finder:dev`、fixture 模式用 `pnpm finder:dev:fixture`、正式匯出快取模式用 `pnpm finder:dev:export`；部署 artifact 用 `pnpm finder:build` 與 `pnpm finder:check`；前端純邏輯回歸用 `pnpm finder:test`。
 - Sheets 與資料品質：公開讀取檢查用 `pnpm sheets:check`；正式工作快取用 `pnpm sheets:export`；正式資料健康度用 `pnpm sheets:report`；初始化、header 遷移、欄位值遷移、taxonomy、使用說明、練習表與 intake/AI 回寫流程都從 `docs/sheets-sync-workflow.md` 選正確 dry-run/write 路徑。
-- Flickr 相簿與 intake：相簿盤點、清單、選擇與同步由 `albums:*` 工具處理；正式匯入工作包由 `pnpm intake:run` 建立，`pnpm intake:validate` 檢查，再由 `pnpm sheets:apply-intake` dry-run/write 套用。
+- Flickr 相簿與 intake：相簿盤點、清單、選擇與同步由 `albums:*` 工具處理；單本日常同步用 `pnpm intake:run -- --album <id>`，完整基線用 `pnpm intake:run -- --all-albums`，`pnpm intake:validate` 檢查後再由 `pnpm sheets:apply-intake` dry-run/write 套用。
 - AI 標記與評估：AI run 準備、驗證、review、report、diff、plan、bulk/shard 狀態與 Sheets dry-run/write 由 `ai:*` 工具處理；模型/輪次 attempt、跨活動 sample、搜尋增益、真實找圖 metadata 基準評估與 prompt review 決策包由 `eval:*` 工具處理。AI 標記操作以 `docs/ai-labeling-operator-guide.md` 和 `docs/ai-labeling-contract.md` 為準；找圖評估以 `docs/finder-evaluation.md` 為準。
 - Apps Script：GeneratedConfig 由 `pnpm apps-script:build-config` 產生；clasp target、status、push、deployments 由 `apps-script:*` wrapper 依 `config/project.json` 解析，正式表是預設 target，練習表必須明確指定 `--target practice`。
 - GA4：事件設計先看 `docs/frontend-analytics-design.md`；custom dimensions 與後台權限操作看 `docs/ga4-operations.md`，repo 端檢查與同步由 `analytics:dimensions:*` scripts 包裝。
