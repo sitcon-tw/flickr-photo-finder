@@ -193,13 +193,10 @@ export async function fetchPhotoAlbumIds({ apiKey, fetchImpl = fetch, photoId } 
   const data = await response.json();
   if (data.stat !== "ok") {
     if (Number(data.code) === 1) {
-      return { albumIds: [], found: false };
+      return [];
     }
     throw new Error(`Flickr API photo contexts error: ${data.message ?? data.stat}`);
   }
 
-  return {
-    albumIds: (data.set ?? []).map((album) => String(album.id ?? "")).filter(Boolean),
-    found: true,
-  };
+  return (data.set ?? []).map((album) => String(album.id ?? "")).filter(Boolean);
 }

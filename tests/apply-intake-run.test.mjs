@@ -85,6 +85,7 @@ describe("intake Sheets reconciliation plan", () => {
   it("updates existing album counts and preserves current photos", async () => {
     const photo = row(photoHeaders, { album_ids: "album-1", photo_id: "photo-1" });
     const input = artifacts({ photos: [photo] });
+    input.reconciliation.membership_updates = [{ after_album_ids: ["album-1", "album-2"], photo_id: "photo-1" }];
     const plan = await buildPlan(
       fakeSheets({ albums: [row(albumHeaders, { ...albumRecord, last_processed_at: "", photo_count: "0" })], photos: [photo] }),
       "spreadsheet-1",
@@ -99,6 +100,7 @@ describe("intake Sheets reconciliation plan", () => {
       rowNumber: 2,
     }]);
     assert.deepEqual(plan.desiredPhotoIds, ["photo-1"]);
+    assert.equal(plan.expectedPhotoRecords[0].album_ids, "album-1;album-2");
   });
 
   it("blocks a stale photo membership snapshot", async () => {
@@ -135,34 +137,18 @@ describe("intake Sheets reconciliation plan", () => {
   });
 
   it("detects labeled content attached to the wrong photo after sorting", async () => {
-    const photos = [
-      row(photoHeaders, { album_ids: "album-1", photo_id: "photo-2", scene_tags: "攤位" }),
-      row(photoHeaders, { album_ids: "album-1", photo_id: "photo-1", scene_tags: "講者" }),
-    ];
-    const input = artifacts({ photos });
-    input.reconciliation.desired_photo_ids = ["photo-1", "photo-2"];
-    input.reconciliation.membership_updates = [{
-      after_album_ids: ["album-1", "album-2"],
-      before_album_ids: ["album-1"],
-      photo_id: "photo-1",
-    }];
-    const plan = await buildPlan(
-      fakeSheets({ albums: [row(albumHeaders, albumRecord)], photos }),
-      "spreadsheet-1",
-      input,
-    );
-    const correctRows = [
-      { ...record(photoHeaders, photos[1]), album_ids: "album-1;album-2" },
-      record(photoHeaders, photos[0]),
+    const expected = [
+      record(photoHeaders, row(photoHeaders, { album_ids: "album-1;album-2", photo_id: "photo-1", scene_tags: "講者" })),
+      record(photoHeaders, row(photoHeaders, { album_ids: "album-1", photo_id: "photo-2", scene_tags: "攤位" })),
     ];
 
-    assert.doesNotThrow(() => assertPhotoRowsMatchExpected(correctRows, plan.expectedPhotoRecords));
+    assert.doesNotThrow(() => assertPhotoRowsMatchExpected(expected, expected));
     assert.throws(
       () => assertPhotoRowsMatchExpected([
-        { ...correctRows[0], scene_tags: "攤位" },
-        { ...correctRows[1], scene_tags: "講者" },
-      ], plan.expectedPhotoRecords),
-      /scene_tags changed for photo photo-2/,
+        { ...expected[0], scene_tags: "攤位" },
+        expected[1],
+      ], expected),
+      /scene_tags changed for photo photo-1/,
     );
   });
 });

@@ -51,7 +51,7 @@ describe("Flickr ordered album inventory", () => {
     );
   });
 
-  it("returns visible album contexts and distinguishes a missing photo", async () => {
+  it("returns visible album contexts and treats a missing photo as no memberships", async () => {
     const found = await fetchPhotoAlbumIds({
       apiKey: "site-key",
       fetchImpl: async () => response({ set: [{ id: "a2" }, { id: "a1" }], stat: "ok" }),
@@ -63,7 +63,7 @@ describe("Flickr ordered album inventory", () => {
       photoId: "2",
     });
 
-    assert.deepEqual(found, { albumIds: ["a2", "a1"], found: true });
-    assert.deepEqual(missing, { albumIds: [], found: false });
+    assert.deepEqual(found, ["a2", "a1"]);
+    assert.deepEqual(missing, []);
   });
 });

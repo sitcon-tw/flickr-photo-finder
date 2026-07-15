@@ -28,7 +28,7 @@ function sameValues(left, right) {
   return left.length === right.length && left.every((value, index) => value === right[index]);
 }
 
-function baselineMembership(inventories) {
+export function albumMemberships(inventories) {
   const memberships = new Map();
   for (const inventory of inventories) {
     for (const photoId of inventory.photoIds) {
@@ -100,7 +100,7 @@ export function buildPhotoReconciliation({
   }
 
   const managedAlbums = new Set(albumOrder);
-  const baseline = scope === "catalog" ? baselineMembership(inventories) : null;
+  const baseline = scope === "catalog" ? albumMemberships(inventories) : null;
   const selectedInventory = inventories[0];
   const selectedIds = new Set(selectedInventory.photoIds);
   const nextAlbumsByPhotoId = new Map();

@@ -13,7 +13,7 @@ import { parseCsv, toCsvLine } from "../lib/core/csv-utils.mjs";
 import { albumHeaders, importBatchHeaders, photoHeaders } from "../lib/core/photo-schema.mjs";
 import { createProgressThrottle } from "../lib/core/progress.mjs";
 import { sheetsExportAlbumsPath, sheetsExportPhotosPath } from "../lib/core/workflow-paths.mjs";
-import { buildPhotoReconciliation, splitAlbumIds } from "../lib/flickr/photo-reconciliation.mjs";
+import { albumMemberships, buildPhotoReconciliation, splitAlbumIds } from "../lib/flickr/photo-reconciliation.mjs";
 
 function printUsage() {
   console.log(`Usage:
@@ -250,18 +250,6 @@ async function fetchInventories(options, albums) {
   return inventories;
 }
 
-function newPhotoAlbumIds(inventories) {
-  const memberships = new Map();
-  for (const inventory of inventories) {
-    for (const photoId of inventory.photoIds) {
-      const albumIds = memberships.get(photoId) ?? [];
-      albumIds.push(inventory.albumId);
-      memberships.set(photoId, albumIds);
-    }
-  }
-  return memberships;
-}
-
 async function main() {
   const options = parseArgs(process.argv);
   if (options.help) {
@@ -289,10 +277,10 @@ async function main() {
     });
     for (const [index, photo] of possibleOrphans.entries()) {
       console.error(`Progress: checking Flickr contexts ${index + 1}/${possibleOrphans.length} (${photo.photo_id}).`);
-      const contexts = await fetchPhotoAlbumIds({ apiKey: inventory.apiKey, photoId: photo.photo_id });
+      const contextAlbumIds = await fetchPhotoAlbumIds({ apiKey: inventory.apiKey, photoId: photo.photo_id });
       contextsByPhotoId.set(
         photo.photo_id,
-        contexts.albumIds.filter((albumId) => albumId !== inventory.albumId && managedAlbums.has(albumId)),
+        contextAlbumIds.filter((albumId) => albumId !== inventory.albumId && managedAlbums.has(albumId)),
       );
     }
   }
@@ -304,7 +292,7 @@ async function main() {
     photos: sourcePhotos,
     scope: options.allAlbums ? "catalog" : "album",
   });
-  const memberships = newPhotoAlbumIds(inventories);
+  const memberships = albumMemberships(inventories);
   const photoById = new Map();
   for (const inventory of inventories) {
     for (const photo of inventory.photoUrls) {

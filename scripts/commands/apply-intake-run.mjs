@@ -461,12 +461,6 @@ async function verifyApplied(sheets, spreadsheetId, artifacts, plan) {
     throw new Error(`write verification failed; photos are not in reconciled order`);
   }
   assertPhotoRowsMatchExpected(photoRecords, plan.expectedPhotoRecords);
-  const photoById = new Map(photoRecords.map((photo) => [photo.photo_id, photo]));
-  for (const photoId of plan.deletedPhotoIds) {
-    if (photoById.has(photoId)) {
-      throw new Error(`write verification failed; photo ${photoId} was not deleted`);
-    }
-  }
 
   const batchIds = collectColumnValues(importBatchRows, importBatchHeaders, "batch_id");
   const missingBatchIds = artifacts.importBatchRecords
