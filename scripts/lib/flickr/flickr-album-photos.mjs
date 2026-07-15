@@ -5,8 +5,8 @@ const apiPerPage = 500;
 
 class ExpectedPhotoCountError extends Error {}
 
-export async function fetchAlbumHtml(albumUrl) {
-  const response = await fetch(albumUrl);
+export async function fetchAlbumHtml(albumUrl, fetchImpl = fetch) {
+  const response = await fetchImpl(albumUrl);
   if (!response.ok) {
     throw new Error(`Flickr album fetch failed: ${response.status} ${response.statusText}`);
   }
@@ -46,7 +46,7 @@ function toPhotoUrls(photoIds, ownerPath) {
   );
 }
 
-async function fetchApiAlbumPhotoUrls({ albumId, html, ownerPath }) {
+async function fetchApiAlbumPhotoUrls({ albumId, fetchImpl, html, ownerPath }) {
   const siteKey = extractSiteKey(html);
   const userId = extractUserNsid(html);
 
@@ -72,7 +72,7 @@ async function fetchApiAlbumPhotoUrls({ albumId, html, ownerPath }) {
     endpoint.searchParams.set("per_page", String(apiPerPage));
     endpoint.searchParams.set("page", String(page));
 
-    const response = await fetch(endpoint);
+    const response = await fetchImpl(endpoint);
     if (!response.ok) {
       throw new Error(`Flickr API album photos fetch failed: ${response.status} ${response.statusText}`);
     }
@@ -95,7 +95,15 @@ async function fetchApiAlbumPhotoUrls({ albumId, html, ownerPath }) {
     page += 1;
   } while (page <= pages);
 
+  if (photoIds.length !== total) {
+    throw new ExpectedPhotoCountError(
+      `Album ${albumId} API reported ${total} photo(s), but returned ${photoIds.length}. Refusing to create an incomplete intake artifact.`,
+    );
+  }
+
   return {
+    apiKey: siteKey,
+    authoritative: true,
     photoUrls: toPhotoUrls(photoIds, ownerPath),
     source: "flickr-api",
     total,
@@ -118,6 +126,7 @@ export async function fetchAlbumPhotoUrls({
   albumId,
   albumUrl,
   expectedPhotoCount = 0,
+  fetchImpl = fetch,
   html = "",
   ownerPath,
 } = {}) {
@@ -131,17 +140,11 @@ export async function fetchAlbumPhotoUrls({
     throw new Error("fetchAlbumPhotoUrls requires ownerPath");
   }
 
-  const sourceHtml = html || await fetchAlbumHtml(albumUrl);
+  const sourceHtml = html || await fetchAlbumHtml(albumUrl, fetchImpl);
 
   try {
-    const apiResult = await fetchApiAlbumPhotoUrls({ albumId, html: sourceHtml, ownerPath });
+    const apiResult = await fetchApiAlbumPhotoUrls({ albumId, fetchImpl, html: sourceHtml, ownerPath });
     if (apiResult && apiResult.photoUrls.length > 0) {
-      assertExpectedCount({
-        albumId,
-        expectedPhotoCount,
-        photoUrls: apiResult.photoUrls,
-        source: apiResult.source,
-      });
       return apiResult;
     }
   } catch (error) {
@@ -160,8 +163,43 @@ export async function fetchAlbumPhotoUrls({
   });
 
   return {
+    apiKey: extractSiteKey(sourceHtml),
+    authoritative: false,
     photoUrls: htmlPhotoUrls,
     source: "album-html",
     total: htmlPhotoUrls.length,
+  };
+}
+
+export async function fetchPhotoAlbumIds({ apiKey, fetchImpl = fetch, photoId } = {}) {
+  if (!apiKey) {
+    throw new Error("fetchPhotoAlbumIds requires apiKey");
+  }
+  if (!photoId) {
+    throw new Error("fetchPhotoAlbumIds requires photoId");
+  }
+
+  const endpoint = new URL(flickrApiEndpoint);
+  endpoint.searchParams.set("method", "flickr.photos.getAllContexts");
+  endpoint.searchParams.set("api_key", apiKey);
+  endpoint.searchParams.set("photo_id", photoId);
+  endpoint.searchParams.set("format", "json");
+  endpoint.searchParams.set("nojsoncallback", "1");
+
+  const response = await fetchImpl(endpoint);
+  if (!response.ok) {
+    throw new Error(`Flickr API photo contexts fetch failed: ${response.status} ${response.statusText}`);
+  }
+  const data = await response.json();
+  if (data.stat !== "ok") {
+    if (Number(data.code) === 1) {
+      return { albumIds: [], found: false };
+    }
+    throw new Error(`Flickr API photo contexts error: ${data.message ?? data.stat}`);
+  }
+
+  return {
+    albumIds: (data.set ?? []).map((album) => String(album.id ?? "")).filter(Boolean),
+    found: true,
   };
 }
