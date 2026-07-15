@@ -201,10 +201,11 @@ export async function buildPlan(sheets, spreadsheetId, artifacts) {
     ...currentPhotoIds.filter((photoId) => !deletedPhotoIds.has(photoId)),
     ...newPhotoIds,
   ];
+  const desiredPhotoIdSet = new Set(desiredPhotoIds);
   if (
-    new Set(desiredPhotoIds).size !== desiredPhotoIds.length
+    desiredPhotoIdSet.size !== desiredPhotoIds.length
     || desiredPhotoIds.length !== expectedPhotoIds.length
-    || expectedPhotoIds.some((photoId) => !desiredPhotoIds.includes(photoId))
+    || expectedPhotoIds.some((photoId) => !desiredPhotoIdSet.has(photoId))
   ) {
     blockers.push("reconciliation desired photo IDs do not match current rows plus additions and deletions");
   }
