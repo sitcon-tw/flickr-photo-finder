@@ -34,9 +34,9 @@ export function resultContextText({ photos, filtered, controls, activeTask, acti
   if (controls.sort.value === "discover") {
     sortText = `以${taskPrefix}亂序探索排序，分散年份、活動、相簿與素材包來源`;
   } else if (controls.sort.value === "newest") {
-    sortText = "以時間新到舊排序";
+    sortText = "以年份新到舊排序";
   } else if (controls.sort.value === "oldest") {
-    sortText = "以時間舊到新排序";
+    sortText = "以年份舊到新排序";
   } else if (controls.sort.value === "people-desc") {
     sortText = "以人數多到少排序";
   } else if (controls.sort.value === "people-asc") {

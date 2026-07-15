@@ -190,6 +190,16 @@ describe("Pages search/sort pure logic", () => {
     assert.equal(results[0].photo_id, "task-match");
   });
 
+  it("sorts newest by event year and keeps Sheet order within the same year", () => {
+    const results = sortPhotos([
+      photo({ photo_id: "same-year-first", event_year: "2026" }),
+      photo({ photo_id: "older", event_year: "2025" }),
+      photo({ photo_id: "same-year-second", event_year: "2026" }),
+    ], { sortMode: "newest" });
+
+    assert.deepEqual(results.map((item) => item.photo_id), ["same-year-first", "same-year-second", "older"]);
+  });
+
   it("promotes selected photos in selected URL order after sorting", () => {
     const firstSelected = withSearchText(photo({ photo_id: "selected-1", priority_level: "low" }));
     const secondSelected = withSearchText(photo({ photo_id: "selected-2", priority_level: "low" }));
@@ -734,6 +744,18 @@ describe("Pages search/sort pure logic", () => {
     assert.match(text, /目前命中的照片/);
     assert.match(text, /有些標籤尚未人工確認/);
     assert.match(text, /已套用：場景 交流/);
+  });
+
+  it("names event-year ordering accurately", () => {
+    const text = resultContextText({
+      photos: [photo({ photo_id: "1" })],
+      filtered: [photo({ photo_id: "1" })],
+      controls: { sort: { value: "newest" } },
+      activeTask: () => socialTask,
+      activeFilterEntries: () => [],
+    });
+
+    assert.match(text, /以年份新到舊排序/);
   });
 
   it("explains that empty finder results are not absence proof", () => {
