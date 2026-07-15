@@ -1,4 +1,3 @@
-import { spawnSync } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -6,11 +5,14 @@ import { parseCsv } from "../lib/core/csv-utils.mjs";
 import { createSheetsService, explainGoogleSheetsError, quoteSheetName } from "../lib/sheets/google-sheets-client.mjs";
 import { googleSheetsSpreadsheetId } from "../lib/core/project-config.mjs";
 import { albumHeaders, importBatchHeaders, photoHeaders } from "../lib/core/photo-schema.mjs";
+import { photoStateSha256 } from "../lib/flickr/photo-reconciliation.mjs";
+import { validateIntakeRun } from "./validate-intake-run.mjs";
 
 const outputFiles = {
   photos: "photos-to-append.csv",
   albums: "albums-updated.csv",
   importBatch: "import-batch.csv",
+  reconciliation: "reconciliation.json",
   summary: "summary.json",
 };
 
@@ -24,10 +26,10 @@ Options:
   --write                Apply changes. Without this flag the command only performs a dry-run.
   --help, -h             Show this help.
 
-This command appends new photos, adds a missing album in Flickr catalog order
-or updates its last_processed_at, and appends one import_batches row. It
-refuses to write if target headers do not match the repo schema or duplicate
-photo_id / batch_id values are detected. The process environment must set
+This command applies reviewed photo membership, ordering, additions and
+deletions, updates albums, and appends import_batches rows. It refuses to
+write if the target changed since the run or headers do not match the repo
+schema. The process environment must set
 GOOGLE_APPLICATION_CREDENTIALS to a service account credential with access to
 the target spreadsheet.`);
 }
@@ -70,19 +72,6 @@ function parseArgs(argv) {
   return options;
 }
 
-function validateRunDir(runDir) {
-  const result = spawnSync(process.execPath, ["scripts/commands/validate-intake-run.mjs", "--run-dir", runDir], {
-    stdio: "inherit",
-  });
-
-  if (result.error) {
-    throw result.error;
-  }
-  if (result.status !== 0) {
-    throw new Error("intake run validation failed");
-  }
-}
-
 function headersMatch(actual, expected) {
   return actual.length === expected.length && expected.every((header, index) => actual[index] === header);
 }
@@ -103,39 +92,39 @@ function toRecord(headers, row) {
 }
 
 async function readRunArtifacts(runDir) {
-  validateRunDir(runDir);
+  await validateIntakeRun(runDir);
 
   const paths = {
     photos: join(runDir, outputFiles.photos),
     albums: join(runDir, outputFiles.albums),
     importBatch: join(runDir, outputFiles.importBatch),
+    reconciliation: join(runDir, outputFiles.reconciliation),
     summary: join(runDir, outputFiles.summary),
   };
 
-  const [photoRows, albumRows, importBatchRows, summaryText] = await Promise.all([
+  const [photoRows, albumRows, importBatchRows, reconciliationText, summaryText] = await Promise.all([
     readCsvData(paths.photos, photoHeaders),
     readCsvData(paths.albums, albumHeaders),
     readCsvData(paths.importBatch, importBatchHeaders),
+    readFile(paths.reconciliation, "utf8"),
     readFile(paths.summary, "utf8"),
   ]);
 
   const summary = JSON.parse(summaryText);
-  if (importBatchRows.length !== 1) {
-    throw new Error(`${paths.importBatch} should contain exactly one data row`);
-  }
-
-  const updatedAlbumRow = albumRows.find((row) => toRecord(albumHeaders, row).album_id === summary.album_id);
-  if (!updatedAlbumRow) {
-    throw new Error(`${paths.albums} does not contain album_id ${summary.album_id}`);
-  }
+  const reconciliation = JSON.parse(reconciliationText);
+  const scannedAlbumIds = new Set(reconciliation.album_photos.map((inventory) => inventory.album_id));
+  const albumRecords = albumRows
+    .map((row) => toRecord(albumHeaders, row))
+    .filter((album) => scannedAlbumIds.has(album.album_id));
 
   return {
-    albumRecord: toRecord(albumHeaders, updatedAlbumRow),
+    albumRecords,
     albumRows,
-    importBatchRow: importBatchRows[0],
-    importBatchRecord: toRecord(importBatchHeaders, importBatchRows[0]),
+    importBatchRows,
+    importBatchRecords: importBatchRows.map((row) => toRecord(importBatchHeaders, row)),
     paths,
     photoRows,
+    reconciliation,
     summary,
   };
 }
@@ -153,17 +142,6 @@ async function readSheetRows(sheets, spreadsheetId, sheetName, expectedHeaders) 
     throw new Error(`${sheetName} header does not match repo schema`);
   }
   return rows;
-}
-
-function getColumnLetter(columnIndex) {
-  let value = columnIndex + 1;
-  let letters = "";
-  while (value > 0) {
-    const remainder = (value - 1) % 26;
-    letters = String.fromCharCode(65 + remainder) + letters;
-    value = Math.floor((value - 1) / 26);
-  }
-  return letters;
 }
 
 function findRowById(rows, headers, idHeader, idValue) {
@@ -184,19 +162,6 @@ function collectColumnValues(rows, headers, headerName) {
   return new Set(rows.slice(1).map((row) => row[index] ?? "").filter(Boolean));
 }
 
-function planNewAlbumRowMove(currentAlbumIds, artifactAlbumIds, albumId) {
-  const artifactIndex = artifactAlbumIds.indexOf(albumId);
-  const currentAlbumIdSet = new Set(currentAlbumIds);
-  const destinationIndex = artifactAlbumIds
-    .slice(0, artifactIndex)
-    .filter((id) => currentAlbumIdSet.has(id)).length + 1;
-  const sourceIndex = currentAlbumIds.length + 1;
-
-  return sourceIndex === destinationIndex
-    ? null
-    : { albumId, destinationIndex, sourceIndex };
-}
-
 export async function buildPlan(sheets, spreadsheetId, artifacts) {
   const [photosRows, albumsRows, importBatchRows] = await Promise.all([
     readSheetRows(sheets, spreadsheetId, "photos", photoHeaders),
@@ -204,52 +169,82 @@ export async function buildPlan(sheets, spreadsheetId, artifacts) {
     readSheetRows(sheets, spreadsheetId, "import_batches", importBatchHeaders),
   ]);
 
-  const existingPhotoIds = collectColumnValues(photosRows, photoHeaders, "photo_id");
-  const duplicatePhotoIds = artifacts.photoRows
-    .map((row) => toRecord(photoHeaders, row).photo_id)
-    .filter((photoId) => existingPhotoIds.has(photoId));
-
+  const photoRecords = photosRows.slice(1).map((row) => toRecord(photoHeaders, row));
+  const currentPhotoIds = photoRecords.map((photo) => photo.photo_id);
+  const existingPhotoIds = new Set(currentPhotoIds);
+  const newPhotoIds = artifacts.photoRows.map((row) => toRecord(photoHeaders, row).photo_id);
+  const deletedPhotoIds = new Set(artifacts.reconciliation.deleted_photo_ids);
+  const desiredPhotoIds = artifacts.reconciliation.desired_photo_ids;
   const existingBatchIds = collectColumnValues(importBatchRows, importBatchHeaders, "batch_id");
-  const duplicateBatchId = existingBatchIds.has(artifacts.importBatchRecord.batch_id);
-
-  const albumRowNumber = findRowById(albumsRows, albumHeaders, "album_id", artifacts.summary.album_id);
+  const duplicateBatchIds = artifacts.importBatchRecords
+    .map((batch) => batch.batch_id)
+    .filter((batchId) => existingBatchIds.has(batchId));
   const currentAlbumIds = albumsRows.slice(1).map((row) => toRecord(albumHeaders, row).album_id);
   const artifactAlbumIds = artifacts.albumRows.map((row) => toRecord(albumHeaders, row).album_id);
-  const lastProcessedColumn = albumHeaders.indexOf("last_processed_at");
-  if (lastProcessedColumn < 0) {
-    throw new Error("albums schema is missing last_processed_at");
-  }
+  const currentAlbumIdSet = new Set(currentAlbumIds);
+  const newAlbumRecords = artifacts.albumRecords.filter((album) => !currentAlbumIdSet.has(album.album_id));
+  const desiredAlbumIdSet = new Set([...currentAlbumIds, ...newAlbumRecords.map((album) => album.album_id)]);
+  const desiredAlbumIds = artifactAlbumIds.filter((albumId) => desiredAlbumIdSet.has(albumId));
 
   const blockers = [];
+  if (photoStateSha256(photoRecords) !== artifacts.reconciliation.source_state_sha256) {
+    blockers.push("photos photo_id / album_ids state changed since this intake run; regenerate it");
+  }
+  const duplicatePhotoIds = newPhotoIds.filter((photoId) => existingPhotoIds.has(photoId));
   if (duplicatePhotoIds.length > 0) {
-    blockers.push(`duplicate photo_id: ${[...new Set(duplicatePhotoIds)].join(", ")}`);
+    blockers.push(`duplicate photo_id: ${duplicatePhotoIds.join(", ")}`);
   }
-  if (duplicateBatchId) {
-    blockers.push(`duplicate batch_id: ${artifacts.importBatchRecord.batch_id}`);
+  if (duplicateBatchIds.length > 0) {
+    blockers.push(`duplicate batch_id: ${duplicateBatchIds.join(", ")}`);
   }
-  const newAlbumRowMove = albumRowNumber < 0
-    ? planNewAlbumRowMove(currentAlbumIds, artifactAlbumIds, artifacts.summary.album_id)
-    : null;
+  const expectedPhotoIds = [
+    ...currentPhotoIds.filter((photoId) => !deletedPhotoIds.has(photoId)),
+    ...newPhotoIds,
+  ];
+  if (
+    new Set(desiredPhotoIds).size !== desiredPhotoIds.length
+    || desiredPhotoIds.length !== expectedPhotoIds.length
+    || expectedPhotoIds.some((photoId) => !desiredPhotoIds.includes(photoId))
+  ) {
+    blockers.push("reconciliation desired photo IDs do not match current rows plus additions and deletions");
+  }
+  if (desiredAlbumIds.length !== desiredAlbumIdSet.size) {
+    blockers.push("albums catalog changed since this intake run; regenerate it");
+  }
+
+  const albumUpdates = artifacts.albumRecords
+    .filter((album) => currentAlbumIdSet.has(album.album_id))
+    .map((album) => ({
+      albumId: album.album_id,
+      lastProcessedAt: album.last_processed_at,
+      photoCount: album.photo_count,
+      rowNumber: findRowById(albumsRows, albumHeaders, "album_id", album.album_id),
+    }));
+  const albumIdColumn = photoHeaders.indexOf("album_ids");
+  const photoAlbumIdUpdates = artifacts.reconciliation.membership_updates
+    .filter((update) => !deletedPhotoIds.has(update.photo_id))
+    .map((update) => ({
+      albumIds: update.after_album_ids.join(";"),
+      photoId: update.photo_id,
+      rowNumber: findRowById(photosRows, photoHeaders, "photo_id", update.photo_id),
+    }));
+  if (albumIdColumn < 0 || photoAlbumIdUpdates.some((update) => update.rowNumber < 2)) {
+    blockers.push("reconciliation membership update references a missing photo row");
+  }
 
   return {
-    albumLastProcessedAt: artifacts.albumRecord.last_processed_at,
-    albumLastProcessedRange:
-      albumRowNumber > 0
-        ? `${quoteSheetName("albums")}!${getColumnLetter(lastProcessedColumn)}${albumRowNumber}`
-        : "",
-    albumRowNumber,
+    albumIdColumn,
+    albumRowsToAppend: newAlbumRecords.map((album) => albumHeaders.map((header) => album[header] ?? "")),
+    albumIdsBeforeSort: currentAlbumIds.concat(newAlbumRecords.map((album) => album.album_id)),
+    albumUpdates,
     blockers,
-    importBatchRowsToAppend: [artifacts.importBatchRow],
-    newAlbumRowsToAppend:
-      albumRowNumber < 0
-        ? [albumHeaders.map((header) => artifacts.albumRecord[header] ?? "")]
-        : [],
-    newAlbumDestinationIndex:
-      albumRowNumber < 0
-        ? newAlbumRowMove?.destinationIndex ?? currentAlbumIds.length + 1
-        : -1,
-    newAlbumRowMove,
+    deletedPhotoIds: [...deletedPhotoIds],
+    desiredAlbumIds,
+    desiredPhotoIds,
+    importBatchRowsToAppend: artifacts.importBatchRows,
     newPhotoRowsToAppend: artifacts.photoRows,
+    photoIdsBeforeSort: currentPhotoIds.concat(newPhotoIds),
+    photoAlbumIdUpdates,
     summary: artifacts.summary,
   };
 }
@@ -257,81 +252,174 @@ export async function buildPlan(sheets, spreadsheetId, artifacts) {
 function printPlan(plan, { write }) {
   console.log(`Mode: ${write ? "write" : "dry-run"}`);
   console.log(`Run: ${plan.summary.run_id}`);
-  console.log(`Album: ${plan.summary.album_id} (${plan.summary.album_title ?? ""})`);
-  console.log(`- add albums: ${plan.newAlbumRowsToAppend.length}`);
-  console.log(`- position new album to match Flickr: ${plan.newAlbumRowMove ? 1 : 0} row move(s)`);
+  console.log(`Scope: ${plan.summary.scope}`);
+  console.log(`- add albums: ${plan.albumRowsToAppend.length}`);
+  console.log(`- update albums: ${plan.albumUpdates.length}`);
   console.log(`- append photos: ${plan.newPhotoRowsToAppend.length}`);
-  console.log(
-    plan.albumLastProcessedRange
-      ? `- update albums.last_processed_at: ${plan.albumLastProcessedAt || "(empty)"} at ${plan.albumLastProcessedRange}`
-      : "- update albums.last_processed_at: included in appended album row",
-  );
+  console.log(`- update photo memberships: ${plan.photoAlbumIdUpdates.length}`);
+  console.log(`- delete photos: ${plan.deletedPhotoIds.length}`);
+  console.log(`- reorder photos: ${plan.summary.reordered_photo_count}`);
   console.log(`- append import_batches: ${plan.importBatchRowsToAppend.length}`);
   if (plan.blockers.length > 0) {
     console.log(`Blocked: ${plan.blockers.join("; ")}`);
   }
 }
 
-async function appendRows(sheets, spreadsheetId, sheetName, rows) {
+function cell(value) {
+  return { userEnteredValue: { stringValue: String(value ?? "") } };
+}
+
+function appendCells(sheetId, rows) {
   if (rows.length === 0) {
-    return;
+    return [];
   }
-  await sheets.spreadsheets.values.append({
-    spreadsheetId,
-    range: `${quoteSheetName(sheetName)}!A1`,
-    valueInputOption: "RAW",
-    insertDataOption: "INSERT_ROWS",
-    requestBody: {
-      values: rows,
+  return [{
+    appendCells: {
+      fields: "userEnteredValue",
+      rows: rows.map((row) => ({ values: row.map(cell) })),
+      sheetId,
     },
-  });
+  }];
 }
 
-async function updateAlbumLastProcessedAt(sheets, spreadsheetId, plan) {
-  if (!plan.albumLastProcessedRange) {
-    return;
-  }
-  await sheets.spreadsheets.values.update({
-    spreadsheetId,
-    range: plan.albumLastProcessedRange,
-    valueInputOption: "RAW",
-    requestBody: {
-      values: [[plan.albumLastProcessedAt]],
+function updateCell(sheetId, rowIndex, columnIndex, value) {
+  return {
+    updateCells: {
+      fields: "userEnteredValue",
+      range: {
+        endColumnIndex: columnIndex + 1,
+        endRowIndex: rowIndex + 1,
+        sheetId,
+        startColumnIndex: columnIndex,
+        startRowIndex: rowIndex,
+      },
+      rows: [{ values: [cell(value)] }],
     },
-  });
+  };
 }
 
-async function positionNewAlbumRow(sheets, spreadsheetId, move) {
-  if (!move) {
-    return;
+function sortRowsRequests({ columnCount, currentIds, desiredIds, sheetId }) {
+  if (currentIds.join(",") === desiredIds.join(",")) {
+    return [];
   }
+  const desiredIndex = new Map(desiredIds.map((id, index) => [id, index]));
+  let deletedOffset = desiredIds.length;
+  const keys = currentIds.map((id) => desiredIndex.get(id) ?? deletedOffset++);
+  const requests = [
+    {
+      insertDimension: {
+        inheritFromBefore: true,
+        range: {
+          dimension: "COLUMNS",
+          endIndex: columnCount + 1,
+          sheetId,
+          startIndex: columnCount,
+        },
+      },
+    },
+    {
+      updateCells: {
+        fields: "userEnteredValue",
+        range: {
+          endColumnIndex: columnCount + 1,
+          endRowIndex: currentIds.length + 1,
+          sheetId,
+          startColumnIndex: columnCount,
+          startRowIndex: 1,
+        },
+        rows: keys.map((key) => ({ values: [{ userEnteredValue: { numberValue: key } }] })),
+      },
+    },
+    {
+      sortRange: {
+        range: {
+          endColumnIndex: columnCount + 1,
+          endRowIndex: currentIds.length + 1,
+          sheetId,
+          startColumnIndex: 0,
+          startRowIndex: 1,
+        },
+        sortSpecs: [{ dimensionIndex: columnCount, sortOrder: "ASCENDING" }],
+      },
+    },
+  ];
+  if (currentIds.length > desiredIds.length) {
+    requests.push({
+      deleteDimension: {
+        range: {
+          dimension: "ROWS",
+          endIndex: currentIds.length + 1,
+          sheetId,
+          startIndex: desiredIds.length + 1,
+        },
+      },
+    });
+  }
+  requests.push({
+    deleteDimension: {
+      range: {
+        dimension: "COLUMNS",
+        endIndex: columnCount + 1,
+        sheetId,
+        startIndex: columnCount,
+      },
+    },
+  });
+  return requests;
+}
 
+async function sheetIds(sheets, spreadsheetId) {
   const response = await sheets.spreadsheets.get({
     spreadsheetId,
     fields: "sheets.properties(sheetId,title)",
   });
-  const sheetId = response.data.sheets
-    ?.find((sheet) => sheet.properties?.title === "albums")
-    ?.properties?.sheetId;
-  if (sheetId === undefined) {
-    throw new Error("albums sheet was not found");
-  }
+  return Object.fromEntries((response.data.sheets ?? []).map((sheet) => [
+    sheet.properties?.title,
+    sheet.properties?.sheetId,
+  ]));
+}
 
+export function buildSheetRequests(plan, ids) {
+  for (const sheetName of ["photos", "albums", "import_batches"]) {
+    if (ids[sheetName] === undefined) {
+      throw new Error(`${sheetName} sheet was not found`);
+    }
+  }
+  const requests = [];
+  requests.push(...appendCells(ids.photos, plan.newPhotoRowsToAppend));
+  for (const update of plan.photoAlbumIdUpdates) {
+    requests.push(updateCell(ids.photos, update.rowNumber - 1, plan.albumIdColumn, update.albumIds));
+  }
+  requests.push(...sortRowsRequests({
+    columnCount: photoHeaders.length,
+    currentIds: plan.photoIdsBeforeSort,
+    desiredIds: plan.desiredPhotoIds,
+    sheetId: ids.photos,
+  }));
+
+  requests.push(...appendCells(ids.albums, plan.albumRowsToAppend));
+  const photoCountColumn = albumHeaders.indexOf("photo_count");
+  const lastProcessedColumn = albumHeaders.indexOf("last_processed_at");
+  for (const update of plan.albumUpdates) {
+    requests.push(updateCell(ids.albums, update.rowNumber - 1, photoCountColumn, update.photoCount));
+    requests.push(updateCell(ids.albums, update.rowNumber - 1, lastProcessedColumn, update.lastProcessedAt));
+  }
+  requests.push(...sortRowsRequests({
+    columnCount: albumHeaders.length,
+    currentIds: plan.albumIdsBeforeSort,
+    desiredIds: plan.desiredAlbumIds,
+    sheetId: ids.albums,
+  }));
+  requests.push(...appendCells(ids.import_batches, plan.importBatchRowsToAppend));
+  return requests;
+}
+
+async function applyPlan(sheets, spreadsheetId, plan) {
+  const ids = await sheetIds(sheets, spreadsheetId);
+  const requests = buildSheetRequests(plan, ids);
   await sheets.spreadsheets.batchUpdate({
     spreadsheetId,
-    requestBody: {
-      requests: [{
-        moveDimension: {
-          source: {
-            sheetId,
-            dimension: "ROWS",
-            startIndex: move.sourceIndex,
-            endIndex: move.sourceIndex + 1,
-          },
-          destinationIndex: move.destinationIndex,
-        },
-      }],
-    },
+    requestBody: { requests },
   });
 }
 
@@ -342,28 +430,43 @@ async function verifyApplied(sheets, spreadsheetId, artifacts, plan) {
     readSheetRows(sheets, spreadsheetId, "import_batches", importBatchHeaders),
   ]);
 
-  const photoIds = collectColumnValues(photosRows, photoHeaders, "photo_id");
-  const missingPhotoIds = artifacts.photoRows
-    .map((row) => toRecord(photoHeaders, row).photo_id)
-    .filter((photoId) => !photoIds.has(photoId));
-  if (missingPhotoIds.length > 0) {
-    throw new Error(`write verification failed; missing photo_id: ${missingPhotoIds.join(", ")}`);
+  const photoRecords = photosRows.slice(1).map((row) => toRecord(photoHeaders, row));
+  const photoIds = photoRecords.map((photo) => photo.photo_id);
+  if (photoIds.join(",") !== plan.desiredPhotoIds.join(",")) {
+    throw new Error(`write verification failed; photos are not in reconciled order`);
+  }
+  const photoById = new Map(photoRecords.map((photo) => [photo.photo_id, photo]));
+  for (const update of artifacts.reconciliation.membership_updates) {
+    if (!plan.deletedPhotoIds.includes(update.photo_id) && photoById.get(update.photo_id)?.album_ids !== update.after_album_ids.join(";")) {
+      throw new Error(`write verification failed; album_ids not updated for ${update.photo_id}`);
+    }
+  }
+  for (const photoId of plan.deletedPhotoIds) {
+    if (photoById.has(photoId)) {
+      throw new Error(`write verification failed; photo ${photoId} was not deleted`);
+    }
   }
 
   const batchIds = collectColumnValues(importBatchRows, importBatchHeaders, "batch_id");
-  if (!batchIds.has(artifacts.importBatchRecord.batch_id)) {
-    throw new Error(`write verification failed; missing batch_id ${artifacts.importBatchRecord.batch_id}`);
+  const missingBatchIds = artifacts.importBatchRecords
+    .map((batch) => batch.batch_id)
+    .filter((batchId) => !batchIds.has(batchId));
+  if (missingBatchIds.length > 0) {
+    throw new Error(`write verification failed; missing batch_id ${missingBatchIds.join(", ")}`);
   }
 
-  const albumRowNumber = findRowById(albumsRows, albumHeaders, "album_id", artifacts.summary.album_id);
+  const actualAlbumIds = albumsRows.slice(1).map((row) => toRecord(albumHeaders, row).album_id);
+  if (actualAlbumIds.join(",") !== plan.desiredAlbumIds.join(",")) {
+    throw new Error("write verification failed; albums are not in Flickr catalog order");
+  }
+  const photoCountColumn = albumHeaders.indexOf("photo_count");
   const lastProcessedColumn = albumHeaders.indexOf("last_processed_at");
-  const albumRow = albumsRows[albumRowNumber - 1] ?? [];
-  if ((albumRow[lastProcessedColumn] ?? "") !== artifacts.albumRecord.last_processed_at) {
-    throw new Error(`write verification failed; albums.last_processed_at was not updated`);
-  }
-
-  if (plan.newAlbumDestinationIndex >= 0 && albumRowNumber !== plan.newAlbumDestinationIndex + 1) {
-    throw new Error("write verification failed; new album is not in Flickr catalog order");
+  for (const album of artifacts.albumRecords) {
+    const rowNumber = findRowById(albumsRows, albumHeaders, "album_id", album.album_id);
+    const row = albumsRows[rowNumber - 1] ?? [];
+    if ((row[photoCountColumn] ?? "") !== album.photo_count || (row[lastProcessedColumn] ?? "") !== album.last_processed_at) {
+      throw new Error(`write verification failed; album ${album.album_id} was not updated`);
+    }
   }
 }
 
@@ -391,11 +494,7 @@ async function main() {
     return;
   }
 
-  await appendRows(sheets, options.spreadsheetId, "albums", plan.newAlbumRowsToAppend);
-  await updateAlbumLastProcessedAt(sheets, options.spreadsheetId, plan);
-  await positionNewAlbumRow(sheets, options.spreadsheetId, plan.newAlbumRowMove);
-  await appendRows(sheets, options.spreadsheetId, "photos", plan.newPhotoRowsToAppend);
-  await appendRows(sheets, options.spreadsheetId, "import_batches", plan.importBatchRowsToAppend);
+  await applyPlan(sheets, options.spreadsheetId, plan);
   await verifyApplied(sheets, options.spreadsheetId, artifacts, plan);
   console.log("Intake run applied and verified.");
 }
