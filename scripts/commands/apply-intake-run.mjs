@@ -232,6 +232,15 @@ export async function buildPlan(sheets, spreadsheetId, artifacts) {
   if (albumIdColumn < 0 || photoAlbumIdUpdates.some((update) => update.rowNumber < 2)) {
     blockers.push("reconciliation membership update references a missing photo row");
   }
+  const albumIdsByPhotoId = new Map(photoAlbumIdUpdates.map((update) => [update.photoId, update.albumIds]));
+  const expectedPhotoRecords = [
+    ...photoRecords
+      .filter((photo) => !deletedPhotoIds.has(photo.photo_id))
+      .map((photo) => albumIdsByPhotoId.has(photo.photo_id)
+        ? { ...photo, album_ids: albumIdsByPhotoId.get(photo.photo_id) }
+        : photo),
+    ...artifacts.photoRows.map((row) => toRecord(photoHeaders, row)),
+  ];
 
   return {
     albumIdColumn,
@@ -242,6 +251,7 @@ export async function buildPlan(sheets, spreadsheetId, artifacts) {
     deletedPhotoIds: [...deletedPhotoIds],
     desiredAlbumIds,
     desiredPhotoIds,
+    expectedPhotoRecords,
     importBatchRowsToAppend: artifacts.importBatchRows,
     newPhotoRowsToAppend: artifacts.photoRows,
     photoIdsBeforeSort: currentPhotoIds.concat(newPhotoIds),
@@ -424,6 +434,20 @@ async function applyPlan(sheets, spreadsheetId, plan) {
   });
 }
 
+export function assertPhotoRowsMatchExpected(actualPhotoRecords, expectedPhotoRecords) {
+  const actualById = new Map(actualPhotoRecords.map((photo) => [photo.photo_id, photo]));
+  for (const expected of expectedPhotoRecords) {
+    const actual = actualById.get(expected.photo_id);
+    if (!actual) {
+      throw new Error(`write verification failed; photo ${expected.photo_id} is missing`);
+    }
+    const changedField = photoHeaders.find((header) => actual[header] !== expected[header]);
+    if (changedField) {
+      throw new Error(`write verification failed; ${changedField} changed for photo ${expected.photo_id}`);
+    }
+  }
+}
+
 async function verifyApplied(sheets, spreadsheetId, artifacts, plan) {
   const [photosRows, albumsRows, importBatchRows] = await Promise.all([
     readSheetRows(sheets, spreadsheetId, "photos", photoHeaders),
@@ -436,12 +460,8 @@ async function verifyApplied(sheets, spreadsheetId, artifacts, plan) {
   if (photoIds.join(",") !== plan.desiredPhotoIds.join(",")) {
     throw new Error(`write verification failed; photos are not in reconciled order`);
   }
+  assertPhotoRowsMatchExpected(photoRecords, plan.expectedPhotoRecords);
   const photoById = new Map(photoRecords.map((photo) => [photo.photo_id, photo]));
-  for (const update of artifacts.reconciliation.membership_updates) {
-    if (!plan.deletedPhotoIds.includes(update.photo_id) && photoById.get(update.photo_id)?.album_ids !== update.after_album_ids.join(";")) {
-      throw new Error(`write verification failed; album_ids not updated for ${update.photo_id}`);
-    }
-  }
   for (const photoId of plan.deletedPhotoIds) {
     if (photoById.has(photoId)) {
       throw new Error(`write verification failed; photo ${photoId} was not deleted`);

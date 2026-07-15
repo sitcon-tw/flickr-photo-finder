@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { buildPlan, buildSheetRequests } from "../scripts/commands/apply-intake-run.mjs";
+import {
+  assertPhotoRowsMatchExpected,
+  buildPlan,
+  buildSheetRequests,
+} from "../scripts/commands/apply-intake-run.mjs";
 import { albumHeaders, importBatchHeaders, photoHeaders } from "../scripts/lib/core/photo-schema.mjs";
 import { photoStateSha256 } from "../scripts/lib/flickr/photo-reconciliation.mjs";
 
@@ -128,5 +132,37 @@ describe("intake Sheets reconciliation plan", () => {
     assert.ok(requests.some((request) => request.sortRange));
     assert.ok(requests.some((request) => request.deleteDimension?.range?.dimension === "ROWS"));
     assert.equal(requests.filter((request) => request.deleteDimension?.range?.dimension === "COLUMNS").length, 1);
+  });
+
+  it("detects labeled content attached to the wrong photo after sorting", async () => {
+    const photos = [
+      row(photoHeaders, { album_ids: "album-1", photo_id: "photo-2", scene_tags: "攤位" }),
+      row(photoHeaders, { album_ids: "album-1", photo_id: "photo-1", scene_tags: "講者" }),
+    ];
+    const input = artifacts({ photos });
+    input.reconciliation.desired_photo_ids = ["photo-1", "photo-2"];
+    input.reconciliation.membership_updates = [{
+      after_album_ids: ["album-1", "album-2"],
+      before_album_ids: ["album-1"],
+      photo_id: "photo-1",
+    }];
+    const plan = await buildPlan(
+      fakeSheets({ albums: [row(albumHeaders, albumRecord)], photos }),
+      "spreadsheet-1",
+      input,
+    );
+    const correctRows = [
+      { ...record(photoHeaders, photos[1]), album_ids: "album-1;album-2" },
+      record(photoHeaders, photos[0]),
+    ];
+
+    assert.doesNotThrow(() => assertPhotoRowsMatchExpected(correctRows, plan.expectedPhotoRecords));
+    assert.throws(
+      () => assertPhotoRowsMatchExpected([
+        { ...correctRows[0], scene_tags: "攤位" },
+        { ...correctRows[1], scene_tags: "講者" },
+      ], plan.expectedPhotoRecords),
+      /scene_tags changed for photo photo-2/,
+    );
   });
 });

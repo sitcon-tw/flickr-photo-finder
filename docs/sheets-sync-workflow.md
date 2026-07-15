@@ -373,7 +373,7 @@ pnpm sheets:apply-intake -- --run-dir tmp/intake-runs/RUN_ID --write
 3. 若 `albums` 尚無 artifact 中的相簿就依相簿目錄順序加入；既有相簿只更新本次可確認的 `photo_count` 與 `last_processed_at`。
 4. 將 `import-batch.csv` 的一或多列追加到 `import_batches`。
 
-工具會先驗證正式 `photos` 的 `photo_id`／`album_ids` 狀態 hash 和 artifact 建立時相同，避免 stale run 覆蓋新修改；寫入使用單次 Sheets batch request，並在寫入後讀回驗證完整 photo ID 順序、成員關係、刪除、相簿統計與批次紀錄。它不會用 `albums-updated.csv` 覆蓋整張 `albums` 表，既有的人工作業欄位會保留。
+工具會先驗證正式 `photos` 的 `photo_id`／`album_ids` 狀態 hash 和 artifact 建立時相同，避免 stale run 覆蓋新修改；寫入使用單次 Sheets batch request，並在寫入後以 `photo_id` 逐欄比對完整照片內容，確認除了計畫中的 `album_ids` 以外，標記與人工欄位都仍屬於原照片，再驗證完整 photo ID 順序、刪除、相簿統計與批次紀錄。正式寫入期間應暫停其他協作者編輯 `photos`。它不會用 `albums-updated.csv` 覆蓋整張 `albums` 表，既有的人工作業欄位會保留。
 
 `intake:validate` 會確認：
 
