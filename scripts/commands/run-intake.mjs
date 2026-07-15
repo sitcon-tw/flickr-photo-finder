@@ -1,6 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { parseArgs as parseNodeArgs } from "node:util";
 import {
   readAlbumCatalog,
@@ -36,9 +37,9 @@ Each run writes:
   summary.json`);
 }
 
-function parseArgs(argv) {
+export function parseArgs(argv) {
   const { values } = parseNodeArgs({
-    args: argv.slice(2),
+    args: argv.slice(2).filter((arg) => arg !== "--"),
     options: {
       album: { type: "string" },
       "all-albums": { type: "boolean" },
@@ -225,9 +226,11 @@ async function main() {
   console.log(`Intake run ${runId} is ready for review before applying to Google Sheets.`);
 }
 
-try {
-  await main();
-} catch (error) {
-  console.error(`Could not run album intake: ${error.message}`);
-  process.exitCode = 1;
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+  try {
+    await main();
+  } catch (error) {
+    console.error(`Could not run album intake: ${error.message}`);
+    process.exitCode = 1;
+  }
 }

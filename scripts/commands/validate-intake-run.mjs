@@ -22,9 +22,9 @@ Options:
   --run-dir <path>  Intake run artifact directory containing CSV outputs and summary.json.`);
 }
 
-function parseArgs(argv) {
+export function parseArgs(argv) {
   const { values } = parseNodeArgs({
-    args: argv.slice(2),
+    args: argv.slice(2).filter((arg) => arg !== "--"),
     options: {
       "run-dir": { type: "string" },
       help: { type: "boolean", short: "h" },
