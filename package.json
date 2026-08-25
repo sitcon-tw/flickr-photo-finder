@@ -78,7 +78,7 @@
     "analytics:dimensions:sync": "node scripts/commands/sync-ga4-custom-dimensions.mjs"
   },
   "dependencies": {
-    "@inquirer/prompts": "^8.5.2",
+    "@inquirer/prompts": "^8.6.0",
     "googleapis": "^174.0.1"
   }
 }
