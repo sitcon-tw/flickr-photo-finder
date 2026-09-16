@@ -285,10 +285,100 @@ async function clickElement(client, selector) {
   await click(client, point);
 }
 
+async function chooseAppearance(client, value) {
+  if (await evaluate(client, "document.querySelector('#appearanceButton').dataset.appearance") !== value) {
+    await clickElement(client, "#appearanceButton");
+  }
+}
+
+async function assertAppearance(client, expected) {
+  const appearance = await evaluate(client, `(async () => {
+    await new Promise(requestAnimationFrame);
+    await new Promise(requestAnimationFrame);
+    return {
+      theme: document.documentElement.dataset.theme,
+      colorScheme: getComputedStyle(document.documentElement).colorScheme,
+      preference: document.querySelector('#appearanceButton').dataset.appearance,
+      label: document.querySelector('#appearanceButton').getAttribute('aria-label'),
+    };
+  })()`);
+  if (appearance.theme !== expected || appearance.colorScheme !== expected || appearance.preference !== expected) {
+    throw new Error(`Expected ${expected} appearance: ${JSON.stringify(appearance)}`);
+  }
+  if (!appearance.label?.includes("切換為")) throw new Error("Appearance button must describe its next action");
+  return appearance;
+}
+
+async function checkAppearance(client) {
+  logProgress("checking system appearance and persistent overrides");
+  const before = await evaluate(client, `JSON.stringify({ url: location.href, result: document.querySelector('#resultSummary').textContent, candidates: document.querySelector('#candidateSummary').textContent })`);
+  await client.call("Emulation.setEmulatedMedia", { features: [{ name: "prefers-color-scheme", value: "dark" }] });
+  await assertAppearance(client, "dark");
+  await client.call("Emulation.setEmulatedMedia", { features: [{ name: "prefers-color-scheme", value: "light" }] });
+  await assertAppearance(client, "light");
+  await client.call("Emulation.setEmulatedMedia", { features: [{ name: "prefers-color-scheme", value: "dark" }] });
+  await assertAppearance(client, "dark");
+  await chooseAppearance(client, "light");
+  await assertAppearance(client, "light");
+  await client.call("Page.reload");
+  await waitForPageReady(client);
+  const restored = await assertAppearance(client, "light");
+  if (restored.preference !== "light") throw new Error("Manual appearance did not survive reload");
+  await client.call("Emulation.setEmulatedMedia", { features: [{ name: "prefers-color-scheme", value: "light" }] });
+  await client.call("Emulation.setEmulatedMedia", { features: [{ name: "prefers-color-scheme", value: "dark" }] });
+  await assertAppearance(client, "light");
+  await clickElement(client, "#appearanceButton");
+  await assertAppearance(client, "dark");
+  await clickElement(client, "#appearanceButton");
+  await assertAppearance(client, "light");
+  await client.call("Emulation.setEmulatedMedia", { features: [{ name: "prefers-color-scheme", value: "light" }] });
+  await assertAppearance(client, "light");
+
+  logProgress("checking both appearances across responsive layouts");
+  for (const appearance of ["light", "dark"]) {
+    await chooseAppearance(client, appearance);
+    await assertAppearance(client, appearance);
+    for (const width of [320, 390, 768, 1024, 1440]) {
+      await client.call("Emulation.setDeviceMetricsOverride", { width, height: 900, deviceScaleFactor: 1, mobile: width < 761 });
+      const layout = await evaluate(client, `(async () => {
+        await new Promise(requestAnimationFrame);
+        const logo = [...document.querySelectorAll('.brand-logo')].find(image => image.getClientRects().length);
+        const button = document.querySelector('#appearanceButton');
+        return {
+          overflow: document.documentElement.scrollWidth > innerWidth,
+          logo: logo?.getAttribute('src'),
+          loaded: logo?.naturalWidth > 0,
+          photoFilter: getComputedStyle(document.querySelector('.photo-link img')).filter,
+          buttonWidth: button.getBoundingClientRect().width,
+          visibleIcons: [...button.querySelectorAll('svg')].filter(icon => icon.getClientRects().length).length,
+        };
+      })()`);
+      const expectedLogo = appearance === "dark" ? "./assets/brand-logo-white.svg" : "./assets/brand-logo.svg";
+      if (layout.overflow || layout.logo !== expectedLogo || !layout.loaded || layout.photoFilter !== "none" || layout.buttonWidth > 44 || layout.visibleIcons !== 1) {
+        throw new Error(`Appearance layout failed at ${width}px in ${appearance}: ${JSON.stringify(layout)}`);
+      }
+    }
+  }
+  const after = await evaluate(client, `JSON.stringify({ url: location.href, result: document.querySelector('#resultSummary').textContent, candidates: document.querySelector('#candidateSummary').textContent })`);
+  if (after !== before) throw new Error("Appearance changes modified the shared Finder state");
+
+  logProgress("checking appearance when browser storage is unavailable");
+  const storageBlock = await client.call("Page.addScriptToEvaluateOnNewDocument", {
+    source: "Object.defineProperty(window, 'localStorage', { get() { throw new Error('Storage unavailable for smoke test'); } });",
+  });
+  await client.call("Page.reload");
+  await waitForPageReady(client);
+  await assertAppearance(client, "light");
+  await chooseAppearance(client, "dark");
+  await assertAppearance(client, "dark");
+  await client.call("Page.removeScriptToEvaluateOnNewDocument", { identifier: storageBlock.identifier });
+}
+
 async function runSmoke(client, pageUrl) {
   logProgress("configuring mobile viewport");
   await client.call("Page.enable");
   await client.call("Runtime.enable");
+  await client.call("Emulation.setEmulatedMedia", { features: [{ name: "prefers-color-scheme", value: "light" }] });
   await client.call("Emulation.setDeviceMetricsOverride", {
     width: 390,
     height: 844,
@@ -497,6 +587,7 @@ async function runSmoke(client, pageUrl) {
       throw new Error(`Responsive controls failed at ${width}px: ${JSON.stringify(layout)}`);
     }
   }
+  await checkAppearance(client);
 }
 
 let staticServer;

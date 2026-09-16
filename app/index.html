@@ -24,6 +24,7 @@
     <meta name="twitter:image" content="https://sitcon.org/flickr-photo-finder/assets/og-image.png" />
     <meta name="twitter:image:alt" content="SITCON 活動照片拼貼與 Photo Finder 標題" />
     <!-- app-metadata:end -->
+    <script src="./appearance.js"></script>
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
@@ -31,24 +32,36 @@
       <header class="topbar">
         <div class="brand">
           <img class="brand-logo" src="./assets/brand-logo.svg" width="44" height="44" alt="" />
+          <img class="brand-logo brand-logo-dark" src="./assets/brand-logo-white.svg" width="44" height="44" alt="" />
           <div>
             <h1 id="appTitle">SITCON Flickr Photo Finder</h1>
             <p>依用途、活動與畫面內容找照片。</p>
           </div>
         </div>
-        <nav class="external-links" aria-label="外部連結">
-          <a id="sourceLink" class="source-link" href="https://www.flickr.com/" target="_blank" rel="noreferrer">Flickr</a>
-          <a
-            id="repositoryLink"
-            class="source-link"
-            href="https://github.com/sitcon-tw/flickr-photo-finder"
-            target="_blank"
-            rel="noreferrer"
-            title="了解專案細節或回報問題"
-          >
-            GitHub 專案
-          </a>
-        </nav>
+        <div class="header-actions">
+          <nav class="external-links" aria-label="外部連結">
+            <a id="sourceLink" class="source-link" href="https://www.flickr.com/" target="_blank" rel="noreferrer">Flickr</a>
+            <a
+              id="repositoryLink"
+              class="source-link"
+              href="https://github.com/sitcon-tw/flickr-photo-finder"
+              target="_blank"
+              rel="noreferrer"
+              title="了解專案細節或回報問題"
+            >
+              GitHub 專案
+            </a>
+          </nav>
+          <button id="appearanceButton" class="appearance-button" type="button" aria-label="切換明暗外觀" title="切換明暗外觀">
+            <svg class="appearance-icon-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M20.5 13.2A8.6 8.6 0 0 1 10.8 3.5a8.6 8.6 0 1 0 9.7 9.7Z" />
+            </svg>
+            <svg class="appearance-icon-light" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="4" />
+              <path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.4 1.4m11.2 11.2L19 19M5 19l1.4-1.4M17.6 6.4 19 5" />
+            </svg>
+          </button>
+        </div>
       </header>
 
       <section class="task-panel" aria-label="優先檢視">

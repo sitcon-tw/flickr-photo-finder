@@ -160,6 +160,7 @@ pnpm finder:perf
 
 公開前端主程式使用原生 ES modules，依 Functional Core / Imperative Shell 區分資料運算與 DOM 操作：
 
+- `app/appearance.js` 負責外觀偏好、瀏覽器明暗變化與切換按鈕，獨立於照片資料及 Finder 搜尋狀態。它由 HTML head 直接載入，在 stylesheet 前套用外觀。
 - `app/search-sort.js` 是可測試純函式核心，負責 search text、篩選、scoring、推薦排序與探索排序；不得直接讀 DOM 或全域控制項。
 - `app/url-state.js` 負責 URL query encode/decode；selected ids、filters 與 sort deep link 行為應先在這裡調整。Filter URL 使用重複 query 參數表示多選，例如 `scene=攤位&scene=會眾`；早期單值 query 格式不保證相容。
 - `app/analytics.js` 負責 GA4 setup、事件參數整理、搜尋字串清理與結果追蹤去重；前端其他模組只呼叫 `trackEvent` 或傳入 snapshot。
@@ -172,7 +173,7 @@ pnpm finder:perf
 - `app/result-render.js` 負責結果狀態文字、active filter chips、優先檢視控制項 active state、load-more panel 與 empty state。
 - `app/main.js` 保留 bootstrap、專案設定套用、state、URL state、資料載入順序、事件 wiring 與 render loop 組合。目前 preview action、候選清單 action menu、AI prompt copy 與 mobile sheet 手勢仍由 `main.js` 協調；新增或大幅修改這類 imperative interaction 時，應優先評估是否能抽成 controller module，不要把新的 domain logic 放回主檔。
 
-新增由 `app/main.js` 可追蹤到的前端 ES module 時，`scripts/commands/build-pages.mjs` 與 `scripts/commands/check-pages-artifact.mjs` 會透過共用 import graph 自動複製與驗證。非 JS 資源、資料檔或特殊產物需同步建置與檢查腳本的資源清單。可測試的純邏輯應加入 `pnpm finder:test`，並納入 `pnpm project:check`。
+新增由 `app/main.js` 可追蹤到的前端 ES module 時，`scripts/commands/build-pages.mjs` 與 `scripts/commands/check-pages-artifact.mjs` 會透過共用 import graph 自動複製與驗證。由 HTML 直接引用的 script（如 `appearance.js`）、非 JS 資源與資料檔，則需同步建置與檢查腳本的資源清單。外觀初始化須在 stylesheet 前執行，且包含在 PWA app shell 快取中，讓首次繪製與離線載入使用相同偏好。可測試的純邏輯應加入 `pnpm finder:test`，並納入 `pnpm project:check`。
 
 ## Pages 維護 checklist
 
@@ -192,6 +193,7 @@ Pages 現況矩陣：
 | 照片卡片、preview 與照片 action | 本文件 | `app/photo-render.js`、`app/styles.css` | `pnpm finder:test`、`pnpm finder:build`、`pnpm finder:check` |
 | 候選清單與複製格式 | 本文件、ADR 0007 的輕量分享邊界 | `app/candidates.js`、`app/main.js` | `pnpm finder:test`、`pnpm finder:build`、`pnpm finder:check` |
 | 手機 bottom sheet、filter 與候選入口 | 本文件 | `app/main.js`、`app/controls.js`、`app/styles.css` | `pnpm finder:mobile-filter-smoke`、`pnpm finder:build`、`pnpm finder:check` |
+| 明暗外觀、品牌與響應式呈現 | 本文件、ADR 0011 | `app/appearance.js`、`app/index.html`、`app/styles.css` | `pnpm finder:mobile-filter-smoke`、`pnpm finder:build`、`pnpm finder:check`；另檢視桌面、平板與手機的明暗畫面 |
 | AI 助手找圖入口 | 本文件、`docs/ai-readable-dataset.md`、ADR 0007 | `app/ai-assistant.js`、`app/main.js` | `pnpm finder:test`、`pnpm finder:build`、`pnpm finder:check` |
 | GA4 事件與 custom dimensions | `docs/frontend-analytics-design.md`、`docs/ga4-operations.md` | `app/analytics.js`、`config/ga4-custom-dimensions.json` | `pnpm analytics:dimensions:check` |
 | Pages build artifact 與資料載入 | 本文件、ADR 0002 | `app/data-loader.js`、`scripts/commands/build-pages.mjs`、`scripts/commands/check-pages-artifact.mjs` | `pnpm finder:build`、`pnpm finder:check` |
@@ -242,11 +244,15 @@ Pages 現況矩陣：
 
 公開前端除了照片卡片搜尋，也應提供索引概覽，協助維護者快速判斷目前索引整理成效。概覽應優先使用 `data/photo-schema.json` 與 `data/tag-taxonomy.json` 理解欄位與必要規則，例如整理狀態、使用提醒、人數標記、reviewed 必要欄位完整度與贊助欄位覆蓋率，不應在前端另外維護一份欄位規則或 raw value 翻譯表。前端顯示文字應使用 `data/tag-taxonomy.json` 的 `option_labels`，但篩選值、URL 參數與資料比對仍使用 raw value。
 
-### 品牌與照片呈現
+### 品牌與明暗外觀
 
-品牌標誌使用 [SITCON 官方品牌規範](https://sitcon.org/branding/) 提供的原始圖示 SVG，保存在 `app/assets/brand-logo.svg`，並隨 Pages artifact 與 PWA app shell 一起發布。標準綠 `#77B55A` 用於品牌與選取底色，搭配深色文字；功能按鈕另用深綠維持文字對比。
+品牌標誌使用 [SITCON 官方品牌規範](https://sitcon.org/branding/) 提供的原始圖示 SVG：淺色介面使用 `app/assets/brand-logo.svg`，深色介面使用 `app/assets/brand-logo-white.svg`，兩者隨 Pages artifact 與 PWA app shell 一起發布。標準綠 `#77B55A` 用於品牌與用途選取底色，搭配固定的深色文字；功能按鈕與狀態標籤另依明暗模式搭配足夠對比的文字、背景與邊框。
 
 照片卡片與預覽以完整構圖和原色呈現，不套用配色濾鏡或放大裁切，避免介面效果影響素材判斷。
+
+頁首以單一圖示按鈕切換淺色與深色。圖示表達目前外觀，`title` 與 `aria-label` 同時說明目前狀態與下一次操作。按鈕支援鍵盤 Enter／空白鍵；在手機與觸控環境中，操作區至少為 44 × 44px。
+
+外觀偏好以 `light` 或 `dark` 保存於網站來源的 `localStorage` 鍵 `sitcon-photo-finder-appearance`。載入頁面時優先使用有效的儲存值；沒有有效值或無法讀取時，採用 `prefers-color-scheme`，並隨瀏覽器偏好變更更新。使用者手動切換後，以手動選擇為準；寫入儲存失敗時，選擇只在目前頁面生效。外觀偏好不進入搜尋 state、候選分享 URL 或資料寫入流程。
 
 ### 篩選與排序
 

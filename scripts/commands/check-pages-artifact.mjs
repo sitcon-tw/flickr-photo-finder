@@ -202,6 +202,8 @@ async function main() {
     ".nojekyll",
     "assets/og-image.png",
     "assets/brand-logo.svg",
+    "assets/brand-logo-white.svg",
+    "appearance.js",
     "index.html",
     "main.js",
     "pwa.js",
@@ -218,6 +220,10 @@ async function main() {
   if (!indexHtml.includes("./main.js")) {
     throw new Error("index.html does not reference main.js");
   }
+  const appearancePosition = indexHtml.indexOf('<script src="./appearance.js"></script>');
+  if (appearancePosition < 0 || appearancePosition > indexHtml.indexOf('./styles.css')) {
+    throw new Error("index.html must apply appearance before loading styles.css");
+  }
   const pwaModule = await assertIncludes(join(options.artifactDir, "pwa.js"), "./service-worker.js", "service worker registration");
   if (!pwaModule.includes("navigator.serviceWorker.register")) {
     throw new Error("pwa.js does not register a service worker");
@@ -229,6 +235,9 @@ async function main() {
   );
   if (!serviceWorker.includes("self.__SITCON_PHOTO_FINDER_DATA_URLS__ = [") || !serviceWorker.includes("sitcon-photo-finder-cache-fallback")) {
     throw new Error("service-worker.js must cache finder data and report cache fallback usage");
+  }
+  if (["./appearance.js", "./assets/brand-logo.svg", "./assets/brand-logo-white.svg"].some((url) => !serviceWorker.includes(JSON.stringify(url)))) {
+    throw new Error("service-worker.js must precache appearance and both brand variants");
   }
   const requiredMetadata = [
     'name="description"',
