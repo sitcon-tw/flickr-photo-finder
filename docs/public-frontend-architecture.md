@@ -2,9 +2,9 @@
 
 ## 目的
 
-這份文件記錄公開唯讀照片搜尋前端的方向。
+本文件說明公開唯讀照片搜尋前端的資料流、模組邊界、介面行為與部署維護方式。
 
-Google Sheets 是正式照片索引，Apps Script 可以作為具有授權的維護輔助介面；但更多使用者只需要能夠存取、搜尋與篩選照片，不需要編輯資料。公開搜尋前端應部署到 GitHub Pages，降低使用門檻。
+Google Sheets 是正式照片索引，Apps Script 提供授權後的資料維護介面；公開前端則透過 GitHub Pages 提供無須登入的搜尋與篩選功能，服務只需要找圖的使用者。
 
 Apps Script Web App 是另一個授權後的校對入口，適合需要批量瀏覽、編輯與儲存 metadata 的整理者。它不作為 GitHub Pages 的資料 API，也不讓公開前端取得寫入能力。
 
@@ -19,7 +19,7 @@ Apps Script Web App 是另一個授權後的校對入口，適合需要批量瀏
 - Apps Script 保留為授權維護介面與欄位驗證工具，不負責建立額外篩選表。
 - Apps Script Web App 可以提供可寫入的校對 UI，但 GitHub Pages 不呼叫它，也不共用其授權狀態。
 
-## 建議資料流
+## 資料流
 
 ```text
 Google Sheets
@@ -158,8 +158,9 @@ pnpm finder:perf
 
 ## 前端模組邊界
 
-公開前端維持原生 ES modules，不導入 bundler 或成熟前端 framework。目前的拆分原則是 Functional Core / Imperative Shell：
+公開前端主程式使用原生 ES modules，依 Functional Core / Imperative Shell 區分資料運算與 DOM 操作：
 
+- `app/appearance.js` 負責外觀偏好、瀏覽器明暗變化與切換按鈕，獨立於照片資料及 Finder 搜尋狀態。它由 HTML head 直接載入，在 stylesheet 前套用外觀。
 - `app/search-sort.js` 是可測試純函式核心，負責 search text、篩選、scoring、推薦排序與探索排序；不得直接讀 DOM 或全域控制項。
 - `app/url-state.js` 負責 URL query encode/decode；selected ids、filters 與 sort deep link 行為應先在這裡調整。Filter URL 使用重複 query 參數表示多選，例如 `scene=攤位&scene=會眾`；早期單值 query 格式不保證相容。
 - `app/analytics.js` 負責 GA4 setup、事件參數整理、搜尋字串清理與結果追蹤去重；前端其他模組只呼叫 `trackEvent` 或傳入 snapshot。
@@ -172,7 +173,7 @@ pnpm finder:perf
 - `app/result-render.js` 負責結果狀態文字、active filter chips、優先檢視控制項 active state、load-more panel 與 empty state。
 - `app/main.js` 保留 bootstrap、專案設定套用、state、URL state、資料載入順序、事件 wiring 與 render loop 組合。目前 preview action、候選清單 action menu、AI prompt copy 與 mobile sheet 手勢仍由 `main.js` 協調；新增或大幅修改這類 imperative interaction 時，應優先評估是否能抽成 controller module，不要把新的 domain logic 放回主檔。
 
-新增由 `app/main.js` 可追蹤到的前端 ES module 時，`scripts/commands/build-pages.mjs` 與 `scripts/commands/check-pages-artifact.mjs` 會透過共用 import graph 自動複製與驗證；若新增的是非 JS 資源、資料檔或特殊產物，才需要同步 build/check 清單。可測試的純邏輯應加入 `pnpm finder:test`，並納入 `pnpm project:check`。
+新增由 `app/main.js` 可追蹤到的前端 ES module 時，`scripts/commands/build-pages.mjs` 與 `scripts/commands/check-pages-artifact.mjs` 會透過共用 import graph 自動複製與驗證。由 HTML 直接引用的 script（如 `appearance.js`）、非 JS 資源與資料檔，則需同步建置與檢查腳本的資源清單。外觀初始化須在 stylesheet 前執行，且包含在 PWA app shell 快取中，讓首次繪製與離線載入使用相同偏好。可測試的純邏輯應加入 `pnpm finder:test`，並納入 `pnpm project:check`。
 
 ## Pages 維護 checklist
 
@@ -192,6 +193,7 @@ Pages 現況矩陣：
 | 照片卡片、preview 與照片 action | 本文件 | `app/photo-render.js`、`app/styles.css` | `pnpm finder:test`、`pnpm finder:build`、`pnpm finder:check` |
 | 候選清單與複製格式 | 本文件、ADR 0007 的輕量分享邊界 | `app/candidates.js`、`app/main.js` | `pnpm finder:test`、`pnpm finder:build`、`pnpm finder:check` |
 | 手機 bottom sheet、filter 與候選入口 | 本文件 | `app/main.js`、`app/controls.js`、`app/styles.css` | `pnpm finder:mobile-filter-smoke`、`pnpm finder:build`、`pnpm finder:check` |
+| 明暗外觀、品牌與響應式呈現 | 本文件、ADR 0011 | `app/appearance.js`、`app/index.html`、`app/styles.css` | `pnpm finder:mobile-filter-smoke`、`pnpm finder:build`、`pnpm finder:check`；另檢視桌面、平板與手機的明暗畫面 |
 | AI 助手找圖入口 | 本文件、`docs/ai-readable-dataset.md`、ADR 0007 | `app/ai-assistant.js`、`app/main.js` | `pnpm finder:test`、`pnpm finder:build`、`pnpm finder:check` |
 | GA4 事件與 custom dimensions | `docs/frontend-analytics-design.md`、`docs/ga4-operations.md` | `app/analytics.js`、`config/ga4-custom-dimensions.json` | `pnpm analytics:dimensions:check` |
 | Pages build artifact 與資料載入 | 本文件、ADR 0002 | `app/data-loader.js`、`scripts/commands/build-pages.mjs`、`scripts/commands/check-pages-artifact.mjs` | `pnpm finder:build`、`pnpm finder:check` |
@@ -206,7 +208,7 @@ Pages 現況矩陣：
 - 候選清單輸出格式：`app/candidates.js`。
 - AI 助手提示詞：`app/ai-assistant.js`。
 - GA4 事件 shaping：`app/analytics.js` 與呼叫事件的 UI 模組；custom dimensions source of truth 是 `config/ga4-custom-dimensions.json`。
-- 新增 `app/*.js` 模組：由 `app/main.js` 或其依賴模組 import；`finder:build` 與 `finder:check` 會共用 ES module import graph，避免 build/check 兩邊維護不同清單。
+- 新增一般 ES module：由 `app/main.js` 或其依賴模組 import，建置與檢查共用 import graph；HTML 直接載入的 script 與靜態資源則依「前端模組邊界」同步資源清單。
 
 驗證門檻：
 
@@ -226,18 +228,45 @@ Pages 現況矩陣：
 - 沒有命中目前索引不代表 Flickr 沒有相關照片；不要把空結果、篩選結果或優先檢視寫成存在性判定。
 - 改搜尋、空結果、候選清單或 AI 助手提示詞時，應檢查 ADR 0007 是否仍被 UI 文案與測試覆蓋。
 - `public_use_status` 是使用提醒，不是 Flickr 是否公開；`curation_status = ai_labeled` 不等於人工 `reviewed`。
-- 卡片與 preview 的目前規格看本文件；redesign brief 是歷史 baseline，不是目前缺口清單。
 - GA4 不註冊 `photo_id`、`content_id`、`search_term`、`result_rank` 等高基數或可能敏感參數為 custom dimensions。
 
-公開前端右上角的外部連結由 `config/project.json` 控制。除了 Flickr 來源連結，也應提供 GitHub 專案連結，讓使用者能回到 repo 了解專案細節或回報問題。
+## 介面行為
+
+照片工作台的設計背景與取捨見 [ADR 0011](adr/0011-photo-workspace-visual-design.md)；以下說明實際操作與狀態行為。
+
+### 工作台布局
+
+頁面以工作用途、搜尋篩選、照片結果與候選清單組成找圖工作台。用途按鈕可直接選取，AI 助手說明與索引概覽按需展開。
+
+寬度超過 760px 時，照片結果與候選側欄並排，包含 761–1180px 的平板與中型視窗。760px 以下由底部按鈕開啟篩選或候選面板，用途列預設收合；切換回較寬布局時，用途列自動展開。
+
+頁首提供 Flickr 來源與 GitHub 專案連結，網址由 `config/project.json` 設定。連結以常態可見的 ↗、懸停樣式與鍵盤焦點提示表達可點選性。
 
 公開前端除了照片卡片搜尋，也應提供索引概覽，協助維護者快速判斷目前索引整理成效。概覽應優先使用 `data/photo-schema.json` 與 `data/tag-taxonomy.json` 理解欄位與必要規則，例如整理狀態、使用提醒、人數標記、reviewed 必要欄位完整度與贊助欄位覆蓋率，不應在前端另外維護一份欄位規則或 raw value 翻譯表。前端顯示文字應使用 `data/tag-taxonomy.json` 的 `option_labels`，但篩選值、URL 參數與資料比對仍使用 raw value。
 
-公開前端遇到選項可能偏長的篩選欄位，例如活動/相簿、場景、素材包、贊助品項，應使用頁面內可搜尋的選單或 autocomplete，不依賴瀏覽器原生 `<select>` / `<datalist>` 彈出層。原生彈出層由瀏覽器與作業系統控制，長列表在小視窗或特定環境中可能出現 fallback 呈現，難以用 CSS 穩定修正。實作上仍可保留原本欄位值作為篩選狀態來源，但使用者操作層應提供可搜尋、可捲動且不離開頁面布局的選單。贊助品項仍應保留輸入片段文字搜尋的能力，不應被限制成只能選擇完整品項名稱。
+### 品牌與明暗外觀
+
+品牌標誌使用 [SITCON 官方品牌規範](https://sitcon.org/branding/) 提供的原始圖示 SVG：淺色介面使用 `app/assets/brand-logo.svg`，深色介面使用 `app/assets/brand-logo-white.svg`，兩者隨 Pages artifact 與 PWA app shell 一起發布。標準綠 `#77B55A` 用於品牌與用途選取底色，搭配固定的深色文字；功能按鈕與狀態標籤另依明暗模式搭配足夠對比的文字、背景與邊框。
+
+照片卡片與預覽以完整構圖和原色呈現，不套用配色濾鏡或放大裁切，避免介面效果影響素材判斷。
+
+頁首以單一圖示按鈕切換淺色與深色。圖示表達目前外觀，`title` 與 `aria-label` 同時說明目前狀態與下一次操作。按鈕支援鍵盤 Enter／空白鍵；在手機與觸控環境中，操作區至少為 44 × 44px。
+
+外觀偏好以 `light` 或 `dark` 保存於網站來源的 `localStorage` 鍵 `sitcon-photo-finder-appearance`。載入頁面時優先使用有效的儲存值；沒有有效值或無法讀取時，採用 `prefers-color-scheme`，並隨瀏覽器偏好變更更新。使用者手動切換後，以手動選擇為準；寫入儲存失敗時，選擇只在目前頁面生效。外觀偏好不進入搜尋 state、候選分享 URL 或資料寫入流程。
+
+### 篩選與排序
+
+活動/相簿、場景、素材包與贊助品項可能有大量長選項，因此使用頁面內可搜尋、可捲動的選單或自動完成輸入欄位。這些控制項的尺寸與位置由頁面管理，避免瀏覽器或作業系統的原生彈出層在小視窗中出現難以控制的布局。贊助品項同時接受片段文字與完整品項名稱。
 
 篩選狀態應以 finder state 為唯一來源，DOM 控制項只負責呈現與發出變更事件。所有篩選欄位都以陣列表示，即使資料欄位本身是單值，例如照片方向或整理狀態。篩選語意固定為同一欄位內 OR、不同欄位間 AND；active chips 應一值一顆，移除時只移除該值，不清掉整個欄位。
 
-篩選區應採「固定核心 + 優先檢視重點 + 進階條件」分層，而不是把整份 schema 攤在第一層。固定核心包含優先檢視、搜尋、活動/相簿、排序與清除。主要找圖條件應先放使用者最常用來收斂照片的欄位，目前排序為用途、主體、氛圍、場景，再接續人數、照片方向、留白、安全裁切、贊助價值、贊助品項、使用提醒、推薦優先度、整理狀態與素材包。`subject_type` 已是主要收斂條件，應放在用途之後、氛圍之前。優先檢視重點依目前選擇提升相關條件，例如網站橫幅與設計素材提升方向、留白與裁切，贊助提案與贊助成果提升贊助價值與贊助品項。其他條件保留在進階區，讓使用者需要時再收斂。
+搜尋與排序構成核心操作區，篩選條件則依工作用途分為主要條件與進階條件。`data/interface-registry.json` 的 `pages.filters` 定義欄位順序，`pages.defaultPrimaryFilters` 與 `pages.taskModes[].primaryFilters` 定義主要條件；介面依這些設定排列控制項，讓使用者先看到與工作需求相關的條件。
+
+多選控制項在同一按鈕中顯示欄位名稱與選取摘要：未選時顯示名稱，單選時顯示名稱與選項，多選時顯示名稱與數量。完整選取值出現在已套用條件區與控制項的無障礙名稱中。
+
+贊助品項的名稱與輸入欄位並排，已選值顯示為下方可逐項移除的標籤。使用者可直接輸入片段文字、按 Enter 加入，或點選建議品項。它與多選控制項共用選單寬度及邊界定位，長選項可換行。
+
+進階條件入口與主要篩選並排，以 ＋／− 表達展開狀態，有已選條件時顯示數量；收合不清除條件。手機篩選面板使用相同控制項，依可用寬度換行。
 
 清除按鈕應協助使用者辨識自己目前是否位在已收斂的結果狀態。只要存在搜尋字串、非預設優先檢視、非預設排序或任何篩選條件，清除按鈕就應以 active 樣式呈現；清除後回到預設狀態才移除 active 樣式。
 
@@ -247,17 +276,23 @@ Pages 現況矩陣：
 
 活動/相簿篩選應使用 `album_ids` 作為主要判斷，並以 `event_year`、`event_name` 與 `album_title` 組成可讀選項文字；若舊資料沒有 `album_ids`，才退回用 `album_title` 比對。這是硬篩選，服務已知道目標活動或相簿的使用者，不應取代優先檢視或文字搜尋。
 
-照片卡片應優先服務日常找圖的視覺掃描，而不是把維護資訊外顯在結果牆上。主卡片只保留大圖、預覽入口與候選快速操作；`photo_id`、整理狀態、使用提醒、完整欄位與資料維護連結都應收進 `photoPreviewDialog`。這讓使用者先用影像判斷是否值得細看，避免在大量照片牆中被 metadata 噪音干擾。
-
-卡片上的主要動作是預覽照片。桌機或精準指標環境中，未加入候選的卡片可在 hover 或 keyboard focus 時顯示 `候選` 快速按鈕；已加入候選的卡片則無論 hover 與否都應持續顯示 `已加入`，同時允許使用者直接從卡片移除。手機版不要求未加入狀態的 `候選` 按鈕外顯，使用者可以進入預覽後再加入候選；已加入狀態仍可作為卡片上的持續提示。候選快速操作不得取代預覽入口，也不應讓使用者誤以為點擊照片會直接開 Flickr 原頁。
-
-預覽 dialog 是照片細節與維護操作的集中位置。它應顯示 photo id、整理狀態、使用提醒、用途、主體、氛圍、場景、構圖、贊助欄位、描述與備註，並提供候選切換、下載大圖、原圖頁、Google Sheets 列連結、Flickr URL 複製與 Finder URL 複製。資料維護者仍能在預覽中複製 `photo_id` 或前往 Sheets，但這不應重新成為卡片第一屏資訊。
-
-Finder deep link 使用 `#photo-<photo_id>`。使用者直接開啟這類連結時，前端應載入目標卡片所在頁段、把卡片捲到視窗附近，並立即打開同一張照片的 preview dialog，讓連結接收者不用再手動點卡片。
-
 前端應提供 `推薦排序` 與 `探索更多` 兩種主要排序心智。`推薦排序` 保持找圖效率，優先呈現最符合工作需求、整理狀態較可靠、優先度較高的照片；`探索更多` 則在仍維持基本可用性的前提下，穩定分散年份、活動、相簿與素材包來源，避免所有人只看到同一小批高分照片。`探索更多` 不是正式使用頻率治理，也不應依賴隨機排序。
 
 `年份新到舊` 與 `年份舊到新` 只比較 `event_year`。同一年份的照片使用來源 `photos` 列順序作為穩定次序；同步工具會讓這個順序依 canonical Flickr 相簿及相簿內照片順序更新。這兩個選項不應標成「時間」，因為目前沒有比較拍攝時間或上傳時間。
+
+### 照片卡片與預覽
+
+照片卡片以影像為主要內容，提供預覽入口與候選快速操作。`photo_id`、整理狀態、使用提醒、完整 metadata 與維護連結集中在 `photoPreviewDialog`，讓使用者先判斷照片是否值得細看，再查閱使用與維護資訊。
+
+卡片上的主要動作是預覽照片。桌機或精準指標環境中，未加入候選的卡片可在 hover 或 keyboard focus 時顯示 `候選` 快速按鈕；已加入候選的卡片則無論 hover 與否都應持續顯示 `已加入`，同時允許使用者直接從卡片移除。手機版不要求未加入狀態的 `候選` 按鈕外顯，使用者可以進入預覽後再加入候選；已加入狀態仍可作為卡片上的持續提示。候選快速操作不得取代預覽入口，也不應讓使用者誤以為點擊照片會直接開 Flickr 原頁。
+
+預覽 dialog 顯示`photo_id`、整理狀態、使用提醒與完整 metadata，並提供候選切換、下載大圖、原圖頁、Google Sheets 列連結，以及 Flickr URL、Finder URL 和 `photo_id` 的複製操作。
+
+預覽使用原生 `<dialog>` 與 `showModal()` 隔離背景互動，開啟時焦點移至關閉按鈕。桌面將照片與資訊並排，操作列位於資訊上方；手機操作列固定於底部。按 Escape、關閉按鈕或點選對話框外的背景可關閉預覽，焦點回到原觸發位置；若該節點已因重新繪製而不存在，則回到同一張照片的預覽入口。
+
+Finder deep link 使用 `#photo-<photo_id>`。使用者直接開啟這類連結時，前端應載入目標卡片所在頁段、把卡片捲到視窗附近，並立即打開同一張照片的 preview dialog，讓連結接收者不用再手動點卡片。
+
+### 候選清單與 AI 助手
 
 公開前端也應提供「用 AI 助手找照片」的輔助入口，讓宣傳、設計、網站、公關、行銷等工作需求使用者，把正式 `photos` 工作表交給自己熟悉的 AI 助手，以自然語言探索還不能被固定篩選條件描述的需求。這個入口應放在候選清單附近，提供正式 Sheets 連結與可複製提示詞；提示詞應帶入目前優先檢視、搜尋字串與已套用篩選，並提醒使用者若 AI 助手不能直接讀取 Google Sheets，就改提供 `photos` CSV。提示詞也應要求 AI 助手不要只找 `reviewed` 照片、不要自行推測缺失欄位。
 

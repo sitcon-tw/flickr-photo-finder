@@ -24,28 +24,44 @@
     <meta name="twitter:image" content="https://sitcon.org/flickr-photo-finder/assets/og-image.png" />
     <meta name="twitter:image:alt" content="SITCON 活動照片拼貼與 Photo Finder 標題" />
     <!-- app-metadata:end -->
+    <script src="./appearance.js"></script>
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
     <main class="shell">
       <header class="topbar">
-        <div>
-          <h1 id="appTitle">SITCON Flickr Photo Finder</h1>
-          <p>SITCON 公開照片索引，依工作需求、內容與整理狀態快速找圖。</p>
+        <div class="brand">
+          <img class="brand-logo" src="./assets/brand-logo.svg" width="44" height="44" alt="" />
+          <img class="brand-logo brand-logo-dark" src="./assets/brand-logo-white.svg" width="44" height="44" alt="" />
+          <div>
+            <h1 id="appTitle">SITCON Flickr Photo Finder</h1>
+            <p>依用途、活動與畫面內容找照片。</p>
+          </div>
         </div>
-        <nav class="external-links" aria-label="外部連結">
-          <a id="sourceLink" class="source-link" href="https://www.flickr.com/" target="_blank" rel="noreferrer">Flickr</a>
-          <a
-            id="repositoryLink"
-            class="source-link"
-            href="https://github.com/sitcon-tw/flickr-photo-finder"
-            target="_blank"
-            rel="noreferrer"
-            title="了解專案細節或回報問題"
-          >
-            GitHub 專案
-          </a>
-        </nav>
+        <div class="header-actions">
+          <nav class="external-links" aria-label="外部連結">
+            <a id="sourceLink" class="source-link" href="https://www.flickr.com/" target="_blank" rel="noreferrer">Flickr</a>
+            <a
+              id="repositoryLink"
+              class="source-link"
+              href="https://github.com/sitcon-tw/flickr-photo-finder"
+              target="_blank"
+              rel="noreferrer"
+              title="了解專案細節或回報問題"
+            >
+              GitHub 專案
+            </a>
+          </nav>
+          <button id="appearanceButton" class="appearance-button" type="button" aria-label="切換明暗外觀" title="切換明暗外觀">
+            <svg class="appearance-icon-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M20.5 13.2A8.6 8.6 0 0 1 10.8 3.5a8.6 8.6 0 1 0 9.7 9.7Z" />
+            </svg>
+            <svg class="appearance-icon-light" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="4" />
+              <path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.4 1.4m11.2 11.2L19 19M5 19l1.4-1.4M17.6 6.4 19 5" />
+            </svg>
+          </button>
+        </div>
       </header>
 
       <section class="task-panel" aria-label="優先檢視">
@@ -54,11 +70,10 @@
             <span>優先檢視</span>
             <strong id="taskModeSummary">全部照片</strong>
           </summary>
-          <div class="section-heading">
-            <h2>優先檢視</h2>
-            <p>依用途調整推薦排序，不會排除照片。</p>
+          <div class="task-choices">
+            <div id="taskModes" class="task-modes"></div>
+            <p class="task-sorting-note">依用途調整推薦排序，不會排除照片。</p>
           </div>
-          <div id="taskModes" class="task-modes"></div>
         </details>
       </section>
 
@@ -94,87 +109,87 @@
           <button id="resetButton" type="button">清除</button>
         </div>
 
+        <div class="filter-toolbar">
+          <div id="taskFilterGrid" class="filter-grid">
+            <label>
+              <span>用途</span>
+              <select id="useFilter"></select>
+            </label>
+
+            <label>
+              <span>主體</span>
+              <select id="subjectTypeFilter"></select>
+            </label>
+
+            <label>
+              <span>氛圍</span>
+              <select id="moodFilter"></select>
+            </label>
+
+            <label>
+              <span>場景</span>
+              <select id="sceneFilter"></select>
+            </label>
+
+            <label>
+              <span>人數</span>
+              <select id="peopleCountFilter"></select>
+            </label>
+
+            <label>
+              <span>照片方向</span>
+              <select id="orientationFilter"></select>
+            </label>
+
+            <label>
+              <span>留白</span>
+              <select id="negativeSpaceFilter"></select>
+            </label>
+
+            <label>
+              <span>安全裁切</span>
+              <select id="safeCropFilter"></select>
+            </label>
+
+            <label>
+              <span>贊助價值</span>
+              <select id="sponsorshipTagFilter"></select>
+            </label>
+
+            <label>
+              <span>贊助品項</span>
+              <input id="sponsorshipItemFilter" type="search" list="sponsorshipItemOptions" placeholder="搜尋品項" autocomplete="off" />
+              <datalist id="sponsorshipItemOptions"></datalist>
+            </label>
+
+            <label>
+              <span>使用提醒</span>
+              <select id="publicStatusFilter"></select>
+            </label>
+
+            <label>
+              <span>推薦優先度</span>
+              <select id="priorityFilter"></select>
+            </label>
+
+            <label>
+              <span>整理狀態</span>
+              <select id="curationStatusFilter"></select>
+            </label>
+
+            <label>
+              <span>素材包</span>
+              <select id="collectionFilter"></select>
+            </label>
+          </div>
+          <details id="advancedFilters" class="advanced-filter-panel">
+            <summary>進階條件<span id="advancedFilterCount" hidden></span></summary>
+            <div id="advancedFilterGrid" class="filter-grid advanced-filter-grid"></div>
+          </details>
+        </div>
         <p class="index-boundary-note">
           有些照片或標籤尚未人工確認；找不到時，可放寬條件或回相簿看看。
         </p>
-
-        <div id="taskFilterGrid" class="filter-grid">
-          <label>
-            <span>用途</span>
-            <select id="useFilter"></select>
-          </label>
-
-          <label>
-            <span>主體</span>
-            <select id="subjectTypeFilter"></select>
-          </label>
-
-          <label>
-            <span>氛圍</span>
-            <select id="moodFilter"></select>
-          </label>
-
-          <label>
-            <span>場景</span>
-            <select id="sceneFilter"></select>
-          </label>
-
-          <label>
-            <span>人數</span>
-            <select id="peopleCountFilter"></select>
-          </label>
-
-          <label>
-            <span>照片方向</span>
-            <select id="orientationFilter"></select>
-          </label>
-
-          <label>
-            <span>留白</span>
-            <select id="negativeSpaceFilter"></select>
-          </label>
-
-          <label>
-            <span>安全裁切</span>
-            <select id="safeCropFilter"></select>
-          </label>
-
-          <label>
-            <span>贊助價值</span>
-            <select id="sponsorshipTagFilter"></select>
-          </label>
-
-          <label>
-            <span>贊助品項</span>
-            <input id="sponsorshipItemFilter" type="search" list="sponsorshipItemOptions" placeholder="搜尋品項" autocomplete="off" />
-            <datalist id="sponsorshipItemOptions"></datalist>
-          </label>
-
-          <label>
-            <span>使用提醒</span>
-            <select id="publicStatusFilter"></select>
-          </label>
-
-          <label>
-            <span>推薦優先度</span>
-            <select id="priorityFilter"></select>
-          </label>
-
-          <label>
-            <span>整理狀態</span>
-            <select id="curationStatusFilter"></select>
-          </label>
-
-          <label>
-            <span>素材包</span>
-            <select id="collectionFilter"></select>
-          </label>
-        </div>
-
-        <details id="advancedFilters" class="advanced-filter-panel">
-          <summary>進階條件</summary>
-          <div id="advancedFilterGrid" class="filter-grid advanced-filter-grid"></div>
-        </details>
       </section>
 
       <section class="result-bar" aria-label="搜尋結果狀態">
@@ -230,31 +245,28 @@
             </div>
           </section>
 
-          <section class="ai-assistant-panel" aria-label="用 AI 助手找照片">
-            <div class="section-heading">
-              <h2>用 AI 助手找照片</h2>
-              <p>自然語言探索</p>
+          <details class="ai-assistant-panel auxiliary-panel">
+            <summary>用 AI 助手找照片</summary>
+            <div class="ai-assistant-content">
+              <p class="ai-assistant-intro">找不到適合的篩選詞時，把正式 photos 工作表交給你熟悉的 AI 助手，接著用自然語言描述想要的畫面。</p>
+              <ol class="ai-assistant-steps">
+                <li>開啟正式 Sheets。</li>
+                <li>複製提示詞，貼到你常用的 AI 助手。</li>
+                <li>改寫需求，請它列出候選照片。</li>
+              </ol>
+              <p class="ai-assistant-example">例：找一張有青春感、適合社群、右側能放字的橫式照片。</p>
+              <div class="ai-assistant-actions">
+                <a id="aiAssistantSheetLink" class="photo-action" target="_blank" rel="noreferrer">開啟 Sheets</a>
+                <button id="copyAiAssistantPromptButton" type="button">複製提示詞</button>
+              </div>
             </div>
-            <p class="ai-assistant-intro">找不到適合的篩選詞時，把正式 photos 工作表交給你熟悉的 AI 助手，接著用自然語言描述想要的畫面。</p>
-            <ol class="ai-assistant-steps">
-              <li>開啟正式 Sheets。</li>
-              <li>複製提示詞，貼到你常用的 AI 助手。</li>
-              <li>改寫需求，請它列出候選照片。</li>
-            </ol>
-            <p class="ai-assistant-example">例：找一張有青春感、適合社群、右側能放字的橫式照片。</p>
-            <div class="ai-assistant-actions">
-              <a id="aiAssistantSheetLink" class="photo-action" target="_blank" rel="noreferrer">開啟 Sheets</a>
-              <button id="copyAiAssistantPromptButton" type="button">複製提示詞</button>
-            </div>
-          </section>
+          </details>
 
-          <section class="overview" aria-label="索引概覽">
-            <div class="section-heading">
-              <h2>索引概覽</h2>
-              <p id="overviewSummary">載入中</p>
-            </div>
+          <details class="overview auxiliary-panel">
+            <summary>索引概覽</summary>
+            <p id="overviewSummary">載入中</p>
             <div id="overviewGrid" class="overview-grid"></div>
-          </section>
+          </details>
         </aside>
 
         <section class="results-area" aria-label="照片結果">
@@ -290,7 +302,7 @@
 
     <div id="modalBackdrop" class="modal-backdrop" hidden></div>
 
-    <section id="photoPreviewDialog" class="photo-preview-dialog" aria-label="照片預覽" aria-modal="true" role="dialog" hidden>
+    <dialog id="photoPreviewDialog" class="photo-preview-dialog" aria-labelledby="previewTitle" hidden>
       <div class="dialog-header">
         <div>
           <h2 id="previewTitle">照片預覽</h2>
@@ -298,24 +310,28 @@
         </div>
         <button id="closePreviewButton" type="button">關閉</button>
       </div>
-      <div id="previewStatuses" class="photo-statuses preview-statuses"></div>
-      <p id="previewReference" class="photo-reference preview-reference"></p>
-      <div class="preview-image-frame">
-        <a id="previewImageLink" class="preview-image-link" target="_blank" rel="noreferrer">
-          <img id="previewImage" alt="" />
-          <span class="preview-image-hint">Flickr</span>
-        </a>
+      <div class="preview-layout">
+        <div class="preview-image-frame">
+          <a id="previewImageLink" class="preview-image-link" target="_blank" rel="noreferrer">
+            <img id="previewImage" alt="" />
+            <span class="preview-image-hint">Flickr</span>
+          </a>
+        </div>
+        <div class="preview-info">
+          <div class="preview-actions">
+            <button id="previewCandidateButton" class="candidate-toggle-button" type="button">候選</button>
+            <button id="previewLargeButton" class="download-large-image-button" type="button">下載大圖</button>
+            <a id="previewOriginalLink" class="photo-action original-image-link" target="_blank" rel="noreferrer">原圖</a>
+            <a id="previewSheetLink" class="photo-action sheet-row-link" target="_blank" rel="noreferrer">Sheets</a>
+            <button id="previewCopyFlickrButton" class="copy-flickr-link-button" type="button">Flickr</button>
+            <button id="previewCopyFinderButton" class="copy-finder-link-button" type="button">本頁</button>
+          </div>
+          <div id="previewStatuses" class="photo-statuses preview-statuses"></div>
+          <p id="previewReference" class="photo-reference preview-reference"></p>
+          <dl id="previewDetails" class="preview-details"></dl>
+        </div>
       </div>
-      <dl id="previewDetails" class="preview-details"></dl>
-      <div class="preview-actions">
-        <button id="previewCandidateButton" class="candidate-toggle-button" type="button">候選</button>
-        <button id="previewLargeButton" class="download-large-image-button" type="button">下載大圖</button>
-        <a id="previewOriginalLink" class="photo-action original-image-link" target="_blank" rel="noreferrer">原圖</a>
-        <a id="previewSheetLink" class="photo-action sheet-row-link" target="_blank" rel="noreferrer">Sheets</a>
-        <button id="previewCopyFlickrButton" class="copy-flickr-link-button" type="button">Flickr</button>
-        <button id="previewCopyFinderButton" class="copy-finder-link-button" type="button">本頁</button>
-      </div>
-    </section>
+    </dialog>
 
     <script type="module" src="./main.js"></script>
   </body>

@@ -85,6 +85,7 @@ export function queryElements() {
     sidePanel: document.querySelector(".side-panel"),
     taskFilterGrid: document.querySelector("#taskFilterGrid"),
     advancedFilters: document.querySelector("#advancedFilters"),
+    advancedFilterCount: document.querySelector("#advancedFilterCount"),
     advancedFilterGrid: document.querySelector("#advancedFilterGrid"),
     sponsorshipItemOptions: document.querySelector("#sponsorshipItemOptions"),
     loadMorePanel: document.querySelector("#loadMorePanel"),
@@ -186,8 +187,18 @@ export function optionTextForValue(control, value) {
 
 function syncEnhancedSelectValue(control) {
   const values = selectedControlValues(control.select);
-  control.triggerText.textContent = values.length === 0 ? control.placeholder : `已選 ${values.length} 個`;
+  const labels = values.map((value) => optionTextForValue(control.select, value));
+  const summary = values.length === 1 ? labels[0] : `已選 ${values.length} 個`;
+  control.triggerText.textContent = control.compact
+    ? `${control.label}${values.length ? `：${summary}` : ""}`
+    : values.length ? summary : control.placeholder;
+  const description = `${control.label}：${values.length ? labels.join("、") : control.placeholder}`;
+  control.trigger.setAttribute("aria-label", description);
+  control.trigger.title = description;
   control.trigger.classList.toggle("is-empty", values.length === 0);
+  if (!control.panel.hidden) {
+    positionFilterPanel(control);
+  }
 }
 
 function shouldFocusEnhancedSelectSearch() {
@@ -246,6 +257,13 @@ function renderEnhancedSelectOptions(control) {
   control.options.replaceChildren(fragment);
 }
 
+function positionFilterPanel(control) {
+  control.panel.style.left = "0px";
+  const rect = control.panel.getBoundingClientRect();
+  const offset = Math.max(16 - rect.left, Math.min(0, document.documentElement.clientWidth - 16 - rect.right));
+  control.panel.style.left = `${offset}px`;
+}
+
 function openEnhancedSelect(control) {
   for (const otherControl of enhancedSelects.values()) {
     if (otherControl !== control) {
@@ -256,6 +274,7 @@ function openEnhancedSelect(control) {
   renderEnhancedSelectOptions(control);
   control.panel.hidden = false;
   control.trigger.setAttribute("aria-expanded", "true");
+  positionFilterPanel(control);
   if (isMobileViewport()) {
     window.requestAnimationFrame(() => {
       control.panel.scrollIntoView({ block: "nearest", inline: "nearest" });
@@ -287,7 +306,7 @@ function toggleEnhancedSelectValue(control, value) {
   control.select.dispatchEvent(new Event("input", { bubbles: true }));
 }
 
-function setupEnhancedSelect(select, searchPlaceholder) {
+function setupEnhancedSelect(select, definition) {
   let control = enhancedSelects.get(select);
   if (!control) {
     select.multiple = true;
@@ -349,7 +368,11 @@ function setupEnhancedSelect(select, searchPlaceholder) {
   }
 
   control.placeholder = select.options[0]?.textContent ?? "";
-  control.search.placeholder = searchPlaceholder;
+  control.label = definition.label;
+  control.compact = definition.key !== "album";
+  select.closest("label").classList.toggle("compact-filter", control.compact);
+  control.search.placeholder = definition.searchPlaceholder;
+  control.search.setAttribute("aria-label", definition.searchPlaceholder);
   syncEnhancedSelectValue(control);
   renderEnhancedSelectOptions(control);
 }
@@ -382,6 +405,7 @@ function syncAutocompleteInput(input) {
     token.dataset.value = value;
     token.textContent = `${value} ×`;
     token.title = `移除 ${value}`;
+    token.setAttribute("aria-label", token.title);
     fragment.append(token);
   }
   control.tokens.replaceChildren(fragment);
@@ -454,6 +478,7 @@ function renderAutocompleteOptions(control) {
 function openAutocompleteInput(control) {
   renderAutocompleteOptions(control);
   control.panel.hidden = false;
+  positionFilterPanel(control);
 }
 
 function setupAutocompleteInput(input, values) {
@@ -465,6 +490,8 @@ function setupAutocompleteInput(input, values) {
 
     const root = document.createElement("div");
     root.className = "autocomplete-input";
+    const field = document.createElement("div");
+    field.className = "autocomplete-field";
     const tokens = document.createElement("div");
     tokens.className = "autocomplete-tokens";
     const panel = document.createElement("div");
@@ -476,7 +503,10 @@ function setupAutocompleteInput(input, values) {
     panel.append(options);
 
     input.insertAdjacentElement("beforebegin", root);
-    root.append(tokens, input, panel);
+    const label = input.closest("label").querySelector("span");
+    input.setAttribute("aria-label", label.textContent);
+    field.append(label, input);
+    root.append(field, tokens, panel);
 
     control = { root, input, tokens, panel, options, values: [] };
     autocompleteInputs.set(input, control);
@@ -515,6 +545,13 @@ function setupAutocompleteInput(input, values) {
 }
 
 export function bindControlDismissal(root = document) {
+  window.addEventListener("resize", () => {
+    for (const control of [...enhancedSelects.values(), ...autocompleteInputs.values()]) {
+      if (!control.panel.hidden) {
+        positionFilterPanel(control);
+      }
+    }
+  });
   root.addEventListener("pointerdown", (event) => {
     for (const control of enhancedSelects.values()) {
       if (!control.root.contains(event.target)) {
@@ -570,6 +607,7 @@ export function updateFilterLayout({ controls, elements, taskMode }) {
   const primaryKeys = new Set(taskPrimaryFilters[taskMode] ?? defaultPrimaryFilters);
   let primaryOrder = 0;
   let advancedOrder = 0;
+  let advancedCount = 0;
 
   for (const definition of filterDefinitions) {
     if (definition.key === "album") {
@@ -583,6 +621,9 @@ export function updateFilterLayout({ controls, elements, taskMode }) {
     label.dataset.filterGroup = definition.group;
 
     const primary = primaryKeys.has(definition.key) && !lowLevelFilters.has(definition.key);
+    if (!primary) {
+      advancedCount += selectedControlValues(controls[definition.control]).length;
+    }
     label.style.order = String(primary ? primaryOrder++ : advancedOrder++);
     const targetGrid = primary ? elements.taskFilterGrid : elements.advancedFilterGrid;
     if (label.parentElement !== targetGrid) {
@@ -591,6 +632,10 @@ export function updateFilterLayout({ controls, elements, taskMode }) {
   }
 
   elements.advancedFilters.hidden = elements.advancedFilterGrid.children.length === 0;
+  elements.advancedFilters.style.order = String(primaryOrder);
+  elements.advancedFilters.classList.toggle("has-filters", advancedCount > 0);
+  elements.advancedFilterCount.textContent = advancedCount ? `（${advancedCount}）` : "";
+  elements.advancedFilterCount.hidden = advancedCount === 0;
 }
 
 function compactLabelParts(parts) {
@@ -719,7 +764,7 @@ export function setupFilters({ controls, elements, taxonomy, photos, albums, peo
       fillSelect(control, emptyLabel, values);
     }
     if (definition.searchPlaceholder && control.tagName === "SELECT") {
-      setupEnhancedSelect(control, definition.searchPlaceholder);
+      setupEnhancedSelect(control, definition);
     } else if (definition.searchPlaceholder && "placeholder" in control) {
       control.placeholder = definition.searchPlaceholder;
     }

@@ -76,7 +76,9 @@ export function shouldAutoLoadMore({
 
 export function updateTaskButtons({ elements, taskMode }) {
   for (const button of elements.taskModes.querySelectorAll(".task-mode")) {
-    button.classList.toggle("is-active", button.dataset.taskMode === taskMode);
+    const selected = button.dataset.taskMode === taskMode;
+    button.classList.toggle("is-active", selected);
+    button.setAttribute("aria-pressed", String(selected));
   }
 }
 

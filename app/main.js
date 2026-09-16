@@ -90,6 +90,8 @@ let optionLabelMaps = new Map();
 let searchTokensForField = () => [];
 let filterControlEventsBound = false;
 let activePreviewPhoto = null;
+let previewTrigger = null;
+let previewTriggerPhotoId = "";
 let loadPhotoDetails = async (photo) => photo;
 let previewLoadToken = 0;
 let previewSwipeState = null;
@@ -201,7 +203,7 @@ function maybeRegisterPwa(generatedAt = "") {
 }
 
 function setModalOpen(open) {
-  elements.modalBackdrop.hidden = !open;
+  elements.modalBackdrop.hidden = !open || elements.photoPreviewDialog.open;
   document.body.classList.toggle("has-modal-open", open);
 }
 
@@ -238,23 +240,29 @@ function openCandidateSheet() {
 }
 
 function closePreview() {
+  const wasOpen = elements.photoPreviewDialog.open;
   previewLoadToken += 1;
   resetSheetDragState();
+  elements.photoPreviewDialog.close();
   elements.photoPreviewDialog.hidden = true;
   activePreviewPhoto = null;
   if (!elements.searchPanel.classList.contains("is-filter-open") && !elements.sidePanel.classList.contains("is-candidate-open")) {
     setModalOpen(false);
   }
+  if (wasOpen) {
+    const trigger = previewTrigger?.isConnected && previewTrigger.getClientRects().length
+      ? previewTrigger
+      : document.getElementById(photoAnchorId(previewTriggerPhotoId))?.querySelector(".photo-link");
+    trigger?.focus({ preventScroll: true });
+    previewTrigger = null;
+    previewTriggerPhotoId = "";
+  }
 }
 
 function closeMobileOverlays() {
-  previewLoadToken += 1;
-  resetSheetDragState();
   elements.searchPanel.classList.remove("is-filter-open");
   elements.sidePanel.classList.remove("is-candidate-open");
-  elements.photoPreviewDialog.hidden = true;
-  activePreviewPhoto = null;
-  setModalOpen(false);
+  closePreview();
 }
 
 function isPreviewOpen() {
@@ -412,9 +420,12 @@ function updateTaskModeSummary() {
 }
 
 function initializeMobileTaskModePanel() {
-  if (window.matchMedia("(max-width: 760px)").matches) {
-    elements.taskModeDetails.removeAttribute("open");
-  }
+  const mobileViewport = window.matchMedia("(max-width: 760px)");
+  const syncTaskPanel = () => {
+    elements.taskModeDetails.open = !mobileViewport.matches;
+  };
+  syncTaskPanel();
+  mobileViewport.addEventListener("change", syncTaskPanel);
 }
 
 function currentPhotoFilters() {
@@ -453,6 +464,10 @@ async function photoWithDetails(photo) {
 }
 
 async function openPreview(photo) {
+  if (!isPreviewOpen()) {
+    previewTrigger = document.activeElement === document.body ? null : document.activeElement;
+    previewTriggerPhotoId = photo.photo_id;
+  }
   closeFilterSheet();
   closeCandidateSheet();
   const token = previewLoadToken + 1;
@@ -466,7 +481,7 @@ async function openPreview(photo) {
   const originalUrl = originalSizePageUrl(detailedPhoto);
   const previewUrl = largeUrl || detailedPhoto.image_preview_url;
   elements.previewTitle.textContent = photoTitle(detailedPhoto);
-  elements.previewMeta.textContent = [detailedPhoto.event_year, detailedPhoto.album_title, `photo_id: ${detailedPhoto.photo_id}`].filter(Boolean).join(" / ");
+  elements.previewMeta.textContent = [detailedPhoto.event_year, detailedPhoto.album_title].filter(Boolean).join(" / ");
   elements.previewImage.src = previewUrl;
   elements.previewImage.alt = [photoTitle(detailedPhoto), detailedPhoto.event_year].filter(Boolean).join(" ");
   renderPhotoStatuses(elements.previewStatuses, detailedPhoto, labelFor);
@@ -483,6 +498,9 @@ async function openPreview(photo) {
   controls.previewCopyFinder.title = "複製 Finder 中這張照片的 deep link";
   updatePreviewCandidateButton();
   elements.photoPreviewDialog.hidden = false;
+  if (!elements.photoPreviewDialog.open) {
+    elements.photoPreviewDialog.showModal();
+  }
   setModalOpen(true);
   controls.closePreview.focus({ preventScroll: true });
 }
@@ -1131,6 +1149,19 @@ controls.mobileCandidate.addEventListener("click", openCandidateSheet);
 controls.closeFilterSheet.addEventListener("click", closeFilterSheet);
 controls.closeCandidateSheet.addEventListener("click", closeCandidateSheet);
 controls.closePreview.addEventListener("click", closePreview);
+elements.photoPreviewDialog.addEventListener("cancel", (event) => {
+  event.preventDefault();
+  closePreview();
+});
+elements.photoPreviewDialog.addEventListener("click", (event) => {
+  if (event.target !== elements.photoPreviewDialog) {
+    return;
+  }
+  const rect = elements.photoPreviewDialog.getBoundingClientRect();
+  if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) {
+    closePreview();
+  }
+});
 elements.searchPanel.addEventListener(
   "touchstart",
   (event) => onSheetTouchStart(event, {
