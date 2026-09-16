@@ -267,11 +267,17 @@ async function waitForPageReady(client) {
 }
 
 async function clickElement(client, selector) {
-  const point = await evaluate(client, `(() => {
+  const point = await evaluate(client, `(async () => {
     const element = document.querySelector(${JSON.stringify(selector)});
     element?.scrollIntoView({ block: 'center' });
+    await new Promise(requestAnimationFrame);
+    await new Promise(requestAnimationFrame);
     const rect = element?.getBoundingClientRect();
-    return rect ? { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 } : null;
+    if (!rect) return null;
+    const point = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+    const hit = document.elementFromPoint(point.x, point.y);
+    if (!element.contains(hit)) throw new Error('Click target covered: ' + ${JSON.stringify(selector)} + ' by ' + hit?.outerHTML.slice(0, 300));
+    return point;
   })()`);
   if (!point) {
     throw new Error(`Missing interaction target: ${selector}`);
@@ -381,9 +387,58 @@ async function runSmoke(client, pageUrl) {
   if (selectedState.filterButtonText !== "篩選 1") {
     throw new Error(`Expected mobile filter count to update, got ${JSON.stringify(selectedState)}`);
   }
-  if (!selectedState.selected.includes("攤位")) {
+  if (!selectedState.selected.includes("攤位") || selectedState.triggerText !== "場景：攤位") {
     throw new Error(`Expected scene option to be selected, got ${JSON.stringify(selectedState)}`);
   }
+
+  logProgress("checking compact advanced filters retain selections when collapsed");
+  await clickElement(client, "#sceneFilter + .enhanced-select .enhanced-select-trigger");
+  await clickElement(client, "#advancedFilters summary");
+  await clickElement(client, "#priorityFilter + .enhanced-select .enhanced-select-trigger");
+  await clickElement(client, '#priorityFilter + .enhanced-select .enhanced-select-option:not([data-value=""])');
+  await clickElement(client, "#priorityFilter + .enhanced-select .enhanced-select-trigger");
+  await clickElement(client, "#advancedFilters summary");
+  const advancedState = await evaluate(client, `(() => ({
+    open: document.querySelector('#advancedFilters').open,
+    count: document.querySelector('#advancedFilterCount').textContent,
+    selected: [...document.querySelector('#priorityFilter').selectedOptions].map(option => option.value).filter(Boolean),
+    chips: document.querySelector('#activeFilters').textContent,
+  }))()`);
+  if (advancedState.open || advancedState.count !== "（1）" || advancedState.selected.length !== 1 || !advancedState.chips.includes("優先度")) {
+    throw new Error(`Collapsed advanced filter lost its selection: ${JSON.stringify(advancedState)}`);
+  }
+  await clickElement(client, "#advancedFilters summary");
+  await clickElement(client, "#priorityFilter + .enhanced-select .enhanced-select-trigger");
+  await clickElement(client, '#priorityFilter + .enhanced-select .enhanced-select-option[data-value=""]');
+  await clickElement(client, "#priorityFilter + .enhanced-select .enhanced-select-trigger");
+
+  logProgress("checking inline sponsorship input preserves keywords and multiple selections");
+  await clickElement(client, "#sponsorshipItemFilter");
+  const sponsorLayout = await evaluate(client, `(() => {
+    const field = document.querySelector('.autocomplete-field').getBoundingClientRect();
+    const panel = document.querySelector('.autocomplete-panel').getBoundingClientRect();
+    const filter = document.querySelector('.enhanced-select-trigger').getBoundingClientRect();
+    return { height: field.height, filterHeight: filter.height, left: panel.left, right: panel.right, viewport: innerWidth };
+  })()`);
+  if (sponsorLayout.height !== sponsorLayout.filterHeight || sponsorLayout.left < 0 || sponsorLayout.right > sponsorLayout.viewport) {
+    throw new Error(`Sponsorship control is not aligned or its suggestions overflow: ${JSON.stringify(sponsorLayout)}`);
+  }
+  await client.call("Input.insertText", { text: "badge" });
+  await client.call("Input.dispatchKeyEvent", { type: "keyDown", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13 });
+  await client.call("Input.dispatchKeyEvent", { type: "keyUp", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13 });
+  const suggestion = await evaluate(client, "document.querySelector('.autocomplete-option').dataset.value");
+  await clickElement(client, ".autocomplete-option");
+  const sponsorValues = await evaluate(client, "new URL(location.href).searchParams.getAll('sponsorItem')");
+  if (sponsorValues.length !== 2 || !sponsorValues.includes("badge") || !sponsorValues.includes(suggestion)) {
+    throw new Error(`Sponsorship keyword or suggestion did not reach Finder state: ${JSON.stringify(sponsorValues)}`);
+  }
+  await clickElement(client, '.autocomplete-token[data-value="badge"]');
+  const remainingSponsorValues = await evaluate(client, "new URL(location.href).searchParams.getAll('sponsorItem')");
+  if (remainingSponsorValues.length !== 1 || remainingSponsorValues[0] !== suggestion) {
+    throw new Error("Removing one sponsorship keyword also changed the other selection");
+  }
+  await clickElement(client, ".autocomplete-token");
+  await clickElement(client, "#advancedFilters summary");
 
   logProgress("checking preview focus and mobile actions");
   await clickElement(client, "#closeFilterSheetButton");
@@ -428,6 +483,19 @@ async function runSmoke(client, pageUrl) {
   }))()`);
   if (!tabletState.taskPanelOpen || tabletState.gridTop > tabletState.sideTop + 1 || tabletState.overflow) {
     throw new Error(`Tablet workspace regression: ${JSON.stringify(tabletState)}`);
+  }
+
+  logProgress("checking compact controls across viewport widths");
+  for (const width of [320, 768, 1440]) {
+    await client.call("Emulation.setDeviceMetricsOverride", { width, height: 900, deviceScaleFactor: 1, mobile: width < 761 });
+    await delay(100);
+    const layout = await evaluate(client, `(() => ({
+      overflow: document.documentElement.scrollWidth > innerWidth,
+      externalCue: getComputedStyle(document.querySelector('#sourceLink'), '::after').content.includes('↗'),
+    }))()`);
+    if (layout.overflow || !layout.externalCue) {
+      throw new Error(`Responsive controls failed at ${width}px: ${JSON.stringify(layout)}`);
+    }
   }
 }
 

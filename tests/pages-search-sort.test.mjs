@@ -86,7 +86,8 @@ function fakeFilterLayout() {
 
   const elements = {
     advancedFilterGrid: new FakeFilterGrid("advancedFilterGrid"),
-    advancedFilters: { hidden: false },
+    advancedFilters: { hidden: false, style: {}, classList: { toggle() {} } },
+    advancedFilterCount: { textContent: "", hidden: true },
     taskFilterGrid: new FakeFilterGrid("taskFilterGrid"),
   };
 
@@ -637,9 +638,12 @@ describe("Pages search/sort pure logic", () => {
 
   it("does not re-append stable filter controls during repeated layout renders", () => {
     const { controls, elements, labels } = fakeFilterLayout();
+    controls.priority.value = "high";
+    controls.use.value = "活動回顧";
 
     updateFilterLayout({ controls, elements, taskMode: "all" });
     assert.ok(appendLog(elements).length > 0);
+    assert.equal(elements.advancedFilterCount.textContent, "（1）");
 
     clearAppendLog(elements);
     updateFilterLayout({ controls, elements, taskMode: "all" });
@@ -651,6 +655,7 @@ describe("Pages search/sort pure logic", () => {
 
     clearAppendLog(elements);
     updateFilterLayout({ controls, elements, taskMode: "sponsor-pitch" });
+    assert.equal(elements.advancedFilterCount.textContent, "（2）");
 
     const movedKeys = new Set(appendLog(elements));
     assert.ok(movedKeys.size > 0);

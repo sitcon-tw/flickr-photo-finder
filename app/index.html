@@ -96,88 +96,87 @@
           <button id="resetButton" type="button">清除</button>
         </div>
 
-        <div id="taskFilterGrid" class="filter-grid">
-          <label>
-            <span>用途</span>
-            <select id="useFilter"></select>
-          </label>
+        <div class="filter-toolbar">
+          <div id="taskFilterGrid" class="filter-grid">
+            <label>
+              <span>用途</span>
+              <select id="useFilter"></select>
+            </label>
 
-          <label>
-            <span>主體</span>
-            <select id="subjectTypeFilter"></select>
-          </label>
+            <label>
+              <span>主體</span>
+              <select id="subjectTypeFilter"></select>
+            </label>
 
-          <label>
-            <span>氛圍</span>
-            <select id="moodFilter"></select>
-          </label>
+            <label>
+              <span>氛圍</span>
+              <select id="moodFilter"></select>
+            </label>
 
-          <label>
-            <span>場景</span>
-            <select id="sceneFilter"></select>
-          </label>
+            <label>
+              <span>場景</span>
+              <select id="sceneFilter"></select>
+            </label>
 
-          <label>
-            <span>人數</span>
-            <select id="peopleCountFilter"></select>
-          </label>
+            <label>
+              <span>人數</span>
+              <select id="peopleCountFilter"></select>
+            </label>
 
-          <label>
-            <span>照片方向</span>
-            <select id="orientationFilter"></select>
-          </label>
+            <label>
+              <span>照片方向</span>
+              <select id="orientationFilter"></select>
+            </label>
 
-          <label>
-            <span>留白</span>
-            <select id="negativeSpaceFilter"></select>
-          </label>
+            <label>
+              <span>留白</span>
+              <select id="negativeSpaceFilter"></select>
+            </label>
 
-          <label>
-            <span>安全裁切</span>
-            <select id="safeCropFilter"></select>
-          </label>
+            <label>
+              <span>安全裁切</span>
+              <select id="safeCropFilter"></select>
+            </label>
 
-          <label>
-            <span>贊助價值</span>
-            <select id="sponsorshipTagFilter"></select>
-          </label>
+            <label>
+              <span>贊助價值</span>
+              <select id="sponsorshipTagFilter"></select>
+            </label>
 
-          <label>
-            <span>贊助品項</span>
-            <input id="sponsorshipItemFilter" type="search" list="sponsorshipItemOptions" placeholder="搜尋品項" autocomplete="off" />
-            <datalist id="sponsorshipItemOptions"></datalist>
-          </label>
+            <label>
+              <span>贊助品項</span>
+              <input id="sponsorshipItemFilter" type="search" list="sponsorshipItemOptions" placeholder="搜尋品項" autocomplete="off" />
+              <datalist id="sponsorshipItemOptions"></datalist>
+            </label>
 
-          <label>
-            <span>使用提醒</span>
-            <select id="publicStatusFilter"></select>
-          </label>
+            <label>
+              <span>使用提醒</span>
+              <select id="publicStatusFilter"></select>
+            </label>
 
-          <label>
-            <span>推薦優先度</span>
-            <select id="priorityFilter"></select>
-          </label>
+            <label>
+              <span>推薦優先度</span>
+              <select id="priorityFilter"></select>
+            </label>
 
-          <label>
-            <span>整理狀態</span>
-            <select id="curationStatusFilter"></select>
-          </label>
+            <label>
+              <span>整理狀態</span>
+              <select id="curationStatusFilter"></select>
+            </label>
 
-          <label>
-            <span>素材包</span>
-            <select id="collectionFilter"></select>
-          </label>
-        </div>
-
-        <div class="search-footer">
+            <label>
+              <span>素材包</span>
+              <select id="collectionFilter"></select>
+            </label>
+          </div>
           <details id="advancedFilters" class="advanced-filter-panel">
-            <summary>進階條件</summary>
+            <summary>進階條件<span id="advancedFilterCount" hidden></span></summary>
             <div id="advancedFilterGrid" class="filter-grid advanced-filter-grid"></div>
           </details>
-          <p class="index-boundary-note">
-            有些照片或標籤尚未人工確認；找不到時，可放寬條件或回相簿看看。
-          </p>
         </div>
+        <p class="index-boundary-note">
+          有些照片或標籤尚未人工確認；找不到時，可放寬條件或回相簿看看。
+        </p>
       </section>
 
       <section class="result-bar" aria-label="搜尋結果狀態">

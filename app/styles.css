@@ -215,6 +215,17 @@ h3 {
   white-space: nowrap;
 }
 
+.source-link::after {
+  margin-left: 5px;
+  content: "↗";
+}
+
+.source-link:hover,
+.source-link:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
 .task-panel,
 .search-panel,
 .result-bar,
@@ -316,16 +327,8 @@ h3 {
   margin-bottom: 10px;
 }
 
-.search-footer {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 10px 20px;
-  margin-top: 12px;
-}
-
 .index-boundary-note {
-  margin: 0;
+  margin: 12px 0 0;
   color: var(--muted);
   font-size: 13px;
   line-height: 1.5;
@@ -409,7 +412,8 @@ select {
   box-shadow: var(--focus);
 }
 
-.enhanced-select-panel {
+.enhanced-select-panel,
+.autocomplete-panel {
   position: absolute;
   z-index: 40;
   top: calc(100% + 4px);
@@ -448,9 +452,10 @@ select {
   border: 0;
   background: transparent;
   color: var(--text);
-  text-overflow: ellipsis;
   text-align: left;
-  white-space: nowrap;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .candidate-title-button {
@@ -498,33 +503,64 @@ select {
   min-width: 0;
 }
 
+.autocomplete-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+}
+
+.autocomplete-field > span {
+  flex: 0 0 auto;
+}
+
+.autocomplete-field input {
+  height: 36px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-size: 13px;
+}
+
+.autocomplete-field:focus-within {
+  border-color: var(--accent);
+  box-shadow: var(--focus);
+}
+
+.autocomplete-field input:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+.autocomplete-input.has-tokens .autocomplete-field {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
 .autocomplete-tokens {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
 }
 
+.autocomplete-tokens:empty {
+  display: none;
+}
+
 .autocomplete-token {
   min-height: 24px;
+  max-width: 100%;
   padding: 0 8px;
   border-color: var(--line);
   background: var(--panel-subtle);
   color: var(--muted-strong);
   font-size: 12px;
   font-weight: 700;
-}
-
-.autocomplete-panel {
-  position: absolute;
-  z-index: 40;
-  top: calc(100% + 4px);
-  right: 0;
-  left: 0;
-  padding: 6px;
-  border: 1px solid var(--line-strong);
-  border-radius: 6px;
-  background: #fff;
-  box-shadow: 0 12px 28px rgb(15 23 42 / 16%);
+  overflow-wrap: anywhere;
+  text-align: left;
 }
 
 .autocomplete-panel[hidden] {
@@ -546,6 +582,9 @@ select {
   background: transparent;
   color: var(--text);
   text-align: left;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .autocomplete-option:hover {
@@ -560,10 +599,47 @@ select {
   font-size: 13px;
 }
 
+.filter-toolbar,
 .filter-grid {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(128px, 1fr));
-  gap: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+#taskFilterGrid {
+  display: contents;
+}
+
+.filter-toolbar label {
+  max-width: 100%;
+}
+
+.filter-toolbar label:not(.compact-filter) {
+  width: min(280px, 100%);
+}
+
+.compact-filter {
+  position: relative;
+  width: fit-content;
+}
+
+.compact-filter > span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.compact-filter .enhanced-select-trigger {
+  max-width: 280px;
+}
+
+.compact-filter .enhanced-select-trigger:not(.is-empty) {
+  border-color: var(--accent);
+  background: var(--accent-soft);
 }
 
 .advanced-filter-panel {
@@ -575,10 +651,35 @@ select {
 }
 
 .advanced-filter-panel summary {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   width: fit-content;
+  min-height: 38px;
+  padding: 0 10px;
+  border-radius: 8px;
   color: var(--muted-strong);
+  cursor: pointer;
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 650;
+  list-style: none;
+}
+
+.advanced-filter-panel summary::-webkit-details-marker {
+  display: none;
+}
+
+.advanced-filter-panel summary::after {
+  content: "＋";
+}
+
+.advanced-filter-panel[open] summary::after {
+  content: "−";
+}
+
+.advanced-filter-panel.has-filters summary {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
 }
 
 .advanced-filter-grid {
@@ -1587,17 +1688,17 @@ select {
 }
 
 @media (max-width: 1180px) {
+  .primary-search {
+    grid-template-columns: minmax(160px, 1fr) minmax(160px, 1fr) minmax(128px, 0.65fr) auto;
+  }
+
   .task-choices {
     grid-template-columns: minmax(0, 1fr);
     gap: 6px;
   }
 
-  .filter-grid {
-    grid-template-columns: repeat(4, minmax(128px, 1fr));
-  }
-
   .workspace {
-    grid-template-columns: 250px minmax(0, 1fr);
+    grid-template-columns: minmax(210px, 24%) minmax(0, 1fr);
     gap: 20px;
   }
 
@@ -1701,15 +1802,6 @@ select {
     display: none;
   }
 
-  button,
-  .source-link,
-  .photo-action,
-  input,
-  select,
-  .enhanced-select-trigger {
-    min-height: 44px;
-  }
-
   .mobile-sheet-header {
     display: none;
     align-items: center;
@@ -1762,8 +1854,7 @@ select {
     padding: 0 0 12px;
   }
 
-  .search-panel .filter-grid,
-  .search-panel .advanced-filter-panel {
+  .search-panel:not(.is-filter-open) .filter-toolbar {
     display: none;
   }
 
@@ -1783,15 +1874,6 @@ select {
 
   .search-panel.is-filter-open .mobile-sheet-header {
     display: flex;
-  }
-
-  .search-panel.is-filter-open .filter-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-  }
-
-  .search-panel.is-filter-open .advanced-filter-panel {
-    display: block;
   }
 
   .active-filters {
@@ -2010,5 +2092,21 @@ select {
   .detail-row {
     grid-template-columns: 1fr;
     gap: 2px;
+  }
+}
+
+@media (max-width: 760px), (pointer: coarse) {
+  button,
+  .source-link,
+  .photo-action,
+  input,
+  select,
+  .enhanced-select-trigger,
+  .advanced-filter-panel summary {
+    min-height: 44px;
+  }
+
+  .autocomplete-field input {
+    min-height: 42px;
   }
 }
