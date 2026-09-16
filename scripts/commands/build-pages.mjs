@@ -145,6 +145,7 @@ function buildPrecacheUrls({ dataMode, jsFiles }) {
     "./styles.css",
     "./config.js",
     "./assets/og-image.png",
+    "./assets/brand-logo.svg",
     ...buildFinderDataUrls(dataMode),
     ...jsFiles.map(artifactUrl),
   ];
@@ -343,6 +344,7 @@ export async function buildPagesArtifact({
   const jsFiles = await copyPagesJavaScriptModules(outputDir);
   await copyIntoArtifact("app/styles.css", outputDir, "styles.css");
   await copyIntoArtifact("app/assets/og-image.png", outputDir, "assets/og-image.png");
+  await copyIntoArtifact("app/assets/brand-logo.svg", outputDir, "assets/brand-logo.svg");
   await copyIntoArtifact("config/project.json", outputDir);
   await copyIntoArtifact("data/interface-registry.json", outputDir);
   await copyIntoArtifact("data/photo-schema.json", outputDir);

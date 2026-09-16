@@ -201,6 +201,7 @@ async function main() {
   const requiredFiles = [
     ".nojekyll",
     "assets/og-image.png",
+    "assets/brand-logo.svg",
     "index.html",
     "main.js",
     "pwa.js",

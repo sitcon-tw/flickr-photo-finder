@@ -266,6 +266,19 @@ async function waitForPageReady(client) {
   throw new Error("Timed out waiting for finder data to render");
 }
 
+async function clickElement(client, selector) {
+  const point = await evaluate(client, `(() => {
+    const element = document.querySelector(${JSON.stringify(selector)});
+    element?.scrollIntoView({ block: 'center' });
+    const rect = element?.getBoundingClientRect();
+    return rect ? { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 } : null;
+  })()`);
+  if (!point) {
+    throw new Error(`Missing interaction target: ${selector}`);
+  }
+  await click(client, point);
+}
+
 async function runSmoke(client, pageUrl) {
   logProgress("configuring mobile viewport");
   await client.call("Page.enable");
@@ -370,6 +383,51 @@ async function runSmoke(client, pageUrl) {
   }
   if (!selectedState.selected.includes("攤位")) {
     throw new Error(`Expected scene option to be selected, got ${JSON.stringify(selectedState)}`);
+  }
+
+  logProgress("checking preview focus and mobile actions");
+  await clickElement(client, "#closeFilterSheetButton");
+  await clickElement(client, ".photo-link");
+  await delay(250);
+  await client.call("Input.dispatchKeyEvent", { type: "keyDown", key: "Tab", code: "Tab", windowsVirtualKeyCode: 9, modifiers: 8 });
+  await client.call("Input.dispatchKeyEvent", { type: "keyUp", key: "Tab", code: "Tab", windowsVirtualKeyCode: 9, modifiers: 8 });
+  const previewState = await evaluate(client, `(() => {
+    const dialog = document.querySelector('#photoPreviewDialog');
+    const actions = document.querySelector('.preview-actions').getBoundingClientRect();
+    return {
+      modal: dialog.matches(':modal'),
+      focusInside: dialog.contains(document.activeElement),
+      actionsVisible: actions.top >= 0 && actions.bottom <= innerHeight && actions.height < innerHeight / 2,
+      photoId: document.querySelector('.photo-card').id,
+      logoLoaded: document.querySelector('.brand-logo').naturalWidth > 0,
+    };
+  })()`);
+  if (!previewState.modal || !previewState.focusInside || !previewState.actionsVisible || !previewState.logoLoaded) {
+    throw new Error(`Preview or brand rendering failed: ${JSON.stringify(previewState)}`);
+  }
+  await clickElement(client, "#previewCandidateButton");
+  await client.call("Input.dispatchKeyEvent", { type: "keyDown", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 });
+  await client.call("Input.dispatchKeyEvent", { type: "keyUp", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 });
+  const closedState = await evaluate(client, `(() => ({
+    open: document.querySelector('#photoPreviewDialog').open,
+    focusedPhoto: document.activeElement.closest('.photo-card')?.id,
+    candidates: document.querySelector('#candidateSummary').textContent,
+  }))()`);
+  if (closedState.open || closedState.focusedPhoto !== previewState.photoId || !closedState.candidates.includes("1")) {
+    throw new Error(`Preview did not restore photo focus and candidate state: ${JSON.stringify(closedState)}`);
+  }
+
+  logProgress("checking tablet workspace and task controls after mobile resize");
+  await client.call("Emulation.setDeviceMetricsOverride", { width: 1024, height: 900, deviceScaleFactor: 1, mobile: false });
+  await delay(150);
+  const tabletState = await evaluate(client, `(() => ({
+    taskPanelOpen: document.querySelector('#taskModeDetails').open,
+    gridTop: document.querySelector('#photoGrid').getBoundingClientRect().top,
+    sideTop: document.querySelector('.side-panel').getBoundingClientRect().top,
+    overflow: document.documentElement.scrollWidth > innerWidth,
+  }))()`);
+  if (!tabletState.taskPanelOpen || tabletState.gridTop > tabletState.sideTop + 1 || tabletState.overflow) {
+    throw new Error(`Tablet workspace regression: ${JSON.stringify(tabletState)}`);
   }
 }
 
