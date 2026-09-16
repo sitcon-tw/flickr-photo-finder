@@ -19,9 +19,11 @@ flowchart TD
   C --> D["ai:review 驗證並產生 summary / diff / plan"]
   D --> E["ai:report 逐張檢視或比較 attempts"]
   D --> F["eval:search 檢查 visual_description 找圖增益"]
+  D --> H["sheets:apply-ai-updates dry-run"]
   E --> G["人工判斷採用範圍"]
   F --> G
-  G --> H["sheets:apply-ai-updates dry-run / write"]
+  H --> G
+  G --> J["核對授權後 sheets:apply-ai-updates --write"]
   G --> I["eval:prompt-review 決策包"]
 ```
 

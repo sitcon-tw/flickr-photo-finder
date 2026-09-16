@@ -10,7 +10,7 @@
 | --- | --- |
 | 正式 Sheets | Google Sheets 中的正式照片索引。`photos`、`albums`、`import_batches` 是正式 operational data；`taxonomy` 與 `sponsorship_items` 是由 repo source 同步到 Sheets 的輔助查閱表。 |
 | 本機工作快取 | `tmp/sheets-export/*.csv`，由 `pnpm sheets:export` 從正式 Sheets 匯出，供本機 validation、intake 與 AI 工具使用；可重建，不 commit。 |
-| intake run | `tmp/intake-runs/<run-id>/`，一次 Flickr 相片同步的可審核 artifact，包含候選照片、`reconciliation.json` 成員/刪除/排序計畫、相簿更新、批次與摘要；人類確認後才用 `sheets:apply-intake` dry-run/write。 |
+| intake run | `tmp/intake-runs/<run-id>/`，一次 Flickr 相片同步的可審核 artifact，包含候選照片、`reconciliation.json` 成員/刪除/排序計畫、相簿更新、批次與摘要；先驗證並用 `sheets:apply-intake` dry-run 提供差異，正式 write 須有涵蓋該範圍的授權。 |
 | AI run | `tmp/ai-runs/<run-id>/`，一次 AI 搜尋級標記工作包，通常由 `ai:prepare` 或 `eval:sample` 建立，包含 `manifest.json`、`photos.json`、`images/`、`ai-labeling-prompt.md`。模型應先逐張寫入 `photo-artifacts/<photo_id>.json`，再由 `ai:artifacts:merge` 產生 `metadata-proposals.json`、`visual-inspection-audit.json` 與 `artifact-manifest.json`。大型分片 run 另有 `/tmp/ai-labeling-shards/<run-id>/visual-audits/` 逐張檢視稽核。AI run 不是人工 review 狀態。 |
 | attempt | 從既有 AI run 派生的模型/輪次比較工作包，仍符合 AI run 目錄合約，用來比較不同模型、prompt 或 rounds。 |
 | prompt review 決策包 | `tmp/prompt-reviews/<review-id>/`，由 `eval:prompt-review` 產生，只彙整 evidence、角色 review 與 owner 決策，不自動呼叫外部 LLM、不自動分派審查者、不改 prompt/schema、不寫 Sheets。若需要獨立審查，操作者必須主動分派不同 agent 或不同可追溯執行 session，並記錄 review provenance。 |

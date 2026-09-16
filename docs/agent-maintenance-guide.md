@@ -50,6 +50,8 @@ SITCON 組織已有既有文件存放與交接制度。這個專案不保存 cre
 
 接手維運時，先用 `docs/operations-handoff-checklist.md` 確認本專案需要哪些資產、權限能力與 dry-run 驗證；遇到具體故障症狀時，再用 `docs/troubleshooting.md` 分流到對應 runbook。
 
+Agent 的行動授權依 [AGENTS.md 的自主執行規則](../AGENTS.md#autonomy-authorization-and-decisions)。
+
 遇到權限問題時，agent 應該：
 
 1. 先確認需要哪一類資產或權限，例如 Google Sheets 編輯權限、Google Sheets API service account credential、Apps Script/clasp、第三方工具或 AI API。
@@ -106,7 +108,7 @@ AI 只能作為資料匯入與整理輔助。AI 候選值不等於人工 `review
 5. 用 `pnpm ai:report -- --run <dir>` 閱讀單次結果；比較多模型或多輪時，用 `pnpm ai:report -- --runs <dir> <dir>`。
 6. 若本次重點是 `visual_description` 或自然語言找圖，先用 `pnpm eval:search -- --run-dir <dir>` 比較 taxonomy-only baseline 與 description 搜尋結果。
 7. 若本次重點是 prompt、schema、workflow 或人工審核成本決策，先用 `pnpm eval:prompt-review -- --mode prepare --runs <dir> [dir...]` 建立決策包，收到專家 review 後再用 `--mode compile` 彙整。
-8. 人類檢查後才用 `pnpm sheets:apply-ai-updates -- --run-dir <dir>` dry-run；確認後才可加上 `--write`。
+8. 用 `pnpm sheets:apply-ai-updates -- --run-dir <dir>` dry-run 產生可供人類檢查的差異；核對授權涵蓋該目標與範圍後才加上 `--write`，並讀回驗證。寫入 AI 候選的授權不代表逐張人工 review 已完成。
 9. AI 協助過但尚未人工確認的資料應標成 `ai_labeled`。
 
 照片量大時，不預期所有 `ai_labeled` 照片都會被人工 review 完畢。Agent 不應把「清空 AI 待審佇列」當成預設目標；應優先協助建立抽查樣本、找出批次風險、整理高互動或高價值照片，並把任何接受率、修改率或拒絕率限定在實際被人類處理過的 subset。
@@ -166,26 +168,9 @@ pnpm finder:check
 
 ## 文件優先順序
 
-新 agent 接手時，最少必讀：
+依 [AGENTS.md 的任務入口](../AGENTS.md#task-routing) 選取必要文件；需要完整角色與工作分流時，查 [文件入口](README.md#任務導向入口)。只負責既有 run 標記的模型使用該 run prompt、合約與指定資料，不要求先讀維運或部署文件。
 
-1. `README.md`
-2. `docs/README.md`
-3. `AGENTS.md`
-4. `docs/project-architecture.md`
-
-再依任務擴展閱讀：
-
-- 資料庫與協作：`docs/database-collaboration-strategy.md`、`docs/google-sheets-database-design.md`
-- Flickr 相片同步：`docs/sheets-sync-workflow.md`
-- 外部 AI 或 metadata 輔助：先依任務判斷讀者角色；模型標記以 run 目錄的 `ai-labeling-prompt.md` 與 `docs/ai-labeling-contract.md` 為主，操作者流程再讀 `docs/ai-labeling-operator-guide.md`，prompt 或 schema 決策再讀 `docs/adr/0010-ai-prompt-review-governance.md`，公開資料取用再讀 `docs/ai-readable-dataset.md`
-- Apps Script：`docs/apps-script-maintenance-design.md`
-- 共用值治理：`docs/shared-value-governance.md`
-- 真實找圖 metadata 評估：`docs/finder-evaluation.md`
-- 人工填寫欄位：`docs/data-entry-guide.md`、`docs/photo-fields-reference.md`
-- 維運交接與事故分流：`docs/operations-handoff-checklist.md`、`docs/troubleshooting.md`
-- 產品定位與欄位邊界：`docs/adr/0008-photo-index-product-boundary.md`、`docs/adr/0009-photo-metadata-field-boundaries.md`
-
-如果文件互相矛盾，以 Google Sheets-first 架構為準，並優先修正文件矛盾。
+文件、資料與實作互相矛盾時，依 [真理來源表](README.md#真理來源) 分別判斷：正式資料值回到 Sheets，schema／taxonomy／共用設定回到 repo 來源，架構決策回到對應 ADR。查明落差後同步修正；若涉及尚未決定的責任或介面變更，依 AGENTS.md 提出決策，不以單一句 Sheets-first 覆蓋所有規格。
 
 ## 文件入口品質
 

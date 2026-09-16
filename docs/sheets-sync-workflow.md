@@ -18,6 +18,8 @@ pnpm workflow
 
 下方低階指令仍是 workflow 會呼叫的工具，也保留給自動化、除錯與文件交叉引用使用。
 
+Agent 操作時依 [AGENTS.md 的授權規則](../AGENTS.md#autonomy-authorization-and-decisions) 判斷範圍：在任務允許讀取目標資料的範圍內，先完成 validation 與 dry-run 供人類檢查；正式 write 須有涵蓋該目標、資料範圍與副作用的授權。下文套用計畫前的操作確認，可由本次對話中已明確涵蓋該範圍的授權滿足，不要求重複詢問；若 dry-run 發現未授權的刪除、人工值覆寫或目標變更，應先提出具體差異。操作授權不代表照片已逐張人工 reviewed，也不取代 preflight、資料一致性檢查或寫後讀回驗證。
+
 ## 權威來源
 
 - 正式照片資料以 Google Sheets 為準。
@@ -237,7 +239,7 @@ pnpm sheets:report -- --source sheets
 
 ## 相簿工作流程
 
-本節的 `intake run` 指 `tmp/intake-runs/<run-id>/` 內的一次 Flickr 相片同步 artifact。它是寫入正式 Sheets 前的人機協作介面，不是第二份正式資料庫；人類確認後才進入 `sheets:apply-intake` dry-run/write。
+本節的 `intake run` 指 `tmp/intake-runs/<run-id>/` 內的一次 Flickr 相片同步 artifact。它是寫入正式 Sheets 前的人機協作介面，不是第二份正式資料庫；驗證後先用 `sheets:apply-intake` dry-run 提供差異，正式 write 才需要涵蓋該範圍的授權。
 
 建議流程：
 
