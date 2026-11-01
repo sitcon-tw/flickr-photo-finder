@@ -3,7 +3,7 @@
   "private": true,
   "license": "Apache-2.0",
   "type": "module",
-  "packageManager": "pnpm@12.4.2",
+  "packageManager": "pnpm@12.16.1",
   "scripts": {
     "preinstall": "node scripts/commands/ensure-pnpm.mjs",
     "start": "pnpm workflow",
@@ -78,7 +78,7 @@
     "analytics:dimensions:sync": "node scripts/commands/sync-ga4-custom-dimensions.mjs"
   },
   "dependencies": {
-    "@inquirer/prompts": "^8.7.2",
-    "googleapis": "^182.0.0"
+    "@inquirer/prompts": "^8.7.5",
+    "googleapis": "^189.0.0"
   }
 }
