@@ -1,4 +1,4 @@
-import { access, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { access, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import { spawn, spawnSync } from "node:child_process";
 import { join } from "node:path";
@@ -263,19 +263,17 @@ async function click(client, point) {
   });
 }
 
-async function waitForPageReady(client) {
+async function waitForPageCondition(client, expression, label) {
   const deadline = Date.now() + 7000;
   while (Date.now() < deadline) {
-    const ready = await evaluate(client, `(() => {
-      const summary = document.querySelector('#resultSummary')?.textContent ?? '';
-      return summary.includes('/');
-    })()`);
-    if (ready) {
-      return;
-    }
-    await delay(100);
+    if (await evaluate(client, expression)) return;
+    await delay(50);
   }
-  throw new Error("Timed out waiting for finder data to render");
+  throw new Error(`Timed out waiting for ${label}`);
+}
+
+async function waitForPageReady(client) {
+  await waitForPageCondition(client, `document.querySelector('#resultSummary')?.textContent.includes('/')`, "finder data to render");
 }
 
 async function clickElement(client, selector) {
@@ -384,6 +382,163 @@ async function checkAppearance(client) {
   await chooseAppearance(client, "dark");
   await assertAppearance(client, "dark");
   await client.call("Page.removeScriptToEvaluateOnNewDocument", { identifier: storageBlock.identifier });
+}
+
+async function runLoadingSmoke(client, pageUrl) {
+  logProgress("checking initial HTML, slow data loading and failure state");
+  await client.call("Page.enable");
+  await client.call("Network.enable");
+  await client.call("Network.setCacheDisabled", { cacheDisabled: true });
+  const gate = await client.call("Page.addScriptToEvaluateOnNewDocument", { source: `
+    const fetchData = window.fetch;
+    window.loadingTestDataRequested = false;
+    const dataReady = new Promise((resolve) => { window.finishLoadingTest = resolve; });
+    window.fetch = async (...args) => {
+      window.loadingTestDataRequested = true;
+      if (await dataReady === 'fail') throw new Error('Loading smoke: unavailable data');
+      return fetchData(...args);
+    };
+  ` });
+  const snapshot = `(() => {
+    const selectors = ['.task-panel', '.search-panel', '.primary-search', '.filter-toolbar', '#photoGrid'];
+    const regions = Object.fromEntries(selectors.map((selector) => {
+      const rect = document.querySelector(selector).getBoundingClientRect();
+      return [selector, { top: rect.top, height: rect.height }];
+    }));
+    if (document.documentElement.scrollWidth > innerWidth) throw new Error('Loading layout overflows horizontally');
+    if (innerWidth <= 760 && document.querySelector('#resultContext').getBoundingClientRect().top < document.querySelector('#resultSummary').getBoundingClientRect().bottom) throw new Error('Mobile result context must stay below the summary');
+    return regions;
+  })()`;
+  try {
+    for (const width of [1440, 1024, 480, 390, 320]) {
+      await client.call("Emulation.setDeviceMetricsOverride", { width, height: 844, deviceScaleFactor: 1, mobile: width < 760 });
+      // Check the built HTML before main.js can rearrange any controls.
+      await client.call("Network.setBlockedURLs", { urls: ["*main.js*"] });
+      await client.call("Page.navigate", { url: pageUrl });
+      await waitForPageCondition(client, `document.body?.dataset.loadState === 'loading' && document.readyState !== 'loading' && !!document.querySelector('link[rel="stylesheet"]')?.sheet`, "initial HTML and stylesheet");
+      await evaluate(client, `(() => {
+        if (window.loadingTestDataRequested) throw new Error('Initial HTML check did not block the versioned entry module');
+        if (document.body.dataset.loadState !== 'loading') throw new Error('Missing initial loading state');
+        if (!document.querySelector('#taskModes .task-mode') || !document.querySelector('#taskFilterGrid .filter-placeholder')) throw new Error('Initial HTML does not contain the primary layout');
+        if (!document.querySelector('#advancedFilterGrid #peopleCountFilter')) throw new Error('Initial advanced filters are not grouped');
+        if ([...document.querySelectorAll('[data-requires-data]')].some((element) => !element.inert)) throw new Error('Loading controls are interactive');
+        document.querySelector('#searchInput').focus();
+        if (document.activeElement.id === 'searchInput') throw new Error('Loading search accepts input before URL restoration');
+      })()`);
+      const initial = await evaluate(client, snapshot);
+      await client.call("Network.setBlockedURLs", { urls: [] });
+      await client.call("Page.navigate", { url: pageUrl });
+      await waitForPageCondition(client, `window.loadingTestDataRequested && !!document.querySelector('link[rel="stylesheet"]')?.sheet`, "bootstrap and stylesheet before data");
+      const waiting = await evaluate(client, snapshot);
+      for (const selector of Object.keys(initial)) {
+        if (Math.abs(initial[selector].top - waiting[selector].top) > 1) throw new Error(`Bootstrap moved ${selector} at ${width}px`);
+      }
+      await evaluate(client, "window.finishLoadingTest('ready')");
+      await waitForPageReady(client);
+      const ready = await evaluate(client, snapshot);
+      for (const selector of Object.keys(waiting)) {
+        const tolerance = selector === '#photoGrid' && width < 760 ? 22 : 1;
+        if (Math.abs(waiting[selector].top - ready[selector].top) > tolerance) throw new Error(`Data loading moved ${selector} at ${width}px: ${JSON.stringify({ waiting, ready })}`);
+      }
+      await evaluate(client, `(() => {
+        if (document.body.dataset.loadState !== 'ready' || document.querySelector('[data-requires-data][inert]')) throw new Error('Loaded controls remain inert');
+        if (document.querySelector('.filter-placeholder, .loading-card, .loading-spinner')) throw new Error('Loading placeholders remain after rendering');
+      })()`);
+    }
+
+    await client.call("Page.navigate", { url: pageUrl + '?year=value%3A2025' });
+    await waitForPageCondition(client, `document.body?.dataset.loadState === 'loading' && window.loadingTestDataRequested`, "bootstrap before failed data request");
+    await evaluate(client, "window.finishLoadingTest('fail')");
+    await waitForPageCondition(client, `document.body?.dataset.loadState === 'error'`, "failed data request state");
+    await evaluate(client, `(() => {
+      if (document.body.dataset.loadState !== 'error' || !document.querySelector('#resultSummary').textContent.includes('失敗')) throw new Error('Failed request did not leave loading state');
+      if (document.querySelector('#photoGrid').getAttribute('aria-busy') !== 'false' || document.querySelector('.loading-card, .loading-spinner')) throw new Error('Failed request left a loading indicator');
+      if (document.querySelector('[data-requires-data]:not([inert])')) throw new Error('Failed request enabled unavailable controls');
+      if (new URLSearchParams(location.search).get('year') !== 'value:2025') throw new Error('Failed request discarded shared filters');
+    })()`);
+  } finally {
+    await client.call("Page.removeScriptToEvaluateOnNewDocument", { identifier: gate.identifier });
+    await client.call("Network.setBlockedURLs", { urls: [] });
+    await client.call("Network.setCacheDisabled", { cacheDisabled: false });
+  }
+}
+
+async function runCacheUpgradeSmoke(client) {
+  logProgress("checking a warm-cache upgrade and offline search/detail");
+  const outputDir = join(artifactDir, "cache-upgrade");
+  const { version } = await buildPagesArtifact({
+    outputDir,
+    dataMode: "static-sharded",
+    photosCsvUrl: `data:text/csv,${encodeURIComponent(await readFile("fixtures/photos.csv", "utf8"))}`,
+    albumsCsvUrl: `data:text/csv,${encodeURIComponent(await readFile("fixtures/albums.csv", "utf8"))}`,
+  });
+  const files = await Promise.all((await readdir(outputDir, { recursive: true }))
+    .filter((file) => /\.(?:html|js|css)$/.test(file))
+    .map(async (file) => [file, await readFile(join(outputDir, file), "utf8")]));
+  // Seed unversioned cache entries with observable JS/CSS, then publish the actual build.
+  for (const [file, content] of files) {
+    let baseline = content.replaceAll(`?v=${version}`, "");
+    if (file === "service-worker.js") baseline = baseline.replace(version, "unversioned-smoke");
+    if (file === "main.js") baseline += "\nwindow.cacheUpgradeBaseline = true;";
+    if (file === "styles.css") baseline += "\nbody { --cache-upgrade-baseline: present; }";
+    await writeFile(join(outputDir, file), baseline);
+  }
+  const port = await availablePort();
+  const pageUrl = `http://127.0.0.1:${port}/`;
+  const server = startStaticServer({ rootDir: outputDir, port, title: "Cache upgrade smoke" });
+  try {
+    await waitForHttp(pageUrl);
+    await client.call("Emulation.setDeviceMetricsOverride", { width: 1024, height: 844, deviceScaleFactor: 1, mobile: false });
+    await client.call("Page.navigate", { url: pageUrl });
+    await waitForPageReady(client);
+    await waitForPageCondition(client, `navigator.serviceWorker.controller && window.cacheUpgradeBaseline && getComputedStyle(document.body).getPropertyValue('--cache-upgrade-baseline').trim() === 'present'`, "unversioned app cached and controlled");
+    // Keep the active worker fixed until the first visit has proved asset isolation.
+    for (const [file, content] of files) {
+      if (file !== "service-worker.js") await writeFile(join(outputDir, file), content);
+    }
+
+    await client.call("Page.navigate", { url: pageUrl });
+    await waitForPageReady(client);
+    await evaluate(client, `(() => {
+      if (window.cacheUpgradeBaseline || getComputedStyle(document.body).getPropertyValue('--cache-upgrade-baseline').trim()) throw new Error('Upgrade reused unversioned JS or CSS');
+      if (document.body.dataset.loadState !== 'ready' || document.querySelector('[data-requires-data][inert], .filter-placeholder')) throw new Error('First upgrade visit is not usable');
+      document.querySelector('#searchInput').focus();
+      if (document.activeElement.id !== 'searchInput') throw new Error('Upgrade search cannot receive focus');
+    })()`);
+    await writeFile(join(outputDir, "service-worker.js"), files.find(([file]) => file === "service-worker.js")[1]);
+    await evaluate(client, "navigator.serviceWorker.getRegistration().then((registration) => registration.update())");
+    await waitForPageCondition(client, `(async () => {
+      const registration = await navigator.serviceWorker.getRegistration();
+      const names = await caches.keys();
+      return registration?.active?.state === 'activated' && !registration.installing && !registration.waiting && names.includes('sitcon-photo-finder-app-${version}') && !names.some((name) => name.endsWith('unversioned-smoke'));
+    })()`, "versioned worker activated");
+    await clickElement(client, ".photo-link");
+    await waitForPageCondition(client, "document.querySelector('#photoPreviewDialog').open", "online photo detail");
+    const preview = await evaluate(client, `({ id: document.querySelector('.photo-card').id, text: document.querySelector('#previewDetails').textContent })`);
+    await waitForPageCondition(client, `(async () => {
+      const cache = await caches.open('sitcon-photo-finder-detail-${version}');
+      return (await cache.keys()).some((request) => new URL(request.url).searchParams.get('v') === '${version}');
+    })()`, "versioned detail shard cached");
+
+    server.closeAllConnections();
+    await new Promise((resolve) => server.close(resolve));
+    await client.call("Network.emulateNetworkConditions", { offline: true, latency: 0, downloadThroughput: 0, uploadThroughput: 0 });
+    await client.call("Page.navigate", { url: `${pageUrl}?offline-smoke=1#${preview.id}` });
+    await waitForPageReady(client);
+    await waitForPageCondition(client, "document.querySelector('#photoPreviewDialog').open", "offline cached photo detail");
+    const offlineText = await evaluate(client, "document.querySelector('#previewDetails').textContent");
+    if (!preview.text || offlineText !== preview.text) throw new Error("Offline preview did not restore cached detail");
+    await clickElement(client, "#closePreviewButton");
+    await evaluate(client, `(() => {
+      const input = document.querySelector('#searchInput');
+      input.value = 'cache-smoke-no-match';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    })()`);
+    await waitForPageCondition(client, "document.querySelector('#resultSummary').textContent.trim().startsWith('0 /')", "offline search response");
+  } finally {
+    await client.call("Network.emulateNetworkConditions", { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
+    if (server.listening) await new Promise((resolve) => server.close(resolve));
+  }
 }
 
 async function runSmoke(client, pageUrl) {
@@ -856,11 +1011,13 @@ try {
 
     const debugPort = await availablePort();
     chrome = await launchChrome(debugPort);
-    const wsUrl = await openPage(debugPort, `http://127.0.0.1:${appPort}/`);
+    const wsUrl = await openPage(debugPort, "about:blank");
     client = await connect(wsUrl);
+    await runLoadingSmoke(client, `http://127.0.0.1:${appPort}/`);
     await runSmoke(client, `http://127.0.0.1:${appPort}/`);
     await runSourceSmoke(client, `http://127.0.0.1:${appPort}/`);
     await runSourceHintSmoke(client, `http://127.0.0.1:${appPort}/`);
+    await runCacheUpgradeSmoke(client);
   })(), smokeTimeoutMs, "mobile filter smoke");
   console.log("Mobile filter picker smoke passed.");
 } catch (error) {

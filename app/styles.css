@@ -77,6 +77,7 @@
 
 html {
   min-width: 320px;
+  scrollbar-gutter: stable;
 }
 
 body {
@@ -141,6 +142,10 @@ button:disabled,
 .photo-action[aria-disabled="true"] {
   cursor: not-allowed;
   opacity: 0.55;
+}
+
+[data-requires-data][inert] {
+  opacity: 0.6;
 }
 
 button:not(:disabled):hover,
@@ -778,7 +783,9 @@ select {
 }
 
 .result-bar strong {
-  display: block;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   margin-bottom: 2px;
   font-size: 16px;
 }
@@ -1702,41 +1709,18 @@ select {
   text-align: center;
 }
 
-.loading-state {
-  grid-column: 1 / -1;
-  display: grid;
-  justify-items: center;
-  gap: 8px;
-  padding: 32px 18px;
-  border: 1px dashed var(--line-strong);
-  border-radius: 8px;
-  background: var(--panel);
-  color: var(--muted);
-  text-align: center;
-}
-
-.loading-state strong {
-  color: var(--text);
-  font-size: 15px;
-}
-
-.loading-state p {
-  margin: 0;
-  font-size: 13px;
-}
-
 .loading-spinner {
   display: inline-block;
-  width: 28px;
-  height: 28px;
-  border: 3px solid var(--line);
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--line);
   border-top-color: var(--accent);
   border-radius: 999px;
   animation: loading-spin 840ms linear infinite;
 }
 
 .loading-card {
-  min-height: 188px;
+  aspect-ratio: 4 / 3;
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -1799,6 +1783,18 @@ select {
 }
 
 @media (max-width: 760px) {
+  .task-panel[inert] .task-choices {
+    display: none;
+  }
+
+  .task-panel[inert] .task-mode-details {
+    padding: 0;
+  }
+
+  .task-panel[inert] .task-mode-details > summary::after {
+    content: "展開";
+  }
+
   .shell {
     padding: 14px 14px 110px;
   }
@@ -1841,9 +1837,14 @@ select {
   }
 
   .topbar,
-  .result-bar {
+  .result-bar,
+  .result-bar > div:first-child {
     display: grid;
     justify-content: stretch;
+  }
+
+  #resultContext {
+    min-height: 3em;
   }
 
   .topbar {

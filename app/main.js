@@ -1065,7 +1065,6 @@ async function loadData() {
   loadPhotoDetails = loadedData.loadPhotoDetails ?? loadPhotoDetails;
   maybeRegisterPwa(loadedData.finderDataManifest?.generatedAt ?? "");
   setupTaskModes(elements.taskModes, taskModes);
-  initializeMobileTaskModePanel();
   setupFilters({
     controls,
     elements,
@@ -1330,11 +1329,18 @@ window.addEventListener("keydown", (event) => {
 });
 
 try {
+  initializeMobileTaskModePanel();
   await loadData();
+  document.body.dataset.loadState = "ready";
+  document.querySelectorAll("[data-requires-data]").forEach((element) => { element.inert = false; });
 } catch (error) {
+  document.body.dataset.loadState = "error";
   elements.grid.setAttribute("aria-busy", "false");
   elements.summary.textContent = "資料載入失敗";
   elements.context.textContent = "請確認資料來源與公開讀取權限";
+  elements.activeFilters.replaceChildren();
+  elements.candidateSummary.textContent = "資料載入失敗";
+  elements.candidateList.replaceChildren();
   elements.overviewSummary.textContent = "資料載入失敗";
   elements.overviewGrid.replaceChildren();
   elements.grid.replaceChildren();

@@ -27,7 +27,7 @@
     <script src="./appearance.js"></script>
     <link rel="stylesheet" href="./styles.css" />
   </head>
-  <body>
+  <body data-load-state="loading">
     <main class="shell">
       <header class="topbar">
         <div class="brand">
@@ -64,7 +64,7 @@
         </div>
       </header>
 
-      <section class="task-panel" aria-label="優先檢視">
+      <section class="task-panel" aria-label="優先檢視" data-requires-data inert>
         <details id="taskModeDetails" class="task-mode-details" open>
           <summary>
             <span>優先檢視</span>
@@ -77,7 +77,7 @@
         </details>
       </section>
 
-      <section class="search-panel" aria-label="搜尋與篩選">
+      <section class="search-panel" aria-label="搜尋與篩選" data-requires-data inert>
         <div class="mobile-sheet-header">
           <strong>篩選照片</strong>
           <button id="closeFilterSheetButton" type="button">完成</button>
@@ -121,6 +121,7 @@
 
         <div class="filter-toolbar">
           <div id="taskFilterGrid" class="filter-grid">
+            <!-- primary-filters:start -->
             <label>
               <span>用途</span>
               <select id="useFilter"></select>
@@ -191,10 +192,11 @@
               <span>素材包</span>
               <select id="collectionFilter"></select>
             </label>
+            <!-- primary-filters:end -->
           </div>
           <details id="advancedFilters" class="advanced-filter-panel">
             <summary>進階條件<span id="advancedFilterCount" hidden></span></summary>
-            <div id="advancedFilterGrid" class="filter-grid advanced-filter-grid"></div>
+            <div id="advancedFilterGrid" class="filter-grid advanced-filter-grid"><!-- advanced-filters --></div>
           </details>
         </div>
         <p class="index-boundary-note">
@@ -204,13 +206,13 @@
 
       <section class="result-bar" aria-label="搜尋結果狀態">
         <div>
-          <strong id="resultSummary">載入中</strong>
-          <p id="resultContext">準備讀取資料</p>
+          <strong id="resultSummary" role="status"><span class="loading-spinner" aria-hidden="true"></span>正在載入照片索引</strong>
+          <p id="resultContext">讀取完成後即可搜尋與篩選照片。</p>
           <p id="pwaStatus" class="pwa-status" hidden></p>
           <p id="selectedNotice" class="selected-notice" hidden></p>
         </div>
         <div class="filter-summary">
-          <div id="activeFilters" class="active-filters" aria-label="已套用條件"></div>
+          <div id="activeFilters" class="active-filters" aria-label="已套用條件"><span class="filter-chip muted-chip">準備篩選條件</span></div>
           <button id="clearSourceButton" type="button" hidden>清除來源</button>
         </div>
       </section>
@@ -219,22 +221,22 @@
         <p id="sourceNoticeText" role="status"></p>
       </div>
 
-      <div class="mobile-action-bar" aria-label="手機快捷操作">
+      <div class="mobile-action-bar" aria-label="手機快捷操作" data-requires-data inert>
         <button id="mobileFilterButton" type="button">篩選</button>
-        <button id="mobileCandidateButton" type="button">候選 0</button>
+        <button id="mobileCandidateButton" type="button">候選</button>
       </div>
 
       <section class="workspace">
-        <aside class="side-panel" aria-label="候選與資料概覽">
+        <aside class="side-panel" aria-label="候選與資料概覽" data-requires-data inert>
           <section class="candidate-panel" aria-label="候選清單">
             <div class="section-heading">
               <div>
                 <h2>候選清單</h2>
-                <p id="candidateSummary">0 張候選</p>
+                <p id="candidateSummary">載入中</p>
               </div>
               <button id="closeCandidateSheetButton" class="mobile-sheet-close-button" type="button">完成</button>
             </div>
-            <div id="candidateList" class="candidate-list"></div>
+            <div id="candidateList" class="candidate-list"><p class="candidate-empty">載入後可挑選照片</p></div>
             <div class="candidate-actions">
               <button id="clearCandidatesButton" type="button">清空候選</button>
               <div class="candidate-copy-menu">
@@ -288,10 +290,10 @@
 
         <section class="results-area" aria-label="照片結果">
           <section id="photoGrid" class="photo-grid" aria-live="polite" aria-busy="true">
-            <div class="loading-state" role="status">
-              <span class="loading-spinner" aria-hidden="true"></span>
-              <strong>正在載入照片索引</strong>
-            </div>
+            <div class="loading-card" aria-hidden="true"></div>
+            <div class="loading-card" aria-hidden="true"></div>
+            <div class="loading-card" aria-hidden="true"></div>
+            <div class="loading-card" aria-hidden="true"></div>
             <div class="loading-card" aria-hidden="true"></div>
             <div class="loading-card" aria-hidden="true"></div>
             <div class="loading-card" aria-hidden="true"></div>

@@ -318,8 +318,46 @@ function renderMetadataHtml() {
   return tags.filter(Boolean).map((tag) => `    ${tag}`).join("\n");
 }
 
+export function renderLoadingShell(source, { pages }) {
+  const labels = [...source.matchAll(/<label(?:\s[^>]*)?>[\s\S]*?<\/label>/g)].map(([label]) => label);
+  const primary = [];
+  const advanced = [];
+  for (const definition of pages.filters) {
+    const id = `${definition.control}Filter`;
+    const original = labels.find((label) => label.includes(`id="${id}"`));
+    if (!original) throw new Error(`app/index.html is missing the label for ${id}`);
+    const compact = definition.group !== "core";
+    let label = original.replace(/<span>[\s\S]*?<\/span>/, () => `<span>${escapeHtmlAttribute(definition.label)}</span>`);
+    if (original.includes("<select")) {
+      const placeholder = escapeHtmlAttribute(compact ? definition.label : definition.emptyLabel);
+      label = `<label${compact ? ' class="compact-filter"' : ""}>
+        <span>${escapeHtmlAttribute(definition.label)}</span>
+        <select id="${escapeHtmlAttribute(id)}" class="enhanced-select-native"></select>
+        <div class="filter-placeholder enhanced-select">
+          <button type="button" class="enhanced-select-trigger is-empty" tabindex="-1"><span>${placeholder}</span></button>
+        </div>
+      </label>`;
+    }
+    if (!compact) {
+      source = source.replace(original, () => label);
+    } else if (pages.defaultPrimaryFilters.includes(definition.key) && !definition.lowLevel) {
+      primary.push(label);
+    } else {
+      advanced.push(label);
+    }
+  }
+  const taskButtons = pages.taskModes.map((task) => `<button type="button" class="task-mode" data-task-mode="${escapeHtmlAttribute(task.id)}"><strong>${escapeHtmlAttribute(task.label)}</strong><span>${escapeHtmlAttribute(task.description)}</span></button>`).join("\n");
+  return source
+    .replace('<div id="taskModes" class="task-modes"></div>', () => `<div id="taskModes" class="task-modes">${taskButtons}</div>`)
+    .replace(/<!-- primary-filters:start -->[\s\S]*?<!-- primary-filters:end -->/, () => primary.join("\n"))
+    .replace("<!-- advanced-filters -->", () => advanced.join("\n"));
+}
+
 async function writeIndexHtml(outputDir) {
-  const source = await readFile("app/index.html", "utf8");
+  const source = renderLoadingShell(
+    await readFile("app/index.html", "utf8"),
+    JSON.parse(await readFile("data/interface-registry.json", "utf8")),
+  );
   const startMarker = "    <!-- app-metadata:start -->";
   const endMarker = "    <!-- app-metadata:end -->";
   const startIndex = source.indexOf(startMarker);

@@ -355,7 +355,9 @@ HTML metadata 則需要 crawler 在執行 JavaScript 前就能讀到，因此 `p
 
 GitHub Pages 部署版不應在瀏覽器端一次下載完整 `photos` CSV。build 階段會先產生搜尋 index 與 detail shards，前端初始只讀取 index，並且不可一次把所有照片卡片渲染到 DOM。使用者捲到接近結果底部時，前端會自動增加顯示數量；`載入更多` 按鈕仍保留為明確操作與 fallback。
 
-production 資料已達 26k 級，且 40k 是可預見規模。照片 grid 在資料載入前應呈現明確 loading state，例如 spinner 與 skeleton cards，並透過 `aria-busy` / status text 告知索引仍在讀取中；載入失敗才進入錯誤狀態。這個 loading feedback 是狀態辨識，不是裝飾動畫，因此即使使用者設定 `prefers-reduced-motion: reduce`，仍應保留足以辨識正在載入的視覺變化。
+production 資料已達 26k 級，且 40k 是可預見規模。建置與本機預覽共用 `build-pages.mjs`，依 interface registry 預先產生用途按鈕、來源控制項及主要／進階篩選分組，讓初始 HTML 維持正式布局；手機用途區從一開始收合。依賴資料的操作在初始 HTML 設為 `inert`，資料與控制項就緒後才啟用，載入失敗時保持停用。
+
+載入提示放在結果狀態列，照片 grid 以正式卡片的 4:3 比例占位，並透過 `aria-busy` / status text 告知索引仍在讀取中；載入失敗才進入錯誤狀態。這個 loading feedback 是狀態辨識，不是裝飾動畫，因此即使使用者設定 `prefers-reduced-motion: reduce`，仍應保留足以辨識正在載入的視覺變化。
 
 目前推薦排序會優先考慮：
 
