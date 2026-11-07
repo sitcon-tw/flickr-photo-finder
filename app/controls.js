@@ -260,7 +260,20 @@ function renderEnhancedSelectOptions(control) {
     button.classList.toggle("is-empty", option.value === "");
     button.disabled = option.disabled && !selected;
     button.setAttribute("aria-disabled", button.disabled ? "true" : "false");
-    button.textContent = enhancedSelectOptionText(option);
+    const noMatches = option.dataset.noMatches === "true";
+    if (control.hint) {
+      const marker = document.createElement("span");
+      marker.className = "source-option-marker";
+      marker.setAttribute("aria-hidden", "true");
+      marker.textContent = selected ? "✓" : noMatches ? "⊘" : "";
+      const label = document.createElement("span");
+      label.className = "source-option-label";
+      label.textContent = enhancedSelectOptionText(option) + (selected && noMatches ? "（無相符照片）" : "");
+      button.append(marker, label);
+      if (noMatches && !selected) button.setAttribute("aria-describedby", control.availability.id);
+    } else {
+      button.textContent = enhancedSelectOptionText(option);
+    }
     button.title = enhancedSelectOptionText(option);
     fragment.append(button);
   }
@@ -273,6 +286,11 @@ function renderEnhancedSelectOptions(control) {
   }
 
   control.options.replaceChildren(fragment);
+  if (control.hint) {
+    const showHint = options.length > 0 && [...control.select.options].some((option) => option.dataset.noMatches === "true");
+    if (!showHint && control.hint.contains(document.activeElement)) control.search.focus({ preventScroll: true });
+    control.hint.hidden = !showHint;
+  }
   control.scroller.scrollTop = scrollTop;
   if (focusedValue !== undefined) {
     const target = [...control.options.querySelectorAll("button")].find((button) => button.dataset.value === focusedValue && !button.disabled);
@@ -282,6 +300,30 @@ function renderEnhancedSelectOptions(control) {
 }
 
 function positionFilterPanel(control) {
+  if (control.hint) {
+    const viewport = window.visualViewport;
+    const left = (viewport?.offsetLeft ?? 0) + 16;
+    let top = (viewport?.offsetTop ?? 0) + 16;
+    const right = left + (viewport?.width ?? document.documentElement.clientWidth) - 32;
+    let bottom = top + (viewport?.height ?? window.innerHeight) - 32;
+    const sheet = isMobileViewport() && control.root.closest(".search-panel.is-filter-open");
+    if (sheet) {
+      const bounds = sheet.getBoundingClientRect();
+      top = Math.max(top, bounds.top + 8);
+      bottom = Math.min(bottom, bounds.bottom - 8);
+    }
+    const anchor = control.root.getBoundingClientRect();
+    const below = bottom - anchor.bottom - 4;
+    const above = anchor.top - top - 4;
+    const openAbove = below < 240 && above > below;
+    control.panel.style.maxWidth = `${Math.max(0, right - left)}px`;
+    control.panel.style.maxHeight = `${Math.max(0, Math.min(420, bottom - top, openAbove ? above : below))}px`;
+    const rect = control.panel.getBoundingClientRect();
+    const panelTop = openAbove ? anchor.top - rect.height - 4 : anchor.bottom + 4;
+    control.panel.style.left = `${Math.max(left, Math.min(anchor.left, right - rect.width)) - anchor.left}px`;
+    control.panel.style.top = `${Math.max(top, Math.min(panelTop, bottom - rect.height)) - anchor.top}px`;
+    return;
+  }
   control.panel.style.left = "0px";
   const rect = control.panel.getBoundingClientRect();
   const offset = Math.max(16 - rect.left, Math.min(0, document.documentElement.clientWidth - 16 - rect.right));
@@ -298,8 +340,9 @@ function openEnhancedSelect(control, { focusSearch = true } = {}) {
   renderEnhancedSelectOptions(control);
   control.panel.hidden = false;
   control.trigger.setAttribute("aria-expanded", "true");
+  if (control.hint && isMobileViewport()) control.trigger.scrollIntoView({ block: "nearest", inline: "nearest" });
   positionFilterPanel(control);
-  if (isMobileViewport()) {
+  if (isMobileViewport() && !control.hint) {
     window.requestAnimationFrame(() => {
       control.panel.scrollIntoView({ block: "nearest", inline: "nearest" });
     });
@@ -339,6 +382,43 @@ function focusSelectOption(control, option) {
   else if (rect.bottom > viewport.bottom) control.scroller.scrollTop += rect.bottom - viewport.bottom;
 }
 
+function setupSourceHint(control) {
+  control.panel.classList.add("source-filter-panel");
+  control.scroller = document.createElement("div");
+  control.scroller.className = "source-filter-body";
+  control.hint = document.createElement("div");
+  control.hint.className = "source-filter-hint";
+  control.hint.hidden = true;
+  const marker = document.createElement("span");
+  marker.setAttribute("aria-hidden", "true");
+  marker.textContent = "⊘ ";
+  control.availability = document.createElement("span");
+  control.availability.id = `${control.select.id}-availability`;
+  control.availability.textContent = "無相符照片";
+  const legend = document.createElement("span");
+  legend.append(marker, control.availability);
+  control.context = document.createElement("dl");
+  control.context.id = `${control.select.id}-context`;
+  control.context.className = "source-filter-context";
+  control.context.hidden = true;
+  control.contextToggle = document.createElement("button");
+  control.contextToggle.type = "button";
+  control.contextToggle.className = "source-context-toggle";
+  control.contextToggle.textContent = "查看其他條件";
+  control.contextToggle.setAttribute("aria-expanded", "false");
+  control.contextToggle.setAttribute("aria-controls", control.context.id);
+  control.contextToggle.addEventListener("click", (event) => {
+    event.preventDefault();
+    control.context.hidden = !control.context.hidden;
+    control.contextToggle.setAttribute("aria-expanded", String(!control.context.hidden));
+    control.contextToggle.textContent = control.context.hidden ? "查看其他條件" : "收合其他條件";
+    positionFilterPanel(control);
+  });
+  control.hint.append(legend, control.contextToggle, control.context);
+  control.scroller.append(control.hint, control.options);
+  control.panel.append(control.scroller);
+}
+
 function setupEnhancedSelect(select, definition) {
   let control = enhancedSelects.get(select);
   if (!control) {
@@ -372,6 +452,7 @@ function setupEnhancedSelect(select, definition) {
     select.insertAdjacentElement("afterend", root);
 
     control = { root, select, trigger, triggerText, panel, search, options, scroller: options, placeholder: "" };
+    if (sourceFilterKeys.includes(definition.key)) setupSourceHint(control);
     enhancedSelects.set(select, control);
 
     trigger.addEventListener("click", (event) => {
@@ -600,13 +681,17 @@ function setupAutocompleteInput(input, values) {
 }
 
 export function bindControlDismissal(root = document) {
-  window.addEventListener("resize", () => {
+  const reposition = (event) => {
     for (const control of [...enhancedSelects.values(), ...autocompleteInputs.values()]) {
-      if (!control.panel.hidden) {
+      if (!control.panel.hidden && event?.target !== control.scroller) {
         positionFilterPanel(control);
       }
     }
-  });
+  };
+  window.addEventListener("resize", reposition);
+  window.visualViewport?.addEventListener("resize", reposition);
+  window.visualViewport?.addEventListener("scroll", reposition);
+  root.addEventListener("scroll", reposition, true);
   root.addEventListener("pointerdown", (event) => {
     for (const control of enhancedSelects.values()) {
       if (!control.root.contains(event.target)) {
@@ -706,6 +791,7 @@ export function updateSourceControls({ controls, sourceIndex, filters, available
     if ((available[key].has(missingSourceValue) || selected.includes(missingSourceValue)) && !options.some((option) => option.value === missingSourceValue)) {
       options.push({ value: missingSourceValue, label: definition.missingLabel });
     }
+    const knownValues = new Set(options.map((option) => option.value));
     for (const value of selected) {
       if (!options.some((option) => option.value === value)) options.push({ value, label: sourceOptionLabel(key, value, options) });
     }
@@ -716,9 +802,38 @@ export function updateSourceControls({ controls, sourceIndex, filters, available
     for (const option of select.options) {
       const usable = !option.value || available[key].has(option.value);
       option.dataset.available = String(usable);
+      option.dataset.noMatches = String(!usable && knownValues.has(option.value));
       option.disabled = !usable && !selected.includes(option.value);
     }
     setControlValues(select, selected, { dispatch: false });
+  }
+}
+
+export function updateSourceFilterHints(controls, entries) {
+  for (const key of sourceFilterKeys) {
+    const control = enhancedSelects.get(controls[key]);
+    if (!control?.hint) continue;
+    const groups = new Map();
+    for (const [entryKey, label, value] of entries) {
+      if (entryKey === key || entryKey === "task") continue;
+      if (!groups.has(label)) groups.set(label, []);
+      groups.get(label).push(entryKey === "search" ? controls.search.value.trim() : value);
+    }
+    const rows = [...groups].map(([label, values]) => [label, values.join("、")]);
+    const signature = JSON.stringify(rows);
+    if (signature === control.contextSignature) continue;
+    control.contextSignature = signature;
+    control.contextToggle.hidden = rows.length === 0;
+    const fragment = document.createDocumentFragment();
+    for (const [label, value] of rows) {
+      const term = document.createElement("dt");
+      term.textContent = label;
+      const description = document.createElement("dd");
+      description.textContent = value;
+      fragment.append(term, description);
+    }
+    control.context.replaceChildren(fragment);
+    if (!control.panel.hidden) positionFilterPanel(control);
   }
 }
 

@@ -725,6 +725,119 @@ async function runSourceSmoke(client, pageUrl) {
 }
 
 
+async function runSourceHintSmoke(client, pageUrl) {
+  logProgress("checking compact source hints and full filter context");
+  const restricted = new URL(pageUrl);
+  restricted.search = new URLSearchParams({ year: "value:2025" });
+  await client.call("Emulation.setDeviceMetricsOverride", { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false });
+  await client.call("Page.navigate", { url: restricted.href });
+  await waitForPageReady(client);
+  await clickElement(client, "#sourceEventFilter + .enhanced-select .enhanced-select-trigger");
+  await evaluate(client, `(() => {
+    const panel = document.querySelector('#sourceEventFilter').closest('label').querySelector('.enhanced-select-panel');
+    const option = panel.querySelector('[data-value="value:年會"]');
+    if (!option.disabled || option.querySelector('.source-option-marker').textContent !== '⊘' || option.querySelector('.source-option-label').textContent !== '年會') throw new Error('Unavailable source did not use its compact marker');
+    if (document.getElementById(option.getAttribute('aria-describedby'))?.textContent !== '無相符照片') throw new Error('Unavailable source lost its text description');
+    if (panel.querySelector('.source-filter-hint').hidden || !panel.querySelector('.source-filter-context').hidden) throw new Error('Hint did not start collapsed');
+    panel.querySelector('.source-context-toggle').focus();
+  })()`);
+  await client.call("Input.dispatchKeyEvent", { type: "keyDown", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13, text: "\r" });
+  await client.call("Input.dispatchKeyEvent", { type: "keyUp", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13 });
+  await client.call("Input.dispatchKeyEvent", { type: "keyDown", key: "ArrowDown", code: "ArrowDown", windowsVirtualKeyCode: 40 });
+  await evaluate(client, `(() => {
+    const panel = document.querySelector('#sourceEventFilter').closest('label').querySelector('.enhanced-select-panel');
+    const context = panel.querySelector('.source-filter-context');
+    if (context.hidden || context.querySelector('dt')?.textContent !== '年份' || context.querySelector('dd')?.textContent !== '2025') throw new Error('Other-condition context is incorrect: ' + JSON.stringify({hidden:context.hidden,text:context.textContent,focus:document.activeElement.className}));
+    if (!document.activeElement.matches('.source-context-toggle')) throw new Error('Context disclosure lost keyboard focus');
+    const search = panel.querySelector('input');
+    search.value = 'no-such-option-name';
+    search.dispatchEvent(new Event('input', { bubbles: true }));
+    if (panel.querySelector('.enhanced-select-empty')?.textContent !== '沒有符合的選項' || !panel.querySelector('.source-filter-hint').hidden) throw new Error('Option search was confused with photo availability');
+    search.value = '';
+    search.dispatchEvent(new Event('input', { bubbles: true }));
+    if (context.hidden) throw new Error('Searching option names reset expanded context');
+  })()`);
+  const desktop = await client.call("Page.captureScreenshot", { format: "png" });
+  await writeFile("tmp/source-filter-implementation/hint-desktop.png", Buffer.from(desktop.data, "base64"));
+
+  logProgress("checking long context, selected unavailable sources and small viewports");
+  const longSearch = '完整搜尋內容'.repeat(30) + ' test@example.com';
+  const longState = new URL(pageUrl);
+  longState.search = new URLSearchParams({ event: 'value:年會', year: 'value:2025', scene: '攤位', q: longSearch, task: 'social', sort: 'oldest' });
+  await client.call("Emulation.setDeviceMetricsOverride", { width: 320, height: 640, deviceScaleFactor: 1, mobile: true });
+  await client.call("Page.navigate", { url: longState.href });
+  await waitForPageReady(client);
+  await clickElement(client, '#mobileFilterButton');
+  await clickElement(client, '#sourceEventFilter + .enhanced-select .enhanced-select-trigger');
+  await clickElement(client, '#sourceEventFilter + .enhanced-select .source-context-toggle');
+  await evaluate(client, `(() => {
+    const panel = document.querySelector('#sourceEventFilter').closest('label').querySelector('.enhanced-select-panel');
+    const context = panel.querySelector('.source-filter-context');
+    const labels = [...context.querySelectorAll('dt')].map((term) => term.textContent);
+    const search = [...context.querySelectorAll('dt')].find((term) => term.textContent === '搜尋');
+    if (search?.nextElementSibling.textContent !== ${JSON.stringify(longSearch)}) throw new Error('Local search context was sanitized or truncated');
+    if (labels.includes('活動') || labels.includes('排序') || labels.includes('優先檢視')) throw new Error('Context included its own field or ranking controls');
+    const selected = panel.querySelector('[data-value="value:年會"]');
+    if (selected.disabled || selected.getAttribute('aria-selected') !== 'true' || !selected.textContent.includes('無相符照片')) throw new Error('Selected unavailable option cannot be removed');
+  })()`);
+
+  for (const height of [640, 400]) {
+    await client.call("Emulation.setDeviceMetricsOverride", { width: 320, height, deviceScaleFactor: 1, mobile: true });
+    await delay(100);
+    await evaluate(client, `(() => {
+      const panel = document.querySelector('#sourceEventFilter').closest('label').querySelector('.enhanced-select-panel');
+      const rect = panel.getBoundingClientRect();
+      const sheet = document.querySelector('.search-panel').getBoundingClientRect();
+      if (rect.left < 0 || rect.right > innerWidth || rect.top < Math.max(0, sheet.top) || rect.bottom > innerHeight || panel.scrollWidth > panel.clientWidth + 1) throw new Error('Expanded hint exceeds visible viewport: ' + JSON.stringify({top:rect.top,bottom:rect.bottom,height:innerHeight}));
+      const scroller = panel.querySelector('.source-filter-body');
+      if (scroller.clientHeight <= 0 || scroller.scrollHeight <= scroller.clientHeight) throw new Error('Long context is not reachable by scrolling');
+    })()`);
+  }
+  await client.call("Emulation.setDeviceMetricsOverride", { width: 320, height: 640, deviceScaleFactor: 1, mobile: true });
+  await evaluate(client, `(() => {
+    const panel = document.querySelector('#sourceEventFilter').closest('label').querySelector('.enhanced-select-panel');
+    const sizes = [panel, ...panel.querySelectorAll('*')].map((element) => [element, parseFloat(getComputedStyle(element).fontSize)]);
+    for (const [element, size] of sizes) element.style.fontSize = (size * 2) + 'px';
+    window.dispatchEvent(new Event('resize'));
+    const rect = panel.getBoundingClientRect();
+    if (panel.scrollWidth > panel.clientWidth + 1 || rect.bottom > innerHeight) throw new Error('Doubled text clipped the source panel');
+    document.querySelector('#sourceEventFilter').closest('label').querySelector('.enhanced-select-trigger').focus();
+  })()`);
+  await client.call("Input.dispatchKeyEvent", { type: "keyDown", key: "End", code: "End", windowsVirtualKeyCode: 35 });
+  await evaluate(client, `(() => {
+    const panel = document.querySelector('#sourceEventFilter').closest('label').querySelector('.enhanced-select-panel');
+    const rect = document.activeElement.getBoundingClientRect();
+    const bounds = panel.querySelector('.source-filter-body').getBoundingClientRect();
+    if (!document.activeElement.matches('.enhanced-select-option') || rect.top < bounds.top - 1 || rect.bottom > bounds.bottom + 1) throw new Error('Keyboard focus is outside the scroller');
+    if (panel.querySelector('.source-context-toggle').getAttribute('aria-expanded') !== 'true') throw new Error('Keyboard navigation collapsed context');
+  })()`);
+  await client.call("Input.dispatchKeyEvent", { type: "keyDown", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13, text: "\r" });
+  await client.call("Input.dispatchKeyEvent", { type: "keyUp", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13 });
+  await evaluate(client, `(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.has('event') || params.get('year') !== 'value:2025' || params.get('q') !== ${JSON.stringify(longSearch)}) throw new Error('Removing unavailable source changed unrelated filters');
+    if (!document.activeElement.matches('.enhanced-select-trigger')) throw new Error('Removing unavailable source lost focus');
+    const panel = document.querySelector('#sourceEventFilter').closest('label').querySelector('.enhanced-select-panel');
+    if (panel.querySelector('.source-filter-body').scrollTop === 0 || panel.querySelector('.source-filter-context').hidden) throw new Error('Selection reset scroll position or context');
+  })()`);
+  const mobile = await client.call("Page.captureScreenshot", { format: "png" });
+  await writeFile("tmp/source-filter-implementation/hint-mobile-stress.png", Buffer.from(mobile.data, "base64"));
+  await evaluate(client, `(async () => {
+    const { createSourceIndex, availableSourceValues } = await import('./source-filters.js');
+    const { updateSourceControls } = await import('./controls.js');
+    const registry = await fetch('./data/interface-registry.json').then((response) => response.json());
+    const photos = [{ photo_id: 'known', album_ids: ['known'] }];
+    const sourceIndex = createSourceIndex(photos, [{ album_id: 'known', event_name: 'Camp', event_year: '2025' }]);
+    const controls = Object.fromEntries(['sourceEvent', 'sourceYear', 'album'].map((key) => [key, document.querySelector('#' + key + 'Filter')]));
+    const filters = { sourceYear: ['missing:'] };
+    updateSourceControls({ controls, sourceIndex, filters, available: availableSourceValues(sourceIndex, photos, filters) });
+    const expected = registry.pages.filters.find((filter) => filter.key === 'sourceYear').missingLabel;
+    if (controls.sourceYear.selectedOptions[0]?.textContent !== expected) throw new Error('Retained unknown year lost its field label');
+    const option = controls.sourceYear.closest('label').querySelector('[data-value="missing:"]');
+    if (option.disabled || !option.textContent.includes('無相符照片')) throw new Error('Retained unknown year lost its removable zero-match state');
+  })()`);
+}
+
 let staticServer;
 let chrome;
 let client;
@@ -746,6 +859,7 @@ try {
     client = await connect(wsUrl);
     await runSmoke(client, `http://127.0.0.1:${appPort}/`);
     await runSourceSmoke(client, `http://127.0.0.1:${appPort}/`);
+    await runSourceHintSmoke(client, `http://127.0.0.1:${appPort}/`);
   })(), smokeTimeoutMs, "mobile filter smoke");
   console.log("Mobile filter picker smoke passed.");
 } catch (error) {

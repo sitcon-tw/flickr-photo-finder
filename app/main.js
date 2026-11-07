@@ -31,6 +31,7 @@ import {
   syncEnhancedSelects,
   updateFilterLayout,
   updateSourceControls,
+  updateSourceFilterHints,
 } from "./controls.js";
 import { loadFinderData, optionLabelsFor } from "./data-loader.js";
 import { renderOverview as renderOverviewPanel } from "./overview-render.js";
@@ -901,6 +902,7 @@ function render({ resetPage = false, preservePage = false, preserveScroll = fals
     controls, sourceIndex, filters,
     available: availableSourceValues(sourceIndex, photos.filter((photo) => matchesPhotoFilters(photo, filters)), filters),
   });
+  updateSourceFilterHints(controls, activeFilterEntries());
   const filtered = filteredAndSortedPhotos();
   controls.clearSource.hidden = !hasSourceFilters(filters);
   elements.sourceNotice.hidden = !(filtered.length === 0 && hasSourceFilters(filters));
