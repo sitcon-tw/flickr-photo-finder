@@ -422,6 +422,7 @@ function setupSourceHint(control) {
 function setupEnhancedSelect(select, definition) {
   let control = enhancedSelects.get(select);
   if (!control) {
+    select.parentElement.querySelector(".filter-placeholder")?.remove();
     select.multiple = true;
     select.classList.add("enhanced-select-native");
     select.tabIndex = -1;

@@ -110,6 +110,8 @@ GitHub Pages Finder 可以註冊 service worker，讓已開啟過的公開搜尋
 
 部署版 service worker 的快取策略：
 
+- 建置依 HTML、模組、樣式、設定與搜尋資料內容產生同一個版本識別，套用到 HTML 資源、所有本機模組 import、JSON 請求與 service worker 預載清單；detail shard 請求沿用 manifest URL 的版本。回訪者首次載入部署後的 HTML 時，即可取得對應資源，避免快取中的不同建置混用。
+- 導覽入口 `./` 與 `./index.html` 保留穩定的快取鍵，供離線時的頁面 fallback 使用。資源 URL 的版本隔離快取，但不代表部署主機保留每次建置的完整檔案。
 - app shell、JavaScript 模組、CSS、metadata image 與固定設定檔採快取優先並背景更新。
 - `data/finder-data/manifest.json`、`albums.json`、`photos-index.json`、schema、taxonomy、search aliases 與 project config 採網路優先；網路失敗才退回快取。
 - detail shards 採網路優先並只快取使用者實際打開過的 shard；離線時只能讀已快取過的照片 detail。
@@ -353,7 +355,9 @@ HTML metadata 則需要 crawler 在執行 JavaScript 前就能讀到，因此 `p
 
 GitHub Pages 部署版不應在瀏覽器端一次下載完整 `photos` CSV。build 階段會先產生搜尋 index 與 detail shards，前端初始只讀取 index，並且不可一次把所有照片卡片渲染到 DOM。使用者捲到接近結果底部時，前端會自動增加顯示數量；`載入更多` 按鈕仍保留為明確操作與 fallback。
 
-production 資料已達 26k 級，且 40k 是可預見規模。照片 grid 在資料載入前應呈現明確 loading state，例如 spinner 與 skeleton cards，並透過 `aria-busy` / status text 告知索引仍在讀取中；載入失敗才進入錯誤狀態。這個 loading feedback 是狀態辨識，不是裝飾動畫，因此即使使用者設定 `prefers-reduced-motion: reduce`，仍應保留足以辨識正在載入的視覺變化。
+production 資料已達 26k 級，且 40k 是可預見規模。建置與本機預覽共用 `build-pages.mjs`，依 interface registry 預先產生用途按鈕、來源控制項及主要／進階篩選分組，讓初始 HTML 維持正式布局；手機用途區從一開始收合。依賴資料的操作在初始 HTML 設為 `inert`，資料與控制項就緒後才啟用，載入失敗時保持停用。
+
+載入提示放在結果狀態列，照片 grid 以正式卡片的 4:3 比例占位，並透過 `aria-busy` / status text 告知索引仍在讀取中；載入失敗才進入錯誤狀態。這個 loading feedback 是狀態辨識，不是裝飾動畫，因此即使使用者設定 `prefers-reduced-motion: reduce`，仍應保留足以辨識正在載入的視覺變化。
 
 目前推薦排序會優先考慮：
 

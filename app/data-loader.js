@@ -106,9 +106,11 @@ function createStaticPhotoDetailLoader({ fetchImpl, manifest, manifestUrl, photo
       if (!shard) {
         throw new Error(`找不到照片 detail shard: ${id}`);
       }
-      const shardUrl = new URL(shard.path, manifestUrl).toString();
+      const shardUrl = new URL(shard.path, manifestUrl);
+      const version = new URL(manifestUrl).searchParams.get("v");
+      if (version) shardUrl.searchParams.set("v", version);
       shardCache.set(id, (async () => {
-        const response = await fetchOk(fetchImpl, shardUrl);
+        const response = await fetchOk(fetchImpl, shardUrl.toString());
         const payload = await response.json();
         const records = normalizeStaticPhotoRecords(decodeCompactRecords(payload), photoSchema, searchTokensForField);
         for (const detail of records) {

@@ -1,9 +1,9 @@
 import { join } from "node:path";
 import { readdir, readFile, stat } from "node:fs/promises";
 import { parseArgs as parseNodeArgs } from "node:util";
-import { collectRelativeJavaScriptImportGraph } from "../lib/pages/js-import-graph.mjs";
+import { collectRelativeJavaScriptImportGraph, relativeJavaScriptImports } from "../lib/pages/js-import-graph.mjs";
 import { defaultFinderDataDir } from "../lib/pages/static-finder-data.mjs";
-import { buildFinderDataUrls } from "./build-pages.mjs";
+import { buildFinderDataUrls, versionedAssetUrl } from "./build-pages.mjs";
 
 const defaultArtifactDir = "tmp/pages";
 
@@ -125,8 +125,19 @@ async function assertNoCredentialArtifacts(artifactDir) {
   }
 }
 
-async function assertJavaScriptImportGraph(artifactDir, entryFile) {
-  await collectRelativeJavaScriptImportGraph({ rootDir: artifactDir, entryFile });
+function assertAssetVersion(url, version) {
+  if (new URL(url, "https://finder.invalid/").searchParams.get("v") !== version) {
+    throw new Error(`Asset must use build version ${version}: ${url}`);
+  }
+}
+
+async function assertJavaScriptImportGraph(artifactDir, entryFile, version) {
+  const files = await collectRelativeJavaScriptImportGraph({ rootDir: artifactDir, entryFile });
+  for (const file of files) {
+    for (const specifier of relativeJavaScriptImports(await readFile(join(artifactDir, file), "utf8"))) {
+      assertAssetVersion(specifier, version);
+    }
+  }
 }
 
 function extractConfigString(config, key) {
@@ -135,7 +146,7 @@ function extractConfigString(config, key) {
 }
 
 function artifactPathFromUrl(url) {
-  return url.replace(/^\.\//, "");
+  return url.split(/[?#]/)[0].replace(/^\.\//, "");
 }
 
 async function assertJson(path) {
@@ -220,7 +231,7 @@ async function main() {
   if (!indexHtml.includes("./main.js")) {
     throw new Error("index.html does not reference main.js");
   }
-  const appearancePosition = indexHtml.indexOf('<script src="./appearance.js"></script>');
+  const appearancePosition = indexHtml.indexOf('<script src="./appearance.js?');
   if (appearancePosition < 0 || appearancePosition > indexHtml.indexOf('./styles.css')) {
     throw new Error("index.html must apply appearance before loading styles.css");
   }
@@ -236,7 +247,21 @@ async function main() {
   if (!serviceWorker.includes("self.__SITCON_PHOTO_FINDER_DATA_URLS__ = [") || !serviceWorker.includes("sitcon-photo-finder-cache-fallback")) {
     throw new Error("service-worker.js must cache finder data and report cache fallback usage");
   }
-  if (["./appearance.js", "./assets/brand-logo.svg", "./assets/brand-logo-white.svg"].some((url) => !serviceWorker.includes(JSON.stringify(url)))) {
+  const version = serviceWorker.match(/__SITCON_PHOTO_FINDER_CACHE_VERSION__ = "([a-f0-9]{16})"/)?.[1];
+  if (!version) throw new Error("service-worker.js must declare the content-based build version");
+  const precacheUrls = JSON.parse(serviceWorker.match(/__SITCON_PHOTO_FINDER_PRECACHE_URLS__ = (\[[^\n]+\]);/)?.[1] ?? "[]");
+  if (!["./", "./index.html"].every((url) => precacheUrls.includes(url))) {
+    throw new Error("service-worker.js must retain navigation URLs for offline fallback");
+  }
+  for (const url of precacheUrls.filter((url) => url !== "./" && url !== "./index.html")) {
+    assertAssetVersion(url, version);
+    await assertFile(join(options.artifactDir, artifactPathFromUrl(url)));
+  }
+  for (const [, url] of indexHtml.matchAll(/\b(?:src|href)="(\.\/[^"]+)"/g)) {
+    assertAssetVersion(url, version);
+    if (!precacheUrls.includes(url)) throw new Error(`HTML asset is missing from precache: ${url}`);
+  }
+  if (["./appearance.js", "./assets/brand-logo.svg", "./assets/brand-logo-white.svg"].some((url) => !precacheUrls.includes(versionedAssetUrl(url, version)))) {
     throw new Error("service-worker.js must precache appearance and both brand variants");
   }
   const requiredMetadata = [
@@ -260,7 +285,7 @@ async function main() {
     throw new Error("index.html og:image must point at an absolute HTTPS URL for assets/og-image.png");
   }
   await assertPngDimensions(join(options.artifactDir, "assets/og-image.png"), 1200, 630);
-  await assertJavaScriptImportGraph(options.artifactDir, "main.js");
+  await assertJavaScriptImportGraph(options.artifactDir, "main.js", version);
   const config = await assertIncludes(join(options.artifactDir, "config.js"), "mode", "data mode");
   if (
     !config.includes("photosCsvUrl") ||
@@ -290,6 +315,10 @@ async function main() {
   }
 
   for (const url of buildFinderDataUrls(dataMode)) {
+    const versioned = versionedAssetUrl(url, version);
+    if (!config.includes(JSON.stringify(versioned)) || !precacheUrls.includes(versioned)) {
+      throw new Error(`Finder data must use the build version in config and precache: ${url}`);
+    }
     await assertJson(join(options.artifactDir, artifactPathFromUrl(url)));
   }
 
