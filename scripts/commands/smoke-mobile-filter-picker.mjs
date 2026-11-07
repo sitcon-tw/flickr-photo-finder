@@ -1,9 +1,10 @@
-import { access, copyFile, mkdir, rm } from "node:fs/promises";
+import { access, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import { spawn, spawnSync } from "node:child_process";
 import { join } from "node:path";
 import { buildPagesArtifact } from "./build-pages.mjs";
 import { startStaticServer } from "../lib/finder/serve.mjs";
+import { parseCsv, csvEscape } from "../lib/core/csv-utils.mjs";
 
 const artifactDir = "tmp/pages-mobile-filter-smoke";
 const chromeProfileDir = "tmp/mobile-filter-smoke-chrome";
@@ -91,8 +92,19 @@ async function prepareArtifact() {
     photosCsvUrl: "./local/photos.csv",
   });
   await mkdir(join(result.outputDir, "local"), { recursive: true });
-  await copyFile("fixtures/albums.csv", join(result.outputDir, "local/albums.csv"));
-  await copyFile("fixtures/photos.csv", join(result.outputDir, "local/photos.csv"));
+  const albumRows = parseCsv(await readFile("fixtures/albums.csv", "utf8"));
+  const photoRows = parseCsv(await readFile("fixtures/photos.csv", "utf8"));
+  // Dedicated source relationships in the temporary browser fixture, independent of catalog coverage.
+  for (const album of [
+    { album_id: "source-smoke-a", album_title: "SITCON Camp 2025 Day 1", event_name: "Camp", event_year: "2025" },
+    { album_id: "source-smoke-b", album_title: "SITCON 2026 年會", event_name: "年會", event_year: "2026" },
+  ]) albumRows.push(albumRows[0].map((field) => album[field] ?? ""));
+  const membershipColumn = photoRows[0].indexOf("album_ids");
+  photoRows[1][membershipColumn] = "source-smoke-a";
+  photoRows[2][membershipColumn] = "source-smoke-a;source-smoke-b";
+  for (const [name, rows] of [["albums", albumRows], ["photos", photoRows]]) {
+    await writeFile(join(result.outputDir, `local/${name}.csv`), rows.map((row) => row.map(csvEscape).join(",")).join("\n"));
+  }
   return result.outputDir;
 }
 
@@ -229,7 +241,7 @@ async function evaluate(client, expression) {
     returnByValue: true,
   });
   if (result.exceptionDetails) {
-    throw new Error(`Evaluation failed: ${result.exceptionDetails.text}`);
+    throw new Error(`Evaluation failed: ${result.exceptionDetails.exception?.description ?? result.exceptionDetails.text}`);
   }
   return result.result.value;
 }
@@ -590,6 +602,242 @@ async function runSmoke(client, pageUrl) {
   await checkAppearance(client);
 }
 
+async function runSourceSmoke(client, pageUrl) {
+  logProgress("checking desktop source row, URL recovery and keyboard focus");
+  await client.call("Emulation.setDeviceMetricsOverride", { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false });
+  await client.call("Page.navigate", { url: pageUrl });
+  await waitForPageReady(client);
+  for (const width of [768, 1100, 1280]) {
+    await client.call("Emulation.setDeviceMetricsOverride", { width, height: 900, deviceScaleFactor: 1, mobile: false });
+    await evaluate(client, `(() => {
+      const tops = [...document.querySelectorAll('.primary-search > label')].map((label) => Math.round(label.getBoundingClientRect().top));
+      if (new Set(tops).size !== 1 || document.documentElement.scrollWidth > innerWidth) {
+        throw new Error('Source row layout failed at ' + innerWidth + 'px: ' + tops);
+      }
+    })()`);
+  }
+  await evaluate(client, `(() => {
+    const labels = [...document.querySelectorAll('.primary-search > label')];
+    const names = labels.map((label) => label.querySelector('span').textContent);
+    if (names.join(',') !== '搜尋,活動,年份,相簿,排序') throw new Error('Unexpected source order: ' + names);
+    const tops = labels.map((label) => Math.round(label.getBoundingClientRect().top));
+    if (new Set(tops).size !== 1) throw new Error('Primary controls wrapped: ' + tops);
+    if (document.documentElement.scrollWidth > innerWidth) throw new Error('Desktop horizontal overflow');
+    const select = document.querySelector('#sourceEventFilter');
+    const firstEvents = [...select.options].filter((option) => option.value).slice(0, 2).map((option) => option.textContent);
+    if (firstEvents.join(',') !== '年會,Camp') throw new Error('Activity priority changed: ' + firstEvents);
+    const value = [...select.options].find((option) => option.value.startsWith('value:'))?.value;
+    if (!value) throw new Error('No catalog activity option');
+    select.closest('label').querySelector('.enhanced-select-trigger').click();
+    [...select.closest('label').querySelectorAll('.enhanced-select-option')].find((button) => button.dataset.value === value).click();
+    if (new URLSearchParams(location.search).get('event') !== value) throw new Error('Activity did not enter URL state');
+    if (document.querySelector('#resultSummary').textContent.startsWith('0 /')) throw new Error('Selecting activity lost its photos');
+    document.querySelector('#resetButton').click();
+    select.closest('label').querySelector('.enhanced-select-trigger').focus();
+  })()`);
+  await client.call("Input.dispatchKeyEvent", { type: "keyDown", key: "ArrowDown", code: "ArrowDown", windowsVirtualKeyCode: 40 });
+  await delay(100);
+  await evaluate(client, `(() => {
+    if (!document.activeElement.matches('.enhanced-select-option')) throw new Error('Arrow key did not focus an option');
+  })()`);
+  await client.call("Input.dispatchKeyEvent", { type: "keyDown", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 });
+  await evaluate(client, `(() => {
+    if (!document.activeElement.matches('.enhanced-select-trigger')) throw new Error('Escape did not restore trigger focus');
+    const select = document.querySelector('#albumFilter');
+    const option = [...select.options].find((option) => option.value.startsWith('id:'));
+    option.textContent = '很長的相簿名稱用來確認選項可以完整閱讀與換行'.repeat(12);
+    select.closest('label').querySelector('.enhanced-select-trigger').click();
+    const panel = select.closest('label').querySelector('.enhanced-select-panel');
+    if (panel.scrollWidth > panel.clientWidth + 1) throw new Error('Long album label overflow');
+    select.closest('label').querySelector('.enhanced-select-trigger').click();
+  })()`);
+  await mkdir("tmp/source-filter-implementation", { recursive: true });
+  const desktop = await client.call("Page.captureScreenshot", { format: "png" });
+  await writeFile("tmp/source-filter-implementation/desktop.png", Buffer.from(desktop.data, "base64"));
+
+  const stale = new URL(pageUrl);
+  stale.search = new URLSearchParams({ year: "value:9999", album: "id:missing-from-catalog", scene: "攤位", q: "攤位", sort: "oldest", selected: "not-in-index" });
+  await client.call("Page.navigate", { url: stale.href });
+  await waitForPageReady(client);
+  await evaluate(client, `(() => {
+    const select = document.querySelector('#albumFilter');
+    if (select.selectedOptions[0]?.value !== 'id:missing-from-catalog') throw new Error('Stale album disappeared from control');
+    if (!document.querySelector('#activeFilters').textContent.includes('missing-from-catalog')) throw new Error('Stale album disappeared from chips');
+    if (!document.querySelector('#resultSummary').textContent.startsWith('0 /')) throw new Error('Invalid source silently broadened');
+    document.querySelector('#clearSourceButton').click();
+    if (document.activeElement.id !== 'resetButton') throw new Error('Desktop source clear lost focus');
+    const params = new URLSearchParams(location.search);
+    if (params.has('year') || params.has('event') || params.has('album')) throw new Error('Source clear left a source restriction');
+    if (params.get('q') !== '攤位' || params.get('scene') !== '攤位' || params.get('sort') !== 'oldest' || params.get('selected') !== 'not-in-index') throw new Error('Source clear removed unrelated state');
+  })()`);
+
+  const fixturePhotos = parseCsv(await readFile("fixtures/photos.csv", "utf8"));
+  const photoAlbumTitle = fixturePhotos[1][fixturePhotos[0].indexOf("album_title")];
+  for (const value of [photoAlbumTitle, `title:${photoAlbumTitle}`, "source-smoke-a"]) {
+    const invalidUrl = new URL(pageUrl);
+    invalidUrl.search = new URLSearchParams({ album: value });
+    await client.call("Page.navigate", { url: invalidUrl.href });
+    await waitForPageReady(client);
+    await evaluate(client, `(() => {
+      const value = ${JSON.stringify(value)};
+      const select = document.querySelector('#albumFilter');
+      const selected = select.selectedOptions[0];
+      if (selected?.value !== value || !selected.textContent.endsWith('（目前索引無此選項）')) throw new Error('Invalid album label is incorrect');
+      if (!document.querySelector('#activeFilters').textContent.includes(selected.textContent)) throw new Error('Invalid album missing from chips');
+      if (!document.querySelector('#resultSummary').textContent.startsWith('0 /')) throw new Error('Unsupported album value matched photos');
+      if (new URLSearchParams(location.search).get('album') !== value) throw new Error('Invalid album value was silently rewritten');
+      document.querySelector('#activeFilters [data-filter-key="album"]').click();
+      if (new URLSearchParams(location.search).has('album')) throw new Error('Invalid album could not be removed');
+      if (document.querySelector('#resultSummary').textContent.startsWith('0 /')) throw new Error('Removing invalid album did not restore results');
+    })()`);
+  }
+
+  logProgress("checking mobile source picker");
+  await client.call("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+  await client.call("Page.navigate", { url: pageUrl });
+  await waitForPageReady(client);
+  await evaluate(client, `(() => {
+    document.querySelector('#mobileFilterButton').click();
+    const select = document.querySelector('#sourceEventFilter');
+    select.closest('label').querySelector('.enhanced-select-trigger').click();
+  })()`);
+  await delay(200);
+  await evaluate(client, `(() => {
+    const label = document.querySelector('#sourceEventFilter').closest('label');
+    const rect = label.querySelector('.enhanced-select-panel').getBoundingClientRect();
+    if (rect.left < 0 || rect.right > innerWidth || rect.bottom > innerHeight) throw new Error('Mobile source picker outside viewport');
+    const option = [...label.querySelectorAll('.enhanced-select-option')].find((button) => button.dataset.value.startsWith('value:') && !button.disabled);
+    option.click();
+    if (document.querySelector('#mobileFilterButton').textContent !== '篩選 1') throw new Error('Mobile source count incorrect');
+    if (!document.querySelector('#activeFilters').textContent.includes('活動:')) throw new Error('Source chip missing');
+    document.querySelector('#closeFilterSheetButton').click();
+    if (document.documentElement.scrollWidth > innerWidth) throw new Error('Mobile horizontal overflow');
+  })()`);
+  const mobile = await client.call("Page.captureScreenshot", { format: "png" });
+  await writeFile("tmp/source-filter-implementation/mobile.png", Buffer.from(mobile.data, "base64"));
+  await evaluate(client, `document.querySelector('#clearSourceButton').focus()`);
+  await client.call("Input.dispatchKeyEvent", { type: "keyDown", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13, text: "\r" });
+  await client.call("Input.dispatchKeyEvent", { type: "keyUp", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13 });
+  await evaluate(client, `(() => {
+    if (!document.querySelector('#clearSourceButton').hidden) throw new Error('Keyboard source clear did not clear the filters');
+    if (document.activeElement.id !== 'mobileFilterButton') throw new Error('Mobile source clear lost focus');
+  })()`);
+}
+
+
+async function runSourceHintSmoke(client, pageUrl) {
+  logProgress("checking compact source hints and full filter context");
+  const restricted = new URL(pageUrl);
+  restricted.search = new URLSearchParams({ year: "value:2025" });
+  await client.call("Emulation.setDeviceMetricsOverride", { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false });
+  await client.call("Page.navigate", { url: restricted.href });
+  await waitForPageReady(client);
+  await clickElement(client, "#sourceEventFilter + .enhanced-select .enhanced-select-trigger");
+  await evaluate(client, `(() => {
+    const panel = document.querySelector('#sourceEventFilter').closest('label').querySelector('.enhanced-select-panel');
+    const option = panel.querySelector('[data-value="value:年會"]');
+    if (!option.disabled || option.querySelector('.source-option-marker').textContent !== '⊘' || option.querySelector('.source-option-label').textContent !== '年會') throw new Error('Unavailable source did not use its compact marker');
+    if (document.getElementById(option.getAttribute('aria-describedby'))?.textContent !== '無相符照片') throw new Error('Unavailable source lost its text description');
+    if (panel.querySelector('.source-filter-hint').hidden || !panel.querySelector('.source-filter-context').hidden) throw new Error('Hint did not start collapsed');
+    panel.querySelector('.source-context-toggle').focus();
+  })()`);
+  await client.call("Input.dispatchKeyEvent", { type: "keyDown", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13, text: "\r" });
+  await client.call("Input.dispatchKeyEvent", { type: "keyUp", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13 });
+  await client.call("Input.dispatchKeyEvent", { type: "keyDown", key: "ArrowDown", code: "ArrowDown", windowsVirtualKeyCode: 40 });
+  await evaluate(client, `(() => {
+    const panel = document.querySelector('#sourceEventFilter').closest('label').querySelector('.enhanced-select-panel');
+    const context = panel.querySelector('.source-filter-context');
+    if (context.hidden || context.querySelector('dt')?.textContent !== '年份' || context.querySelector('dd')?.textContent !== '2025') throw new Error('Other-condition context is incorrect: ' + JSON.stringify({hidden:context.hidden,text:context.textContent,focus:document.activeElement.className}));
+    if (!document.activeElement.matches('.source-context-toggle')) throw new Error('Context disclosure lost keyboard focus');
+    const search = panel.querySelector('input');
+    search.value = 'no-such-option-name';
+    search.dispatchEvent(new Event('input', { bubbles: true }));
+    if (panel.querySelector('.enhanced-select-empty')?.textContent !== '沒有符合的選項' || !panel.querySelector('.source-filter-hint').hidden) throw new Error('Option search was confused with photo availability');
+    search.value = '';
+    search.dispatchEvent(new Event('input', { bubbles: true }));
+    if (context.hidden) throw new Error('Searching option names reset expanded context');
+  })()`);
+  const desktop = await client.call("Page.captureScreenshot", { format: "png" });
+  await writeFile("tmp/source-filter-implementation/hint-desktop.png", Buffer.from(desktop.data, "base64"));
+
+  logProgress("checking long context, selected unavailable sources and small viewports");
+  const longSearch = '完整搜尋內容'.repeat(30) + ' test@example.com';
+  const longState = new URL(pageUrl);
+  longState.search = new URLSearchParams({ event: 'value:年會', year: 'value:2025', scene: '攤位', q: longSearch, task: 'social', sort: 'oldest' });
+  await client.call("Emulation.setDeviceMetricsOverride", { width: 320, height: 640, deviceScaleFactor: 1, mobile: true });
+  await client.call("Page.navigate", { url: longState.href });
+  await waitForPageReady(client);
+  await clickElement(client, '#mobileFilterButton');
+  await clickElement(client, '#sourceEventFilter + .enhanced-select .enhanced-select-trigger');
+  await clickElement(client, '#sourceEventFilter + .enhanced-select .source-context-toggle');
+  await evaluate(client, `(() => {
+    const panel = document.querySelector('#sourceEventFilter').closest('label').querySelector('.enhanced-select-panel');
+    const context = panel.querySelector('.source-filter-context');
+    const labels = [...context.querySelectorAll('dt')].map((term) => term.textContent);
+    const search = [...context.querySelectorAll('dt')].find((term) => term.textContent === '搜尋');
+    if (search?.nextElementSibling.textContent !== ${JSON.stringify(longSearch)}) throw new Error('Local search context was sanitized or truncated');
+    if (labels.includes('活動') || labels.includes('排序') || labels.includes('優先檢視')) throw new Error('Context included its own field or ranking controls');
+    const selected = panel.querySelector('[data-value="value:年會"]');
+    if (selected.disabled || selected.getAttribute('aria-selected') !== 'true' || !selected.textContent.includes('無相符照片')) throw new Error('Selected unavailable option cannot be removed');
+  })()`);
+
+  for (const height of [640, 400]) {
+    await client.call("Emulation.setDeviceMetricsOverride", { width: 320, height, deviceScaleFactor: 1, mobile: true });
+    await delay(100);
+    await evaluate(client, `(() => {
+      const panel = document.querySelector('#sourceEventFilter').closest('label').querySelector('.enhanced-select-panel');
+      const rect = panel.getBoundingClientRect();
+      const sheet = document.querySelector('.search-panel').getBoundingClientRect();
+      if (rect.left < 0 || rect.right > innerWidth || rect.top < Math.max(0, sheet.top) || rect.bottom > innerHeight || panel.scrollWidth > panel.clientWidth + 1) throw new Error('Expanded hint exceeds visible viewport: ' + JSON.stringify({top:rect.top,bottom:rect.bottom,height:innerHeight}));
+      const scroller = panel.querySelector('.source-filter-body');
+      if (scroller.clientHeight <= 0 || scroller.scrollHeight <= scroller.clientHeight) throw new Error('Long context is not reachable by scrolling');
+    })()`);
+  }
+  await client.call("Emulation.setDeviceMetricsOverride", { width: 320, height: 640, deviceScaleFactor: 1, mobile: true });
+  await evaluate(client, `(() => {
+    const panel = document.querySelector('#sourceEventFilter').closest('label').querySelector('.enhanced-select-panel');
+    const sizes = [panel, ...panel.querySelectorAll('*')].map((element) => [element, parseFloat(getComputedStyle(element).fontSize)]);
+    for (const [element, size] of sizes) element.style.fontSize = (size * 2) + 'px';
+    window.dispatchEvent(new Event('resize'));
+    const rect = panel.getBoundingClientRect();
+    if (panel.scrollWidth > panel.clientWidth + 1 || rect.bottom > innerHeight) throw new Error('Doubled text clipped the source panel');
+    document.querySelector('#sourceEventFilter').closest('label').querySelector('.enhanced-select-trigger').focus();
+  })()`);
+  await client.call("Input.dispatchKeyEvent", { type: "keyDown", key: "End", code: "End", windowsVirtualKeyCode: 35 });
+  await evaluate(client, `(() => {
+    const panel = document.querySelector('#sourceEventFilter').closest('label').querySelector('.enhanced-select-panel');
+    const rect = document.activeElement.getBoundingClientRect();
+    const bounds = panel.querySelector('.source-filter-body').getBoundingClientRect();
+    if (!document.activeElement.matches('.enhanced-select-option') || rect.top < bounds.top - 1 || rect.bottom > bounds.bottom + 1) throw new Error('Keyboard focus is outside the scroller');
+    if (panel.querySelector('.source-context-toggle').getAttribute('aria-expanded') !== 'true') throw new Error('Keyboard navigation collapsed context');
+  })()`);
+  await client.call("Input.dispatchKeyEvent", { type: "keyDown", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13, text: "\r" });
+  await client.call("Input.dispatchKeyEvent", { type: "keyUp", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13 });
+  await evaluate(client, `(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.has('event') || params.get('year') !== 'value:2025' || params.get('q') !== ${JSON.stringify(longSearch)}) throw new Error('Removing unavailable source changed unrelated filters');
+    if (!document.activeElement.matches('.enhanced-select-trigger')) throw new Error('Removing unavailable source lost focus');
+    const panel = document.querySelector('#sourceEventFilter').closest('label').querySelector('.enhanced-select-panel');
+    if (panel.querySelector('.source-filter-body').scrollTop === 0 || panel.querySelector('.source-filter-context').hidden) throw new Error('Selection reset scroll position or context');
+  })()`);
+  const mobile = await client.call("Page.captureScreenshot", { format: "png" });
+  await writeFile("tmp/source-filter-implementation/hint-mobile-stress.png", Buffer.from(mobile.data, "base64"));
+  await evaluate(client, `(async () => {
+    const { createSourceIndex, availableSourceValues } = await import('./source-filters.js');
+    const { updateSourceControls } = await import('./controls.js');
+    const registry = await fetch('./data/interface-registry.json').then((response) => response.json());
+    const photos = [{ photo_id: 'known', album_ids: ['known'] }];
+    const sourceIndex = createSourceIndex(photos, [{ album_id: 'known', event_name: 'Camp', event_year: '2025' }]);
+    const controls = Object.fromEntries(['sourceEvent', 'sourceYear', 'album'].map((key) => [key, document.querySelector('#' + key + 'Filter')]));
+    const filters = { sourceYear: ['missing:'] };
+    updateSourceControls({ controls, sourceIndex, filters, available: availableSourceValues(sourceIndex, photos, filters) });
+    const expected = registry.pages.filters.find((filter) => filter.key === 'sourceYear').missingLabel;
+    if (controls.sourceYear.selectedOptions[0]?.textContent !== expected) throw new Error('Retained unknown year lost its field label');
+    const option = controls.sourceYear.closest('label').querySelector('[data-value="missing:"]');
+    if (option.disabled || !option.textContent.includes('無相符照片')) throw new Error('Retained unknown year lost its removable zero-match state');
+  })()`);
+}
+
 let staticServer;
 let chrome;
 let client;
@@ -610,6 +858,8 @@ try {
     const wsUrl = await openPage(debugPort, `http://127.0.0.1:${appPort}/`);
     client = await connect(wsUrl);
     await runSmoke(client, `http://127.0.0.1:${appPort}/`);
+    await runSourceSmoke(client, `http://127.0.0.1:${appPort}/`);
+    await runSourceHintSmoke(client, `http://127.0.0.1:${appPort}/`);
   })(), smokeTimeoutMs, "mobile filter smoke");
   console.log("Mobile filter picker smoke passed.");
 } catch (error) {

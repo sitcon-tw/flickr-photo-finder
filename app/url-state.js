@@ -1,6 +1,10 @@
 // URL query serialization for the Pages finder. Keep this independent from DOM
 // controls so deep-link behavior stays reviewable and testable.
+import { sourceFilterKeys } from "./source-filters.js";
+
 let filterUrlKeys = {
+  sourceEvent: "event",
+  sourceYear: "year",
   album: "album",
   use: "use",
   mood: "mood",
@@ -25,13 +29,13 @@ export function applyUrlStateRegistry(interfaceRegistry) {
   }
 }
 
-function cleanValues(values) {
+function cleanValues(values, caseSensitive = false) {
   const seen = new Set();
   return (Array.isArray(values) ? values : [values])
     .map((value) => String(value ?? "").trim())
     .filter(Boolean)
     .filter((value) => {
-      const key = value.toLowerCase();
+      const key = caseSensitive ? value : value.toLowerCase();
       if (seen.has(key)) {
         return false;
       }
@@ -40,8 +44,8 @@ function cleanValues(values) {
     });
 }
 
-function appendValues(params, key, values) {
-  for (const value of cleanValues(values)) {
+function appendValues(params, key, values, caseSensitive = false) {
+  for (const value of cleanValues(values, caseSensitive)) {
     params.append(key, value);
   }
 }
@@ -61,7 +65,7 @@ export function encodeUrlState(state) {
   }
 
   for (const [filterKey, urlKey] of Object.entries(filterUrlKeys)) {
-    appendValues(params, urlKey, state.filters?.[filterKey] ?? []);
+    appendValues(params, urlKey, state.filters?.[filterKey] ?? [], sourceFilterKeys.includes(filterKey));
   }
 
   const selected = [...(state.selectedPhotoIds ?? [])].map((value) => String(value ?? "").trim()).filter(Boolean);
@@ -81,7 +85,7 @@ export function finderStateUrl(href, state) {
 export function decodeUrlState(params) {
   const filters = {};
   for (const [filterKey, urlKey] of Object.entries(filterUrlKeys)) {
-    filters[filterKey] = cleanValues(params.getAll(urlKey));
+    filters[filterKey] = cleanValues(params.getAll(urlKey), sourceFilterKeys.includes(filterKey));
   }
 
   return {

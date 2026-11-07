@@ -56,7 +56,7 @@ function assertKnownTaxonomyValue(errors, taxonomy, path, fieldName, value) {
   }
 }
 
-function validateFilterRegistry(errors, registry, fields, taxonomy) {
+function validateFilterRegistry(errors, registry, fields, taxonomy, albumFields) {
   const filters = registry.pages?.filters ?? [];
   if (!Array.isArray(filters) || filters.length === 0) {
     errors.push("data/interface-registry.json: pages.filters must be a non-empty array");
@@ -78,6 +78,9 @@ function validateFilterRegistry(errors, registry, fields, taxonomy) {
       assertKnownField(errors, fields, path, filter.field);
     }
     const source = filter.source ?? {};
+    if (source.type === "album_source" && !albumFields.has(source.field)) {
+      errors.push(`${path}.source.field references unknown album field "${source.field}"`);
+    }
     if (source.key && !Array.isArray(taxonomy[source.key])) {
       errors.push(`${path}.source.key references unknown taxonomy "${source.key}"`);
     }
@@ -231,7 +234,7 @@ async function main() {
   const photoFields = schema.tables?.photos?.fields ?? [];
   const fieldNames = new Set(photoFields.map((field) => field.name));
 
-  validateFilterRegistry(errors, registry, fieldNames, taxonomy);
+  validateFilterRegistry(errors, registry, fieldNames, taxonomy, new Set(schema.tables.albums.fields.map((field) => field.name)));
   validatePrimaryFilters(errors, registry);
   validateTaskModes(errors, registry, taxonomy);
   validateFieldSets(errors, registry, fieldNames);

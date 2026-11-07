@@ -70,6 +70,8 @@ pnpm sheets:apply-init -- --write
 
 `album_ids` 記錄照片和 Flickr 相簿的來源關係。它是多值欄位，因為同一張 Flickr 照片可能出現在多本相簿中；這個欄位應由同步工具維護，人類通常不需要手動填寫。ID 依 `albums` 目錄順序儲存，最前面的相簿是該照片的 canonical group。`photos` 列則依 canonical group 與 Flickr 相簿內照片順序排列，讓 Finder 在同一年份內沿用來源順序；照片身分與成員關係仍分別以 `photo_id`、`album_ids` 為準。匯入批次 ID 不放在 `photos` 主表，批次層級的執行紀錄留在 `import_batches`，避免把照片主表變成操作 log。
 
+Finder 的三欄來源篩選使用 `albums` 的活動與年份；照片自身的同名欄位保持原意，前端衍生來源不回填 Sheets。多相簿查詢、年份排序與未知來源邊界見 [ADR 0012](adr/0012-album-source-filter-semantics.md)，實際操作規格見 [公開前端架構](public-frontend-architecture.md)。
+
 `curation_status`、`public_use_status`、`priority_level` 與 `collections` 應用來協助排序、提醒與推薦，而不是把未 review 的照片完全排除。
 
 ### taxonomy

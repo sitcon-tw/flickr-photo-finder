@@ -80,6 +80,8 @@ export function hasActiveFilters(snapshot) {
       hasValue(snapshot.recommendedUse) ||
       hasValue(snapshot.mood) ||
       hasValue(snapshot.album) ||
+      hasValue(snapshot.sourceEvent) ||
+      hasValue(snapshot.sourceYear) ||
       hasValue(snapshot.scene) ||
       hasValue(snapshot.peopleCount) ||
       hasValue(snapshot.subjectType) ||

@@ -5,8 +5,10 @@ import { parseArgs as parseNodeArgs } from "node:util";
 import { csvEscape, parseCsv } from "../lib/core/csv-utils.mjs";
 import { buildOptionLabelMaps, createSearchTokenBuilder, normalizeAlbumRows, normalizePhotoRows } from "../../app/data-loader.js";
 import { albumFilterOptions } from "../../app/controls.js";
-import { applySearchRegistry, filterAndSortPhotos } from "../../app/search-sort.js";
+import { applySearchRegistry, filterAndSortPhotos, matchesPhotoFilters } from "../../app/search-sort.js";
 import { buildStaticFinderPayloads, defaultShardSize } from "../lib/pages/static-finder-data.mjs";
+
+import { createSourceIndex, resolveSourceScope, availableSourceValues, sourceValue } from "../../app/source-filters.js";
 
 const defaultOutputDir = "tmp/finder-perf";
 
@@ -156,8 +158,8 @@ function markdownReport(report) {
     `Generated at: ${report.generatedAt}`,
     `Source: ${report.source.photosPath}, ${report.source.albumsPath}`,
     "",
-    "| Rows | photos.csv raw | parse | normalize | recommended | discover | search 舞台 | static shards |",
-    "| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
+    "| Rows | photos.csv raw | parse | normalize | recommended | discover | search 舞台 | source facets + year sort | static shards |",
+    "| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
   ];
   for (const item of report.results) {
     const size = item.sizes.find((entry) => entry.label === "photos.csv");
@@ -170,6 +172,7 @@ function markdownReport(report) {
       `${measurement["filter+recommended sort all/social"].medianMs}ms`,
       `${measurement["filter+discover sort all/social"].medianMs}ms`,
       `${measurement["search 舞台 + recommended/social"].medianMs}ms`,
+      `${measurement["source facets + filtered year sort"].medianMs}ms`,
       item.staticArtifact.shardCount,
     ].join(" | ").replace(/^/, "| ").replace(/$/," |"));
   }
@@ -198,15 +201,21 @@ async function benchmarkCount({ albumsText, basePhotosText, count, registry, sea
     taxonomy,
   });
 
+  const sourceIndex = createSourceIndex(photos, albums);
+  const sourceFilters = { sourceYear: [sourceValue([...sourceIndex.sources.values()][0]?.event_year)] };
   const measurements = [
     parsedPhotos,
     parsedAlbums,
     normalizedPhotos,
     normalizedAlbums,
+    measureRepeated("source facets + filtered year sort", 5, () => {
+      availableSourceValues(sourceIndex, photos.filter((photo) => matchesPhotoFilters(photo, sourceFilters)), sourceFilters);
+      return filterAndSortPhotos(photos, { filters: sourceFilters, sourceIndex, sourceScope: resolveSourceScope(sourceIndex, sourceFilters), sortMode: "newest" }).length;
+    }),
     measure("build album filter options", () => albumFilterOptions(photos, albums).length),
-    measureRepeated("filter+recommended sort all/social", 5, () => filterAndSortPhotos(photos, { task, sortMode: "recommended" }).length),
-    measureRepeated("filter+discover sort all/social", 3, () => filterAndSortPhotos(photos, { task, sortMode: "discover" }).length),
-    measureRepeated("search 舞台 + recommended/social", 5, () => filterAndSortPhotos(photos, { filters: { search: "舞台" }, task, sortMode: "recommended" }).length),
+    measureRepeated("filter+recommended sort all/social", 5, () => filterAndSortPhotos(photos, { sourceIndex, task, sortMode: "recommended" }).length),
+    measureRepeated("filter+discover sort all/social", 3, () => filterAndSortPhotos(photos, { sourceIndex, task, sortMode: "discover" }).length),
+    measureRepeated("search 舞台 + recommended/social", 5, () => filterAndSortPhotos(photos, { sourceIndex, filters: { search: "舞台" }, task, sortMode: "recommended" }).length),
   ];
 
   const staticIndexJson = JSON.stringify(staticPayloads.index);
@@ -215,6 +224,7 @@ async function benchmarkCount({ albumsText, basePhotosText, count, registry, sea
 
   return {
     rows: count,
+    sourceFilters,
     sizes: [
       sizeReport("photos.csv", photosText),
       sizeReport("albums.csv", albumsText),
