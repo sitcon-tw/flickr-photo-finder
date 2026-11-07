@@ -66,10 +66,10 @@ describe("Pages data-loader static artifacts", () => {
     assert.equal(normalized[0].search_text, "prebuilt search");
   });
 
-  it("loads static-sharded index data and hydrates detail shards lazily", async () => {
+  for (const version of ["", "?v=build-a"]) it(`hydrates detail shards lazily with manifest version '${version}'`, async () => {
     const dataSources = {
       mode: "static-sharded",
-      finderDataManifestUrl: "./data/finder-data/manifest.json",
+      finderDataManifestUrl: `./data/finder-data/manifest.json${version}`,
       finderDataAlbumsUrl: "./data/finder-data/albums.json",
       finderDataIndexUrl: "./data/finder-data/photos-index.json",
       interfaceRegistryJsonUrl: "./data/interface-registry.json",
@@ -78,7 +78,7 @@ describe("Pages data-loader static artifacts", () => {
       taxonomyJsonUrl: "./data/tag-taxonomy.json",
     };
     const routes = new Map([
-      ["http://localhost/data/finder-data/manifest.json", okJson({
+      [`http://localhost/data/finder-data/manifest.json${version}`, okJson({
         shards: [{ id: "000", path: "shards/photos-000.json", count: 1 }],
       })],
       ["http://localhost/data/finder-data/albums.json", okJson({
@@ -89,7 +89,7 @@ describe("Pages data-loader static artifacts", () => {
         fields: ["photo_id", "photo_url", "album_ids", "safe_crop", "search_text", "shard_id"],
         rows: [["p1", "https://www.flickr.com/photos/sitcon/1", ["a1"], ["16:9"], "prebuilt stage", "000"]],
       })],
-      ["http://localhost/data/finder-data/shards/photos-000.json", okJson({
+      [`http://localhost/data/finder-data/shards/photos-000.json${version}`, okJson({
         fields: ["photo_id", "visual_description", "curation_notes", "sponsorship_items", "_sheet_row_number"],
         rows: [["p1", "講者在舞台前展示投影片。", "Flickr title: Stage", ["Badge 識別證贊助"], 42]],
       })],

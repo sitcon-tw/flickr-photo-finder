@@ -3,7 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs as parseNodeArgs } from "node:util";
 import { googleSheetsSpreadsheetId, projectConfig } from "../lib/core/project-config.mjs";
-import { collectRelativeJavaScriptImportGraph } from "../lib/pages/js-import-graph.mjs";
+import { collectRelativeJavaScriptImportGraph, rewriteRelativeJavaScriptImports } from "../lib/pages/js-import-graph.mjs";
 import {
   buildStaticFinderPayloads,
   defaultFinderDataDir,
@@ -155,27 +155,50 @@ function buildPrecacheUrls({ dataMode, jsFiles }) {
   return uniqueSortedUrls(urls);
 }
 
-function pwaCacheVersion({ dataMode, dataSource, precacheUrls, staticManifest }) {
-  return sha256(JSON.stringify({
-    dataMode,
-    dataSource,
-    generatedAt: staticManifest?.generatedAt ?? "",
-    photosSha256: staticManifest?.source?.photosSha256 ?? "",
-    precacheUrls,
-    rowCount: staticManifest?.rowCount ?? 0,
-    schemaVersion: staticManifest?.schemaVersion ?? "",
-  })).slice(0, 16);
+export function versionedAssetUrl(path, version) {
+  const url = new URL(path, "https://finder.invalid/");
+  url.searchParams.set("v", version);
+  return `${path.split(/[?#]/)[0]}${url.search}${url.hash}`;
 }
 
-async function writeServiceWorker(outputDir, { dataMode, dataSource, jsFiles, staticManifest }) {
+export async function versionPagesAssets(outputDir, { dataMode, jsFiles }) {
   const precacheUrls = buildPrecacheUrls({ dataMode, jsFiles });
-  const finderDataUrls = buildFinderDataUrls(dataMode);
-  const cacheVersion = pwaCacheVersion({ dataMode, dataSource, precacheUrls, staticManifest });
+  const fingerprints = await Promise.all(precacheUrls.filter((url) => url !== "./").map(async (url) => [
+    url, sha256(await readFile(join(outputDir, url))),
+  ]));
+  fingerprints.push(["./service-worker.js", sha256(await readFile("app/service-worker.js"))]);
+  const version = sha256(JSON.stringify(fingerprints)).slice(0, 16);
+  const assetUrls = new Set(precacheUrls.filter((url) => url !== "./" && url !== "./index.html"));
+  const indexPath = join(outputDir, "index.html");
+  const html = await readFile(indexPath, "utf8");
+  await writeFile(indexPath, html.replace(/\b(src|href)="([^"]+)"/g, (match, attribute, url) =>
+    assetUrls.has(url) ? `${attribute}="${versionedAssetUrl(url, version)}"` : match,
+  ));
+  for (const file of jsFiles) {
+    const path = join(outputDir, file);
+    const source = await readFile(path, "utf8");
+    await writeFile(path, rewriteRelativeJavaScriptImports(source, (url) => versionedAssetUrl(url, version)));
+  }
+  const configPath = join(outputDir, "config.js");
+  let config = await readFile(configPath, "utf8");
+  for (const url of buildFinderDataUrls(dataMode)) {
+    config = config.replaceAll(JSON.stringify(url), () => JSON.stringify(versionedAssetUrl(url, version)));
+  }
+  await writeFile(configPath, config);
+  return version;
+}
+
+async function writeServiceWorker(outputDir, { dataMode, jsFiles, version }) {
+  // Navigation keeps its stable URL so the offline index.html fallback still resolves.
+  const precacheUrls = buildPrecacheUrls({ dataMode, jsFiles }).map((url) =>
+    url === "./" || url === "./index.html" ? url : versionedAssetUrl(url, version),
+  );
+  const finderDataUrls = buildFinderDataUrls(dataMode).map((url) => versionedAssetUrl(url, version));
   const source = await readFile("app/service-worker.js", "utf8");
   const header = [
     `self.__SITCON_PHOTO_FINDER_PRECACHE_URLS__ = ${JSON.stringify(precacheUrls)};`,
     `self.__SITCON_PHOTO_FINDER_DATA_URLS__ = ${JSON.stringify(finderDataUrls)};`,
-    `self.__SITCON_PHOTO_FINDER_CACHE_VERSION__ = ${JSON.stringify(cacheVersion)};`,
+    `self.__SITCON_PHOTO_FINDER_CACHE_VERSION__ = ${JSON.stringify(version)};`,
     "",
   ].join("\n");
   await writeFile(join(outputDir, "service-worker.js"), `${header}${source}`);
@@ -369,11 +392,11 @@ export async function buildPagesArtifact({
     dataMode,
     photosCsvUrl: dataMode === "runtime-csv" ? resolvedPhotosCsvUrl : "",
   });
+  const version = await versionPagesAssets(outputDir, { dataMode, jsFiles });
   await writeServiceWorker(outputDir, {
     dataMode,
-    dataSource,
     jsFiles,
-    staticManifest,
+    version,
   });
   await writeFile(join(outputDir, ".nojekyll"), "");
 
@@ -384,6 +407,7 @@ export async function buildPagesArtifact({
     albumsCsvUrl: resolvedAlbumsCsvUrl,
     photosCsvUrl: resolvedPhotosCsvUrl,
     staticManifest,
+    version,
   };
 }
 

@@ -21,16 +21,26 @@ async function assertImportFile(path) {
   }
 }
 
+const importPatterns = [
+  /\b(?:import|export)\s+(?:[^'"]*?\s+from\s+)?["'](\.[^"']+)["']/g,
+  /\bimport\s*\(\s*["'](\.[^"']+)["']\s*\)/g,
+];
+
 export function relativeJavaScriptImports(source) {
   const imports = new Set();
-  const staticPattern = /\b(?:import|export)\s+(?:[^'"]*?\s+from\s+)?["'](\.[^"']+)["']/g;
-  const dynamicPattern = /\bimport\s*\(\s*["'](\.[^"']+)["']\s*\)/g;
-  for (const pattern of [staticPattern, dynamicPattern]) {
+  for (const pattern of importPatterns) {
     for (const match of source.matchAll(pattern)) {
       imports.add(match[1]);
     }
   }
   return [...imports];
+}
+
+export function rewriteRelativeJavaScriptImports(source, rewrite) {
+  for (const pattern of importPatterns) {
+    source = source.replace(pattern, (match, specifier) => match.replace(specifier, () => rewrite(specifier)));
+  }
+  return source;
 }
 
 export async function collectRelativeJavaScriptImportGraph({ rootDir, entryFile }) {
@@ -51,7 +61,7 @@ export async function collectRelativeJavaScriptImportGraph({ rootDir, entryFile 
     await assertImportFile(fullPath);
     const source = await readFile(fullPath, "utf8");
     for (const specifier of relativeJavaScriptImports(source)) {
-      const importedFile = normalize(join(dirname(file), specifier));
+      const importedFile = normalize(join(dirname(file), specifier.split(/[?#]/)[0]));
       if (isOutsideRoot(importedFile)) {
         throw new Error(`${file} imports a module outside ${rootDir}: ${specifier}`);
       }

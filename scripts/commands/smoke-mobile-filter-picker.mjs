@@ -358,7 +358,7 @@ async function checkAppearance(client) {
         const button = document.querySelector('#appearanceButton');
         return {
           overflow: document.documentElement.scrollWidth > innerWidth,
-          logo: logo?.getAttribute('src'),
+          logo: logo?.getAttribute('src').split(/[?#]/)[0],
           loaded: logo?.naturalWidth > 0,
           photoFilter: getComputedStyle(document.querySelector('.photo-link img')).filter,
           buttonWidth: button.getBoundingClientRect().width,
@@ -823,9 +823,10 @@ async function runSourceHintSmoke(client, pageUrl) {
   const mobile = await client.call("Page.captureScreenshot", { format: "png" });
   await writeFile("tmp/source-filter-implementation/hint-mobile-stress.png", Buffer.from(mobile.data, "base64"));
   await evaluate(client, `(async () => {
-    const { createSourceIndex, availableSourceValues } = await import('./source-filters.js');
-    const { updateSourceControls } = await import('./controls.js');
-    const registry = await fetch('./data/interface-registry.json').then((response) => response.json());
+    const version = new URL(document.querySelector('script[type="module"]').src).search;
+    const { createSourceIndex, availableSourceValues } = await import('./source-filters.js' + version);
+    const { updateSourceControls } = await import('./controls.js' + version);
+    const registry = await fetch('./data/interface-registry.json' + version).then((response) => response.json());
     const photos = [{ photo_id: 'known', album_ids: ['known'] }];
     const sourceIndex = createSourceIndex(photos, [{ album_id: 'known', event_name: 'Camp', event_year: '2025' }]);
     const controls = Object.fromEntries(['sourceEvent', 'sourceYear', 'album'].map((key) => [key, document.querySelector('#' + key + 'Filter')]));

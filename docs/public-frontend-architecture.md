@@ -110,6 +110,8 @@ GitHub Pages Finder 可以註冊 service worker，讓已開啟過的公開搜尋
 
 部署版 service worker 的快取策略：
 
+- 建置依 HTML、模組、樣式、設定與搜尋資料內容產生同一個版本識別，套用到 HTML 資源、所有本機模組 import、JSON 請求與 service worker 預載清單；detail shard 請求沿用 manifest URL 的版本。回訪者首次載入部署後的 HTML 時，即可取得對應資源，避免快取中的不同建置混用。
+- 導覽入口 `./` 與 `./index.html` 保留穩定的快取鍵，供離線時的頁面 fallback 使用。資源 URL 的版本隔離快取，但不代表部署主機保留每次建置的完整檔案。
 - app shell、JavaScript 模組、CSS、metadata image 與固定設定檔採快取優先並背景更新。
 - `data/finder-data/manifest.json`、`albums.json`、`photos-index.json`、schema、taxonomy、search aliases 與 project config 採網路優先；網路失敗才退回快取。
 - detail shards 採網路優先並只快取使用者實際打開過的 shard；離線時只能讀已快取過的照片 detail。
