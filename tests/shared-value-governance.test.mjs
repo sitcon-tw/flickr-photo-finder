@@ -30,6 +30,9 @@ describe("shared value interface registry", () => {
       if (filter.field) {
         assert.ok(fields.has(filter.field), `${filter.key} uses unknown field ${filter.field}`);
       }
+      if (filter.source?.type === "album_source") {
+        assert.ok(schema.tables.albums.fields.some((field) => field.name === filter.source.field));
+      }
       if (filter.source?.key) {
         assert.ok(Array.isArray(taxonomy[filter.source.key]), `${filter.key} uses unknown taxonomy ${filter.source.key}`);
       }

@@ -30,6 +30,7 @@ import {
   setupTaskModes,
   syncEnhancedSelects,
   updateFilterLayout,
+  updateSourceControls,
 } from "./controls.js";
 import { loadFinderData, optionLabelsFor } from "./data-loader.js";
 import { renderOverview as renderOverviewPanel } from "./overview-render.js";
@@ -60,7 +61,7 @@ import {
   updateLoadMore,
   updateTaskButtons,
 } from "./result-render.js";
-import { applySearchRegistry, filterAndSortPhotos } from "./search-sort.js";
+import { applySearchRegistry, filterAndSortPhotos, matchesPhotoFilters } from "./search-sort.js";
 import { applyUrlStateRegistry, decodeUrlState, encodeUrlState, finderStateUrl } from "./url-state.js";
 import {
   applyTaskModeRegistry,
@@ -74,12 +75,16 @@ import {
   taskModes,
 } from "./task-modes.js";
 
+import { createSourceIndex, resolveSourceScope, availableSourceValues, sourceFilterKeys, hasSourceFilters, sourceScopeSnapshot, sourceContextText } from "./source-filters.js";
+
 const controls = queryControls();
 const elements = queryElements();
 bindControlDismissal();
 
 let photos = [];
 let albums = [];
+let sourceIndex = createSourceIndex([]);
+let currentSourceScope = resolveSourceScope(sourceIndex);
 let photoSchema;
 let currentResults = [];
 let visibleCount = pageSize;
@@ -115,13 +120,13 @@ function refreshFilterControls() {
 
 refreshFilterControls();
 
-function cleanFilterValues(values) {
+function cleanFilterValues(values, caseSensitive = false) {
   const seen = new Set();
   return (Array.isArray(values) ? values : [values])
     .map((value) => String(value ?? "").trim())
     .filter(Boolean)
     .filter((value) => {
-      const key = value.toLowerCase();
+      const key = caseSensitive ? value : value.toLowerCase();
       if (seen.has(key)) {
         return false;
       }
@@ -134,21 +139,22 @@ function setFilterValues(key, values, { syncControl = true } = {}) {
   if (!Object.hasOwn(state.filters, key)) {
     return;
   }
-  state.filters[key] = cleanFilterValues(values);
+  state.filters[key] = cleanFilterValues(values, sourceFilterKeys.includes(key));
   if (syncControl && filterControls[key]) {
     setControlValues(filterControls[key], state.filters[key], { dispatch: false });
   }
 }
 
 function clearFilterValue(key, value) {
-  const target = String(value ?? "").trim().toLowerCase();
+  const normalize = (item) => sourceFilterKeys.includes(key) ? String(item).trim() : String(item).trim().toLowerCase();
+  const target = normalize(value ?? "");
   if (!target) {
     setFilterValues(key, []);
     return;
   }
   setFilterValues(
     key,
-    state.filters[key].filter((item) => item.toLowerCase() !== target),
+    state.filters[key].filter((item) => normalize(item) !== target),
   );
 }
 
@@ -355,6 +361,8 @@ function currentFilterSnapshot() {
     mood: state.filters.mood,
     sortMode: controls.sort.value,
     album: state.filters.album,
+    sourceEvent: state.filters.sourceEvent,
+    sourceYear: state.filters.sourceYear,
     scene: state.filters.scene,
     peopleCount: state.filters.peopleCount,
     subjectType: state.filters.subjectType,
@@ -438,6 +446,8 @@ function currentPhotoFilters() {
 function filteredAndSortedPhotos() {
   return filterAndSortPhotos(photos, {
     filters: currentPhotoFilters(),
+    sourceIndex,
+    sourceScope: currentSourceScope,
     sortMode: controls.sort.value,
     task: activeTask(),
     discoverCandidateLimit,
@@ -481,7 +491,8 @@ async function openPreview(photo) {
   const originalUrl = originalSizePageUrl(detailedPhoto);
   const previewUrl = largeUrl || detailedPhoto.image_preview_url;
   elements.previewTitle.textContent = photoTitle(detailedPhoto);
-  elements.previewMeta.textContent = [detailedPhoto.event_year, detailedPhoto.album_title].filter(Boolean).join(" / ");
+  elements.previewSource.textContent = `本次來源：${sourceContextText(currentSourceScope.representative(photo))}`;
+  elements.previewMeta.textContent = "照片資料：" + [detailedPhoto.event_year, detailedPhoto.album_title].filter(Boolean).join(" / ");
   elements.previewImage.src = previewUrl;
   elements.previewImage.alt = [photoTitle(detailedPhoto), detailedPhoto.event_year].filter(Boolean).join(" ");
   renderPhotoStatuses(elements.previewStatuses, detailedPhoto, labelFor);
@@ -831,6 +842,7 @@ function currentAiAssistantPrompt() {
     taskLabel: activeTask().label,
     searchValue: controls.search.value,
     filterEntries: activeFilterEntries(),
+    sourceScope: sourceScopeSnapshot(currentSourceScope),
   });
 }
 
@@ -883,7 +895,16 @@ function render({ resetPage = false, preservePage = false, preserveScroll = fals
       window.requestAnimationFrame(() => window.scrollTo(scrollX, scrollY));
     }
   };
+  const filters = currentPhotoFilters();
+  currentSourceScope = resolveSourceScope(sourceIndex, filters);
+  updateSourceControls({
+    controls, sourceIndex, filters,
+    available: availableSourceValues(sourceIndex, photos.filter((photo) => matchesPhotoFilters(photo, filters)), filters),
+  });
   const filtered = filteredAndSortedPhotos();
+  controls.clearSource.hidden = !hasSourceFilters(filters);
+  elements.sourceNotice.hidden = !(filtered.length === 0 && hasSourceFilters(filters));
+  elements.sourceNoticeText.textContent = "目前來源與其他條件的組合沒有命中索引照片。已選條件仍保留，可逐項移除或清除來源；這不代表 Flickr 沒有相關照片。";
   currentResults = filtered;
   if (resetPage || (!preservePage && visibleCount <= 0)) {
     visibleCount = pageSize;
@@ -1038,6 +1059,7 @@ async function loadData() {
   searchTokensForField = loadedData.searchTokensForField;
   albums = loadedData.albums;
   photos = loadedData.photos;
+  sourceIndex = createSourceIndex(photos, albums);
   loadPhotoDetails = loadedData.loadPhotoDetails ?? loadPhotoDetails;
   maybeRegisterPwa(loadedData.finderDataManifest?.generatedAt ?? "");
   setupTaskModes(elements.taskModes, taskModes);
@@ -1046,6 +1068,7 @@ async function loadData() {
     controls,
     elements,
     taxonomy: loadedData.taxonomy,
+    sourceIndex,
     photos,
     albums,
     peopleCountFilters,
@@ -1074,6 +1097,7 @@ function bindFilterControlEvents() {
   for (const [key, control] of Object.entries(controls)) {
     if ([
       "reset",
+      "clearSource",
       "loadMore",
       "copyCandidates",
       "clearCandidates",
@@ -1124,6 +1148,12 @@ elements.activeFilters.addEventListener("click", (event) => {
 });
 
 controls.reset.addEventListener("click", resetFilters);
+controls.clearSource.addEventListener("click", () => {
+  for (const key of sourceFilterKeys) setFilterValues(key, []);
+  render({ resetPage: true, source: "filter" });
+  const focusTarget = controls.reset.getClientRects().length ? controls.reset : controls.mobileFilter;
+  focusTarget.focus({ preventScroll: true });
+});
 controls.loadMore.addEventListener("click", () => {
   loadMoreResults("load_more");
 });

@@ -191,12 +191,12 @@ describe("Pages search/sort pure logic", () => {
     assert.equal(results[0].photo_id, "task-match");
   });
 
-  it("sorts newest by event year and keeps Sheet order within the same year", () => {
+  it("sorts newest by source year and keeps Sheet order within the same year", () => {
     const results = sortPhotos([
-      photo({ photo_id: "same-year-first", event_year: "2026" }),
-      photo({ photo_id: "older", event_year: "2025" }),
-      photo({ photo_id: "same-year-second", event_year: "2026" }),
-    ], { sortMode: "newest" });
+      photo({ photo_id: "same-year-first", album_ids: ["new"] }),
+      photo({ photo_id: "older", album_ids: ["old"] }),
+      photo({ photo_id: "same-year-second", album_ids: ["new"] }),
+    ], { sortMode: "newest", albums: [{ album_id: "new", event_year: "2026" }, { album_id: "old", event_year: "2025" }] });
 
     assert.deepEqual(results.map((item) => item.photo_id), ["same-year-first", "same-year-second", "older"]);
   });
@@ -365,6 +365,8 @@ describe("Pages search/sort pure logic", () => {
       search: " 講者 ",
       sort: "recommended",
       filters: {
+        sourceEvent: [],
+        sourceYear: [],
         album: ["id:123", "id:456"],
         scene: ["舞台", "講者"],
         orientation: ["landscape"],
@@ -383,6 +385,8 @@ describe("Pages search/sort pure logic", () => {
       search: "講者",
       sort: "",
       filters: {
+        sourceEvent: [],
+        sourceYear: [],
         album: ["id:123", "id:456"],
         use: [],
         mood: [],
@@ -409,6 +413,8 @@ describe("Pages search/sort pure logic", () => {
       search: " 可放字 ",
       sort: "explore",
       filters: {
+        sourceEvent: [],
+        sourceYear: [],
         album: ["id:72177720333438501"],
         subjectType: ["person"],
       },
@@ -599,7 +605,7 @@ describe("Pages search/sort pure logic", () => {
     assert.match(normalized[0].search_text, /negative space/);
   });
 
-  it("builds album filter options from ids and title fallbacks", () => {
+  it("builds album filter options from ids and an explicit missing source", () => {
     const options = albumFilterOptions([
       photo({ album_ids: ["a1"], album_title: "主議程", event_year: "2026", event_name: "SITCON" }),
       photo({ album_ids: [], album_title: "工作人員側拍", event_year: "2025", event_name: "SITCON" }),
@@ -607,10 +613,10 @@ describe("Pages search/sort pure logic", () => {
 
     assert.deepEqual(
       options.map((option) => option.value),
-      ["id:a1", "title:工作人員側拍"],
+      ["id:a1", "missing:"],
     );
-    assert.match(options[0].label, /2026/);
-    assert.match(options[0].label, /主議程/);
+    assert.match(options[0].label, /目錄缺漏/);
+    assert.doesNotMatch(options[0].label, /2026|主議程/);
   });
 
   it("orders album filter options by the album catalog order", () => {
@@ -708,7 +714,7 @@ describe("Pages search/sort pure logic", () => {
     assert.deepEqual(entries, [
       ["task", "優先檢視", "社群貼文"],
       ["search", "搜尋", "講者"],
-      ["album", "活動/相簿", "SITCON 2026", "id:1"],
+      ["album", "相簿", "SITCON 2026", "id:1"],
       ["scene", "場景", "交流", "交流"],
       ["sponsorshipItem", "贊助品項", "攤位", "攤位"],
     ]);

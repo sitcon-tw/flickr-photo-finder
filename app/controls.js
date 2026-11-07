@@ -1,5 +1,6 @@
 import { sanitizeSearchTerm } from "./analytics.js";
 import { normalizeText } from "./search-sort.js";
+import { createSourceIndex, missingSourceValue, sourceFilterKeys, sourceFilterOptions, sourceOptionLabel } from "./source-filters.js";
 
 // DOM control helpers for the Pages frontend. This module owns control widgets
 // and filter-entry shaping; main.js owns when these controls trigger render.
@@ -7,7 +8,9 @@ const enhancedSelects = new Map();
 const autocompleteInputs = new Map();
 
 export let filterDefinitions = [
-  { key: "album", label: "活動/相簿", group: "core", control: "album" },
+  { key: "sourceEvent", label: "活動", group: "core", control: "sourceEvent" },
+  { key: "sourceYear", label: "年份", group: "core", control: "sourceYear" },
+  { key: "album", label: "相簿", group: "core", control: "album" },
   { key: "use", label: "用途", group: "general", control: "use" },
   { key: "subjectType", label: "主體", group: "general", control: "subjectType" },
   { key: "mood", label: "氛圍", group: "general", control: "mood" },
@@ -31,6 +34,9 @@ export function queryControls() {
     search: document.querySelector("#searchInput"),
     sort: document.querySelector("#sortSelect"),
     album: document.querySelector("#albumFilter"),
+    sourceEvent: document.querySelector("#sourceEventFilter"),
+    sourceYear: document.querySelector("#sourceYearFilter"),
+    clearSource: document.querySelector("#clearSourceButton"),
     use: document.querySelector("#useFilter"),
     mood: document.querySelector("#moodFilter"),
     scene: document.querySelector("#sceneFilter"),
@@ -72,6 +78,8 @@ export function queryElements() {
     context: document.querySelector("#resultContext"),
     pwaStatus: document.querySelector("#pwaStatus"),
     activeFilters: document.querySelector("#activeFilters"),
+    sourceNotice: document.querySelector("#sourceNotice"),
+    sourceNoticeText: document.querySelector("#sourceNoticeText"),
     overviewGrid: document.querySelector("#overviewGrid"),
     overviewSummary: document.querySelector("#overviewSummary"),
     template: document.querySelector("#photoCardTemplate"),
@@ -99,6 +107,7 @@ export function queryElements() {
     previewImageLink: document.querySelector("#previewImageLink"),
     previewTitle: document.querySelector("#previewTitle"),
     previewMeta: document.querySelector("#previewMeta"),
+    previewSource: document.querySelector("#previewSource"),
     previewStatuses: document.querySelector("#previewStatuses"),
     previewReference: document.querySelector("#previewReference"),
     previewImageFrame: document.querySelector(".preview-image-frame"),
@@ -164,6 +173,11 @@ export function setControlValues(control, values, { dispatch = true } = {}) {
     }
     return;
   }
+  for (const value of selectedValues) {
+    if (![...control.options].some((option) => option.value === value)) {
+      control.append(new Option(value, value));
+    }
+  }
   for (const option of control.options) {
     option.selected = selectedValues.has(option.value);
   }
@@ -223,6 +237,8 @@ function closeEnhancedSelect(control) {
 }
 
 function renderEnhancedSelectOptions(control) {
+  const scrollTop = control.scroller.scrollTop;
+  const focusedValue = control.options.contains(document.activeElement) ? document.activeElement.dataset.value : undefined;
   const query = normalizeText(control.search.value);
   const options = [...control.select.options].filter((option) => {
     if (!query) {
@@ -242,6 +258,8 @@ function renderEnhancedSelectOptions(control) {
     button.setAttribute("aria-selected", selected ? "true" : "false");
     button.classList.toggle("is-selected", selected);
     button.classList.toggle("is-empty", option.value === "");
+    button.disabled = option.disabled && !selected;
+    button.setAttribute("aria-disabled", button.disabled ? "true" : "false");
     button.textContent = enhancedSelectOptionText(option);
     button.title = enhancedSelectOptionText(option);
     fragment.append(button);
@@ -255,6 +273,12 @@ function renderEnhancedSelectOptions(control) {
   }
 
   control.options.replaceChildren(fragment);
+  control.scroller.scrollTop = scrollTop;
+  if (focusedValue !== undefined) {
+    const target = [...control.options.querySelectorAll("button")].find((button) => button.dataset.value === focusedValue && !button.disabled);
+    (target ?? control.trigger).focus({ preventScroll: true });
+  }
+  if (!control.panel.hidden) positionFilterPanel(control);
 }
 
 function positionFilterPanel(control) {
@@ -264,7 +288,7 @@ function positionFilterPanel(control) {
   control.panel.style.left = `${offset}px`;
 }
 
-function openEnhancedSelect(control) {
+function openEnhancedSelect(control, { focusSearch = true } = {}) {
   for (const otherControl of enhancedSelects.values()) {
     if (otherControl !== control) {
       closeEnhancedSelect(otherControl);
@@ -280,20 +304,20 @@ function openEnhancedSelect(control) {
       control.panel.scrollIntoView({ block: "nearest", inline: "nearest" });
     });
   }
-  if (shouldFocusEnhancedSelectSearch()) {
+  if (focusSearch && shouldFocusEnhancedSelectSearch()) {
     window.requestAnimationFrame(() => control.search.focus({ preventScroll: true }));
   }
 }
 
 function toggleEnhancedSelectValue(control, value) {
-  const optionScrollTop = control.options.scrollTop;
+  const optionScrollTop = control.scroller.scrollTop;
   if (!value) {
     for (const option of control.select.options) {
       option.selected = false;
     }
   } else if (control.select.multiple) {
     const option = [...control.select.options].find((item) => item.value === value);
-    if (option) {
+    if (option && (!option.disabled || option.selected)) {
       option.selected = !option.selected;
     }
   } else {
@@ -302,8 +326,17 @@ function toggleEnhancedSelectValue(control, value) {
   }
   syncEnhancedSelectValue(control);
   renderEnhancedSelectOptions(control);
-  control.options.scrollTop = optionScrollTop;
   control.select.dispatchEvent(new Event("input", { bubbles: true }));
+  control.scroller.scrollTop = optionScrollTop;
+}
+
+function focusSelectOption(control, option) {
+  if (!option) return;
+  option.focus({ preventScroll: true });
+  const rect = option.getBoundingClientRect();
+  const viewport = control.scroller.getBoundingClientRect();
+  if (rect.top < viewport.top) control.scroller.scrollTop += rect.top - viewport.top;
+  else if (rect.bottom > viewport.bottom) control.scroller.scrollTop += rect.bottom - viewport.bottom;
 }
 
 function setupEnhancedSelect(select, definition) {
@@ -333,11 +366,12 @@ function setupEnhancedSelect(select, definition) {
     const options = document.createElement("div");
     options.className = "enhanced-select-options";
     options.setAttribute("role", "listbox");
+    options.setAttribute("aria-multiselectable", "true");
     panel.append(search, options);
     root.append(trigger, panel);
     select.insertAdjacentElement("afterend", root);
 
-    control = { root, select, trigger, triggerText, panel, search, options, placeholder: "" };
+    control = { root, select, trigger, triggerText, panel, search, options, scroller: options, placeholder: "" };
     enhancedSelects.set(select, control);
 
     trigger.addEventListener("click", (event) => {
@@ -348,12 +382,32 @@ function setupEnhancedSelect(select, definition) {
         closeEnhancedSelect(control);
       }
     });
+    root.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && !panel.hidden) {
+        event.preventDefault();
+        event.stopPropagation();
+        closeEnhancedSelect(control);
+        trigger.focus();
+      } else if (["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key) && (event.target === trigger || options.contains(event.target))) {
+        event.preventDefault();
+        if (panel.hidden) openEnhancedSelect(control, { focusSearch: false });
+        const buttons = [...options.querySelectorAll("button:not(:disabled)")];
+        const current = buttons.indexOf(document.activeElement);
+        const next = event.key === "Home" ? 0 : event.key === "End" ? buttons.length - 1 :
+          event.key === "ArrowDown" ? Math.min(current + 1, buttons.length - 1) : Math.max(current - 1, 0);
+        focusSelectOption(control, buttons[next]);
+      }
+    });
     search.addEventListener("input", () => renderEnhancedSelectOptions(control));
     search.addEventListener("keydown", (event) => {
       if (event.key === "Escape") {
         event.preventDefault();
+        event.stopPropagation();
         closeEnhancedSelect(control);
         trigger.focus();
+      } else if (event.key === "ArrowDown") {
+        event.preventDefault();
+        focusSelectOption(control, options.querySelector("button:not(:disabled)"));
       }
     });
     options.addEventListener("click", (event) => {
@@ -369,10 +423,11 @@ function setupEnhancedSelect(select, definition) {
 
   control.placeholder = select.options[0]?.textContent ?? "";
   control.label = definition.label;
-  control.compact = definition.key !== "album";
+  control.compact = definition.group !== "core";
   select.closest("label").classList.toggle("compact-filter", control.compact);
   control.search.placeholder = definition.searchPlaceholder;
   control.search.setAttribute("aria-label", definition.searchPlaceholder);
+  control.options.setAttribute("aria-label", definition.label);
   syncEnhancedSelectValue(control);
   renderEnhancedSelectOptions(control);
 }
@@ -610,7 +665,7 @@ export function updateFilterLayout({ controls, elements, taskMode }) {
   let advancedCount = 0;
 
   for (const definition of filterDefinitions) {
-    if (definition.key === "album") {
+    if (definition.group === "core") {
       continue;
     }
     const label = filterLabelFor(controls, definition);
@@ -638,70 +693,33 @@ export function updateFilterLayout({ controls, elements, taskMode }) {
   elements.advancedFilterCount.hidden = advancedCount === 0;
 }
 
-function compactLabelParts(parts) {
-  const seen = new Set();
-  return parts
-    .map((part) => String(part ?? "").trim())
-    .filter(Boolean)
-    .filter((part) => {
-      const key = part.toLowerCase();
-      if (seen.has(key)) {
-        return false;
-      }
-      seen.add(key);
-      return true;
-    });
-}
-
-function albumOptionFromRecord(record, value) {
-  const labelParts = compactLabelParts([record.event_year, record.event_name, record.album_title]);
-  const label = labelParts.join(" · ") || value;
-  const specificity = labelParts.length + (record.event_year ? 1 : 0) + (record.event_name ? 1 : 0) + (record.album_title ? 1 : 0);
-  return { value, label, specificity };
-}
-
 export function albumFilterOptions(photos, albums = []) {
-  const options = new Map();
-  for (const photo of photos) {
-    for (const albumId of photo.album_ids) {
-      const id = String(albumId ?? "").trim();
-      if (!id) {
-        continue;
-      }
-      const key = `id:${id}`;
-      const next = albumOptionFromRecord(photo, key);
-      const current = options.get(key);
-      if (!current || next.specificity > current.specificity || next.label.length > current.label.length) {
-        options.set(key, next);
-      }
-    }
+  return sourceFilterOptions(createSourceIndex(photos, albums), "album", "未記錄相簿");
+}
 
-    if (photo.album_ids.length === 0 && photo.album_title) {
-      const key = `title:${photo.album_title}`;
-      options.set(key, albumOptionFromRecord(photo, key));
+export function updateSourceControls({ controls, sourceIndex, filters, available }) {
+  for (const definition of filterDefinitions.filter((item) => sourceFilterKeys.includes(item.key))) {
+    const key = definition.key;
+    const select = controls[definition.control];
+    const selected = filters[key] ?? [];
+    const options = sourceFilterOptions(sourceIndex, key, definition.missingLabel, definition.preferredValues);
+    if ((available[key].has(missingSourceValue) || selected.includes(missingSourceValue)) && !options.some((option) => option.value === missingSourceValue)) {
+      options.push({ value: missingSourceValue, label: definition.missingLabel });
     }
+    for (const value of selected) {
+      if (!options.some((option) => option.value === value)) options.push({ value, label: sourceOptionLabel(key, value, options) });
+    }
+    const current = [...select.options].filter((option) => option.value);
+    if (current.length !== options.length || options.some((option, i) => current[i]?.value !== option.value || current[i]?.textContent !== option.label)) {
+      fillSelectOptions(select, definition.emptyLabel, options);
+    }
+    for (const option of select.options) {
+      const usable = !option.value || available[key].has(option.value);
+      option.dataset.available = String(usable);
+      option.disabled = !usable && !selected.includes(option.value);
+    }
+    setControlValues(select, selected, { dispatch: false });
   }
-
-  const orderedOptions = [];
-  const usedKeys = new Set();
-  for (const album of albums) {
-    const albumId = String(album.album_id ?? "").trim();
-    const key = albumId ? `id:${albumId}` : "";
-    if (!key || !options.has(key)) {
-      continue;
-    }
-    const option = albumOptionFromRecord(album, key);
-    orderedOptions.push({ value: key, label: option.label });
-    usedKeys.add(key);
-  }
-
-  for (const [key, option] of options) {
-    if (!usedKeys.has(key)) {
-      orderedOptions.push({ value: option.value, label: option.label });
-    }
-  }
-
-  return orderedOptions;
 }
 
 export function setupTaskModes(container, taskModes) {
@@ -723,10 +741,10 @@ function setVisibleLabel(control, text) {
   }
 }
 
-function valuesForFilter(definition, { taxonomy, photos, albums, peopleCountFilters, uniqueSorted }) {
+function valuesForFilter(definition, { taxonomy, photos, albums, sourceIndex, peopleCountFilters, uniqueSorted }) {
   const source = definition.source ?? {};
-  if (source.type === "album") {
-    return albumFilterOptions(photos, albums);
+  if (source.type === "album" || source.type === "album_source") {
+    return sourceFilterOptions(sourceIndex, definition.key, definition.missingLabel, definition.preferredValues);
   }
   if (source.type === "people_count_buckets") {
     return peopleCountFilters;
@@ -743,16 +761,16 @@ function valuesForFilter(definition, { taxonomy, photos, albums, peopleCountFilt
   return [];
 }
 
-export function setupFilters({ controls, elements, taxonomy, photos, albums, peopleCountFilters, optionLabels, uniqueSorted }) {
+export function setupFilters({ controls, elements, taxonomy, photos, albums, sourceIndex = createSourceIndex(photos, albums), peopleCountFilters, optionLabels, uniqueSorted }) {
   for (const definition of filterDefinitions) {
     const control = controls[definition.control];
     if (!control) {
       continue;
     }
     setVisibleLabel(control, definition.label);
-    const values = valuesForFilter(definition, { taxonomy, photos, albums, peopleCountFilters, uniqueSorted });
+    const values = valuesForFilter(definition, { taxonomy, photos, albums, sourceIndex, peopleCountFilters, uniqueSorted });
     const emptyLabel = definition.emptyLabel ?? `全部${definition.label}`;
-    if (definition.source?.type === "album") {
+    if (sourceFilterKeys.includes(definition.key)) {
       fillSelectOptions(control, emptyLabel, values);
     } else if (definition.source?.type === "people_count_buckets") {
       control.replaceChildren(...values.map(({ label, value }) => new Option(label, value)));

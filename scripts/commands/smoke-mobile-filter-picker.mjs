@@ -1,9 +1,10 @@
-import { access, copyFile, mkdir, rm } from "node:fs/promises";
+import { access, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import { spawn, spawnSync } from "node:child_process";
 import { join } from "node:path";
 import { buildPagesArtifact } from "./build-pages.mjs";
 import { startStaticServer } from "../lib/finder/serve.mjs";
+import { parseCsv, csvEscape } from "../lib/core/csv-utils.mjs";
 
 const artifactDir = "tmp/pages-mobile-filter-smoke";
 const chromeProfileDir = "tmp/mobile-filter-smoke-chrome";
@@ -91,8 +92,19 @@ async function prepareArtifact() {
     photosCsvUrl: "./local/photos.csv",
   });
   await mkdir(join(result.outputDir, "local"), { recursive: true });
-  await copyFile("fixtures/albums.csv", join(result.outputDir, "local/albums.csv"));
-  await copyFile("fixtures/photos.csv", join(result.outputDir, "local/photos.csv"));
+  const albumRows = parseCsv(await readFile("fixtures/albums.csv", "utf8"));
+  const photoRows = parseCsv(await readFile("fixtures/photos.csv", "utf8"));
+  // Dedicated source relationships in the temporary browser fixture, independent of catalog coverage.
+  for (const album of [
+    { album_id: "source-smoke-a", album_title: "SITCON Camp 2025 Day 1", event_name: "Camp", event_year: "2025" },
+    { album_id: "source-smoke-b", album_title: "SITCON 2026 年會", event_name: "年會", event_year: "2026" },
+  ]) albumRows.push(albumRows[0].map((field) => album[field] ?? ""));
+  const membershipColumn = photoRows[0].indexOf("album_ids");
+  photoRows[1][membershipColumn] = "source-smoke-a";
+  photoRows[2][membershipColumn] = "source-smoke-a;source-smoke-b";
+  for (const [name, rows] of [["albums", albumRows], ["photos", photoRows]]) {
+    await writeFile(join(result.outputDir, `local/${name}.csv`), rows.map((row) => row.map(csvEscape).join(",")).join("\n"));
+  }
   return result.outputDir;
 }
 
@@ -229,7 +241,7 @@ async function evaluate(client, expression) {
     returnByValue: true,
   });
   if (result.exceptionDetails) {
-    throw new Error(`Evaluation failed: ${result.exceptionDetails.text}`);
+    throw new Error(`Evaluation failed: ${result.exceptionDetails.exception?.description ?? result.exceptionDetails.text}`);
   }
   return result.result.value;
 }
@@ -590,6 +602,129 @@ async function runSmoke(client, pageUrl) {
   await checkAppearance(client);
 }
 
+async function runSourceSmoke(client, pageUrl) {
+  logProgress("checking desktop source row, URL recovery and keyboard focus");
+  await client.call("Emulation.setDeviceMetricsOverride", { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false });
+  await client.call("Page.navigate", { url: pageUrl });
+  await waitForPageReady(client);
+  for (const width of [768, 1100, 1280]) {
+    await client.call("Emulation.setDeviceMetricsOverride", { width, height: 900, deviceScaleFactor: 1, mobile: false });
+    await evaluate(client, `(() => {
+      const tops = [...document.querySelectorAll('.primary-search > label')].map((label) => Math.round(label.getBoundingClientRect().top));
+      if (new Set(tops).size !== 1 || document.documentElement.scrollWidth > innerWidth) {
+        throw new Error('Source row layout failed at ' + innerWidth + 'px: ' + tops);
+      }
+    })()`);
+  }
+  await evaluate(client, `(() => {
+    const labels = [...document.querySelectorAll('.primary-search > label')];
+    const names = labels.map((label) => label.querySelector('span').textContent);
+    if (names.join(',') !== '搜尋,活動,年份,相簿,排序') throw new Error('Unexpected source order: ' + names);
+    const tops = labels.map((label) => Math.round(label.getBoundingClientRect().top));
+    if (new Set(tops).size !== 1) throw new Error('Primary controls wrapped: ' + tops);
+    if (document.documentElement.scrollWidth > innerWidth) throw new Error('Desktop horizontal overflow');
+    const select = document.querySelector('#sourceEventFilter');
+    const firstEvents = [...select.options].filter((option) => option.value).slice(0, 2).map((option) => option.textContent);
+    if (firstEvents.join(',') !== '年會,Camp') throw new Error('Activity priority changed: ' + firstEvents);
+    const value = [...select.options].find((option) => option.value.startsWith('value:'))?.value;
+    if (!value) throw new Error('No catalog activity option');
+    select.closest('label').querySelector('.enhanced-select-trigger').click();
+    [...select.closest('label').querySelectorAll('.enhanced-select-option')].find((button) => button.dataset.value === value).click();
+    if (new URLSearchParams(location.search).get('event') !== value) throw new Error('Activity did not enter URL state');
+    if (document.querySelector('#resultSummary').textContent.startsWith('0 /')) throw new Error('Selecting activity lost its photos');
+    document.querySelector('#resetButton').click();
+    select.closest('label').querySelector('.enhanced-select-trigger').focus();
+  })()`);
+  await client.call("Input.dispatchKeyEvent", { type: "keyDown", key: "ArrowDown", code: "ArrowDown", windowsVirtualKeyCode: 40 });
+  await delay(100);
+  await evaluate(client, `(() => {
+    if (!document.activeElement.matches('.enhanced-select-option')) throw new Error('Arrow key did not focus an option');
+  })()`);
+  await client.call("Input.dispatchKeyEvent", { type: "keyDown", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 });
+  await evaluate(client, `(() => {
+    if (!document.activeElement.matches('.enhanced-select-trigger')) throw new Error('Escape did not restore trigger focus');
+    const select = document.querySelector('#albumFilter');
+    const option = [...select.options].find((option) => option.value.startsWith('id:'));
+    option.textContent = '很長的相簿名稱用來確認選項可以完整閱讀與換行'.repeat(12);
+    select.closest('label').querySelector('.enhanced-select-trigger').click();
+    const panel = select.closest('label').querySelector('.enhanced-select-panel');
+    if (panel.scrollWidth > panel.clientWidth + 1) throw new Error('Long album label overflow');
+    select.closest('label').querySelector('.enhanced-select-trigger').click();
+  })()`);
+  await mkdir("tmp/source-filter-implementation", { recursive: true });
+  const desktop = await client.call("Page.captureScreenshot", { format: "png" });
+  await writeFile("tmp/source-filter-implementation/desktop.png", Buffer.from(desktop.data, "base64"));
+
+  const stale = new URL(pageUrl);
+  stale.search = new URLSearchParams({ year: "value:9999", album: "id:missing-from-catalog", scene: "攤位", q: "攤位", sort: "oldest", selected: "not-in-index" });
+  await client.call("Page.navigate", { url: stale.href });
+  await waitForPageReady(client);
+  await evaluate(client, `(() => {
+    const select = document.querySelector('#albumFilter');
+    if (select.selectedOptions[0]?.value !== 'id:missing-from-catalog') throw new Error('Stale album disappeared from control');
+    if (!document.querySelector('#activeFilters').textContent.includes('missing-from-catalog')) throw new Error('Stale album disappeared from chips');
+    if (!document.querySelector('#resultSummary').textContent.startsWith('0 /')) throw new Error('Invalid source silently broadened');
+    document.querySelector('#clearSourceButton').click();
+    if (document.activeElement.id !== 'resetButton') throw new Error('Desktop source clear lost focus');
+    const params = new URLSearchParams(location.search);
+    if (params.has('year') || params.has('event') || params.has('album')) throw new Error('Source clear left a source restriction');
+    if (params.get('q') !== '攤位' || params.get('scene') !== '攤位' || params.get('sort') !== 'oldest' || params.get('selected') !== 'not-in-index') throw new Error('Source clear removed unrelated state');
+  })()`);
+
+  const fixturePhotos = parseCsv(await readFile("fixtures/photos.csv", "utf8"));
+  const photoAlbumTitle = fixturePhotos[1][fixturePhotos[0].indexOf("album_title")];
+  for (const value of [photoAlbumTitle, `title:${photoAlbumTitle}`, "source-smoke-a"]) {
+    const invalidUrl = new URL(pageUrl);
+    invalidUrl.search = new URLSearchParams({ album: value });
+    await client.call("Page.navigate", { url: invalidUrl.href });
+    await waitForPageReady(client);
+    await evaluate(client, `(() => {
+      const value = ${JSON.stringify(value)};
+      const select = document.querySelector('#albumFilter');
+      const selected = select.selectedOptions[0];
+      if (selected?.value !== value || !selected.textContent.endsWith('（目前索引無此選項）')) throw new Error('Invalid album label is incorrect');
+      if (!document.querySelector('#activeFilters').textContent.includes(selected.textContent)) throw new Error('Invalid album missing from chips');
+      if (!document.querySelector('#resultSummary').textContent.startsWith('0 /')) throw new Error('Unsupported album value matched photos');
+      if (new URLSearchParams(location.search).get('album') !== value) throw new Error('Invalid album value was silently rewritten');
+      document.querySelector('#activeFilters [data-filter-key="album"]').click();
+      if (new URLSearchParams(location.search).has('album')) throw new Error('Invalid album could not be removed');
+      if (document.querySelector('#resultSummary').textContent.startsWith('0 /')) throw new Error('Removing invalid album did not restore results');
+    })()`);
+  }
+
+  logProgress("checking mobile source picker");
+  await client.call("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+  await client.call("Page.navigate", { url: pageUrl });
+  await waitForPageReady(client);
+  await evaluate(client, `(() => {
+    document.querySelector('#mobileFilterButton').click();
+    const select = document.querySelector('#sourceEventFilter');
+    select.closest('label').querySelector('.enhanced-select-trigger').click();
+  })()`);
+  await delay(200);
+  await evaluate(client, `(() => {
+    const label = document.querySelector('#sourceEventFilter').closest('label');
+    const rect = label.querySelector('.enhanced-select-panel').getBoundingClientRect();
+    if (rect.left < 0 || rect.right > innerWidth || rect.bottom > innerHeight) throw new Error('Mobile source picker outside viewport');
+    const option = [...label.querySelectorAll('.enhanced-select-option')].find((button) => button.dataset.value.startsWith('value:') && !button.disabled);
+    option.click();
+    if (document.querySelector('#mobileFilterButton').textContent !== '篩選 1') throw new Error('Mobile source count incorrect');
+    if (!document.querySelector('#activeFilters').textContent.includes('活動:')) throw new Error('Source chip missing');
+    document.querySelector('#closeFilterSheetButton').click();
+    if (document.documentElement.scrollWidth > innerWidth) throw new Error('Mobile horizontal overflow');
+  })()`);
+  const mobile = await client.call("Page.captureScreenshot", { format: "png" });
+  await writeFile("tmp/source-filter-implementation/mobile.png", Buffer.from(mobile.data, "base64"));
+  await evaluate(client, `document.querySelector('#clearSourceButton').focus()`);
+  await client.call("Input.dispatchKeyEvent", { type: "keyDown", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13, text: "\r" });
+  await client.call("Input.dispatchKeyEvent", { type: "keyUp", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13 });
+  await evaluate(client, `(() => {
+    if (!document.querySelector('#clearSourceButton').hidden) throw new Error('Keyboard source clear did not clear the filters');
+    if (document.activeElement.id !== 'mobileFilterButton') throw new Error('Mobile source clear lost focus');
+  })()`);
+}
+
+
 let staticServer;
 let chrome;
 let client;
@@ -610,6 +745,7 @@ try {
     const wsUrl = await openPage(debugPort, `http://127.0.0.1:${appPort}/`);
     client = await connect(wsUrl);
     await runSmoke(client, `http://127.0.0.1:${appPort}/`);
+    await runSourceSmoke(client, `http://127.0.0.1:${appPort}/`);
   })(), smokeTimeoutMs, "mobile filter smoke");
   console.log("Mobile filter picker smoke passed.");
 } catch (error) {

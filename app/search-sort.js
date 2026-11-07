@@ -1,5 +1,6 @@
 // Pure search/filter/sort logic for the Pages frontend. This module must not
 // read DOM state; callers pass plain filter, sort, and task objects instead.
+import { createSourceIndex, resolveSourceScope } from "./source-filters.js";
 export function normalizeText(value) {
   return String(value ?? "")
     .trim()
@@ -132,25 +133,6 @@ export function valuePartiallyMatchesList(photo, field, query) {
   return queries.some((normalized) => asList(photo[field]).some((value) => normalizeText(value).includes(normalized)));
 }
 
-function matchesOneAlbum(photo, value) {
-  const normalized = String(value ?? "").trim();
-  if (!normalized) {
-    return true;
-  }
-  if (normalized.startsWith("id:")) {
-    return asList(photo.album_ids).includes(normalized.slice(3));
-  }
-  if (normalized.startsWith("title:")) {
-    return photo.album_title === normalized.slice(6);
-  }
-  return asList(photo.album_ids).includes(normalized) || photo.album_title === normalized;
-}
-
-export function matchesAlbum(photo, value) {
-  const values = filterValues(value);
-  return values.length === 0 || values.some((item) => matchesOneAlbum(photo, item));
-}
-
 function matchesOnePeopleCount(photo, value) {
   const filterValue = String(value ?? "").trim();
   if (!filterValue) {
@@ -189,10 +171,9 @@ export function matchesScalarValue(photo, field, value) {
   return values.length === 0 || values.includes(String(photo[field] ?? ""));
 }
 
-export function matchesFilters(photo, filters = {}) {
+export function matchesPhotoFilters(photo, filters = {}) {
   return (
     textMatches(photo, filters.search ?? "") &&
-    matchesAlbum(photo, filters.album ?? "") &&
     hasListValue(photo, "recommended_uses", filters.recommendedUse ?? "") &&
     hasListValue(photo, "mood_tags", filters.mood ?? "") &&
     hasListValue(photo, "scene_tags", filters.scene ?? "") &&
@@ -208,6 +189,10 @@ export function matchesFilters(photo, filters = {}) {
     matchesScalarValue(photo, "priority_level", filters.priority ?? "") &&
     matchesScalarValue(photo, "curation_status", filters.curationStatus ?? "")
   );
+}
+
+export function matchesFilters(photo, filters = {}, sourceScope = resolveSourceScope(createSourceIndex([photo]), filters)) {
+  return matchesPhotoFilters(photo, filters) && sourceScope.matches(photo);
 }
 
 export function scoreOverlap(photoValues, taskValues, weight) {
@@ -305,7 +290,8 @@ function normalizeDiscoverCandidateLimit(value, itemCount) {
 
 export function sortPhotos(
   items,
-  { sortMode = "recommended", task = {}, discoverHistorySize = 12, discoverWindowSize = 24, discoverCandidateLimit = 2000 } = {},
+  { sortMode = "recommended", task = {}, discoverHistorySize = 12, discoverWindowSize = 24, discoverCandidateLimit = 2000,
+    albums = [], sourceScope = resolveSourceScope(createSourceIndex(items, albums)) } = {},
 ) {
   if (sortMode === "discover") {
     const recommended = [...items].sort((left, right) => compareRecommended(left, right, task));
@@ -316,10 +302,15 @@ export function sortPhotos(
     ];
   }
 
+  const years = new Map();
+  if (sortMode === "newest" || sortMode === "oldest") {
+    for (const photo of items) years.set(photo.photo_id, numericValue(sourceScope.representative(photo)?.event_year));
+  }
   return [...items].sort((left, right) => {
     if (sortMode === "newest" || sortMode === "oldest") {
-      const leftYear = numericValue(left.event_year) ?? 0;
-      const rightYear = numericValue(right.event_year) ?? 0;
+      const leftYear = years.get(left.photo_id);
+      const rightYear = years.get(right.photo_id);
+      if (leftYear === null || rightYear === null) return leftYear === rightYear ? 0 : leftYear === null ? 1 : -1;
       return sortMode === "newest" ? rightYear - leftYear : leftYear - rightYear;
     }
 
@@ -364,14 +355,23 @@ export function filterAndSortPhotos(
     discoverWindowSize = 24,
     discoverCandidateLimit = 2000,
     selectedPhotoIds = [],
+    albums = [],
+    sourceIndex = createSourceIndex(photos, albums),
+    sourceScope = resolveSourceScope(sourceIndex, filters),
   } = {},
 ) {
-  const sorted = sortPhotos(photos.filter((photo) => matchesFilters(photo, filters)), {
+  const seen = new Set();
+  const sorted = sortPhotos(photos.filter((photo) => {
+    if (seen.has(photo.photo_id) || !matchesFilters(photo, filters, sourceScope)) return false;
+    seen.add(photo.photo_id);
+    return true;
+  }), {
     sortMode,
     task,
     discoverHistorySize,
     discoverWindowSize,
     discoverCandidateLimit,
+    sourceScope,
   });
   return prioritizeSelectedPhotos(sorted, selectedPhotoIds);
 }

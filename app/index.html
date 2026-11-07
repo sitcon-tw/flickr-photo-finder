@@ -90,7 +90,17 @@
           </label>
 
           <label>
-            <span>活動/相簿</span>
+            <span>活動</span>
+            <select id="sourceEventFilter"></select>
+          </label>
+
+          <label>
+            <span>年份</span>
+            <select id="sourceYearFilter"></select>
+          </label>
+
+          <label>
+            <span>相簿</span>
             <select id="albumFilter"></select>
           </label>
 
@@ -199,8 +209,15 @@
           <p id="pwaStatus" class="pwa-status" hidden></p>
           <p id="selectedNotice" class="selected-notice" hidden></p>
         </div>
-        <div id="activeFilters" class="active-filters" aria-label="已套用條件"></div>
+        <div class="filter-summary">
+          <div id="activeFilters" class="active-filters" aria-label="已套用條件"></div>
+          <button id="clearSourceButton" type="button" hidden>清除來源</button>
+        </div>
       </section>
+
+      <div id="sourceNotice" class="source-notice" hidden>
+        <p id="sourceNoticeText" role="status"></p>
+      </div>
 
       <div class="mobile-action-bar" aria-label="手機快捷操作">
         <button id="mobileFilterButton" type="button">篩選</button>
@@ -306,6 +323,7 @@
       <div class="dialog-header">
         <div>
           <h2 id="previewTitle">照片預覽</h2>
+          <p id="previewSource" class="preview-source"></p>
           <p id="previewMeta"></p>
         </div>
         <button id="closePreviewButton" type="button">關閉</button>

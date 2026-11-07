@@ -397,7 +397,7 @@ h3 {
 
 .primary-search {
   display: grid;
-  grid-template-columns: minmax(260px, 1fr) minmax(180px, 280px) minmax(150px, 220px) auto;
+  grid-template-columns: minmax(160px, 1.6fr) minmax(105px, 1fr) minmax(95px, 0.7fr) minmax(155px, 1.5fr) minmax(125px, 1fr) auto;
   gap: 12px;
   align-items: end;
   margin-bottom: 10px;
@@ -1771,7 +1771,8 @@ select {
 
 @media (max-width: 1180px) {
   .primary-search {
-    grid-template-columns: minmax(160px, 1fr) minmax(160px, 1fr) minmax(128px, 0.65fr) auto;
+    grid-template-columns: minmax(120px, 1.4fr) minmax(85px, 1fr) minmax(80px, 0.7fr) minmax(105px, 1.3fr) minmax(110px, 1fr) auto;
+    gap: 8px;
   }
 
   .task-choices {
@@ -2208,3 +2209,12 @@ select {
     min-height: 42px;
   }
 }
+
+/* Keep source filters in the primary row; long labels stay searchable in the picker. */
+.primary-search > label { min-width: 0; }
+.filter-summary { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; min-width: 0; }
+.filter-summary .active-filters { min-width: 0; max-width: 100%; }
+.source-notice { margin: 0 0 14px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; }
+.source-notice p { margin: 0; }
+.preview-source { color: var(--accent-strong); overflow-wrap: anywhere; }
+.enhanced-select-option:disabled { opacity: 0.5; cursor: default; }

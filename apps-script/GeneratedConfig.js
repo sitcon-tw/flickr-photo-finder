@@ -1318,16 +1318,49 @@ var SITCON_PHOTO_FINDER_CONFIG = {
       },
       "filters": [
         {
+          "key": "sourceEvent",
+          "label": "活動",
+          "group": "core",
+          "control": "sourceEvent",
+          "urlKey": "event",
+          "source": {
+            "type": "album_source",
+            "field": "event_name"
+          },
+          "preferredValues": [
+            "年會",
+            "Camp"
+          ],
+          "emptyLabel": "全部活動",
+          "missingLabel": "活動未填／來源未知",
+          "searchPlaceholder": "搜尋活動"
+        },
+        {
+          "key": "sourceYear",
+          "label": "年份",
+          "group": "core",
+          "control": "sourceYear",
+          "urlKey": "year",
+          "source": {
+            "type": "album_source",
+            "field": "event_year"
+          },
+          "emptyLabel": "全部年份",
+          "missingLabel": "年份未填／來源未知",
+          "searchPlaceholder": "搜尋年份"
+        },
+        {
           "key": "album",
-          "label": "活動/相簿",
+          "label": "相簿",
           "group": "core",
           "control": "album",
           "urlKey": "album",
           "source": {
             "type": "album"
           },
-          "emptyLabel": "全部活動/相簿",
-          "searchPlaceholder": "搜尋活動或相簿"
+          "emptyLabel": "全部相簿",
+          "missingLabel": "未記錄相簿",
+          "searchPlaceholder": "搜尋相簿名稱"
         },
         {
           "key": "use",
