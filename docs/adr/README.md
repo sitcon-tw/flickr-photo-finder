@@ -29,3 +29,4 @@
 | [0009](0009-photo-metadata-field-boundaries.md) | Accepted | 照片 metadata 欄位維持清楚分工，避免場景、用途、贊助與使用提醒混用。 |
 | [0010](0010-ai-prompt-review-governance.md) | Accepted | AI prompt review 採 evidence 與 owner 決策 gate，不自動套用模型或工具建議。 |
 | [0011](0011-photo-workspace-visual-design.md) | Accepted | 採用照片優先的工作台，兼顧桌面、平板與手機的找圖操作；明暗外觀屬於個人偏好，獨立於分享狀態。 |
+| [0012](0012-album-source-filter-semantics.md) | Accepted | 來源篩選依相簿活動歸屬，保留照片 metadata 邊界，並統一多相簿判斷、年份排序與分享語意。 |
